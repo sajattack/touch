@@ -1,0 +1,1214 @@
+/*
+ * SiW touch core driver
+ *
+ * Copyright (C) 2016 Silicon Works - http://www.siliconworks.co.kr
+ * Author: Hyunho Kim <kimhh@siliconworks.co.kr>
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * version 2 as published by the Free Software Foundation.
+ */
+
+#ifndef __SIW_TOUCH_H
+#define __SIW_TOUCH_H
+
+#include <linux/kernel.h>
+#include <linux/async.h>
+#include <linux/delay.h>
+#include <linux/irq.h>
+#include <linux/interrupt.h>
+#include <linux/irqreturn.h>
+#include <linux/string.h>
+#include <linux/of_gpio.h>
+#include <linux/platform_device.h>
+#if defined(CONFIG_HAS_EARLYSUSPEND)
+#include <linux/earlysuspend.h>
+#elif defined(CONFIG_FB)
+#include <linux/fb.h>
+#endif
+#include <linux/notifier.h>
+#include <linux/atomic.h>
+#include <linux/wakelock.h>
+#include <linux/input.h>
+#include <linux/input/mt.h>
+
+#include <linux/input/siw_touch_notify.h>
+
+#include "siw_touch_cfg.h"
+#include "siw_touch_dbg.h"
+
+
+#define TOUCH_IRQ_NONE				0
+#define TOUCH_IRQ_FINGER			(1 << 0)
+#define TOUCH_IRQ_KNOCK				(1 << 1)
+#define TOUCH_IRQ_PASSWD			(1 << 2)
+#define TOUCH_IRQ_SWIPE_RIGHT		(1 << 3)
+#define TOUCH_IRQ_SWIPE_LEFT		(1 << 4)
+#define TOUCH_IRQ_ERROR				(1 << 15)
+
+enum {
+	DRIVER_FREE = 0,
+	DRIVER_INIT = 1,
+};
+
+enum {
+	POWER_OFF = 0,
+	POWER_SLEEP,
+	POWER_WAKE,
+	POWER_ON,
+};
+
+enum {
+	UEVENT_IDLE = 0,
+	UEVENT_BUSY,
+};
+
+enum {
+	PROX_NEAR = 0,
+	PROX_FAR,
+};
+
+enum {
+	HOLE_FAR = 0,
+	HOLE_NEAR,
+};
+
+enum {
+	DEV_PM_RESUME = 0,
+	DEV_PM_SUSPEND,
+	DEV_PM_SUSPEND_IRQ,
+};
+
+enum {
+	FB_RESUME = 0,
+	FB_SUSPEND,
+};
+
+enum {
+	SP_DISCONNECT = 0,
+	SP_CONNECT,
+};
+
+/* Deep Sleep or not */
+enum {
+	IC_NORMAL = 0,
+	IC_DEEP_SLEEP,
+};
+
+/* TCI */
+enum {
+	ENABLE_CTRL = 0,
+	TAP_COUNT_CTRL,
+	MIN_INTERTAP_CTRL,
+	MAX_INTERTAP_CTRL,
+	TOUCH_SLOP_CTRL,
+	TAP_DISTANCE_CTRL,
+	INTERRUPT_DELAY_CTRL,
+	ACTIVE_AREA_CTRL,
+	ACTIVE_AREA_RESET_CTRL,
+};
+
+enum {
+	LPWG_NONE = 0,
+	LPWG_DOUBLE_TAP,
+	LPWG_PASSWORD,
+};
+
+enum {
+	LPWG_SLEEP = 0,
+	LPWG_WAKE,
+	LPWG_KNOCK,
+	LPWG_PASSWD,
+	LPWG_PARTIAL,
+	LPWG_NORMAL,
+};
+
+enum {
+	LPWG_CMD_MODE = 0,
+	LPWG_CMD_AREA,
+};
+
+enum {
+	TCI_1 = 0,
+	TCI_2,
+};
+
+enum {
+	LPWG_ENABLE = 1,
+	LPWG_LCD,
+	LPWG_ACTIVE_AREA,
+	LPWG_TAP_COUNT,
+	LPWG_LENGTH_BETWEEN_TAP,
+	LPWG_EARLY_SUSPEND,
+	LPWG_SENSOR_STATUS,
+	LPWG_DOUBLE_TAP_CHECK,
+	LPWG_UPDATE_ALL,
+	LPWG_READ,
+	LPWG_REPLY,
+};
+
+enum {
+	LOCKSCREEN_UNLOCK = 0,
+	LOCKSCREEN_LOCK,
+};
+
+enum {
+	IME_OFF = 0,
+	IME_ON,
+	IME_SWYPE,
+};
+
+enum {
+	QUICKCOVER_OPEN = 0,
+	QUICKCOVER_CLOSE,
+};
+
+enum {
+	INCOMING_CALL_IDLE,
+	INCOMING_CALL_RINGING,
+	INCOMING_CALL_OFFHOOK,
+};
+
+enum {
+	MFTS_NONE = 0,
+	MFTS_FOLDER,
+	MFTS_FLAT,
+	MFTS_CURVED,
+};
+
+enum { /* Command lists */
+	CMD_VERSION,
+	CMD_ATCMD_VERSION,
+};
+
+enum {
+	INTERRUPT_DISABLE = 0,
+	INTERRUPT_ENABLE,
+};
+
+enum {
+	CORE_NONE = 0,
+	CORE_EARLY_PROBE,
+	CORE_PROBE,
+	CORE_CHARGER_LOGO,
+	CORE_MFTS,
+	CORE_UPGRADE,
+	CORE_NORMAL,
+};
+
+// QCT USB connection
+enum {
+	CONNECT_INVALID = 0,
+	CONNECT_SDP,
+	CONNECT_DCP,
+	CONNECT_CDP,
+	CONNECT_PROPRIETARY,
+	CONNECT_FLOATED,
+	CONNECT_HUB, /* SHOULD NOT change the value */
+};
+
+// MTK USB connection
+enum {
+	CONNECT_CHARGER_UNKNOWN = 0,
+	CONNECT_STANDARD_HOST,		/* USB : 450mA */
+	CONNECT_CHARGING_HOST,
+	CONNECT_NONSTANDARD_CHARGER,	/* AC : 450mA~1A */
+	CONNECT_STANDARD_CHARGER,	/* AC : ~1A */
+	CONNECT_APPLE_2_1A_CHARGER,	/* 2.1A apple charger */
+	CONNECT_APPLE_1_0A_CHARGER,	/* 1A apple charger */
+	CONNECT_APPLE_0_5A_CHARGER,	/* 0.5A apple charger */
+	CONNECT_WIRELESS_CHARGER,
+	CONNECT_DISCONNECTED,
+};
+
+enum {
+	EARJACK_NONE = 0,
+	EARJACK_NORMAL,
+	EARJACK_DEBUG,
+};
+
+enum {
+	DEBUG_TOOL_DISABLE = 0,
+	DEBUG_TOOL_ENABLE,
+	DEBUG_TOOL_MAX,
+};
+
+enum {
+	DEBUG_OPTION_DISABLE	= 0,
+	DEBUG_OPTION_1			= 1,	//BIT0(1<<0)
+	DEBUG_OPTION_2			= 2,	//BIT1(1<<1)
+	DEBUG_OPTION_1_2		= 3,	//BIT1(1<<1) + BIT0(1<<0)
+	DEBUG_OPTION_3			= 4,	//BIT2(1<<2)
+	DEBUG_OPTION_1_3		= 5,	//BIT2(1<<2) + BIT0(1<<0)
+	DEBUG_OPTION_2_3		= 6,	//BIT2(1<<2) + BIT1(1<<1)
+	DEBUG_OPTION_1_2_3		= 7,	//BIT2(1<<2) + BIT1(1<<1) + BIT0(1<<0)
+	DEBUG_OPTION_4			= 8,	//BIT3(1<<3)
+	DEBUG_OPTION_1_4		= 9,	//BIT3(1<<3) + BIT0(1<<0)
+	DEBUG_OPTION_2_4		= 10,	//BIT3(1<<3) + BIT1(1<<1)
+	DEBUG_OPTION_1_2_4		= 11,	//BIT3(1<<3) + BIT1(1<<1) + BIT0(1<<0)
+	DEBUG_OPTION_3_4		= 12,	//BIT3(1<<3) + BIT2(1<<2)
+	DEBUG_OPTION_1_3_4		= 13,	//BIT3(1<<3) + BIT2(1<<2) + BIT0(1<<0)
+	DEBUG_OPTION_2_3_4		= 14,	//BIT3(1<<3) + BIT2(1<<2) + BIT1(1<<1)
+	DEBUG_OPTION_1_2_3_4	= 15,	//BIT3(1<<3) + BIT2(1<<2) + BIT1(1<<1) + BIT0(1<<0)
+};
+
+enum {
+	ASC_OFF = 0,
+	ASC_ON,
+};
+
+enum {
+	IN_HAND_ATTN = 0,
+	NOT_IN_HAND,
+	IN_HAND_NO_ATTN,
+};
+
+enum {
+	ASC_READ_MAX_DELTA = 0,
+	ASC_GET_FW_SENSITIVITY,
+	ASC_WRITE_SENSITIVITY,
+};
+
+enum {
+	DELTA_CHK_OFF = 0,
+	DELTA_CHK_ON,
+};
+
+enum {
+	NORMAL_SENSITIVITY = 0,
+	ACUTE_SENSITIVITY,
+	OBTUSE_SENSITIVITY,
+};
+
+enum {
+	NORMAL_BOOT = 0,
+	MINIOS_AAT,
+	MINIOS_MFTS_FOLDER,
+	MINIOS_MFTS_FLAT,
+	MINIOS_MFTS_CURVED,
+};
+
+struct state_info {
+	atomic_t core;
+	atomic_t pm;
+	atomic_t fb;
+	atomic_t sleep;
+	atomic_t uevent;
+	atomic_t irq_enable;
+	atomic_t connect; /* connection using USB port */
+	atomic_t wireless; /* connection using wirelees_charger */
+	atomic_t earjack; /* connection using earjack */
+	atomic_t lockscreen;
+	atomic_t ime;
+	atomic_t quick_cover;
+	atomic_t incoming_call;
+	atomic_t mfts;
+	atomic_t sp_link;
+	atomic_t debug_tool;
+	atomic_t debug_option_mask;
+	atomic_t onhand;
+	atomic_t hw_reset;
+};
+
+struct touch_pins {
+	int reset_pin;
+	int reset_pin_pol;
+	int irq_pin;
+	int maker_id_pin;
+	int vdd_pin;
+	int vio_pin;
+	/* */
+	void *vdd;
+	void *vio;
+};
+
+struct touch_device_caps {
+	u32 max_x;
+	u32 max_y;
+	u32 max_pressure;
+	u32 max_width;
+	u32 max_orientation;
+	u32 max_id;
+	u32 hw_reset_delay;
+	u32 sw_reset_delay;
+};
+
+struct touch_operation_role {
+	bool use_lpwg;
+	bool use_firmware;
+	bool use_fw_upgrade;
+	u32 use_lpwg_test;
+	u32 mfts_lpwg;
+};
+
+struct touch_quick_cover {
+	u32 x1;
+	u32 y1;
+	u32 x2;
+	u32 y2;
+};
+
+struct touch_pinctrl {
+	struct pinctrl *ctrl;
+	struct pinctrl_state *active;
+	struct pinctrl_state *suspend;
+};
+
+struct touch_data {
+	u16 id;
+	u16 x;
+	u16 y;
+	u16 width_major;
+	u16 width_minor;
+	u16 orientation;
+	u16 pressure;
+	/* finger, palm, pen, glove, hover */
+	u16 type;
+};
+
+struct point {
+	int x;
+	int y;
+};
+
+struct lpwg_info {
+	u8 mode;
+	u8 screen;
+	u8 sensor;
+	u8 qcover;
+	u8 code_num;
+	struct point area[2];
+	struct point code[MAX_LPWG_CODE];
+};
+
+struct active_area {
+	u16 x1;
+	u16 y1;
+	u16 x2;
+	u16 y2;
+};
+
+struct reset_area {
+	u32 x1;
+	u32 y1;
+	u32 x2;
+	u32 y2;
+};
+
+struct tci_info {
+	u8 tap_count;
+	u8 min_intertap;
+	u8 max_intertap;
+	u8 touch_slop;
+	u8 tap_distance;
+	u8 intr_delay;
+};
+
+struct tci_ctrl {
+	u32 mode;
+	struct active_area area;
+	struct reset_area rst_area;
+	u8 double_tap_check;
+	struct tci_info info[2];
+};
+
+struct asc_info {
+	u32	use_asc;
+	u8	curr_sensitivity;
+	bool use_delta_chk;
+	bool delta_updated;
+	u32	delta;
+	u32	low_delta_thres;
+	u32	high_delta_thres;
+};
+
+struct siw_touch_operations {
+	/* Register Map */
+	void *reg;
+	/* Func. */
+	int (*early_probe)(struct device *dev);
+	int (*probe)(struct device *dev);
+	int (*remove)(struct device *dev);
+	int (*suspend)(struct device *dev);
+	int (*resume)(struct device *dev);
+	int (*init)(struct device *dev);
+	int (*reset)(struct device *dev, int ctrl);
+	int (*ic_info)(struct device *dev);
+	int (*tc_driving)(struct device *dev, int mode);
+	int (*chk_status)(struct device *dev);
+	int (*irq_handler)(struct device *dev);
+	int (*irq_abs)(struct device *dev);
+	int (*irq_lpwg)(struct device *dev);
+	int (*power)(struct device *dev, int power_mode);
+	int (*upgrade)(struct device *dev);
+	int (*lpwg)(struct device *dev,	u32 code, void *param);
+	int (*asc)(struct device *dev, u32 code, u32 value);
+	int (*notify)(struct device *dev, ulong event, void *data);
+	int (*set)(struct device *dev, u32 cmd, void *buf);
+	int (*get)(struct device *dev, u32 cmd, void *buf);
+	/* */
+	int (*sysfs)(struct device *dev, int on_off);
+	/* */
+	int (*mon_handler)(struct device *dev);
+	int mon_interval;
+	/* */
+	int (*abt_init)(struct device *dev);
+	int (*abt_sysfs)(struct device *dev, int on_off);
+	int (*prd_sysfs)(struct device *dev, int on_off);
+	int (*watch_sysfs)(struct device *dev, int on_off);
+};
+
+struct siw_touch_bus_info {
+	void *bus_drv;
+	u32 bus_type;
+	u32 buf_size;
+	/* */
+	u32 spi_mode;
+	u32 bits_per_word;
+	u32 max_freq;
+	/* */
+	int	bus_tx_hdr_size;
+	int	bus_rx_hdr_size;
+	int bus_tx_dummy_size;
+	int bus_rx_dummy_size;
+};
+
+struct siw_touch_pdata {
+	/* Config. */
+	char *chip_id;		//chip id(fixed)
+	char *chip_name;	//chip name
+	char *drv_name;		//driver name
+	char *idrv_name;	//input driver name
+	struct module *owner;
+	const struct of_device_id *of_match_table;
+	u32 chip_type;
+	u32 mode_allowed;
+
+	u32 flags;
+	unsigned long irqflags;
+
+	unsigned long quirks;
+#define _CHIP_QUIRK_NOT_SUPPORT_XFER		(1L<<0)
+
+#define _CHIP_QUIRK_NOT_SUPPORT_ASC			(1L<<16)
+#define _CHIP_QUIRK_NOT_SUPPORT_LPWG		(1L<<17)
+#define _CHIP_QUIRK_NOT_SUPPORT_WATCH		(1L<<18)
+
+#define _CHIP_QUIRK_NOT_SUPPORT_IME			(1L<<28)
+
+	struct siw_touch_bus_info bus_info;
+
+#if !defined(__SIW_CONFIG_OF)
+	struct touch_pins pins;
+	struct touch_device_cpas caps;
+#endif
+
+	/* Input Device ID */
+	struct input_id i_id;
+
+	/* Hal operations */
+	struct siw_touch_operations *ops;
+
+	void *tci_info;
+	void *tci_reset_area;
+	void *swipe_ctrl;
+	void *watch_win;
+};
+
+#define CHIP_QUIRK_NOT_SUPPORT_XFER				_CHIP_QUIRK_NOT_SUPPORT_XFER
+
+#define CHIP_QUIRK_NOT_SUPPORT_ASC				_CHIP_QUIRK_NOT_SUPPORT_ASC
+#define CHIP_QUIRK_NOT_SUPPORT_LPWG				_CHIP_QUIRK_NOT_SUPPORT_LPWG
+#define CHIP_QUIRK_NOT_SUPPORT_WATCH			_CHIP_QUIRK_NOT_SUPPORT_WATCH
+
+#define CHIP_QUIRK_NOT_SUPPORT_IME				_CHIP_QUIRK_NOT_SUPPORT_IME
+
+static inline unsigned long pdata_get_quirks(struct siw_touch_pdata *pdata)
+{
+	return pdata->quirks;
+}
+
+static inline unsigned long pdata_test_quirks(struct siw_touch_pdata *pdata,
+			unsigned long quirk_bit)
+{
+	return (pdata_get_quirks(pdata) & quirk_bit);
+}
+
+static inline char *pdata_chip_name(struct siw_touch_pdata *pdata)
+{
+	return pdata->chip_name;
+}
+
+static inline char *pdata_drv_name(struct siw_touch_pdata *pdata)
+{
+	return pdata->drv_name;
+}
+
+static inline char *pdata_idrv_name(struct siw_touch_pdata *pdata)
+{
+	return pdata->idrv_name;
+}
+
+static inline u32 pdata_chip_type(struct siw_touch_pdata *pdata)
+{
+	return pdata->chip_type;
+}
+
+static inline u32 pdata_mode_allowed(struct siw_touch_pdata *pdata, u32 mode_bit)
+{
+	return (pdata->mode_allowed & mode_bit);
+}
+
+static inline void pdata_set_bus_drv(struct siw_touch_pdata *pdata, void *bus_drv)
+{
+	pdata->bus_info.bus_drv = bus_drv;
+}
+
+static inline void *pdata_get_bus_drv(struct siw_touch_pdata *pdata)
+{
+	return pdata->bus_info.bus_drv;
+}
+
+static inline u32 pdata_bus_type(struct siw_touch_pdata *pdata)
+{
+	return pdata->bus_info.bus_type;
+}
+
+static inline u32 pdata_buf_size(struct siw_touch_pdata *pdata)
+{
+	return pdata->bus_info.buf_size;
+}
+
+static inline u32 pdata_spi_mode(struct siw_touch_pdata *pdata)
+{
+	return pdata->bus_info.spi_mode;
+}
+
+static inline u32 pdata_bits_per_word(struct siw_touch_pdata *pdata)
+{
+	return pdata->bus_info.bits_per_word;
+}
+
+static inline u32 pdata_max_freq(struct siw_touch_pdata *pdata)
+{
+	return pdata->bus_info.max_freq;
+}
+
+static inline int pdata_tx_hdr_size(struct siw_touch_pdata *pdata)
+{
+	return pdata->bus_info.bus_tx_hdr_size;
+}
+
+static inline int pdata_rx_hdr_size(struct siw_touch_pdata *pdata)
+{
+	return pdata->bus_info.bus_rx_hdr_size;
+}
+
+static inline int pdata_tx_dummy_size(struct siw_touch_pdata *pdata)
+{
+	return pdata->bus_info.bus_tx_dummy_size;
+}
+
+static inline int pdata_rx_dummy_size(struct siw_touch_pdata *pdata)
+{
+	return pdata->bus_info.bus_rx_dummy_size;
+}
+
+static inline void *pdata_tci_info(struct siw_touch_pdata *pdata)
+{
+	return pdata->tci_info;
+}
+
+static inline void *pdata_tci_reset_area(struct siw_touch_pdata *pdata)
+{
+	return pdata->tci_reset_area;
+}
+
+static inline void *pdata_swipe_ctrl(struct siw_touch_pdata *pdata)
+{
+	return pdata->swipe_ctrl;
+}
+
+static inline void *pdata_watch_win(struct siw_touch_pdata *pdata)
+{
+	return pdata->watch_win;
+}
+
+#if defined(__SIW_SUPPORT_XFER)
+static inline int pdata_xfer_allowed(struct siw_touch_pdata *pdata)
+{
+	if (pdata_bus_type(pdata) != BUS_SPI)
+		return 0;
+
+	if (pdata_test_quirks(pdata, CHIP_QUIRK_NOT_SUPPORT_XFER))
+		return 0;
+
+	return 1;	//allowed
+}
+#else	/* __SIW_SUPPORT_XFER */
+static inline int pdata_xfer_allowed(struct siw_touch_pdata *pdata){ return 0; }
+#endif	/* __SIW_SUPPORT_XFER */
+
+
+enum {
+	TS_THREAD_OFF = 0,
+	TS_THREAD_ON,
+};
+
+struct siw_ts_thread {
+	struct task_struct *thread;
+	atomic_t state;
+	int interval;
+};
+
+enum {
+	DEFAULT_NAME_SZ = 256,
+};
+
+struct siw_ts {
+//	struct platform_device *pdev;
+
+	u32	addr;
+
+	int irq;
+	unsigned long irqflags;
+	irq_handler_t handler_fn;
+	irq_handler_t thread_fn;
+	struct delayed_work work_irq;
+
+	void *bus_dev;				/* i2c or spi */
+	struct device *dev;			/* client device : i2c->dev or spi->dev */
+	void *dev_data;				/* chip */
+
+	struct device udev;
+	struct bus_type ubus;
+
+	struct input_dev *input;
+	struct siw_touch_pdata *pdata;
+
+	struct kobject kobj;
+	struct wake_lock lpwg_wake_lock;
+
+	struct state_info state;
+
+	struct touch_pins pins;
+	struct touch_device_caps caps;
+	struct touch_operation_role role;
+	struct touch_quick_cover qcover;
+	struct touch_pinctrl pinctrl;
+
+	u32 intr_status;
+	u16 new_mask;
+	u16 old_mask;
+	int tcount;
+	struct touch_data tdata[MAX_FINGER];
+	int is_palm;
+	struct lpwg_info lpwg;
+	struct tci_ctrl tci;
+	struct asc_info asc;
+
+	int def_fwcnt;
+	const char *def_fwpath[4];
+	char test_fwpath[DEFAULT_NAME_SZ];
+	const char *panel_spec;
+	const char *panel_spec_mfts;
+	u32 force_fwup;
+
+	u8 *tx_buf;
+	u8 *rx_buf;
+	struct touch_xfer_msg *xfer;
+	u32 tx_pa;
+	u32 rx_pa;
+
+	struct mutex lock;
+	struct workqueue_struct *wq;
+	struct delayed_work init_work;
+	struct delayed_work upgrade_work;
+	struct delayed_work notify_work;
+	struct delayed_work fb_work;
+	struct delayed_work toggle_delta_work;
+	struct delayed_work finger_input_work;
+
+	struct notifier_block blocking_notif;
+	struct notifier_block atomic_notif;
+	unsigned long notify_event;
+	int notify_data;
+#if defined(CONFIG_HAS_EARLYSUSPEND)
+	struct early_suspend early_suspend;
+#elif defined(CONFIG_FB)
+	struct notifier_block fb_notif;
+#endif
+
+	struct siw_ts_thread mon_thread;
+
+	int vdd_id;
+	int vdd_vol;
+	int vio_id;
+	int vio_vol;
+
+	void *abt;
+	void *prd;
+
+	u32 flags;
+#define _IRQ_USE_WAKE				(1U << 0)
+#define _IRQ_USE_SCHEDULE_WORK		(1U << 1)
+
+#define _TOUCH_USE_MON_THREAD		(1U << 8)
+
+	/* Input Device ID */
+	struct input_id i_id;
+
+	/* Hal operations */
+	struct siw_touch_operations *ops_ext;
+	struct siw_touch_operations ops_in;
+	struct siw_touch_operations *ops;
+
+	/* */
+	int (*bus_read)(struct device *dev, void *msg);
+	int (*bus_write)(struct device *dev, void *msg);
+	int (*bus_xfer)(struct device *dev, void *xfer);
+	int	bus_tx_hdr_size;
+	int	bus_rx_hdr_size;
+	int bus_tx_dummy_size;
+	int bus_rx_dummy_size;
+
+	/* */
+	atomic_t recur_chk;
+};
+
+#define IRQ_USE_WAKE				_IRQ_USE_WAKE
+#define	IRQ_USE_SCHEDULE_WORK		_IRQ_USE_SCHEDULE_WORK
+
+#define TOUCH_USE_MON_THREAD		_TOUCH_USE_MON_THREAD
+
+
+/* goes to siw_touch_init_work_func */
+#define __siw_touch_qd_init_work(_ts, _delay)	\
+		queue_delayed_work(_ts->wq, &_ts->init_work, _delay)
+/* goes to siw_touch_upgrade_work_func */
+#define __siw_touch_qd_upgrade_work(_ts, _delay)	\
+		queue_delayed_work(_ts->wq, &_ts->upgrade_work, _delay)
+/* goes to siw_touch_atomic_notifer_work_func */
+#define __siw_touch_qd_notify_work(_ts, _delay)	\
+		queue_delayed_work(_ts->wq, &_ts->notify_work, _delay)
+/* goes to siw_touch_fb_work_func  */
+#define __siw_touch_qd_fb_work(_ts, _delay)	\
+		queue_delayed_work(_ts->wq, &_ts->fb_work, _delay)
+
+#if defined(__SIW_SUPPORT_ASC)
+/* goes to siw_touch_toggle_delta_check_work_func */
+#define __siw_touch_qd_toggle_delta_work(_ts, _delay)	\
+		queue_delayed_work(_ts->wq, &_ts->toggle_delta_work, _delay)
+/* goes to siw_touch_finger_input_check_work_func */
+#define __siw_touch_qd_finger_input_work(_ts, _delay)	\
+		queue_delayed_work(_ts->wq, &_ts->finger_input_work, _delay)
+#endif	/* __SIW_SUPPORT_ASC */
+
+#define siw_touch_qd_init_work_now(_ts)	\
+		__siw_touch_qd_init_work(_ts, 0)
+#define siw_touch_qd_init_work_jiffies(_ts, _jiffies)	\
+		__siw_touch_qd_init_work(_ts, msecs_to_jiffies(_jiffies))
+#define siw_touch_qd_init_work_sw(_ts)	\
+		__siw_touch_qd_init_work(_ts,	\
+			msecs_to_jiffies(_ts->caps.sw_reset_delay))
+#define siw_touch_qd_init_work_hw(_ts)	\
+		__siw_touch_qd_init_work(_ts,	\
+			msecs_to_jiffies(_ts->caps.hw_reset_delay))
+
+#define siw_touch_qd_upgrade_work_now(_ts)	\
+		__siw_touch_qd_upgrade_work(_ts, 0)
+#define siw_touch_qd_upgrade_work_jiffies(_ts, _jiffies)	\
+		__siw_touch_qd_upgrade_work(_ts, msecs_to_jiffies(_jiffies))
+
+#define siw_touch_qd_notify_work_now(_ts)	\
+		__siw_touch_qd_notify_work(_ts, 0)
+#define siw_touch_qd_notify_work_jiffies(_ts, _jiffies)	\
+		__siw_touch_qd_notify_work(_ts, msecs_to_jiffies(_jiffies))
+
+#define siw_touch_qd_fb_work_now(_ts)	\
+		__siw_touch_qd_fb_work(_ts, 0)
+#define siw_touch_qd_fb_work_jiffies(_ts, _jiffies)	\
+		__siw_touch_qd_fb_work(_ts, msecs_to_jiffies(_jiffies))
+
+#if defined(__SIW_SUPPORT_ASC)
+#define siw_touch_qd_toggle_delta_work_now(_ts)	\
+		__siw_touch_qd_toggle_delta_work(_ts, 0)
+#define siw_touch_qd_toggle_delta_work_jiffies(_ts, _jiffies)	\
+		__siw_touch_qd_toggle_delta_work(_ts, msecs_to_jiffies(_jiffies))
+
+#define siw_touch_qd_finger_input_work_now(_ts)	\
+		__siw_touch_qd_finger_input_work(_ts, 0)
+#define siw_touch_qd_finger_input_work_jiffies(_ts, _jiffies)	\
+		__siw_touch_qd_finger_input_work(_ts, msecs_to_jiffies(_jiffies))
+#endif	/* __SIW_SUPPORT_ASC */
+
+
+struct siw_touch_attribute {
+	struct attribute attr;
+	ssize_t (*show)(struct device *dev, char *buf);
+	ssize_t (*store)(struct device *dev, const char *buf, size_t count);
+};
+
+#define __TOUCH_ATTR(_name, _attr, _show, _store)		\
+			struct siw_touch_attribute touch_attr_##_name	\
+			= __ATTR(_name, _attr, _show, _store)
+
+#define TOUCH_ATTR(_name, _show, _store)	\
+			__TOUCH_ATTR(_name, S_IRUGO | S_IWUSR, _show, _store)
+
+
+static inline void touch_set_dev_data(struct siw_ts *ts, void *data)
+{
+//	t_dev_info(ts->dev, "data : 0x%P\n", data);
+	ts->dev_data = data;
+}
+
+static inline void *touch_get_dev_data(struct siw_ts *ts)
+{
+	return ts->dev_data;
+}
+
+static inline struct siw_ts *to_touch_core(struct device *dev)
+{
+	return dev ? (struct siw_ts *)dev_get_drvdata(dev) : NULL;
+}
+
+static inline unsigned long touch_get_quirks(struct siw_ts *ts)
+{
+	return pdata_get_quirks(ts->pdata);
+}
+
+static inline unsigned long touch_test_quirks(struct siw_ts *ts,
+			unsigned long quirk_bit)
+{
+	return pdata_test_quirks(ts->pdata, quirk_bit);
+}
+
+static inline char *touch_chip_name(struct siw_ts *ts)
+{
+	return pdata_chip_name(ts->pdata);
+}
+
+static inline char *touch_drv_name(struct siw_ts *ts)
+{
+	return pdata_drv_name(ts->pdata);
+}
+
+static inline char *touch_idrv_name(struct siw_ts *ts)
+{
+	return pdata_idrv_name(ts->pdata);
+}
+
+static inline u32 touch_chip_type(struct siw_ts *ts)
+{
+	return pdata_chip_type(ts->pdata);
+}
+
+static inline u32 touch_mode_allowed(struct siw_ts *ts, u32 mode_bit)
+{
+	return pdata_mode_allowed(ts->pdata, mode_bit);
+}
+
+static inline u32 touch_mode_not_allowed(struct siw_ts *ts, u32 mode_bit)
+{
+	return !pdata_mode_allowed(ts->pdata, mode_bit);
+}
+
+static inline u32 touch_bus_type(struct siw_ts *ts)
+{
+	return pdata_bus_type(ts->pdata);
+}
+
+static inline u32 touch_buf_size(struct siw_ts *ts)
+{
+	return pdata_buf_size(ts->pdata);
+}
+
+static inline u32 touch_spi_mode(struct siw_ts *ts)
+{
+	return pdata_spi_mode(ts->pdata);
+}
+
+static inline u32 touch_bits_per_word(struct siw_ts *ts)
+{
+	return pdata_bits_per_word(ts->pdata);
+}
+
+static inline u32 touch_max_freq(struct siw_ts *ts)
+{
+	return pdata_max_freq(ts->pdata);
+}
+
+static inline int touch_tx_hdr_size(struct siw_ts *ts)
+{
+	return ts->bus_tx_hdr_size;
+}
+
+static inline int touch_rx_hdr_size(struct siw_ts *ts)
+{
+	return ts->bus_rx_hdr_size;
+}
+
+static inline int touch_tx_dummy_size(struct siw_ts *ts)
+{
+	return ts->bus_tx_dummy_size;
+}
+
+static inline int touch_rx_dummy_size(struct siw_ts *ts)
+{
+	return ts->bus_rx_dummy_size;
+}
+
+static inline int touch_xfer_allowed(struct siw_ts *ts)
+{
+	return pdata_xfer_allowed(ts->pdata);
+}
+
+
+/*
+ * SiW Operations
+ */
+static inline void *siw_setup_operations(struct siw_ts *ts, struct siw_touch_operations *ops_ext)
+{
+	if (!ops_ext)
+		return NULL;
+
+	ts->ops_ext = ops_ext;
+	memcpy(&ts->ops_in, ops_ext, sizeof(struct siw_touch_operations));
+	ts->ops = &ts->ops_in;
+
+	return ts->ops;
+}
+
+static inline void *siw_ops_reg(struct siw_ts *ts)
+{
+	return ts->ops->reg;
+}
+
+static inline void siw_ops_set_irq_handler(struct siw_ts *ts, void *handler)
+{
+	ts->ops->irq_handler = handler;
+}
+
+static inline void siw_ops_restore_irq_handler(struct siw_ts *ts)
+{
+	ts->ops->irq_handler = ts->ops_ext->irq_handler;
+}
+
+
+#define siw_ops_is_null(_ts, _ops)	!!(_ts->ops->_ops == NULL)
+
+#define siw_ops_xxx(_ops, _ret, _ts, args...)	\
+		({	int _r = 0;	\
+			do {	\
+				if (((_ret) < 0) && !_ts->ops->_ops) {	\
+					t_dev_err(ts->dev, "%s isn't assigned\n", #_ops);	\
+					_r = _ret;	\
+					break;	\
+				}	\
+				_r = _ts->ops->_ops(_ts->dev, ##args);	\
+			} while(0);	\
+			_r;	\
+		})
+
+#define siw_ops_early_probe(_ts, args...)	siw_ops_xxx(early_probe, 0, _ts, ##args)
+#define siw_ops_probe(_ts, args...)			siw_ops_xxx(probe, -ESRCH, _ts, ##args)
+#define siw_ops_remove(_ts, args...)		siw_ops_xxx(remove, -ESRCH, _ts, ##args)
+#define siw_ops_suspend(_ts, args...)		siw_ops_xxx(suspend, -ESRCH, _ts, ##args)
+#define siw_ops_resume(_ts, args...)		siw_ops_xxx(resume, -ESRCH, _ts, ##args)
+#define siw_ops_init(_ts, args...)			siw_ops_xxx(init, -ESRCH, _ts, ##args)
+#define siw_ops_reset(_ts, args...)			siw_ops_xxx(reset, -ESRCH, _ts, ##args)
+#define siw_ops_ic_info(_ts, args...)		siw_ops_xxx(ic_info, -ESRCH, _ts, ##args)
+#define siw_ops_tc_driving(_ts, args...)	siw_ops_xxx(tc_driving, -ESRCH, _ts, ##args)
+#define siw_ops_chk_status(_ts, args...)	siw_ops_xxx(chk_status, -ESRCH, _ts, ##args)
+#define siw_ops_irq_handler(_ts, args...)	siw_ops_xxx(irq_handler, -ESRCH, _ts, ##args)
+#define siw_ops_irq_abs(_ts, args...)		siw_ops_xxx(irq_abs, -ESRCH, _ts, ##args)
+#define siw_ops_irq_lpwg(_ts, args...)		siw_ops_xxx(irq_lpwg, -ESRCH, _ts, ##args)
+#define siw_ops_power(_ts, args...)			siw_ops_xxx(power, -ESRCH, _ts, ##args)
+#define siw_ops_upgrade(_ts, args...)		siw_ops_xxx(upgrade, -ESRCH, _ts, ##args)
+#define siw_ops_lpwg(_ts, args...)			siw_ops_xxx(lpwg, 0, _ts, ##args)
+#define siw_ops_asc(_ts, args...)			siw_ops_xxx(asc, -ESRCH, _ts, ##args)
+#define siw_ops_notify(_ts, args...)		siw_ops_xxx(notify, 0, _ts, ##args)
+#define siw_ops_set(_ts, args...)			siw_ops_xxx(set, 0, _ts, ##args)
+#define siw_ops_get(_ts, args...)			siw_ops_xxx(get, 0, _ts, ##args)
+#define siw_ops_sysfs(_ts, args...)			siw_ops_xxx(sysfs, 0, _ts, ##args)
+#define siw_ops_mon_handler(_ts, args...)	siw_ops_xxx(mon_handler, -ESRCH, _ts, ##args)
+
+#define siw_ops_abt_init(_ts, args...)		siw_ops_xxx(abt_init, 0, _ts, ##args)
+#define siw_ops_abt_sysfs(_ts, args...)		siw_ops_xxx(abt_sysfs, 0, _ts, ##args)
+#define siw_ops_prd_sysfs(_ts, args...)		siw_ops_xxx(prd_sysfs, 0, _ts, ##args)
+#define siw_ops_watch_sysfs(_ts, args...)	siw_ops_xxx(watch_sysfs, 0, _ts, ##args)
+
+
+static inline void touch_msleep(unsigned int msecs)
+{
+	if (!msecs)
+		return;
+
+	if (msecs >= 20)
+		msleep(msecs);
+	else
+		usleep_range(msecs * 1000, msecs * 1000);
+}
+
+struct siw_op_dbg {
+	char		*name;
+	int			(*func)(void *data);
+	void		(*debug)(void *op, void *data);
+	int			flags;
+};
+
+#define _SIW_OP_DBG(_type, _func, _debug, _flags)	\
+	[_type] = {		\
+		.name = #_func,		\
+		.func = _func,		\
+		.debug = _debug,	\
+		.flags = _flags,	\
+	}
+
+static inline int __siw_touch_op_dbg(struct siw_op_dbg *op,
+						void *data)
+{
+	int ret = 0;
+
+	ret = op->func(data);
+	if (op->debug) {
+		op->debug(op, data);
+	}
+
+	return ret;
+}
+
+#define siw_snprintf(_buf, _size, _fmt, _args...) \
+	({	\
+		int _n_size = 0;	\
+		if (_size < PAGE_SIZE)	\
+			_n_size = snprintf(_buf + _size, PAGE_SIZE - _size,\
+							(const char *)_fmt, ##_args);	\
+		_n_size;	\
+	})
+
+extern int siw_touch_set(struct device *dev, u32 cmd, void *buf);
+extern int siw_touch_get(struct device *dev, u32 cmd, void *buf);
+
+extern void siw_touch_suspend_call(struct device *dev);
+extern void siw_touch_resume_call(struct device *dev);
+
+extern void siw_touch_change_sensitivity(struct siw_ts *ts,
+						int target);
+
+extern int siw_touch_init_notify(struct siw_ts *ts);
+extern void siw_touch_free_notify(struct siw_ts *ts);
+
+extern void siw_touch_atomic_notifer_work_func(struct work_struct *work);
+
+extern int siw_touch_probe(struct siw_ts *ts);
+extern int siw_touch_remove(struct siw_ts *ts);
+
+
+
+#if defined(CONFIG_TOUCHSCREEN_SIWMON)
+
+struct touch_bus_msg;
+
+struct siw_mon_operations {
+	void (*submit_bus)(struct device *dev, char *dir, void *data, int ret);
+	void (*submit_evt)(struct device *dev, char *type, int type_v, char *code, int code_v, int value, int ret);
+	void (*submit_ops)(struct device *dev, char *ops, u32 *data, int size, int ret);
+};
+
+extern struct siw_mon_operations *siw_mon_ops;
+
+static inline void siwmon_submit_bus(struct device *dev, char *dir, void *data, int ret)
+{
+	if (siw_mon_ops && siw_mon_ops->submit_bus)
+		(*siw_mon_ops->submit_bus)(dev, dir, data, ret);
+}
+
+static inline void siwmon_submit_evt(struct device *dev, char *type, int type_v, char *code, int code_v, int value, int ret)
+{
+	if (siw_mon_ops && siw_mon_ops->submit_evt)
+		(*siw_mon_ops->submit_evt)(dev, type, type_v, code, code_v, value, ret);
+}
+
+static inline void siwmon_submit_ops(struct device *dev, char *ops, u32 *data, int size, int ret)
+{
+	if (siw_mon_ops && siw_mon_ops->submit_ops)
+		(*siw_mon_ops->submit_ops)(dev, ops, data, size, ret);
+}
+
+extern int siw_mon_register(struct siw_mon_operations *ops);
+extern void siw_mon_deregister(void);
+
+#else	/* CONFIG_TOUCHSCREEN_SIWMON */
+
+static inline void siwmon_submit_bus(struct device *dev, char *dir, void *data, int ret){ }
+static inline void siwmon_submit_evt(struct device *dev, char *type, int type_v, char *code, int code_v, int value, int ret){ }
+static inline void siwmon_submit_ops(struct device *dev, char *ops, u32 *data, int size, int ret){ }
+
+#endif	/* CONFIG_TOUCHSCREEN_SIWMON */
+
+#define siwmon_submit_ops_wh_name(_dev, _fmt, _name, _val, _size, _ret)	\
+		do {	\
+			char _mstr[64];	\
+			snprintf(_mstr, sizeof(_mstr), _fmt, _name);	\
+			siwmon_submit_ops(_dev, _mstr, _val, _size, _ret);	\
+		} while(0)
+
+#define siwmon_submit_ops_step(_dev, _ops)	\
+		siwmon_submit_ops(_dev, _ops, NULL, 0, 0)
+
+#define siwmon_submit_ops_step_core(_dev, _ops, _ret)	\
+		siwmon_submit_ops(_dev, "[S] " _ops, NULL, 0, _ret)
+
+#define siwmon_submit_ops_step_chip(_dev, _ops, _ret)	\
+		siwmon_submit_ops(_dev, "(c) " _ops, NULL, 0, _ret)
+
+#define siwmon_submit_ops_step_chip_wh_name(_dev, _fmt, _name, _ret)	\
+		do {	\
+			char _mstr[64];	\
+			snprintf(_mstr, sizeof(_mstr), "(c) " _fmt, _name);	\
+			siwmon_submit_ops(_dev, _mstr, NULL, 0, _ret);	\
+		} while(0)
+
+#if !defined(MODULE)
+#define __siw_setup_u32(_name, _fn, _var)	\
+		static int __init _fn(char *in_str)	\
+		{	\
+			_var = (u32)simple_strtol(in_str, NULL, 0);	\
+			return 1;	\
+		}	\
+		__setup(_name, _fn)
+
+#define __siw_setup_str(_name, _fn, _var)	\
+		static int __init _fn(char *in_str)	\
+		{	\
+			strlcpy(_var, in_str, sizeof(_var));	\
+			return 1;	\
+		}	\
+		__setup(_name, _fn)
+#else	/* MODULE */
+#define __siw_setup_u32(_name, _fn, _var)
+#define __siw_setup_str(_name, _fn, _var)
+#endif	/* MODULE */
+
+#define siw_chip_module_init(_name, _pdata, _desc, _author)	\
+		static int __init chip_driver_init(void)\
+		{	\
+			t_pr_info("%s driver init\n", _name);	\
+			return siw_touch_bus_add_driver(&_pdata);	\
+		}	\
+		static void __exit chip_driver_exit(void)	\
+		{	\
+			t_pr_info("%s driver exit\n", _name);	\
+			(void)siw_touch_bus_del_driver(&_pdata);\
+		}	\
+		module_init(chip_driver_init);	\
+		module_exit(chip_driver_exit);	\
+		MODULE_AUTHOR(_author);	\
+		MODULE_DESCRIPTION(_desc);	\
+		MODULE_LICENSE("GPL");
+
+#endif /* __SIW_TOUCH_H */
+
+

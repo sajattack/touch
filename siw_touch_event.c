@@ -1,0 +1,384 @@
+/*
+ * siw_touch_event.c - SiW touch event driver
+ *
+ * Copyright (C) 2016 Silicon Works - http://www.siliconworks.co.kr
+ * Author: Hyunho Kim <kimhh@siliconworks.co.kr>
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * version 2 as published by the Free Software Foundation.
+ */
+
+#include <linux/kernel.h>
+#include <linux/types.h>
+#include <linux/module.h>
+#include <linux/moduleparam.h>
+#include <linux/async.h>
+#include <linux/delay.h>
+#include <linux/err.h>
+#include <linux/sched.h>
+#include <linux/delay.h>
+#include <linux/input.h>
+#include <linux/irq.h>
+#include <linux/interrupt.h>
+#include <linux/irqreturn.h>
+#include <linux/slab.h>
+#include <linux/pm.h>
+#include <linux/gpio.h>
+#include <linux/string.h>
+#include <linux/of.h>
+#include <linux/of_gpio.h>
+#include <linux/of_device.h>
+#include <asm/page.h>
+#include <asm/uaccess.h>
+#include <asm/irq.h>
+#include <asm/io.h>
+#include <asm/memory.h>
+
+#include "siw_touch.h"
+#include "siw_touch_event.h"
+
+#define siw_input_report_abs(_idev, _code, _value)	\
+	do {	\
+		input_report_abs(_idev, _code, _value);	\
+		siwmon_submit_evt(&_idev->dev, "EV_ABS", EV_ABS, #_code, _code, _value, 0);	\
+	} while(0)
+
+static void siw_touch_report_palm_event(struct siw_ts *ts)
+{
+	u16 old_mask = ts->old_mask;
+	int i = 0;
+
+	if (!ts->input)
+		return;
+
+	for (i = 0; i < MAX_FINGER; i++) {
+		if (old_mask & (1 << i)) {
+			input_mt_slot(ts->input, i);
+			siw_input_report_abs(ts->input,
+							ABS_MT_PRESSURE,
+							255);
+			t_dev_info(&ts->input->dev, "finger canceled:<%d>(%4d,%4d,%4d)\n",
+						i,
+						ts->tdata[i].x,
+						ts->tdata[i].y,
+						ts->tdata[i].pressure);
+		}
+	}
+
+	input_sync(ts->input);
+}
+
+void siw_touch_report_event(struct siw_ts *ts)
+{
+	struct device *idev = &ts->input->dev;
+	u16 old_mask = ts->old_mask;
+	u16 new_mask = ts->new_mask;
+	u16 press_mask = 0;
+	u16 release_mask = 0;
+	u16 change_mask = 0;
+	int i;
+
+//	t_dev_trcf(idev);
+
+	if (!ts->input)
+		return;
+
+	change_mask = old_mask ^ new_mask;
+	press_mask = new_mask & change_mask;
+	release_mask = old_mask & change_mask;
+
+	t_dev_dbg_abs(idev,
+			"mask [new: %04x, old: %04x]\n",
+			new_mask, old_mask);
+	t_dev_dbg_abs(idev,
+			"mask [change: %04x, press: %04x, release: %04x]\n",
+			change_mask, press_mask, release_mask);
+
+	/* Palm state - Report Pressure value 255 */
+	if (ts->is_palm) {
+		siw_touch_report_palm_event(ts);
+		ts->is_palm = 0;
+	}
+
+	for (i = 0; i < MAX_FINGER; i++) {
+		if (new_mask & (1 << i)) {
+			input_mt_slot(ts->input, i);
+			siw_input_report_abs(ts->input, ABS_MT_TRACKING_ID,
+						ts->tdata[i].id);
+			siw_input_report_abs(ts->input, ABS_MT_POSITION_X,
+						ts->tdata[i].x);
+			siw_input_report_abs(ts->input, ABS_MT_POSITION_Y,
+						ts->tdata[i].y);
+			siw_input_report_abs(ts->input, ABS_MT_PRESSURE,
+						ts->tdata[i].pressure);
+			siw_input_report_abs(ts->input, ABS_MT_WIDTH_MAJOR,
+						ts->tdata[i].width_major);
+			siw_input_report_abs(ts->input, ABS_MT_WIDTH_MINOR,
+						ts->tdata[i].width_minor);
+			siw_input_report_abs(ts->input, ABS_MT_ORIENTATION,
+						ts->tdata[i].orientation);
+
+			if (press_mask & (1 << i)) {
+				t_dev_dbg_abs(idev, "%d finger press:<%d>(%4d,%4d,%4d)\n",
+						ts->tcount,
+						i,
+						ts->tdata[i].x,
+						ts->tdata[i].y,
+						ts->tdata[i].pressure);
+			}
+		} else if (release_mask & (1 << i)) {
+			input_mt_slot(ts->input, i);
+			siw_input_report_abs(ts->input, ABS_MT_TRACKING_ID, -1);
+			t_dev_dbg_abs(idev, "finger release:<%d>(%4d,%4d,%4d)\n",
+					i,
+					ts->tdata[i].x,
+					ts->tdata[i].y,
+					ts->tdata[i].pressure);
+		}
+	}
+
+	ts->old_mask = new_mask;
+
+	input_sync(ts->input);
+}
+
+void siw_touch_report_all_event(struct siw_ts *ts)
+{
+	if (ts->old_mask) {
+		ts->new_mask = 0;
+		siw_touch_report_event(ts);
+		ts->tcount = 0;
+		memset(ts->tdata, 0, sizeof(struct touch_data) * MAX_FINGER);
+	}
+	ts->is_palm = 0;
+}
+
+static void siw_touch_uevent_release(struct device *dev)
+{
+	if (dev->platform_data)
+		dev->platform_data = NULL;
+}
+
+/*
+static const struct bus_type siw_touch_uevent_subsys = {
+	.name = SIW_TOUCH_NAME,
+	.dev_name = SIW_TOUCH_NAME,
+};
+
+static const struct device siw_device_uevent_touch = {
+	.id			= 0,
+	.bus		= &siw_touch_uevent_subsys,
+	.release	= siw_touch_uevent_release,
+};
+*/
+
+static char *siw_uevent_str[][2] = {
+	{"TOUCH_GESTURE_WAKEUP=WAKEUP", NULL},
+	{"TOUCH_GESTURE_WAKEUP=PASSWORD", NULL},
+	{"TOUCH_GESTURE_WAKEUP=SWIPE_RIGHT", NULL},
+	{"TOUCH_GESTURE_WAKEUP=SWIPE_LEFT", NULL},
+};
+
+#define siw_kobject_uevent_env(_idev, _type, _kobj, _action, _envp_ext)	\
+	do {	\
+		kobject_uevent_env(_kobj, _action, _envp_ext);	\
+		siwmon_submit_evt(&_idev->dev, "@UEVENT", _type, #_action, _action, 0, 0);	\
+	} while(0)
+
+void siw_touch_send_uevent(struct siw_ts *ts,
+								int type)
+{
+	struct device *idev = &ts->input->dev;
+
+	t_dev_dbg_event(idev, "send uevent (%d)\n", type);
+
+	if (type >= TOUCH_UEVENT_MAX) {
+		t_dev_err(idev, "Invalid event type : %d\n", type);
+		return;
+	}
+
+	if (atomic_read(&ts->state.uevent) == UEVENT_IDLE) {
+		wake_lock_timeout(&ts->lpwg_wake_lock,
+						msecs_to_jiffies(3000));
+
+		atomic_set(&ts->state.uevent, UEVENT_BUSY);
+
+		siw_kobject_uevent_env(ts->input, type, &ts->udev.kobj,
+						KOBJ_CHANGE, siw_uevent_str[type]);
+
+		t_dev_dbg_event(idev, "%s\n", siw_uevent_str[type][0]);
+		siw_touch_report_all_event(ts);
+
+		/*
+		 * Echo reply to lpwg_data(_store_lpwg_data) is required to
+		 * clear(UEVENT_IDLE) state.event
+		 */
+	}
+}
+
+int siw_touch_init_uevent(struct siw_ts *ts)
+{
+	char *drv_name = touch_drv_name(ts);
+	int ret = 0;
+
+	if (drv_name) {
+		ts->ubus.name = drv_name;
+		ts->ubus.dev_name = drv_name;
+	} else {
+		ts->ubus.name = SIW_TOUCH_NAME;
+		ts->ubus.dev_name = SIW_TOUCH_NAME;
+	}
+
+	memset((void *)&ts->udev, 0, sizeof(ts->udev));
+	ts->udev.bus = &ts->ubus;
+	ts->udev.release = siw_touch_uevent_release;
+
+	ret = subsys_system_register(&ts->ubus, NULL);
+	if (ret < 0)
+		t_dev_err(ts->dev, "bus is not registered, %d\n", ret);
+
+	ret = device_register(&ts->udev);
+	if (ret < 0)
+		t_dev_err(ts->dev, "device is not registered, %d\n",ret);
+
+	return ret;
+}
+
+void siw_touch_free_uevent(struct siw_ts *ts)
+{
+	device_unregister(&ts->udev);
+
+	bus_unregister(&ts->ubus);
+}
+
+#define SIW_TOUCH_PHYS_NAME_SIZE	128
+
+int siw_touch_init_input(struct siw_ts *ts)
+{
+	struct device *dev = ts->dev;
+	struct touch_device_caps *caps = &ts->caps;
+	struct input_dev *input = NULL;
+	char *input_name = NULL;
+	char *phys_name = NULL;
+	int ret = 0;
+
+	if (ts->input) {
+		t_dev_err(dev, "input device has been already allocated!\n");
+		return -EINVAL;
+	}
+
+	phys_name = kzalloc(SIW_TOUCH_PHYS_NAME_SIZE, GFP_KERNEL);
+	if (!phys_name) {
+		t_dev_err(dev, "failed to allocate memory for phys_name\n");
+		ret = -ENOMEM;
+		goto out_phys;
+	}
+
+	input = input_allocate_device();
+	if (!input) {
+		t_dev_err(dev, "failed to allocate memory for input device\n");
+		ret = -ENOMEM;
+		goto out_input;
+	}
+
+	input_name = touch_idrv_name(ts);
+	input_name = (input_name)? input_name : SIW_TOUCH_INPUT;
+
+	snprintf(phys_name, SIW_TOUCH_PHYS_NAME_SIZE,
+			"%s/%s - %s",
+			dev_name(dev->parent),
+			dev_name(dev),
+			input_name);
+
+	/*
+	 * To fix sysfs location
+	 * With no parent, sysfs folder is created at
+	 * '/sys/devices/virtual/input/{input_name}'
+	 */
+	input->dev.parent = NULL;
+
+	input->name = (const char *)input_name;
+	input->phys = (const char *)phys_name;;
+	memcpy((void *)&input->id, (void *)&ts->i_id, sizeof(input->id));
+
+	set_bit(EV_SYN, input->evbit);
+	set_bit(EV_ABS, input->evbit);
+	set_bit(INPUT_PROP_DIRECT, input->propbit);
+	input_set_abs_params(input, ABS_MT_POSITION_X, 0,
+				caps->max_x, 0, 0);
+	input_set_abs_params(input, ABS_MT_POSITION_Y, 0,
+				caps->max_y, 0, 0);
+	input_set_abs_params(input, ABS_MT_PRESSURE, 0,
+				caps->max_pressure, 0, 0);
+	input_set_abs_params(input, ABS_MT_WIDTH_MAJOR, 0,
+				caps->max_width, 0, 0);
+	input_set_abs_params(input, ABS_MT_WIDTH_MINOR, 0,
+				caps->max_width, 0, 0);
+	input_set_abs_params(input, ABS_MT_ORIENTATION, 0,
+				caps->max_orientation, 0, 0);
+
+	/* Initialize multi-touch slot */
+	ret = input_mt_init_slots(input, caps->max_id, 0);
+	if (ret < 0) {
+		t_dev_err(dev, "failed to initialize input device, %d\n", ret);
+		goto out_slot;
+	}
+
+	ret = input_register_device(input);
+	if (ret < 0) {
+		t_dev_err(dev, "failed to register input device, %d\n", ret);
+		goto out_reg;
+	}
+
+	input_set_drvdata(input, ts);
+	ts->input = input;
+
+	t_dev_info(&input->dev, "input device[%s] registered (%d, %d, %d, %d, %d, %d, %d)\n",
+			input->phys,
+			caps->max_x,
+			caps->max_y,
+			caps->max_pressure,
+			caps->max_width,
+			caps->max_width,
+			caps->max_orientation,
+			caps->max_id);
+
+	return 0;
+
+out_reg:
+	input_mt_destroy_slots(input);
+
+out_slot:
+	input_free_device(input);
+
+out_input:
+	kfree(phys_name);
+
+out_phys:
+
+	return ret;
+}
+
+void siw_touch_free_input(struct siw_ts *ts)
+{
+	struct input_dev *input = ts->input;
+
+	if (input) {
+		char *phys_name = (char *)input->phys;
+
+		ts->input = NULL;
+
+		t_dev_info(&input->dev, "input device[%s] released\n",
+					input->phys);
+
+		input_unregister_device(input);
+		input_mt_destroy_slots(input);
+		input_free_device(input);
+
+		kfree(phys_name);
+	}
+}
+
+
+
