@@ -498,7 +498,7 @@ static void siw_touch_upgrade_work_func(struct work_struct *work)
 	struct device *dev = ts->dev;
 	int ret = 0;
 
-	t_dev_info(dev, "upgrade work func\n");
+	t_dev_info(dev, "FW upgrade work func\n");
 
 	atomic_set(&ts->state.core, CORE_UPGRADE);
 	ts->role.use_fw_upgrade = 0;
@@ -510,8 +510,12 @@ static void siw_touch_upgrade_work_func(struct work_struct *work)
 	/* init force_upgrade */
 	ts->force_fwup = 0;
 	ts->test_fwpath[0] = '\0';
+
 	if (ret < 0) {
-		t_dev_err(dev, "failed to upgrade, %d\n", ret);
+		if (ret != -EPERM) {
+			t_dev_info(dev, "FW upgrade halted, %d\n", ret);
+		}
+		atomic_set(&ts->state.core, CORE_NORMAL);
 		return;
 	}
 

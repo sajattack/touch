@@ -1337,21 +1337,29 @@ static int siw_hal_reset_ctrl(struct device *dev, int ctrl)
 	return 0;
 }
 
+enum {
+	BIN_VER_OFFSET_POS = 0xE8,
+	BIN_PID_OFFSET_POS = 0xF0,
+};
+
 static int siw_hal_fw_compare(struct device *dev, const struct firmware *fw)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
+	int fw_max_size = ts->fw_max_size;
+	u32 bin_ver_offset = *((u32 *)&fw->data[BIN_VER_OFFSET_POS]);
+	u32 bin_pid_offset = *((u32 *)&fw->data[BIN_PID_OFFSET_POS]);
 	u8 dev_major = chip->fw.version[0];
 	u8 dev_minor = chip->fw.version[1];
-	u32 bin_ver_offset = *((u32 *)&fw->data[0xe8]);
-	u32 bin_pid_offset = *((u32 *)&fw->data[0xf0]);
-	char pid[12] = {0};
+	char pid[12] = {0, 0};
 	u8 bin_major;
 	u8 bin_minor;
 	int update = 0;
 
-	if ((bin_ver_offset > FLASH_FW_SIZE) || (bin_pid_offset > FLASH_FW_SIZE)) {
-		t_dev_info(dev, "INVALID OFFSET\n");
+	if ((bin_ver_offset > fw_max_size) ||
+		(bin_pid_offset > fw_max_size)) {
+		t_dev_info(dev, "FW compare: invalid offset - ver %08Xh, pid %08Xh, max %08Xh\n",
+			bin_ver_offset, bin_pid_offset, ts->fw_max_size);
 		return -EINVAL;
 	}
 
@@ -1375,7 +1383,7 @@ static int siw_hal_fw_compare(struct device *dev, const struct firmware *fw)
 	}
 
 	t_dev_info(dev,
-		"bin-ver: %d.%02d (%s), dev-ver: %d.%02d -> update: %d, force_fwup: %d\n",
+		"FW compare: bin-ver: %d.%02d (%s), dev-ver: %d.%02d - update %d, force_fwup %d\n",
 		bin_major, bin_minor, pid, dev_major, dev_minor,
 		update, ts->force_fwup);
 
@@ -1597,7 +1605,17 @@ static int siw_hal_upgrade(struct device *dev)
 	const struct firmware *fw = NULL;
 	char fwpath[DEFAULT_NAME_SZ] = {0, };
 	int ret = 0;
+	int ret_val = 0;
 	int i = 0;
+
+	switch (touch_chip_type(ts)) {
+	case CHIP_SW1828:
+		ts->fw_max_size = (65<<10); 		//65KB
+		break;
+	default :
+		ts->fw_max_size = FLASH_FW_SIZE;	//69KB
+		break;
+	}
 
 	if (atomic_read(&ts->state.fb) >= FB_SUSPEND) {
 		t_dev_warn(dev, "state.fb is not FB_RESUME\n");
@@ -1628,8 +1646,12 @@ static int siw_hal_upgrade(struct device *dev)
 	}
 
 	t_dev_info(dev, "fw size:%zu, data: %p\n", fw->size, fw->data);
-	if (siw_hal_fw_compare(dev, fw)) {
-		ret = -EINVAL;
+//	ret = -EINVAL;
+	ret = -EPERM;
+	ret_val = siw_hal_fw_compare(dev, fw);
+	if (ret_val < 0) {
+		ret = ret_val;
+	} else if (ret_val) {
 		touch_msleep(200);
 		for (i = 0; i < 2 && ret; i++) {
 			ret = siw_hal_fw_upgrade(dev, fw);
@@ -1639,8 +1661,13 @@ static int siw_hal_upgrade(struct device *dev)
 	release_firmware(fw);
 
 out:
-	siwmon_submit_ops_step_chip_wh_name(dev, "%s upgrade done",
-			touch_chip_name(ts), ret);
+	if (ret) {
+		siwmon_submit_ops_step_chip_wh_name(dev, "%s - FW upgrade halted",
+				touch_chip_name(ts), ret);
+	} else {
+		siwmon_submit_ops_step_chip_wh_name(dev, "%s - FW upgrade done",
+				touch_chip_name(ts), ret);
+	}
 	return ret;
 }
 
