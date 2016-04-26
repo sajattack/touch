@@ -132,9 +132,9 @@ static int siw_hal_lpwg_mode(struct device *dev);
 #define SIW_HAL_GPIO_IRQ		"siw_hal_irq"
 #define SIW_HAL_GPIO_MAKER		"siw_hal_maker_id"
 
-static void siw_hal_set_gpio_reset(struct siw_ts *ts, int val)
+static void siw_hal_set_gpio_reset(struct device *dev, int val)
 {
-	struct device *dev = ts->dev;
+	struct siw_ts *ts = to_touch_core(dev);
 
 	siw_touch_gpio_direction_output(dev,
 			ts->pins.reset_pin, !!(val));
@@ -143,9 +143,9 @@ static void siw_hal_set_gpio_reset(struct siw_ts *ts, int val)
 			ts->pins.reset_pin, !!(val));
 }
 
-static void siw_hal_init_gpio_reset(struct siw_ts *ts)
+static void siw_hal_init_gpio_reset(struct device *dev)
 {
-	struct device *dev = ts->dev;
+	struct siw_ts *ts = to_touch_core(dev);
 	int ret = 0;
 
 	ret = siw_touch_gpio_init(dev,
@@ -160,15 +160,16 @@ static void siw_hal_init_gpio_reset(struct siw_ts *ts)
 			SIW_HAL_GPIO_RST, ts->pins.reset_pin);
 }
 
-static void siw_hal_free_gpio_reset(struct siw_ts *ts)
+static void siw_hal_free_gpio_reset(struct device *dev)
 {
-	struct device *dev = ts->dev;
+	struct siw_ts *ts = to_touch_core(dev);
+
 	siw_touch_gpio_free(dev, ts->pins.reset_pin);
 }
 
-static void siw_hal_init_gpio_irq(struct siw_ts *ts)
+static void siw_hal_init_gpio_irq(struct device *dev)
 {
-	struct device *dev = ts->dev;
+	struct siw_ts *ts = to_touch_core(dev);
 	int ret = 0;
 
 	ret = siw_touch_gpio_init(dev,
@@ -190,16 +191,18 @@ static void siw_hal_init_gpio_irq(struct siw_ts *ts)
 			ts->pins.irq_pin, GPIO_PULL_UP);
 }
 
-static void siw_hal_free_gpio_irq(struct siw_ts *ts)
+static void siw_hal_free_gpio_irq(struct device *dev)
 {
-	struct device *dev = ts->dev;
+	struct siw_ts *ts = to_touch_core(dev);
+
 	siw_touch_gpio_free(dev, ts->pins.irq_pin);
 }
 
-static void siw_hal_init_gpio_maker_id(struct siw_ts *ts)
+static void siw_hal_init_gpio_maker_id(struct device *dev)
 {
 #if 0
-	struct device *dev = ts->dev;
+	struct siw_ts *ts = to_touch_core(dev);
+
 	int ret = 0;
 
 	ret = siw_touch_gpio_init(dev,
@@ -213,35 +216,31 @@ static void siw_hal_init_gpio_maker_id(struct siw_ts *ts)
 #endif
 }
 
-static void siw_hal_free_gpio_maker_id(struct siw_ts *ts)
+static void siw_hal_free_gpio_maker_id(struct device *dev)
 {
 #if 0
-	struct device *dev = ts->dev;
+	struct siw_ts *ts = to_touch_core(dev);
 
 	siw_touch_gpio_free(dev, ts->pins.maker_id_pin);
 #endif
 }
 
-static void siw_hal_init_gpios(struct siw_ts *ts)
+static void siw_hal_init_gpios(struct device *dev)
 {
-//	struct device *dev = ts->dev;
+	siw_hal_init_gpio_reset(dev);
 
-	siw_hal_init_gpio_reset(ts);
+	siw_hal_init_gpio_irq(dev);
 
-	siw_hal_init_gpio_irq(ts);
-
-	siw_hal_init_gpio_maker_id(ts);
+	siw_hal_init_gpio_maker_id(dev);
 }
 
-static void siw_hal_free_gpios(struct siw_ts *ts)
+static void siw_hal_free_gpios(struct device *dev)
 {
-//	struct device *dev = ts->dev;
+	siw_hal_free_gpio_reset(dev);
 
-	siw_hal_free_gpio_reset(ts);
+	siw_hal_free_gpio_irq(dev);
 
-	siw_hal_free_gpio_irq(ts);
-
-	siw_hal_free_gpio_maker_id(ts);
+	siw_hal_free_gpio_maker_id(dev);
 }
 
 static int __used __siw_hal_do_reg_read(struct device *dev, u32 addr, void *data, int size)
@@ -765,7 +764,7 @@ static int siw_hal_power(struct device *dev, int ctrl)
 	switch (ctrl) {
 	case POWER_OFF:
 		t_dev_dbg_pm(dev, "power off\n");
-	//	siw_touch_gpio_direction_output(ts->reset_pin, 0);
+		siw_hal_set_gpio_reset(dev, GPIO_OUT_ZERO);
 	//	siw_touch_power_vio(dev, 0);
 	//	siw_touch_power_vdd(dev, 0);
 	//	siw_touch_msleep(1);
@@ -777,7 +776,7 @@ static int siw_hal_power(struct device *dev, int ctrl)
 		t_dev_dbg_pm(dev, "power on\n");
 	//	siw_touch_power_vdd(dev, 1);
 	//	siw_touch_power_vio(dev, 1);
-	//	siw_touch_gpio_direction_output(ts->reset_pin, 1);
+		siw_hal_set_gpio_reset(dev, GPIO_OUT_ONE);
 		break;
 
 	case POWER_SLEEP:
@@ -3019,13 +3018,13 @@ static int siw_hal_notify(struct device *dev, ulong event, void *data)
 
 		t_dev_info(dev, "notify: lcd_event: touch reset start\n");
 		siw_touch_irq_control(ts->dev, INTERRUPT_DISABLE);
-		siw_hal_set_gpio_reset(ts, GPIO_OUT_ZERO);
+		siw_hal_set_gpio_reset(dev, GPIO_OUT_ZERO);
 		break;
 	case LCD_EVENT_TOUCH_RESET_END:
 		atomic_set(&ts->state.hw_reset, event);
 
 		t_dev_info(dev, "notify: lcd_event: touch reset end\n");
-		siw_hal_set_gpio_reset(ts, GPIO_OUT_ONE);
+		siw_hal_set_gpio_reset(dev, GPIO_OUT_ONE);
 
 		siw_touch_qd_init_work_hw(ts);
 		break;
@@ -3263,7 +3262,7 @@ static int siw_hal_probe(struct device *dev)
 
 	touch_set_dev_data(ts, chip);
 
-	siw_hal_init_gpios(ts);
+	siw_hal_init_gpios(dev);
 
 	siw_hal_init_locks(chip);
 	siw_hal_init_works(chip);
@@ -3306,7 +3305,7 @@ static int siw_hal_remove(struct device *dev)
 	siw_hal_free_works(chip);
 	siw_hal_free_locks(chip);
 
-	siw_hal_free_gpios(ts);
+	siw_hal_free_gpios(dev);
 
 	touch_set_dev_data(ts, NULL);
 
