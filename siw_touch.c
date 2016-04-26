@@ -515,14 +515,15 @@ static void siw_touch_upgrade_work_func(struct work_struct *work)
 		return;
 	}
 
-	/******************************************************************
-	*  Touch HW reset is not neccessary during FW upgrade in LG4894.  *
-	*  Start CMD can send to IC just after flash is done!! 		  *
-	*******************************************************************/
-//	td->stdrv->power(td->dev, POWER_OFF);
-//	td->stdrv->power(td->dev, POWER_ON);
+#if 1
+	siw_ops_reset(ts, HW_RESET);
+#else
+	siw_ops_power(ts, POWER_OFF);
+	touch_msleep(1);
+	siw_ops_power(ts, POWER_ON);
 
 	siw_touch_qd_init_work_now(ts);
+#endif
 }
 
 static void siw_touch_fb_work_func(struct work_struct *work)
@@ -798,6 +799,10 @@ static int _siw_touch_do_irq_thread(struct siw_ts *ts)
 
 	ts->intr_status = 0;
 
+	if (atomic_read(&ts->state.core) != CORE_NORMAL) {
+		goto out;
+	}
+
 	ret = siw_ops_irq_handler(ts);
 	if (ret < 0) {
 		t_dev_dbg_irq(ts->dev, "Err in irq_handler of %s, %d",
@@ -827,6 +832,7 @@ static int _siw_touch_do_irq_thread(struct siw_ts *ts)
 	if (ts->intr_status & TOUCH_IRQ_SWIPE_LEFT)
 		siw_touch_send_uevent(ts, TOUCH_UEVENT_SWIPE_LEFT);
 
+out:
 	return ret;
 }
 

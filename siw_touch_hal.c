@@ -124,7 +124,6 @@ static const char const *siw_hal_swipe_debug_str[SWIPE_FAIL_NUM] = {
 
 static void siw_hal_deep_sleep(struct device *dev);
 
-static int siw_hal_power(struct device *dev, int ctrl);
 static int siw_hal_lpwg_mode(struct device *dev);
 
 
@@ -393,6 +392,8 @@ static int __used __siw_hal_do_xfer_to_single(struct device *dev, struct touch_x
 
 		if (rx->size) {
 			ret = __siw_hal_do_reg_read(dev, rx->addr, rx->buf, rx->size);
+			t_dev_dbg_trace(dev, "xfer single [%d/%d] - read(%04Xh, %d), %d\n",
+				i, xfer->msg_count, rx->addr, rx->size, ret);
 			if (ret < 0) {
 				return ret;
 			}
@@ -401,6 +402,8 @@ static int __used __siw_hal_do_xfer_to_single(struct device *dev, struct touch_x
 
 		if (tx->size) {
 			ret = __siw_hal_do_reg_write(dev, tx->addr, tx->buf, tx->size);
+			t_dev_dbg_trace(dev, "xfer single [%d/%d] - wr(%04Xh, %d), %d\n",
+				i, xfer->msg_count, rx->addr, rx->size, ret);
 			if (ret < 0) {
 				return ret;
 			}
@@ -605,14 +608,13 @@ static int siw_hal_condition_wait(struct device *dev,
 		touch_msleep(delay);
 
 		ret = siw_hal_read_value(dev, addr, &data);
-
-		if ((ret >= 0) &&
-			((data & mask) == expect)) {
+		if ((ret >= 0) && ((data & mask) == expect)) {
 			if (value)
 				*value = data;
 			t_dev_info(dev,
-				"%d, addr[%04x] data[%08x], mask[%08x], expect[%08x]\n",
-				retry, addr, data, mask, expect);
+				"wait done: addr[%04Xh] data[%08Xh], "
+				"mask[%08Xh], expect[%08Xh], %d\n",
+				addr, data, mask, expect, retry);
 			return 0;
 		}
 	} while (--retry);
@@ -621,8 +623,9 @@ static int siw_hal_condition_wait(struct device *dev,
 		*value = data;
 
 	t_dev_err(dev,
-		"addr[%04x], expect[%x], mask[%x], data[%x]\n",
-		addr, expect, mask, data);
+		"wait fail: addr[%04Xh] data[%08Xh], "
+		"mask[%08Xh], expect[%08Xh]\n",
+		addr, data, mask, expect);
 
 	return -EPERM;
 }
@@ -1259,7 +1262,7 @@ static int siw_hal_sw_reset_default(struct device *dev)
 				1);
 
 	/* firmware boot done check */
-	ret = siw_hal_condition_wait(dev, TC_FLASH_DN_STS, NULL,
+	ret = siw_hal_condition_wait(dev, reg->tc_flash_dn_status, NULL,
 				FLASH_BOOTCHK_VALUE, 0xFFFFFFFF, 10, 200);
 	if (ret < 0) {
 		t_dev_err(dev, "failed : \'boot check\'\n");
@@ -1386,64 +1389,130 @@ static int siw_hal_fw_upgrade(struct device *dev,
 	struct siw_ts *ts = chip->ts;
 	struct siw_hal_reg *reg = chip->reg;
 	u8 *fw_data;
-	int fw_size, fw_pos, curr_size;
+	int fw_size, fw_size_max;
+	int fw_pos, curr_size;
 	u32 data;
-//	u32 conf_dn_addr;
 	int ret = 0;
 
-	t_dev_info(dev, "FW updarde start\n");
+	t_dev_info(dev, "FW upgrade: start\n");
 
-	/* CM3 hold */
+	/* Reset CM3 core */
 	ret = siw_hal_write_value(dev,
 				reg->spr_rst_ctl,
 				2);
+	if (ret < 0) {
+		goto out;
+	}
+	t_dev_dbg_base(dev, "FW upgrade: reg: addr[%04Xh], value[%08Xh], %d\n",
+				reg->spr_rst_ctl, 2, ret);
 
-	/* sram write enable */
+	/* Disable SRAM write protection */
 	ret = siw_hal_write_value(dev,
 				reg->spr_sram_ctl,
-				3);
+				1);
+	if (ret < 0) {
+		goto out;
+	}
+	t_dev_dbg_base(dev, "FW upgrade: reg: addr[%04Xh], value[%08Xh], %d\n",
+				reg->spr_sram_ctl, 1, ret);
 
 	fw_data = (u8 *)fw->data;
-	fw_size = FLASH_FW_SIZE;
+	fw_size = (int)fw->size;
+	switch (touch_chip_type(ts)) {
+	case CHIP_SW1828:
+		fw_size_max = (65<<10);			//65KB
+		break;
+	default :
+		fw_size_max = FLASH_FW_SIZE;	//69KB
+		break;
+	}
+	if (fw_size > fw_size_max) {
+		t_dev_err(dev, "FW upgrade: file size overflow - %0Xh > %0Xh\n",
+			fw_size_max, fw_size_max);
+		ret = -EOVERFLOW;
+		goto out;
+	}
+
 	fw_pos = 0;
 	while (fw_size) {
+		t_dev_dbg_base(dev, "FW upgrade: fw[%06Xh ...] = %02Xh %02Xh %02Xh %02Xh\n",
+				fw_pos,
+				fw_data[0], fw_data[1], fw_data[2], fw_data[3]);
+
 		curr_size = min(fw_size, MAX_RW_SIZE);
+
 		/* code sram base address write */
 		ret = siw_hal_write_value(dev,
 					reg->spr_code_offset,
 					fw_pos>>2);
+		if (ret < 0) {
+			goto out;
+		}
+		t_dev_dbg_base(dev, "FW upgrade: reg: addr[%04Xh], value[%08Xh], %d\n",
+				reg->spr_code_offset, fw_pos>>2, ret);
 
 		ret = siw_hal_reg_write(dev,
 					reg->code_access_addr,
-					(void *)&fw_data, curr_size);
+					(void *)fw_data, curr_size);
+		if (ret < 0) {
+			goto out;
+		}
+		t_dev_dbg_base(dev, "FW upgrade: reg: addr[%04Xh], value[%08Xh], %d\n",
+				reg->code_access_addr, fw_data[0], ret);
 
 		fw_data += curr_size;
 		fw_pos += curr_size;
 		fw_size -= curr_size;
 	}
 
-	/* CM3 Release*/
+	/* Enable SRAM write protection */
+	ret = siw_hal_write_value(dev,
+				reg->spr_sram_ctl,
+				0);
+	if (ret < 0) {
+		goto out;
+	}
+	t_dev_dbg_base(dev, "FW upgrade: reg: addr[%04Xh], value[%08Xh], %d\n",
+				reg->spr_sram_ctl, 0, ret);
+
+	/* Release CM3 core */
 	ret = siw_hal_write_value(dev,
 				reg->spr_rst_ctl,
 				0);
+	if (ret < 0) {
+		goto out;
+	}
+	t_dev_dbg_base(dev, "FW upgrade: reg: addr[%04Xh], value[%08Xh], %d\n",
+				reg->spr_rst_ctl, 0, ret);
 
-	/* Boot Start */
+	/* Set Serial Dump Done */
 	ret = siw_hal_write_value(dev,
 				reg->spr_boot_ctl,
 				1);
+	if (ret < 0) {
+		goto out;
+	}
+	t_dev_dbg_base(dev, "FW upgrade: reg: addr[%04Xh], value[%08Xh], %d\n",
+				reg->spr_boot_ctl, 1, ret);
 
 	/* firmware boot done check */
 	ret = siw_hal_condition_wait(dev, reg->tc_flash_dn_status, NULL,
 				FLASH_BOOTCHK_VALUE, 0xFFFFFFFF, 10, 200);
 	if (ret < 0) {
-		t_dev_err(dev, "failed : \'boot check\'\n");
+		t_dev_err(dev, "FW upgrade: failed - boot check\n");
 		return ret;
 	}
+	t_dev_info(dev, "FW upgrade: boot check done\n");
 
 	/* Firmware Download Start */
 	ret = siw_hal_write_value(dev,
 				reg->tc_flash_dn_ctl,
 				(FLASH_KEY_CODE_CMD << 16) | 1);
+	if (ret < 0) {
+		goto out;
+	}
+	t_dev_dbg_base(dev, "FW upgrade: reg: addr[%04Xh], value[%08Xh], %d\n",
+				reg->tc_flash_dn_ctl, (FLASH_KEY_CODE_CMD << 16) | 1, ret);
 
 	touch_msleep(ts->caps.hw_reset_delay);
 
@@ -1451,47 +1520,59 @@ static int siw_hal_fw_upgrade(struct device *dev,
 	ret = siw_hal_condition_wait(dev, reg->tc_flash_dn_status, &data,
 				FLASH_CODE_DNCHK_VALUE, 0xFFFFFFFF, 10, 200);
 	if (ret < 0) {
-		t_dev_err(dev, "failed : \'code check\'\n");
+		t_dev_err(dev, "FW upgrade: failed - code check\n");
 		return ret;
 	}
+	t_dev_info(dev, "FW upgrade: code check done\n");
 
 #if 0
 	if (0) {
+		u32 conf_dn_addr;
 		fw_data = (u8 *)fw->data;
 
 		/* conf base address read */
 		ret = siw_hal_read_value(dev,
 					reg->tc_confdn_base_addr,
 					&data);
-
+		if (ret < 0) {
+			goto out;
+		}
 		conf_dn_addr = ((data >> 16) & 0xFFFF);
 		t_dev_info(dev, "conf_dn_addr : %08x data: %08x \n", conf_dn_addr, data);
 		if (conf_dn_addr >= (0x1200) || conf_dn_addr < (0x8C0)) {
-			t_dev_err(dev, "failed : \'conf base invalid \'\n");
-			return -EPERM;
+			t_dev_err(dev, "FW upgrade: failed - conf base invalid\n");
+			ret = -EPERM;
+			goto out;
 		}
 
 		/* conf sram base address write */
 		ret = siw_hal_write_value(dev,
 					reg->spr_data_offset,
 					conf_dn_addr);
-
+		if (ret < 0) {
+			goto out;
+		}
 		/* Conf data download to conf sram */
 		ret = siw_hal_reg_write(dev,
 					reg->data_access_addr,
-					(void *)&fw_data[FLASH_FW_SIZE], FLASH_CONF_SIZE);
-
+					(void *)&fw_data[fw_size_max], FLASH_CONF_SIZE);
+		if (ret < 0) {
+			goto out;
+		}
 		/* Conf Download Start */
 		ret = siw_hal_write_value(dev,
 					reg->tc_flash_dn_ctl,
 					(FLASH_KEY_CONF_CMD << 16) | 2);
-
+		if (ret < 0) {
+			goto out;
+		}
 		/* Conf check */
-		ret = siw_hal_condition_wait(dev, TC_FLASH_DN_STS, &data,
+		ret = siw_hal_condition_wait(dev, reg->tc_flash_dn_status, &data,
 					FLASH_CONF_DNCHK_VALUE, 0xFFFFFFFF, 10, 200);
 		if (ret < 0) {
-			t_dev_err(dev, "failed : \'conf check\'\n");
-			return -EPERM;
+			t_dev_err(dev, "FW upgrade: failed - conf check\n");
+			ret = -EPERM;
+			goto out;
 		}
 	}
 #endif
@@ -1501,9 +1582,12 @@ static int siw_hal_fw_upgrade(struct device *dev,
 	   do write register:0xC04 value:7
 	   delay 1s
 	*/
-	t_dev_info(dev, "===== Firmware download Okay =====\n");
+	t_dev_info(dev, "FW upgrade: done\n");
 
 	return 0;
+
+out:
+	return ret;
 }
 
 static int siw_hal_upgrade(struct device *dev)
@@ -2051,7 +2135,7 @@ static int siw_hal_tc_driving(struct device *dev, int mode)
 
 	/* swipe set */
 	ret = siw_hal_swipe_mode(dev, mode);
-	if (ret) {
+	if (ret < 0) {
 		t_dev_warn(dev, "swipe mode err, %d", ret);
 	}
 
@@ -2500,42 +2584,17 @@ enum {
 			_n_size;	\
 		})
 
-static int siw_hal_check_status(struct device *dev)
+static int siw_hal_check_status_type_1(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	u32 status = chip->info.device_status;
 	u32 ic_status = chip->info.ic_status;
-	u32 status_mask = 0;
 	u32 dbg_mask = 0;
 	int log_flag = 0;
 	int log_max = IC_CHK_LOG_MAX;
 	char log[IC_CHK_LOG_MAX] = {0, };
 	int len = 0;
 	int ret = 0;
-
-	status_mask = status ^ INT_NORMAL_MASK;
-
-	/*
-	 * (normal state)
-	 *                               [bit] 31   27   23   19   15   11   7    4
-	 * status              = 0x06D5_80E7 = 0000 0110 1101 0101 1000 0000 1110 0111
-	 *
-	 * INT_NORMAL_MASK     = 0x0050_80E0 = 0000 0000 0101 0000 1000 0000 1110 0000
-	 * status_mask         = 0x0685_0007 = 0000 0110 1000 0101 0000 0000 0000 0111
-	 * INT_RESET_CLR_BIT   = 0x0000_0620 = 0000 0000 0000 0000 0000 0110 0010 0000
-	 * INT_LOGGING_CLR_BIT = 0x0050_A0C0 = 0000 0000 0101 0000 1010 0000 1100 0000
-	 */
-	t_dev_dbg_trace(dev, "h/w:%Xh, f/w:%Xh(%Xh)\n", ic_status, status, status_mask);
-
-	if (status_mask & INT_RESET_CLR_BIT) {
-		t_dev_err(dev, "need reset : status = %Xh, ic_status = %Xh\n",
-			status, ic_status);
-		ret = -ERESTART;
-	} else if (status_mask & INT_LOGGING_CLR_BIT) {
-		t_dev_err(dev, "need logging : status = %Xh, ic_status = %Xh\n",
-			status, ic_status);
-		ret = -ERANGE;
-	}
 
 	if (!(status & (1<<5))) {
 		log_flag = 1;
@@ -2633,6 +2692,73 @@ static int siw_hal_check_status(struct device *dev)
 			t_dev_dbg_trace(dev, "dbg_mask %Xh\n", dbg_mask);
 			ret = -ERANGE;
 			break;
+	}
+
+	return ret;
+}
+
+static int siw_hal_check_status_default(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	u32 status = chip->info.device_status;
+	u32 ic_status = chip->info.ic_status;
+	int ret = 0;
+
+	if (!(status & (1 << 5))) {
+		ret = -ERANGE;
+	} else if (ic_status & 1) {
+		t_dev_err(dev, "ESD Error Detected\n");
+		ret = -ERANGE;
+	}
+
+	return ret;
+}
+
+static int siw_hal_check_status(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	u32 status = chip->info.device_status;
+	u32 ic_status = chip->info.ic_status;
+	u32 status_mask = 0;
+	int ret = 0;
+	int ret_sub = 0;
+
+	status_mask = status ^ INT_NORMAL_MASK;
+
+	/*
+	 * (normal state)
+	 *                               [bit] 31   27   23   19   15   11   7    4
+	 * status              = 0x06D5_80E7 = 0000 0110 1101 0101 1000 0000 1110 0111
+	 *
+	 * INT_NORMAL_MASK     = 0x0050_80E0 = 0000 0000 0101 0000 1000 0000 1110 0000
+	 * status_mask         = 0x0685_0007 = 0000 0110 1000 0101 0000 0000 0000 0111
+	 * INT_RESET_CLR_BIT   = 0x0000_0620 = 0000 0000 0000 0000 0000 0110 0010 0000
+	 * INT_LOGGING_CLR_BIT = 0x0050_A0C0 = 0000 0000 0101 0000 1010 0000 1100 0000
+	 */
+	t_dev_dbg_trace(dev, "h/w:%Xh, f/w:%Xh(%Xh)\n", ic_status, status, status_mask);
+
+	if (status_mask & INT_RESET_CLR_BIT) {
+		t_dev_err(dev, "need reset : status %08Xh, ic_status %08Xh, chk %08Xh\n",
+			status, ic_status, status_mask & INT_RESET_CLR_BIT);
+		ret = -ERESTART;
+	} else if (status_mask & INT_LOGGING_CLR_BIT) {
+		t_dev_err(dev, "need logging : status %08Xh, ic_status %08Xh, chk %08Xh\n",
+			status, ic_status, status_mask & INT_LOGGING_CLR_BIT);
+		ret = -ERANGE;
+	}
+
+	switch(touch_chip_type(ts)) {
+	case CHIP_LG4895:
+	case CHIP_LG4946:
+		ret_sub = siw_hal_check_status_type_1(dev);
+		break;
+	default:
+		ret_sub = siw_hal_check_status_default(dev);
+		break;
+	}
+	if (ret_sub < 0) {
+		ret = ret_sub;
 	}
 
 	return ret;
@@ -2841,6 +2967,8 @@ static int siw_hal_irq_handler(struct device *dev)
 	ret = siw_hal_check_status(dev);
 	if (ret) {
 		if (ret == -ERESTART) {
+			t_dev_err(dev, "check status error: reset %s\n",
+				touch_chip_name(ts));
 			siw_hal_reset_ctrl(dev, HW_RESET);
 		}
 		goto out;
@@ -3208,6 +3336,10 @@ static void siw_hal_mon_handler_self_reset(struct device *dev)
 	struct siw_hal_fw_info *fw = &chip->fw;
 	u32 chip_id;
 	int ret = 0;
+
+	if (atomic_read(&ts->state.core) != CORE_NORMAL) {
+		return;
+	}
 
 	mutex_lock(&ts->lock);
 
