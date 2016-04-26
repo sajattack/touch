@@ -1178,6 +1178,36 @@ static int siw_hal_init(struct device *dev)
 	return 0;
 }
 
+static int siw_hal_reinit(struct device *dev,
+					int pwr_con,
+					int delay,
+					int irq_enable,
+					int (*do_call)(struct device *dev))
+{
+	siw_touch_irq_control(dev, INTERRUPT_DISABLE);
+
+	if (pwr_con) {
+		siw_hal_power(dev, POWER_OFF);
+		touch_msleep(1);
+		siw_hal_power(dev, POWER_ON);
+	} else {
+		siw_hal_set_gpio_reset(dev, GPIO_OUT_ZERO);
+		touch_msleep(1);
+		siw_hal_set_gpio_reset(dev, GPIO_OUT_ONE);
+	}
+
+	touch_msleep(delay);
+
+	if (do_call)
+		do_call(dev);
+
+	if (irq_enable)
+		siw_touch_irq_control(dev, INTERRUPT_ENABLE);
+
+	return 0;
+}
+
+
 static int siw_hal_sw_reset_wh_cmd(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
@@ -1267,13 +1297,7 @@ static int siw_hal_hw_reset(struct device *dev)
 
 	t_dev_info(dev, "HW Reset\n");
 
-	siw_touch_irq_control(dev, INTERRUPT_DISABLE);
-
-	siw_hal_set_gpio_reset(ts, GPIO_OUT_ZERO);
-
-	touch_msleep(1);
-
-	siw_hal_set_gpio_reset(ts, GPIO_OUT_ONE);
+	siw_hal_reinit(dev, 0, 0, 0, NULL);
 
 	siw_touch_qd_init_work_hw(ts);
 
@@ -2088,17 +2112,8 @@ static int siw_hal_tc_driving(struct device *dev, int mode)
 			mode, running_status);
 
 		atomic_set(&ts->recur_chk, 1);
-		siw_touch_irq_control(dev, INTERRUPT_DISABLE);
 
-		siw_hal_power(dev, POWER_OFF);
-		siw_touch_irq_control(dev, POWER_ON);
-
-		touch_msleep(100);
-
-		//recursive call
-		siw_hal_init(dev);
-
-		siw_touch_irq_control(dev, INTERRUPT_ENABLE);
+		siw_hal_reinit(dev, 1, 100, 1, siw_hal_init);
 	} else {
 		t_dev_dbg_base(dev, "command done: mode %d, status %Xh\n",
 			mode, running_status);
