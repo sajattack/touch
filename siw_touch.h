@@ -331,6 +331,9 @@ struct touch_device_caps {
 	u32 max_id;
 	u32 hw_reset_delay;
 	u32 sw_reset_delay;
+//	u32 button_support;
+//	u32 number_of_button;
+//	u32 button_name[MAX_BUTTON];
 };
 
 struct touch_operation_role {
@@ -962,6 +965,85 @@ static inline int touch_rx_dummy_size(struct siw_ts *ts)
 static inline int touch_xfer_allowed(struct siw_ts *ts)
 {
 	return pdata_xfer_allowed(ts->pdata);
+}
+
+static inline void touch_set_caps(struct siw_ts *ts,
+					struct touch_device_caps *caps_src)
+{
+	struct touch_device_caps *caps = &ts->caps;
+
+	caps->max_x = caps_src->max_x;
+	caps->max_y = caps_src->max_y;
+	caps->max_pressure = caps_src->max_pressure;
+	caps->max_width = caps_src->max_width;
+	caps->max_orientation = caps_src->max_orientation;
+	caps->max_id = caps_src->max_id;
+	caps->hw_reset_delay = caps_src->hw_reset_delay;
+	caps->sw_reset_delay = caps_src->sw_reset_delay;
+}
+
+static inline void touch_set_pins(struct siw_ts *ts,
+					struct touch_pins *pins_src)
+{
+	struct touch_pins *pins = &ts->pins;
+
+	pins->reset_pin = pins_src->reset_pin;
+	pins->reset_pin_pol = pins_src->reset_pin_pol;
+	pins->irq_pin = pins_src->irq_pin;
+	pins->maker_id_pin = pins_src->maker_id_pin;
+	/* Power */
+	pins->vdd_pin = pins_src->vdd_pin;
+	pins->vio_pin = pins_src->vio_pin;
+}
+
+static inline int touch_reset_pin(struct siw_ts *ts)
+{
+	return ts->pins.reset_pin;
+}
+
+static inline int touch_reset_pin_pol(struct siw_ts *ts)
+{
+	return ts->pins.reset_pin_pol;
+}
+
+static inline int touch_irq_pin(struct siw_ts *ts)
+{
+	return ts->pins.irq_pin;
+}
+
+static inline int touch_maker_id_pin(struct siw_ts *ts)
+{
+	return ts->pins.maker_id_pin;
+}
+
+static inline int touch_vdd_pin(struct siw_ts *ts)
+{
+	return ts->pins.vdd_pin;
+}
+
+static inline int touch_vio_pin(struct siw_ts *ts)
+{
+	return ts->pins.vio_pin;
+}
+
+static inline void *touch_get_vdd(struct siw_ts *ts)
+{
+	return ts->pins.vdd;
+}
+
+static inline void touch_set_vdd(struct siw_ts *ts, void *vdd)
+{
+	ts->pins.vdd = vdd;
+}
+
+static inline void *touch_get_vio(struct siw_ts *ts)
+{
+	return ts->pins.vio;
+}
+
+static inline void touch_set_vio(struct siw_ts *ts, void *vio)
+{
+	ts->pins.vio = vio;
 }
 
 

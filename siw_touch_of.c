@@ -241,34 +241,15 @@ static int siw_touch_parse_dts(struct siw_ts *ts)
 
 static int siw_touch_parse_dts(struct siw_ts *ts)
 {
-	struct touch_pins *pins = &ts->pins;
-	struct touch_pins *pdata_pins = &ts->pdata->pins;
-	struct touch_device_caps *caps = &ts->caps;
-	struct touch_device_cpas *pdata_caps = &ts->pdata->caps;
 	struct device *dev = ts->dev;
-
-	pins->reset_pin = pdata_pins->reset_pin;
-	pins->reset_pin_pol = pdata_pins->reset_pin_pol;
-	pins->irq_pin = pdata_pins->irq_pin;
-	pins->maker_id_pin = pdata_pins->maker_id_pin;
-	/* Power */
-	pins->vdd_pin = pdata_pins->vdd_pin;
-	pins->vio_pin = pdata_pins->vio_pin;
 
 	ts->irqflags = ts->pdata->irqflags;
 
 	ts->flags = ts->pdata->flags;
 	t_dev_info(dev, "flags = 0x%08X", ts->flags);
 
-	/* Caps */
-	caps->max_x = pdata_caps->max_x;
-	caps->max_y = pdata_caps->max_y;
-	caps->max_pressure = pdata_caps->max_pressure;
-	caps->max_width = pdata_caps->max_width;
-	caps->max_orientation = pdata_caps->max_orientation;
-	caps->max_id = pdata_caps->max_id;
-	caps->hw_reset_delay = pdata_caps->hw_reset_delay;
-	caps->sw_reset_delay = pdata_caps->sw_reset_delay;
+	touch_set_pins(ts, &ts->pdata->pins);
+	touch_set_caps(ts, &ts->pdata->caps);
 
 	memcpy((void *)&ts->i_id, (void *)&ts->pdata->i_id, sizeof(ts->i_id));
 

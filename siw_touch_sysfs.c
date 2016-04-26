@@ -79,17 +79,17 @@ static ssize_t _show_plat_data(struct device *dev, char *buf)
 
 	size += siw_snprintf(buf, size, "=== Platform Data ===\n");
 	size += _plat_data_snprintf(buf, size,
-					"reset_pin", ts->pins.reset_pin);
+					"reset_pin", touch_reset_pin(ts));
 	size += _plat_data_snprintf(buf, size,
-					"irq_pin", ts->pins.irq_pin);
+					"irq_pin", touch_irq_pin(ts));
 	size += _plat_data_snprintf(buf, size,
-					"maker_id_pin", ts->pins.maker_id_pin);
+					"maker_id_pin", touch_maker_id_pin(ts));
 
 	size += siw_snprintf(buf, size, "power:\n");
 	size += _plat_data_snprintf(buf, size,
-					"vdd-gpio", ts->pins.vdd_pin);
+					"vdd-gpio", touch_vdd_pin(ts));
 	size += _plat_data_snprintf(buf, size,
-					"vio-gpio", ts->pins.vio_pin);
+					"vio-gpio", touch_vio_pin(ts));
 
 	size += siw_snprintf(buf, size, "caps:\n");
 	size += _plat_data_snprintf(buf, size,
