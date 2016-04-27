@@ -308,11 +308,11 @@ int siw_touch_i2c_add_driver(void *data)
 	struct siw_touch_pdata *pdata = data;
 	struct siw_touch_bus_drv *bus_drv = NULL;
 	struct i2c_driver *i2c_drv = NULL;
-	char *drv_name;
+	char *drv_name = NULL;
 	int ret = 0;
 
 	if (pdata == NULL) {
-		t_pr_err("NULL touch driver\n");
+		t_pr_err("NULL chip data\n");
 		return -EINVAL;
 	}
 
@@ -320,7 +320,7 @@ int siw_touch_i2c_add_driver(void *data)
 	if (!bus_drv) {
 		t_pr_err("faied to allocate bus_drv(%d)\n", pdata_bus_type(pdata));
 		ret = -ENOMEM;
-		goto out;
+		goto out_drv;
 	}
 
 	drv_name = pdata_drv_name(pdata);
@@ -348,17 +348,18 @@ int siw_touch_i2c_add_driver(void *data)
 	if (ret) {
 		t_pr_err("i2c_register_driver[%s] failed, %d\n",
 				drv_name, ret);
-		goto out_i2c;
+		goto out_client;
 	}
 
 	pdata_set_bus_drv(pdata, bus_drv);
 
 	return 0;
 
-out_i2c:
+out_client:
 	kfree(bus_drv);
 
-out:
+out_drv:
+
 	return ret;
 }
 

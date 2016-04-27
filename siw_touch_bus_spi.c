@@ -444,7 +444,7 @@ int siw_touch_spi_add_driver(void *data)
 	int ret = 0;
 
 	if (pdata == NULL) {
-		t_pr_err("NULL touch driver\n");
+		t_pr_err("NULL chip data\n");
 		return -EINVAL;
 	}
 
@@ -452,7 +452,7 @@ int siw_touch_spi_add_driver(void *data)
 	if (!bus_drv) {
 		t_pr_err("faied to allocate bus_drv(%d)\n", pdata_bus_type(pdata));
 		ret = -ENOMEM;
-		goto out;
+		goto out_drv;
 	}
 
 	drv_name = pdata_drv_name(pdata);
@@ -480,17 +480,18 @@ int siw_touch_spi_add_driver(void *data)
 	if (ret) {
 		t_pr_err("spi_register_driver[%s] failed, %d\n",
 				drv_name, ret);
-		goto out_spi;
+		goto out_client;
 	}
 
 	pdata_set_bus_drv(pdata, bus_drv);
 
 	return 0;
 
-out_spi:
+out_client:
 	kfree(bus_drv);
 
-out:
+out_drv:
+
 	return ret;
 }
 
@@ -533,4 +534,7 @@ int siw_touch_spi_del_driver(void *data)
 }
 
 #endif	/* CONFIG_SPI_MASTER */
+
+
+
 
