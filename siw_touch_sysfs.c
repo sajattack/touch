@@ -36,11 +36,16 @@
 #include "siw_touch_sys.h"
 
 
+//#define __SYS_USE_LOCKSCREEN
+//#define __SYS_USE_IME_STATE
+
+#if defined(__SYS_USE_IME_STATE)
 static const char *siw_ime_str[] = {
 	"OFF",
 	"ON",
 	"SWYPE",
 };
+#endif
 
 static const char *siw_mfts_str[] = {
 	"NONE",
@@ -70,7 +75,7 @@ static const char *siw_onhand_str[] = {
 #define _plat_data_snprintf(_buf, _size, args...)	\
 		siw_snprintf(_buf, _size, " %-25s = %d\n", ##args)
 
-static ssize_t _show_plat_data(struct device *dev, char *buf)
+static ssize_t _show_do_plat_data(struct device *dev, char *buf)
 {
 	struct siw_ts *ts = to_touch_core(dev);
 	struct touch_device_caps *caps = &ts->caps;
@@ -123,6 +128,18 @@ static ssize_t _show_plat_data(struct device *dev, char *buf)
 	for (i = 0; i < ts->def_fwcnt; i++)
 		size += siw_snprintf(buf, size, " %-25s : [%d] %s\n",
 						"def_fwpath", i, ts->def_fwpath[i]);
+
+	return size;
+}
+
+static ssize_t _show_plat_data(struct device *dev, char *buf)
+{
+	struct siw_ts *ts = to_touch_core(dev);
+	int size = 0;
+
+	mutex_lock(&ts->lock);
+	size = _show_do_plat_data(dev, buf);
+	mutex_unlock(&ts->lock);
 
 	return size;
 }
@@ -242,6 +259,7 @@ static ssize_t _store_lpwg_notify(struct device *dev,
 	return count;
 }
 
+#if defined(__SYS_USE_LOCKSCREEN)
 static ssize_t _show_lockscreen_state(struct device *dev, char *buf)
 {
 	struct siw_ts *ts = to_touch_core(dev);
@@ -276,7 +294,9 @@ static ssize_t _store_lockscreen_state(struct device *dev,
 
 	return count;
 }
+#endif	/* __SYS_USE_LOCKSCREEN */
 
+#if defined(__SYS_USE_IME_STATE)
 static ssize_t _show_ime_state(struct device *dev, char *buf)
 {
 	struct siw_ts *ts = to_touch_core(dev);
@@ -326,6 +346,7 @@ static ssize_t _store_ime_state(struct device *dev,
 out:
 	return count;
 }
+#endif	/* __SYS_USE_IME_STATE */
 
 static ssize_t _show_quick_cover_state(struct device *dev, char *buf)
 {
@@ -501,9 +522,7 @@ static ssize_t _store_debug_tool_state(struct device *dev,
 
 	if (data >= DEBUG_TOOL_DISABLE && data <= DEBUG_TOOL_ENABLE) {
 		atomic_set(&ts->state.debug_tool, data);
-		ts->notify_event = NOTIFY_DEBUG_TOOL;
-		ts->notify_data = data;
-		siw_ops_notify(ts, ts->notify_event, (void *)&ts->notify_data);
+		siw_ops_notify(ts, NOTIFY_DEBUG_TOOL, (void *)&data);
 		t_dev_info(dev, "Debug tool state : %s\n",
 				(data == DEBUG_TOOL_ENABLE) ?
 				"Debug tool Enabled" : "Debug tool Disabled");
@@ -689,6 +708,66 @@ static ssize_t _show_module_info(struct device *dev, char *buf)
 	return (ssize_t)size;
 }
 
+static ssize_t _show_dbg_mask(struct device *dev, char *buf)
+{
+//	struct siw_ts *ts = to_touch_core(dev);
+	int size = 0;
+
+	size += siw_snprintf(buf, size,
+				"t_dev_dbg_mask %08Xh, t_pr_dbg_mask %08Xh\n\n",
+				t_dev_dbg_mask, t_pr_dbg_mask);
+
+	size += siw_snprintf(buf, size,
+				"Usage:\n");
+	size += siw_snprintf(buf, size,
+				" t_dev_dbg_mask : echo 0 {mask_value} > dbg_mask\n");
+	size += siw_snprintf(buf, size,
+				" t_pr_dbg_mask  : echo 1 {mask_value} > dbg_mask\n");
+
+	return (ssize_t)size;
+}
+
+static void _store_dbg_mask_usage(struct device *dev)
+{
+	t_dev_info(dev, "Usage:\n");
+	t_dev_info(dev, " t_dev_dbg_mask : echo 0 {mask_value} > dbg_mask\n");
+	t_dev_info(dev, " t_pr_dbg_mask  : echo 1 {mask_value} > dbg_mask\n");
+}
+
+static ssize_t _store_dbg_mask(struct device *dev,
+				const char *buf, size_t count)
+{
+//	struct siw_ts *ts = to_touch_core(dev);
+	int type = 0;
+	u32 old_value, new_value = 0;
+
+	if (sscanf(buf, "%d %u", &type, &new_value) <= 0) {
+		siw_sysfs_err_invalid_param(dev);
+		_store_dbg_mask_usage(dev);
+		return count;
+	}
+
+	switch (type) {
+	case 0 :
+		old_value = t_dev_dbg_mask;
+		t_dev_dbg_mask = new_value;
+		t_dev_info(dev, "t_dev_dbg_mask changed : %08Xh -> %08xh\n",
+			old_value, new_value);
+		break;
+	case 1 :
+		old_value = t_pr_dbg_mask;
+		t_pr_dbg_mask = new_value;
+		t_dev_info(dev, "t_pr_dbg_mask changed : %08Xh -> %08xh\n",
+			old_value, new_value);
+		break;
+	default :
+		_store_dbg_mask_usage(dev);
+		break;
+	}
+
+	return count;
+}
+
 
 #define SIW_TOUCH_ATTR(_name, _show, _store)	\
 		TOUCH_ATTR(_name, _show, _store)
@@ -707,12 +786,16 @@ static SIW_TOUCH_ATTR(lpwg_data,
 						_store_lpwg_data);
 static SIW_TOUCH_ATTR(lpwg_notify, NULL,
 						_store_lpwg_notify);
+#if defined(__SYS_USE_LOCKSCREEN)
 static SIW_TOUCH_ATTR(keyguard,
 						_show_lockscreen_state,
 						_store_lockscreen_state);
+#endif	/* __SYS_USE_LOCKSCREEN */
+#if defined(__SYS_USE_IME_STATE)
 static SIW_TOUCH_ATTR(ime_status,
 						_show_ime_state,
 						_store_ime_state);
+#endif	/* __SYS_USE_LOCKSCREEN */
 static SIW_TOUCH_ATTR(quick_cover_status,
 						_show_quick_cover_state,
 						_store_quick_cover_state);
@@ -750,14 +833,20 @@ static SIW_TOUCH_ATTR(onhand,
 #endif	/* __SIW_SUPPORT_ASC */
 static SIW_TOUCH_ATTR(module_info,
 						_show_module_info, NULL);
+static SIW_TOUCH_ATTR(dbg_mask,
+						_show_dbg_mask, _store_dbg_mask);
 
 static struct attribute *siw_touch_attribute_list[] = {
 	&_SIW_TOUCH_ATTR_T(platform_data).attr,
 	&_SIW_TOUCH_ATTR_T(fw_upgrade).attr,
 	&_SIW_TOUCH_ATTR_T(lpwg_data).attr,
 	&_SIW_TOUCH_ATTR_T(lpwg_notify).attr,
+#if defined(__SYS_USE_LOCKSCREEN)
 	&_SIW_TOUCH_ATTR_T(keyguard.attr),
+#endif	/* __SYS_USE_LOCKSCREEN */
+#if defined(__SYS_USE_IME_STATE)
 	&_SIW_TOUCH_ATTR_T(ime_status).attr,
+#endif	/* __SYS_USE_IME_STATE */
 	&_SIW_TOUCH_ATTR_T(quick_cover_status).attr,
 	&_SIW_TOUCH_ATTR_T(firmware).attr,
 	&_SIW_TOUCH_ATTR_T(version).attr,
@@ -773,6 +862,7 @@ static struct attribute *siw_touch_attribute_list[] = {
 	&_SIW_TOUCH_ATTR_T(onhand).attr,
 #endif	/* __SIW_SUPPORT_ASC */
 	&_SIW_TOUCH_ATTR_T(module_info).attr,
+	&_SIW_TOUCH_ATTR_T(dbg_mask).attr,
 	NULL,
 };
 
