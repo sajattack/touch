@@ -94,7 +94,9 @@ int siw_touch_set(struct device *dev, u32 cmd, void *buf)
 	if (!buf)
 		t_dev_err(dev, "NULL buf\n");
 
+	mutex_lock(&ts->lock);
 	ret = siw_ops_set(ts, cmd, buf);
+	mutex_unlock(&ts->lock);
 
 	return ret;
 }
@@ -117,7 +119,9 @@ int siw_touch_get(struct device *dev, u32 cmd, void *buf)
 	if (!buf)
 		t_dev_err(dev, "NULL buf\n");
 
+	mutex_lock(&ts->lock);
 	ret = siw_ops_get(ts, cmd, buf);
+	mutex_unlock(&ts->lock);
 
 	return ret;
 }
