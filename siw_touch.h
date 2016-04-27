@@ -38,13 +38,20 @@
 #include "siw_touch_dbg.h"
 
 
-#define TOUCH_IRQ_NONE				0
-#define TOUCH_IRQ_FINGER			(1 << 0)
-#define TOUCH_IRQ_KNOCK				(1 << 1)
-#define TOUCH_IRQ_PASSWD			(1 << 2)
-#define TOUCH_IRQ_SWIPE_RIGHT		(1 << 3)
-#define TOUCH_IRQ_SWIPE_LEFT		(1 << 4)
-#define TOUCH_IRQ_ERROR				(1 << 15)
+enum {
+	SIW_TOUCH_NORMAL_MODE	= 0,
+	SIW_TOUCH_CHARGER_MODE	= 1,
+};
+
+enum {
+	TOUCH_IRQ_NONE			= 0,
+	TOUCH_IRQ_FINGER		= (1 << 0),
+	TOUCH_IRQ_KNOCK			= (1 << 1),
+	TOUCH_IRQ_PASSWD		= (1 << 2),
+	TOUCH_IRQ_SWIPE_RIGHT	= (1 << 3),
+	TOUCH_IRQ_SWIPE_LEFT	= (1 << 4),
+	TOUCH_IRQ_ERROR			= (1 << 15),
+};
 
 enum {
 	DRIVER_FREE = 0,

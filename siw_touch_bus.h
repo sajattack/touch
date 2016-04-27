@@ -20,7 +20,6 @@
 #include <linux/interrupt.h>
 #include <linux/irq.h>
 
-#define SIW_TOUCH_CHARGER_MODE	1
 
 #define SIW_TOUCH_MAX_BUF_SIZE			(64<<10)
 #define SIW_TOUCH_MAX_XFER_BUF_SIZE		(100<<10)
