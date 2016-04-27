@@ -48,7 +48,8 @@ enum {
 	TC_DRIVE_CTL_DISP_U2	= (0x2<<7),
 	TC_DRIVE_CTL_DISP_U3	= (0x3<<7),
 	/* */
-	TC_DRIVE_CTL_QCOVER		= (0x1<<9),
+	TC_DRIVE_CTL_PARTIAL	= (0x1<<9),
+	TC_DRIVE_CTL_QCOVER		= (0x1<<10),
 	/* */
 	TC_DRIVE_CTL_MODE_VB	= (0x0<<2),
 	TC_DRIVE_CTL_MODE_6LHB	= (0x1<<2),
@@ -229,6 +230,7 @@ struct siw_touch_chip {
 	struct siw_hal_fw_info fw;
 	struct siw_hal_asc_info asc;
 	struct siw_hal_swipe_ctrl swipe;
+	u8 prev_lcd_mode;
 	u8 lcd_mode;
 	u8 driving_mode;
 	u8 u3fake;

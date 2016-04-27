@@ -722,6 +722,7 @@ static void siw_hal_get_tci_info(struct device *dev)
 	struct siw_ts *ts = chip->ts;
 	void *tci_src;
 	void *tci_reset_area;
+	struct reset_area *tci_qcover;
 
 	tci_src = pdata_tci_info(ts->pdata);
 	if (!tci_src)
@@ -733,6 +734,20 @@ static void siw_hal_get_tci_info(struct device *dev)
 
 	memcpy(ts->tci.info, tci_src, sizeof(siw_hal_tci_info_default));
 	memcpy(&ts->tci.rst_area, tci_reset_area, sizeof(siw_hal_tci_reset_area_default));
+
+	tci_qcover = pdata_tci_qcover_open(ts->pdata);
+	if (!tci_qcover) {
+		memset(&ts->tci.qcover_open, ~0, sizeof(struct reset_area));
+	} else {
+		memcpy(&ts->tci.qcover_open, tci_qcover, sizeof(struct reset_area));
+	}
+
+	tci_qcover = pdata_tci_qcover_close(ts->pdata);
+	if (!tci_qcover) {
+		memset((void *)&ts->tci.qcover_close, ~0, sizeof(struct reset_area));
+	} else {
+		memcpy(&ts->tci.qcover_close, tci_qcover, sizeof(struct reset_area));
+	}
 }
 
 const struct siw_hal_swipe_ctrl siw_hal_swipe_info_default = {
@@ -801,6 +816,8 @@ static int siw_hal_power(struct device *dev, int ctrl)
 	switch (ctrl) {
 	case POWER_OFF:
 		t_dev_dbg_pm(dev, "power ctrl: power off\n");
+		atomic_set(&chip->init, IC_INIT_NEED);
+
 		siw_hal_set_gpio_reset(dev, GPIO_OUT_ZERO);
 		siw_hal_power_vio(dev, 0);
 		siw_hal_power_vdd(dev, 0);
@@ -1825,6 +1842,28 @@ out:
 	return ret;
 }
 
+static void siw_hal_tci_area_set(struct device *dev, int cover_status)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	struct reset_area *qcover;
+	const char *msg;
+
+	if (touch_mode_not_allowed(ts, LCD_MODE_U3_QUICKCOVER)) {
+		return;
+	}
+
+	qcover = (cover_status == QUICKCOVER_CLOSE)?
+			&ts->tci.qcover_close : &ts->tci.qcover_open;
+	msg = (cover_status == QUICKCOVER_CLOSE)?
+			"qcover close" : "normal";
+
+	if (qcover->x1 != ~0) {
+		siw_hal_tci_active_area(dev, 179, 144, 1261, 662);
+		t_dev_info(dev, "lpwg active area - %s\n", msg);
+	}
+}
+
 static int siw_hal_tci_control(struct device *dev, int type)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
@@ -2143,6 +2182,11 @@ static inline int __used siw_hal_tc_driving_u3(struct device *dev)
 
 static inline int __used siw_hal_tc_driving_u3_partial(struct device *dev)
 {
+	return (TC_DRIVE_CTL_PARTIAL | siw_hal_tc_driving_u3(dev));
+}
+
+static inline int __used siw_hal_tc_driving_u3_qcover(struct device *dev)
+{
 	return (TC_DRIVE_CTL_QCOVER | siw_hal_tc_driving_u3(dev));
 }
 
@@ -2207,6 +2251,10 @@ static int siw_hal_tc_driving(struct device *dev, int mode)
 
 	case LCD_MODE_U3_PARTIAL:
 		ctrl = siw_hal_tc_driving_u3_partial(dev);
+		break;
+
+	case LCD_MODE_U3_QUICKCOVER:
+		ctrl = siw_hal_tc_driving_u3_qcover(dev);
 		break;
 
 	case LCD_MODE_STOP:
@@ -2441,7 +2489,10 @@ static int siw_hal_lpwg_mode(struct device *dev)
 				siw_hal_deep_sleep(dev);
 			}
 		} else if (ts->lpwg.screen) {
-			t_dev_dbg_lpwg(dev, "Skip lpwg_mode\n");
+			if (atomic_read(&ts->state.sleep) == IC_DEEP_SLEEP)
+				siw_hal_clock(dev, 1);
+
+			t_dev_dbg_lpwg(dev, "skip lpwg_mode\n");
 
 			siw_hal_debug_tci(dev);
 			siw_hal_debug_swipe(dev);
@@ -2450,6 +2501,7 @@ static int siw_hal_lpwg_mode(struct device *dev)
 			if (atomic_read(&ts->state.sleep) == IC_DEEP_SLEEP)
 				siw_hal_clock(dev, 1);
 
+			siw_hal_tci_area_set(dev, QUICKCOVER_CLOSE);
 			siw_hal_lpwg_control(dev, LPWG_NONE);
 			siw_hal_tc_driving(dev, chip->lcd_mode);
 		} else {
@@ -2457,6 +2509,7 @@ static int siw_hal_lpwg_mode(struct device *dev)
 			if (atomic_read(&ts->state.sleep) == IC_DEEP_SLEEP)
 				siw_hal_clock(dev, 1);
 
+			siw_hal_tci_area_set(dev, QUICKCOVER_OPEN);
 			siw_hal_lpwg_control(dev, ts->lpwg.mode);
 			siw_hal_tc_driving(dev, chip->lcd_mode);
 		}
@@ -2464,12 +2517,18 @@ static int siw_hal_lpwg_mode(struct device *dev)
 	}
 
 	/* resume */
+	siw_touch_report_all_event(ts);		//clear (?)
 	if (ts->lpwg.screen) {
+		int mode;
 		/* normal */
 		t_dev_dbg_lpwg(dev, "resume ts->lpwg.screen\n");
 
 		siw_hal_lpwg_control(dev, LPWG_NONE);
-		siw_hal_tc_driving(dev, chip->lcd_mode);
+
+		mode = (ts->lpwg.qcover == HOLE_NEAR)?
+				LCD_MODE_U3_QUICKCOVER :
+				chip->lcd_mode;
+		siw_hal_tc_driving(dev, mode);
 	} else if (ts->lpwg.mode == LPWG_NONE) {
 		/* wake up */
 		t_dev_dbg_lpwg(dev, "resume ts->lpwg.mode == LPWG_NONE\n");
@@ -2478,15 +2537,25 @@ static int siw_hal_lpwg_mode(struct device *dev)
 		siw_hal_tc_driving(dev, LCD_MODE_STOP);
 	} else {
 		/* partial */
-		t_dev_dbg_lpwg(dev, "resume Partial-Do not set\n");
-	#if 0
-		if (ts->lpwg.qcover == HOLE_NEAR) {
-			siw_hal_lpwg_control(dev, LPWG_NONE);
-		} else {
+		if (touch_mode_allowed(ts, LCD_MODE_U3_QUICKCOVER)) {
+			int qcover_mode;
+
+			qcover_mode = (ts->lpwg.qcover == HOLE_NEAR)?
+						QUICKCOVER_CLOSE : QUICKCOVER_OPEN;
+			siw_hal_tci_area_set(dev, qcover_mode);
 			siw_hal_lpwg_control(dev, ts->lpwg.mode);
+			siw_hal_tc_driving(dev, LCD_MODE_U3_PARTIAL);
+		} else {
+			t_dev_dbg_lpwg(dev, "resume Partial-Do not set\n");
+			/*
+			if (ts->lpwg.qcover == HOLE_NEAR) {
+				siw_hal_lpwg_control(dev, LPWG_NONE);
+			} else {
+				siw_hal_lpwg_control(dev, ts->lpwg.mode);
+			}
+			siw_hal_tc_driving(dev, LCD_MODE_U3_PARTIAL);
+			*/
 		}
-		siw_hal_tc_driving(dev, LCD_MODE_U3_PARTIAL);
-	#endif
 	}
 
 	return 0;
@@ -3156,6 +3225,7 @@ static void siw_hal_lcd_mode(struct device *dev, u32 mode)
 	if (mode == LCD_MODE_U2_UNBLANK)
 		mode = LCD_MODE_U2;
 
+	chip->prev_lcd_mode = chip->lcd_mode;
 	chip->lcd_mode = mode;
 }
 

@@ -246,6 +246,8 @@ static struct siw_touch_pdata chip_pdata = {
 	//See 'siw_hal_get_tci_info' [siw_touch_hal.c]
 	.tci_info			= touch_lg4895_tci_info,
 	.tci_reset_area		= touch_lg4895_tci_reset_area,
+	.tci_qcover_open	= NULL,
+	.tci_qcover_close	= NULL,
 	//See 'siw_hal_get_swipe_info' [siw_touch_hal.c]
 	.swipe_ctrl			= touch_lg4895_swipe_info,
 	//See 'store_ext_watch_config_font_position' [siw_touch_hal_watch.c]
