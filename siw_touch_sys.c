@@ -41,6 +41,15 @@
 #include "siw_touch.h"
 #include "siw_touch_sys.h"
 
+int siw_touch_sys_bus_use_dma(void)
+{
+#if defined(__If_the_bus_of_your_chipset_needs_dma_control__)
+	return 1;
+#else
+	return 0;
+#endif
+}
+
 int siw_touch_get_boot_mode(void)
 {
 #if defined(CONFIG_SIW_GET_BOOT_MODE)

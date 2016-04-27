@@ -71,6 +71,7 @@ static void siw_touch_i2c_err_dump(struct i2c_client *client,
 static int siw_touch_do_i2c_read(struct i2c_client *client,
 							struct touch_bus_msg *msg)
 {
+//	struct siw_ts *ts = (struct siw_ts *)i2c_get_clientdata(client);
 	struct i2c_msg msgs[] = {
 		{
 			.addr = client->addr,
@@ -86,6 +87,10 @@ static int siw_touch_do_i2c_read(struct i2c_client *client,
 		},
 	};
 	int ret = 0;
+
+	/*
+	 * Bus control can need to be modifyed up to main chipset sepc.
+	 */
 
 	ret = i2c_transfer(client->adapter, msgs, 2);
 	siwmon_submit_bus_i2c_read(client, msg, ret);
@@ -103,6 +108,7 @@ static int siw_touch_i2c_read(struct device *dev, void *msg)
 int siw_touch_do_i2c_write(struct i2c_client *client,
 						struct touch_bus_msg *msg)
 {
+//	struct siw_ts *ts = (struct siw_ts *)i2c_get_clientdata(client);
 	struct i2c_msg msgs[] = {
 		{
 			.addr = client->addr,
@@ -112,6 +118,10 @@ int siw_touch_do_i2c_write(struct i2c_client *client,
 		},
 	};
 	int ret = 0;
+
+	/*
+	 * Bus control can need to be modifyed up to main chipset sepc.
+	 */
 
 	ret = i2c_transfer(client->adapter, msgs, 1);
 	siwmon_submit_bus_i2c_write(client, msg, ret);
@@ -128,6 +138,8 @@ static int siw_touch_i2c_write(struct device *dev, void *msg)
 
 static int siw_touch_i2c_do_xfer(struct i2c_client *client, struct touch_xfer_msg *xfer)
 {
+//	struct siw_ts *ts = (struct siw_ts *)i2c_get_clientdata(client);
+
 	t_dev_info(&client->dev, "I2C xfer : not supported\n");
 	return -EINVAL;
 }

@@ -29,6 +29,7 @@
 #include <linux/of.h>
 #include <linux/of_gpio.h>
 #include <linux/of_device.h>
+#include <linux/dma-mapping.h>
 #include <asm/page.h>
 #include <asm/uaccess.h>
 #include <asm/irq.h>
@@ -44,6 +45,7 @@
 #include "siw_touch_bus.h"
 #include "siw_touch_bus_i2c.h"
 #include "siw_touch_bus_spi.h"
+#include "siw_touch_sys.h"
 
 #define TOUCH_PINCTRL_ACTIVE	"touch_pin_active"
 #define TOUCH_PINCTRL_SLEEP		"touch_pin_sleep"
@@ -140,12 +142,35 @@ int siw_touch_bus_pin_put(struct siw_ts *ts)
 }
 #endif	/* __SIW_SUPPORT_PINCTRL */
 
+static void *__buffer_alloc(struct device *dev, size_t size,
+				dma_addr_t *dma_handle, gfp_t gfp)
+{
+	if (siw_touch_sys_bus_use_dma()) {
+		return dma_alloc_coherent(dev, size, dma_handle, gfp);
+	}
+
+	return devm_kzalloc(dev, size, gfp);
+}
+
+static void __buffer_free(struct device *dev, size_t size,
+				void *buf, dma_addr_t dma_handle)
+{
+	if (siw_touch_sys_bus_use_dma() && dma_handle) {
+		dma_free_coherent(dev, size, buf, dma_handle);
+		return;
+	}
+
+	devm_kfree(dev, buf);
+}
+
 int siw_touch_bus_alloc_buffer(struct siw_ts *ts)
 {
 	struct device *dev = ts->dev;
 	int buf_size = touch_buf_size(ts);
 	u8 *tx_buf = NULL;
 	u8 *rx_buf = NULL;
+	u32 tx_pa = 0;
+	u32 rx_pa = 0;
 	struct touch_xfer_msg *xfer = NULL;
 	int ret = 0;
 
@@ -154,21 +179,23 @@ int siw_touch_bus_alloc_buffer(struct siw_ts *ts)
 
 	t_dev_dbg_base(dev, "allocate touch bus buffer\n");
 
-	tx_buf = devm_kzalloc(dev, buf_size, GFP_KERNEL);
+	tx_buf = __buffer_alloc(dev,
+				buf_size, &tx_pa, GFP_KERNEL);
 	if (!tx_buf) {
 		t_dev_err(dev, "failed to allocate tx_buf\n");
 		goto out_tx_buf;
 	}
-	t_dev_dbg_base(dev, "tx_buf : 0x%08X(0x%X)\n",
-				(u32)tx_buf, buf_size);
+	t_dev_dbg_base(dev, "tx_buf %08Xh, tx_pa %08Xh, size %08Xh\n",
+				(u32)tx_buf, tx_pa, buf_size);
 
-	rx_buf = devm_kzalloc(dev, buf_size, GFP_KERNEL);
+	rx_buf = __buffer_alloc(dev,
+				buf_size, &rx_pa, GFP_KERNEL);
 	if (!rx_buf) {
 		t_dev_err(dev, "failed to allocate rx_buf\n");
 		goto out_rx_buf;
 	}
-	t_dev_dbg_base(dev, "rx_buf : 0x%08X(0x%X)\n",
-				(u32)rx_buf, buf_size);
+	t_dev_dbg_base(dev, "rx_buf %08Xh, rx_pa %08Xh, size %08Xh\n",
+				(u32)rx_buf, rx_pa, buf_size);
 
 	xfer = devm_kzalloc(dev, sizeof(struct touch_xfer_msg), GFP_KERNEL);
 	if (!xfer) {
@@ -181,17 +208,19 @@ int siw_touch_bus_alloc_buffer(struct siw_ts *ts)
 	ts->tx_buf = tx_buf;
 	ts->rx_buf = rx_buf;
 	ts->xfer = xfer;
+	ts->tx_pa = tx_pa;
+	ts->rx_pa = rx_pa;
 
 	return 0;
 
 out_xfer:
 	if (rx_buf) {
-		devm_kfree(dev, rx_buf);
+		__buffer_free(dev, buf_size, rx_buf, rx_pa);
 	}
 
 out_rx_buf:
 	if (tx_buf) {
-		devm_kfree(dev, tx_buf);
+		__buffer_free(dev, buf_size, tx_buf, tx_pa);
 	}
 
 out_tx_buf:
@@ -202,6 +231,7 @@ out_tx_buf:
 int siw_touch_bus_free_buffer(struct siw_ts *ts)
 {
 	struct device *dev = ts->dev;
+	int buf_size = touch_buf_size(ts);
 
 	t_dev_dbg_base(dev, "release touch bus buffer\n");
 
@@ -211,12 +241,12 @@ int siw_touch_bus_free_buffer(struct siw_ts *ts)
 	}
 
 	if (ts->rx_buf) {
-		devm_kfree(dev, ts->rx_buf);
+		__buffer_free(dev, buf_size, ts->rx_buf, ts->rx_pa);
 		ts->rx_buf= NULL;
 	}
 
 	if (ts->tx_buf) {
-		devm_kfree(dev, ts->tx_buf);
+		__buffer_free(dev, buf_size, ts->tx_buf, ts->tx_pa);
 		ts->tx_buf = NULL;
 	}
 

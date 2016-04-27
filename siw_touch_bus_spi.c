@@ -61,12 +61,12 @@ static void siw_touch_spi_err_dump(struct spi_device *spi,
 	struct spi_transfer *x = xs;
 	int i;
 
-	t_dev_err(&spi->dev, "spi transfer err : ");
+	t_dev_err(&spi->dev, "spi transfer err :\n");
 	for (i=0 ; i<num ; i++) {
 		t_dev_err(&spi->dev,
 				" x[%d] - len %d, cs %d, bpw %d\n",
 				i,
-				x->len, x->cs_change, x->bits_per_word);
+				x->len, x->cs_change, spi->bits_per_word);
 		siw_touch_bus_err_dump_data(&spi->dev,
 					(char *)x->tx_buf, x->len, i, "x");
 		if (_read) {
@@ -86,6 +86,17 @@ static int siw_touch_spi_do_read(struct spi_device *spi,
 	struct spi_message m;
 	int ret = 0;
 
+	/*
+	 * Bus control can need to be modifyed up to main chipset sepc.
+	 */
+
+	if ((msg->rx_size > SIW_TOUCH_MAX_BUF_SIZE) ||
+		(msg->tx_size > SIW_TOUCH_MAX_BUF_SIZE)) {
+		t_dev_err(&spi->dev, "spi read: buffer overflow - rx %Xh, tx %Xh\n",
+			msg->rx_size, msg->tx_size);
+		return -EOVERFLOW;
+	}
+
 	spi_message_init(&m);
 
 	//Add dummy packet
@@ -98,7 +109,7 @@ static int siw_touch_spi_do_read(struct spi_device *spi,
 	x.rx_buf = msg->rx_buf;
 	x.len = msg->rx_size;
 	x.cs_change = 0;
-	x.bits_per_word = msg->bits_per_word;
+	x.bits_per_word = spi->bits_per_word;
 
 	spi_message_add_tail(&x, &m);
 
@@ -124,6 +135,16 @@ int siw_touch_spi_do_write(struct spi_device *spi,
 	struct spi_message m;
 	int ret = 0;
 
+	/*
+	 * Bus control can need to be modifyed up to main chipset sepc.
+	 */
+
+	if (msg->tx_size > SIW_TOUCH_MAX_BUF_SIZE) {
+		t_dev_err(&spi->dev, "spi write: buffer overflow - tx %Xh\n",
+			msg->tx_size);
+		return -EOVERFLOW;
+	}
+
 	spi_message_init(&m);
 
 	//Add dummy packet
@@ -136,7 +157,7 @@ int siw_touch_spi_do_write(struct spi_device *spi,
 	x.rx_buf = msg->rx_buf;
 	x.len = msg->tx_size;
 	x.cs_change = 0;
-	x.bits_per_word = msg->bits_per_word;
+	x.bits_per_word = spi->bits_per_word;
 
 	spi_message_add_tail(&x, &m);
 
@@ -172,7 +193,7 @@ static void __siw_touch_spi_xfer_mon(struct spi_device *spi,
 		msg.tx_size = tx->size;
 		msg.rx_buf = rx->data;
 		msg.rx_size = rx->size;
-		msg.bits_per_word = xfer->bits_per_word;
+		msg.bits_per_word = spi->bits_per_word;
 		msg.priv = (i<<8) | cnt;
 
 		//For xfer mon,
@@ -188,6 +209,7 @@ static inline void __siw_touch_spi_xfer_mon(struct spi_device *spi,
 
 static int siw_touch_spi_do_xfer(struct spi_device *spi, struct touch_xfer_msg *xfer)
 {
+//	struct siw_ts *ts = spi_get_drvdata(spi);
 	struct touch_xfer_data_t *tx = NULL;
 	struct touch_xfer_data_t *rx = NULL;
 	struct spi_transfer x[SIW_TOUCH_MAX_XFER_COUNT];
@@ -195,6 +217,10 @@ static int siw_touch_spi_do_xfer(struct spi_device *spi, struct touch_xfer_msg *
 	int cnt = xfer->msg_count;
 	int i = 0;
 	int ret = 0;
+
+	/*
+	 * Bus control can need to be modifyed up to main chipset sepc.
+	 */
 
 	if (cnt > SIW_TOUCH_MAX_XFER_COUNT) {
 		t_dev_err(&spi->dev, "cout exceed, %d\n", cnt);
@@ -208,8 +234,8 @@ static int siw_touch_spi_do_xfer(struct spi_device *spi, struct touch_xfer_msg *
 		tx = &xfer->data[i].tx;
 		rx = &xfer->data[i].rx;
 
-		x[i].cs_change = 1;
-		x[i].bits_per_word = xfer->bits_per_word;
+		x[i].cs_change = !!(i < (xfer->msg_count - 1));
+		x[i].bits_per_word = spi->bits_per_word;
 
 		if (rx->size) {
 			x[i].tx_buf = tx->data;
@@ -272,6 +298,8 @@ static struct siw_ts *siw_touch_spi_alloc(
 	ts->bus_rx_hdr_size = pdata_rx_hdr_size(pdata);
 	ts->bus_tx_dummy_size = pdata_tx_dummy_size(pdata);
 	ts->bus_rx_dummy_size = pdata_rx_dummy_size(pdata);
+
+	spi->chip_select = 0;
 
 	tmp = pdata_bits_per_word(pdata);
 	if (tmp == ~0) {
