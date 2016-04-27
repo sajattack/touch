@@ -551,6 +551,20 @@ static void siw_touch_fb_work_func(struct work_struct *work)
 	}
 }
 
+static void siw_touch_sys_reset_work_func(struct work_struct *work)
+{
+	struct siw_ts *ts =
+			container_of(to_delayed_work(work),
+				struct siw_ts, fb_work);
+	struct device *dev = ts->dev;
+	int ret;
+
+	ret = siw_touch_sys_panel_reset(dev);
+	if (ret < 0) {
+		t_dev_err(dev, "failed to reset panel\n");
+	}
+}
+
 #if defined(__SIW_SUPPORT_ASC)
 static void siw_touch_toggle_delta_check_work_func(
 			struct work_struct *work)
@@ -762,6 +776,7 @@ static int __used siw_touch_init_works(struct siw_ts *ts)
 					siw_touch_finger_input_check_work_func);
 #endif	/* __SIW_SUPPORT_ASC */
 	INIT_DELAYED_WORK(&ts->notify_work, siw_touch_atomic_notifer_work_func);
+	INIT_DELAYED_WORK(&ts->sys_reset_work, siw_touch_sys_reset_work_func);
 
 	return 0;
 }
@@ -769,6 +784,7 @@ static int __used siw_touch_init_works(struct siw_ts *ts)
 static void __used siw_touch_free_works(struct siw_ts *ts)
 {
 	if (ts->wq) {
+		cancel_delayed_work(&ts->sys_reset_work);
 		cancel_delayed_work(&ts->notify_work);
 	#if defined(__SIW_SUPPORT_ASC)
 		cancel_delayed_work(&ts->finger_input_work);
@@ -818,6 +834,7 @@ static int _siw_touch_do_irq_thread(struct siw_ts *ts)
 		t_dev_dbg_irq(ts->dev, "Err in irq_handler of %s, %d",
 				touch_chip_name(ts), ret);
 		if (ret == -ERESTART) {
+			siw_touch_qd_sys_reset_work_now(ts);
 			siw_ops_reset(ts, HW_RESET);
 		}
 		return ret;

@@ -17,4 +17,6 @@ extern int siw_touch_boot_mode_check(struct device *dev);
 
 extern int siw_touch_sys_gpio_setpull(int pin, int value);
 
+extern int siw_touch_sys_panel_reset(struct device *dev);
+
 #endif	/* __SIW_TOUCH_SYS_H */

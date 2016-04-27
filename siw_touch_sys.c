@@ -102,5 +102,9 @@ int siw_touch_sys_gpio_setpull(int pin, int value)
 	return ret;
 }
 
+int siw_touch_sys_panel_reset(struct device *dev)
+{
+	return 0;
+}
 
 

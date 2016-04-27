@@ -735,6 +735,7 @@ struct siw_ts {
 	struct delayed_work fb_work;
 	struct delayed_work toggle_delta_work;
 	struct delayed_work finger_input_work;
+	struct delayed_work sys_reset_work;
 
 	struct notifier_block blocking_notif;
 	struct notifier_block atomic_notif;
@@ -811,6 +812,11 @@ struct siw_ts {
 		queue_delayed_work(_ts->wq, &_ts->finger_input_work, _delay)
 #endif	/* __SIW_SUPPORT_ASC */
 
+/* goes to siw_touch_sys_reset_work_func  */
+#define __siw_touch_qd_sys_reset_work(_ts, _delay)	\
+		queue_delayed_work(_ts->wq, &_ts->sys_reset_work, _delay)
+
+
 #define siw_touch_qd_init_work_now(_ts)	\
 		__siw_touch_qd_init_work(_ts, 0)
 #define siw_touch_qd_init_work_jiffies(_ts, _jiffies)	\
@@ -848,6 +854,12 @@ struct siw_ts {
 #define siw_touch_qd_finger_input_work_jiffies(_ts, _jiffies)	\
 		__siw_touch_qd_finger_input_work(_ts, msecs_to_jiffies(_jiffies))
 #endif	/* __SIW_SUPPORT_ASC */
+
+#define siw_touch_qd_sys_reset_work_now(_ts)	\
+		__siw_touch_qd_sys_reset_work(_ts, 0)
+#define siw_touch_qd_sys_reset_work_jiffies(_ts, _jiffies)	\
+		__siw_touch_qd_sys_reset_work(_ts, msecs_to_jiffies(_jiffies))
+
 
 
 struct siw_touch_attribute {
