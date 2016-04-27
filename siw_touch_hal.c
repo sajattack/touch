@@ -2625,6 +2625,9 @@ enum {
 	IC_DEBUG_SIZE		= 16,	// byte
 	//
 	IC_CHK_LOG_MAX		= (1<<9),
+	//
+	INT_IC_ABNORMAL_STATUS	= ((1<<3) | (1<<0)),	//0x09
+	INT_DEV_ABNORMAL_STATUS = ((1<<10) | (1<<9)),	//0x600
 };
 
 #define siw_chk_sts_snprintf(_dev, _buf, _max, _size, _fmt, _args...) \
@@ -2652,29 +2655,29 @@ static int siw_hal_check_status_type_1(struct device *dev)
 	if (!(status & (1<<5))) {
 		log_flag = 1;
 		len += siw_chk_sts_snprintf(dev, log, log_max, len,
-					"[b5] Device_ctl not Set ");
+					"[b5] device ctl not Set ");
 	}
 	if (!(status & (1<<6))) {
 		log_flag = 1;
 		len += siw_chk_sts_snprintf(dev, log, log_max, len,
-					"[b6] Code CRC Invalid ");
+					"[b6] code crc invalid ");
 	}
 	if (!(status & (1<<7))) {
 		log_flag = 1;
 		len += siw_chk_sts_snprintf(dev, log, log_max, len,
-					"[b7] CFG CRC Invalid ");
+					"[b7] cfg crc invalid ");
 	}
 	if (status & (1<<9)) {
 		log_flag = 1;
 		len += siw_chk_sts_snprintf(dev, log, log_max, len,
-					"[b9] Abnormal status Detected ");
+					"[b9] abnormal status detected ");
 	}
 	if (status & (1<<10)) {
 		t_dev_err(dev, "h/w:%Xh, f/w:%Xh\n", (ic_status&(1<<1)), (status&(1<<10)));
 
 		log_flag = 1;
 		len += siw_chk_sts_snprintf(dev, log, log_max, len,
-					"[b10] System Error Detected\n");
+					"[b10] system error detected\n");
 
 		if (chip->lcd_mode == LCD_MODE_U0) {
 			ret = -ERESTART;
@@ -2692,22 +2695,22 @@ static int siw_hal_check_status_type_1(struct device *dev)
 	if (status & (1<<13)) {
 		log_flag = 1;
 		len += siw_chk_sts_snprintf(dev, log, log_max, len,
-					"[b13] Display mode Mismatch\n");
+					"[b13] display mode mismatch ");
 	}
 	if (!(status & (1<<15))) {
 		log_flag = 1;
 		len += siw_chk_sts_snprintf(dev, log, log_max, len,
-					"[b15] Interrupt_Pin Invalid\n");
+					"[b15] irq pin invalid ");
 	}
 	if (!(status & (1<<20))) {
 		log_flag = 1;
 		len += siw_chk_sts_snprintf(dev, log, log_max, len,
-					"[b20] Touch interrupt status Invalid\n");
+					"[b20] irq status invalid ");
 	}
 	if (!(status & (1<<22))) {
 		log_flag = 1;
 		len += siw_chk_sts_snprintf(dev, log, log_max, len,
-					"[b22] TC driving Invalid\n");
+					"[b22] driving invalid ");
 	}
 
 	if (log_flag) {
@@ -2716,7 +2719,7 @@ static int siw_hal_check_status_type_1(struct device *dev)
 	}
 
 	if ((ic_status&1) || (ic_status & (1<<3))) {
-		t_dev_err(dev, "Watchdog Exception - status %Xh, ic_status %Xh\n",
+		t_dev_err(dev, "watchdog exception - status %Xh, ic_status %Xh\n",
 					status, ic_status);
 		if (chip->lcd_mode == LCD_MODE_U0) {
 			ret = -ERESTART;
@@ -2757,11 +2760,17 @@ static int siw_hal_check_status_default(struct device *dev)
 	u32 ic_status = chip->info.ic_status;
 	int ret = 0;
 
-	if (!(status & (1 << 5))) {
-		ret = -ERANGE;
-	} else if (ic_status & 1) {
-		t_dev_err(dev, "ESD Error Detected\n");
-		ret = -ERANGE;
+	if (!(status & (1<<5))) {
+		t_dev_err(dev, "abnormal device status %08Xh\n", status);
+		ret = -ERESTART;
+	} else if (status & INT_DEV_ABNORMAL_STATUS) {
+		t_dev_err(dev, "abnormal device status %08Xh\n", status);
+		ret = -ERESTART;
+	}
+
+	if (ic_status & INT_IC_ABNORMAL_STATUS) {
+		t_dev_err(dev, "abnormal ic status %08Xh\n", status);
+		ret = -ERESTART;
 	}
 
 	return ret;
