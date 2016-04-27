@@ -71,6 +71,7 @@ extern int siw_hal_watch_is_disp_waton(struct device *dev);
 extern int siw_hal_watch_is_rtc_run(struct device *dev);
 extern void siw_hal_watch_set_rtc_run(struct device *dev);
 extern void siw_hal_watch_set_rtc_clear(struct device *dev);
+extern void siw_hal_watch_set_font_empty(struct device *dev);
 #else	/* __SIW_SUPPORT_WATCH */
 static int __used siw_hal_watch_sysfs(struct device *dev, int on_off){ return 0; }
 static int __used siw_hal_watch_init(struct device *dev){ return 0; }
@@ -81,7 +82,7 @@ static int __used siw_hal_watch_is_disp_waton(struct device *dev){ return 0; }
 static int __used siw_hal_watch_is_rtc_run(struct device *dev){ return 0; }
 extern void __used siw_hal_watch_set_rtc_run(struct device *dev){ }
 extern void __used siw_hal_watch_set_rtc_clear(struct device *dev){ }
-
+extern void __used siw_hal_watch_set_font_empty(struct device *dev){ }
 #endif	/* __SIW_SUPPORT_WATCH */
 
 
@@ -130,6 +131,20 @@ static void siw_hal_deep_sleep(struct device *dev);
 
 static int siw_hal_lpwg_mode(struct device *dev);
 
+static void siw_hal_power_init(struct device *dev)
+{
+	siw_touch_power_init(dev);
+}
+
+static void siw_hal_power_vdd(struct device *dev, int value)
+{
+	siw_touch_power_vdd(dev, value);
+}
+
+static void siw_hal_power_vio(struct device *dev, int value)
+{
+	siw_touch_power_vio(dev, value);
+}
 
 #define SIW_HAL_GPIO_RST		"siw_hal_reset"
 #define SIW_HAL_GPIO_IRQ		"siw_hal_irq"
@@ -772,8 +787,8 @@ static const char *siw_hal_pwr_name[] = {
 
 static int siw_hal_power(struct device *dev, int ctrl)
 {
-	struct siw_ts *ts = to_touch_core(dev);
-//	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
 
 	if ((ctrl < 0) || (ctrl > POWER_ON)) {
 		t_dev_err(dev, "power ctrl: wrong ctrl value, %d\n", ctrl);
@@ -787,17 +802,17 @@ static int siw_hal_power(struct device *dev, int ctrl)
 	case POWER_OFF:
 		t_dev_dbg_pm(dev, "power ctrl: power off\n");
 		siw_hal_set_gpio_reset(dev, GPIO_OUT_ZERO);
-	//	siw_touch_power_vio(dev, 0);
-	//	siw_touch_power_vdd(dev, 0);
-	//	siw_touch_msleep(1);
+		siw_hal_power_vio(dev, 0);
+		siw_hal_power_vdd(dev, 0);
+		touch_msleep(1);
 
-	//	atomic_set(&d->watch.state.font_status, FONT_EMPTY);
+		siw_hal_watch_set_font_empty(dev);
 		break;
 
 	case POWER_ON:
 		t_dev_dbg_pm(dev, "power ctrl: power on\n");
-	//	siw_touch_power_vdd(dev, 1);
-	//	siw_touch_power_vio(dev, 1);
+		siw_hal_power_vdd(dev, 1);
+		siw_hal_power_vio(dev, 1);
 		siw_hal_set_gpio_reset(dev, GPIO_OUT_ONE);
 		break;
 
@@ -1219,7 +1234,6 @@ static int siw_hal_reinit(struct device *dev,
 
 	if (pwr_con) {
 		siw_hal_power(dev, POWER_OFF);
-		touch_msleep(1);
 		siw_hal_power(dev, POWER_ON);
 	} else {
 		siw_hal_set_gpio_reset(dev, GPIO_OUT_ZERO);
@@ -3486,6 +3500,7 @@ static int siw_hal_probe(struct device *dev)
 	touch_set_dev_data(ts, chip);
 
 	siw_hal_init_gpios(dev);
+	siw_hal_power_init(dev);
 
 	siw_hal_init_locks(chip);
 	siw_hal_init_works(chip);

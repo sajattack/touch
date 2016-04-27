@@ -2035,6 +2035,15 @@ void siw_hal_watch_set_rtc_clear(struct device *dev)
 		atomic_set(&watch->state.rtc_status, RTC_CLEAR);
 }
 
+void siw_hal_watch_set_font_empty(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct watch_data *watch = (struct watch_data *)chip->watch;
+
+	if (watch)
+		atomic_set(&watch->state.font_status, FONT_EMPTY);
+}
+
 #endif	/* __SIW_SUPPORT_WATCH */
 
 

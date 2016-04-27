@@ -127,5 +127,9 @@ extern void siw_touch_gpio_direction_input(struct device *dev, int pin);
 extern void siw_touch_gpio_direction_output(struct device *dev, int pin, int value);
 extern void siw_touch_gpio_set_pull(struct device *dev, int pin, int value);
 
+extern int siw_touch_power_init(struct device *dev);
+extern void siw_touch_power_vdd(struct device *dev, int value);
+extern void siw_touch_power_vio(struct device *dev, int value);
+
 #endif	/* __SIW_TOUCH_GPIO_H */
 

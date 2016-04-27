@@ -95,7 +95,89 @@ void siw_touch_gpio_set_pull(struct device *dev, int pin, int value)
 }
 
 #if defined(__SIW_SUPPORT_PWRCTRL)
+int siw_touch_power_init(struct device *dev)
+{
+	struct siw_ts *ts = to_touch_core(dev);
+	int vdd_pin = touch_vdd_pin(ts);
+	int vio_pin = touch_vio_pin(ts);
+	void *vdd, *vio;
 
+	t_dev_dbg_gpio(dev, "power init\n");
+
+	if (gpio_is_valid(vdd_pin)) {
+		gpio_request(vdd_pin, "touch-vdd");
+	} else {
+		vdd = regulator_get(dev, "vdd");
+		if (IS_ERR(vdd)) {
+			t_dev_info(dev, "regulator \"vdd\" not exist\n");
+		} else {
+			touch_set_vdd(ts, vdd);
+		}
+	}
+
+	if (gpio_is_valid(vio_pin)) {
+		gpio_request(vio_pin, "touch-vio");
+	} else {
+		vio = regulator_get(dev, "vio");
+		if (IS_ERR(vio)) {
+			t_dev_info(dev, "regulator \"vio\" not exist\n");
+		} else {
+			touch_set_vio(ts, vio);
+		}
+	}
+
+	return 0;
+}
+
+void siw_touch_power_vdd(struct device *dev, int value)
+{
+	struct siw_ts *ts = to_touch_core(dev);
+	int vdd_pin = touch_vdd_pin(ts);
+	void *vdd = touch_get_vdd(ts);
+	char *op;
+	int ret = 0;
+
+	if (gpio_is_valid(vdd_pin)) {
+		op = "gpio out control";
+		ret = gpio_direction_output(vdd_pin, value);
+	} else if (!IS_ERR_OR_NULL(vdd)) {
+		if (value) {
+			op = "enable regulator";
+			ret = regulator_enable((struct regulator *)vdd);
+		} else {
+			op = "disable regulator";
+			ret = regulator_disable((struct regulator *)vdd);
+		}
+	}
+
+	if (ret)
+		t_dev_err(dev, "vdd - %s, %d", op, ret);
+}
+
+void siw_touch_power_vio(struct device *dev, int value)
+{
+	struct siw_ts *ts = to_touch_core(dev);
+	int vio_pin = touch_vio_pin(ts);
+	void *vio = touch_get_vio(ts);
+	char *op;
+	int ret = 0;
+
+	if (gpio_is_valid(vio_pin)) {
+		op = "gpio out control";
+		ret = gpio_direction_output(vio_pin, value);
+	} else if (!IS_ERR_OR_NULL(vio)) {
+		if (value) {
+			op = "enable regulator";
+			ret = regulator_enable((struct regulator *)vio);
+		} else {
+			op = "disable regulator";
+			ret = regulator_disable((struct regulator *)vio);
+		}
+	}
+
+	if (ret)
+		t_dev_err(dev, "vio - %s, %d", op, ret);
+}
 #else	/* __SIW_SUPPORT_PWRCTRL */
 int siw_touch_power_init(struct device *dev)
 {
