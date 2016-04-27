@@ -612,13 +612,21 @@ static int siw_hal_condition_wait(struct device *dev,
 		touch_msleep(delay);
 
 		ret = siw_hal_read_value(dev, addr, &data);
+		if (expect == FLASH_CODE_DNCHK_VALUE) {
+			t_dev_dbg_base(dev,
+				"wait read: addr[%04Xh] data[%08Xh], "
+				"mask[%08Xh], expect[%08Xh], %d\n",
+				addr, data, mask, expect, retry);
+		}
 		if ((ret >= 0) && ((data & mask) == expect)) {
 			if (value)
 				*value = data;
+		#if 0
 			t_dev_info(dev,
 				"wait done: addr[%04Xh] data[%08Xh], "
 				"mask[%08Xh], expect[%08Xh], %d\n",
 				addr, data, mask, expect, retry);
+		#endif
 			return 0;
 		}
 	} while (--retry);
@@ -768,16 +776,16 @@ static int siw_hal_power(struct device *dev, int ctrl)
 //	struct siw_touch_chip *chip = to_touch_chip(dev);
 
 	if ((ctrl < 0) || (ctrl > POWER_ON)) {
-		t_dev_err(dev, "wrong ctrl value, %d\n", ctrl);
+		t_dev_err(dev, "power ctrl: wrong ctrl value, %d\n", ctrl);
 		return -EINVAL;
 	}
 
-	t_dev_dbg_pm(dev, "%s power : %s\n",
+	t_dev_dbg_pm(dev, "power ctrl: %s - %s\n",
 			touch_chip_name(ts), siw_hal_pwr_name[ctrl]);
 
 	switch (ctrl) {
 	case POWER_OFF:
-		t_dev_dbg_pm(dev, "power off\n");
+		t_dev_dbg_pm(dev, "power ctrl: power off\n");
 		siw_hal_set_gpio_reset(dev, GPIO_OUT_ZERO);
 	//	siw_touch_power_vio(dev, 0);
 	//	siw_touch_power_vdd(dev, 0);
@@ -787,19 +795,23 @@ static int siw_hal_power(struct device *dev, int ctrl)
 		break;
 
 	case POWER_ON:
-		t_dev_dbg_pm(dev, "power on\n");
+		t_dev_dbg_pm(dev, "power ctrl: power on\n");
 	//	siw_touch_power_vdd(dev, 1);
 	//	siw_touch_power_vio(dev, 1);
 		siw_hal_set_gpio_reset(dev, GPIO_OUT_ONE);
 		break;
 
 	case POWER_SLEEP:
-		t_dev_dbg_pm(dev, "sleep\n");
+		t_dev_dbg_pm(dev, "power ctrl: sleep\n");
 		break;
 
 	case POWER_WAKE:
-		t_dev_dbg_pm(dev, "wake\n");
+		t_dev_dbg_pm(dev, "power ctrl: wake\n");
 		break;
+
+	case POWER_HW_RESET:
+		t_dev_info(dev, "power ctrl: reset\n");
+		siw_hal_reset_ctrl(dev, HW_RESET_ASYNC);
 	}
 
 	return 0;
@@ -1197,6 +1209,8 @@ static int siw_hal_reinit(struct device *dev,
 					int irq_enable,
 					int (*do_call)(struct device *dev))
 {
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+
 	siw_touch_irq_control(dev, INTERRUPT_DISABLE);
 
 	if (pwr_con) {
@@ -1208,6 +1222,7 @@ static int siw_hal_reinit(struct device *dev,
 		touch_msleep(1);
 		siw_hal_set_gpio_reset(dev, GPIO_OUT_ONE);
 	}
+	atomic_set(&chip->init, IC_INIT_NEED);
 
 	touch_msleep(delay);
 
@@ -1289,6 +1304,7 @@ static int siw_hal_sw_reset(struct device *dev)
 		/* fall through */
 	case CHIP_LG4946:
 		ret = siw_hal_sw_reset_wh_cmd(dev);
+		atomic_set(&chip->init, IC_INIT_NEED);
 		break;
 
 	case CHIP_LG4894:
@@ -1297,6 +1313,7 @@ static int siw_hal_sw_reset(struct device *dev)
 		/* fall through */
 	default:
 		ret = siw_hal_sw_reset_default(dev);
+		atomic_set(&chip->init, IC_INIT_NEED);
 		break;
 	}
 
@@ -2827,30 +2844,33 @@ static int siw_hal_irq_abs_data(struct device *dev)
 		if (data[i].track_id >= MAX_FINGER)
 			continue;
 
-		if (data[i].event == TOUCHSTS_DOWN
-			|| data[i].event == TOUCHSTS_MOVE) {
-			ts->new_mask |= (1 << data[i].track_id);
-			tdata = ts->tdata + data[i].track_id;
+		data_curr = &data[i];
+		if ((data_curr->event == TOUCHSTS_DOWN) ||
+			(data_curr->event == TOUCHSTS_MOVE)) {
+			ts->new_mask |= (1 << data_curr->track_id);
+			tdata = ts->tdata + data_curr->track_id;
 
-			tdata->id = data[i].track_id;
-			tdata->type = data[i].tool_type;
-			tdata->x = data[i].x;
-			tdata->y = data[i].y;
-			tdata->pressure = data[i].pressure;
-			tdata->width_major = data[i].width_major;
-			tdata->width_minor = data[i].width_minor;
+			tdata->id = data_curr->track_id;
+			tdata->type = data_curr->tool_type;
+			tdata->event = data_curr->event;
+			tdata->x = data_curr->x;
+			tdata->y = data_curr->y;
+			tdata->pressure = data_curr->pressure;
+			tdata->width_major = data_curr->width_major;
+			tdata->width_minor = data_curr->width_minor;
 
-			if (data[i].width_major == data[i].width_minor)
+			if (data_curr->width_major == data_curr->width_minor)
 				tdata->orientation = 1;
 			else
-				tdata->orientation = data[i].angle;
+				tdata->orientation = data_curr->angle;
 
 			finger_index++;
 
 			t_dev_dbg_abs(dev,
-					"tdata [id:%d t:%d x:%d y:%d z:%d-%d,%d,%d]\n",
+					"touch data [id %d, t %d, e %d, x %d, y %d, z %d - %d, %d, %d]\n",
 					tdata->id,
 					tdata->type,
+					tdata->event,
 					tdata->x,
 					tdata->y,
 					tdata->pressure,
