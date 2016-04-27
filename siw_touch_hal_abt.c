@@ -2215,9 +2215,6 @@ static int siw_hal_abt_irq_handler(struct device *dev)
 
 	ret = siw_ops_chk_status(ts);
 	if (ret < 0) {
-		if (ret == -ERESTART) {
-			siw_ops_reset(ts, HW_RESET);
-		}
 		goto out;
 	}
 

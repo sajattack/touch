@@ -817,6 +817,9 @@ static int _siw_touch_do_irq_thread(struct siw_ts *ts)
 	if (ret < 0) {
 		t_dev_dbg_irq(ts->dev, "Err in irq_handler of %s, %d",
 				touch_chip_name(ts), ret);
+		if (ret == -ERESTART) {
+			siw_ops_reset(ts, HW_RESET);
+		}
 		return ret;
 	}
 

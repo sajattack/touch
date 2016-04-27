@@ -44,6 +44,7 @@
 #include "siw_touch_irq.h"
 #include "siw_touch_sys.h"
 
+
 extern int siw_hal_sysfs(struct device *dev, int on_off);
 
 #if defined(__SIW_SUPPORT_ABT)	//See siw_touch_cfg.h
@@ -82,6 +83,9 @@ extern void __used siw_hal_watch_set_rtc_run(struct device *dev){ }
 extern void __used siw_hal_watch_set_rtc_clear(struct device *dev){ }
 
 #endif	/* __SIW_SUPPORT_WATCH */
+
+
+static int siw_hal_reset_ctrl(struct device *dev, int ctrl);
 
 static int siw_hal_tc_driving(struct device *dev, int mode);
 
@@ -2992,12 +2996,7 @@ static int siw_hal_irq_handler(struct device *dev)
 	}
 
 	ret = siw_hal_check_status(dev);
-	if (ret) {
-		if (ret == -ERESTART) {
-			t_dev_err(dev, "check status error: reset %s\n",
-				touch_chip_name(ts));
-			siw_hal_reset_ctrl(dev, HW_RESET);
-		}
+	if (ret < 0) {
 		goto out;
 	}
 
