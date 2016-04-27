@@ -2204,9 +2204,11 @@ static int siw_hal_abt_irq_handler(struct device *dev)
 	int report_mode = abt_is_set_func(abt);
 	int ret = 0;
 
+	pm_qos_update_request(&chip->pm_qos_req, 10);
 	ret = siw_hal_reg_read(dev,
 				reg->tc_ic_status,
 			    (void *)all_data, sizeof(all_data));
+	pm_qos_update_request(&chip->pm_qos_req, PM_QOS_DEFAULT_VALUE);
 	if (ret < 0) {
 		goto out;
 	}

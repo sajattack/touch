@@ -3129,9 +3129,11 @@ static int siw_hal_irq_handler(struct device *dev)
 	struct siw_hal_reg *reg = chip->reg;
 	int ret = 0;
 
+	pm_qos_update_request(&chip->pm_qos_req, 10);
 	ret = siw_hal_reg_read(dev,
 				reg->tc_ic_status,
 				(void *)&chip->info, sizeof(chip->info));
+	pm_qos_update_request(&chip->pm_qos_req, PM_QOS_DEFAULT_VALUE);
 	if (ret < 0) {
 		goto out;
 	}
@@ -3593,6 +3595,10 @@ static int siw_hal_probe(struct device *dev)
 	siw_hal_get_tci_info(dev);
 	siw_hal_get_swipe_info(dev);
 
+	pm_qos_add_request(&chip->pm_qos_req,
+				PM_QOS_CPU_DMA_LATENCY,
+				PM_QOS_DEFAULT_VALUE);
+
 	chip->lcd_mode = LCD_MODE_U3;
 	chip->tci_debug_type = 1;
 
@@ -3609,6 +3615,8 @@ static int siw_hal_remove(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
+
+	pm_qos_remove_request(&chip->pm_qos_req);
 
 	siw_hal_free_works(chip);
 	siw_hal_free_locks(chip);

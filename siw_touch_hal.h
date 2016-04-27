@@ -12,6 +12,8 @@
 #ifndef __SIW_TOUCH_HAL_H
 #define __SIW_TOUCH_HAL_H
 
+#include <linux/pm_qos.h>
+
 #include "siw_touch_hal_reg.h"
 
 /* report packet */
@@ -244,6 +246,7 @@ struct siw_touch_chip {
 	u8 swipe_debug_type;
 	atomic_t block_watch_cfg;
 	atomic_t init;
+	struct pm_qos_request pm_qos_req;
 };
 
 #define TCI_MAX_NUM					2
