@@ -56,6 +56,8 @@ enum {
 	POWER_SLEEP,
 	POWER_WAKE,
 	POWER_ON,
+	POWER_SLEEP_STATUS,
+	POWER_HW_RESET,
 };
 
 enum {
@@ -367,6 +369,7 @@ struct touch_data {
 	u16 pressure;
 	/* finger, palm, pen, glove, hover */
 	u16 type;
+	u16 event;
 };
 
 struct point {
@@ -399,12 +402,12 @@ struct reset_area {
 };
 
 struct tci_info {
-	u8 tap_count;
-	u8 min_intertap;
-	u8 max_intertap;
-	u8 touch_slop;
-	u8 tap_distance;
-	u8 intr_delay;
+	u16 tap_count;
+	u16 min_intertap;
+	u16 max_intertap;
+	u16 touch_slop;
+	u16 tap_distance;
+	u16 intr_delay;
 };
 
 struct tci_ctrl {
