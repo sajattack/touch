@@ -64,13 +64,23 @@ void siw_touch_disable_irq_wake(struct device *dev,
 
 void siw_touch_enable_irq(struct device *dev, unsigned int irq)
 {
+	struct irq_desc *desc = irq_to_desc(irq);
+
+	if (desc) {
+		raw_spin_lock(&desc->lock);
+		if (desc->istate & IRQS_PENDING) {
+			t_dev_dbg_base(dev, "remove pending irq(%d)\n", irq);
+		}
+		desc->istate &= ~IRQS_PENDING;
+		raw_spin_unlock(&desc->lock);
+	}
 	enable_irq(irq);
 	t_dev_dbg_irq(dev, "irq(%d) enabled\n", irq);
 }
 
 void siw_touch_disable_irq(struct device *dev, unsigned int irq)
 {
-	disable_irq(irq);
+	disable_irq_nosync(irq);	/* No waiting */
 	t_dev_dbg_irq(dev, "irq(%d) disabled\n", irq);
 }
 

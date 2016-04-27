@@ -16,6 +16,12 @@
 #include <linux/interrupt.h>
 #include <linux/irqreturn.h>
 
+/* for irq_desc */
+#define istate core_internal_state__do_not_mess_with_it
+#ifndef IRQS_PENDING
+#define IRQS_PENDING 0x00000200
+#endif
+
 //struct siw_ts;
 
 extern void siw_touch_enable_irq(struct device *dev, unsigned int irq);
