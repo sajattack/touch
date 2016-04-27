@@ -38,6 +38,9 @@
 #include "siw_touch_dbg.h"
 
 
+#define SIW_DRV_VERSION		"v2.02"
+
+
 enum {
 	SIW_TOUCH_NORMAL_MODE	= 0,
 	SIW_TOUCH_CHARGER_MODE	= 1,
@@ -1326,6 +1329,7 @@ static inline void siwmon_submit_ops(struct device *dev, char *ops, u32 *data, i
 		module_exit(chip_driver_exit);	\
 		MODULE_AUTHOR(_author);	\
 		MODULE_DESCRIPTION(_desc);	\
+		MODULE_VERSION(SIW_DRV_VERSION);	\
 		MODULE_LICENSE("GPL");
 
 #endif /* __SIW_TOUCH_H */

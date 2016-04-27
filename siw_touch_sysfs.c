@@ -144,6 +144,31 @@ static ssize_t _show_plat_data(struct device *dev, char *buf)
 	return size;
 }
 
+static ssize_t _show_do_driver_data(struct device *dev, char *buf)
+{
+//	struct siw_ts *ts = to_touch_core(dev);
+	int size = 0;
+
+	size += siw_snprintf(buf, size, "=== Driver Data ===\n");
+
+	size += siw_snprintf(buf, size,
+						"Version : %s\n", SIW_DRV_VERSION);
+
+	return size;
+}
+
+static ssize_t _show_driver_data(struct device *dev, char *buf)
+{
+	struct siw_ts *ts = to_touch_core(dev);
+	int size = 0;
+
+	mutex_lock(&ts->lock);
+	size = _show_do_driver_data(dev, buf);
+	mutex_unlock(&ts->lock);
+
+	return size;
+}
+
 static ssize_t _store_upgrade(struct device *dev,
 				const char *buf, size_t count)
 {
@@ -778,6 +803,8 @@ static ssize_t _store_dbg_mask(struct device *dev,
 
 static SIW_TOUCH_ATTR(platform_data,
 						_show_plat_data, NULL);
+static SIW_TOUCH_ATTR(driver_data,
+						_show_driver_data, NULL);
 static SIW_TOUCH_ATTR(fw_upgrade,
 						_show_upgrade,
 						_store_upgrade);
@@ -838,6 +865,7 @@ static SIW_TOUCH_ATTR(dbg_mask,
 
 static struct attribute *siw_touch_attribute_list[] = {
 	&_SIW_TOUCH_ATTR_T(platform_data).attr,
+	&_SIW_TOUCH_ATTR_T(driver_data).attr,
 	&_SIW_TOUCH_ATTR_T(fw_upgrade).attr,
 	&_SIW_TOUCH_ATTR_T(lpwg_data).attr,
 	&_SIW_TOUCH_ATTR_T(lpwg_notify).attr,
