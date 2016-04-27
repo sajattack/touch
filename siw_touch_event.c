@@ -58,7 +58,7 @@ static void siw_touch_report_palm_event(struct siw_ts *ts)
 			siw_input_report_abs(ts->input,
 							ABS_MT_PRESSURE,
 							255);
-			t_dev_info(&ts->input->dev, "finger canceled:<%d>(%4d,%4d,%4d)\n",
+			t_dev_info(&ts->input->dev, "finger canceled <%d> (%4d, %4d, %4d)\n",
 						i,
 						ts->tdata[i].x,
 						ts->tdata[i].y,
@@ -120,7 +120,7 @@ void siw_touch_report_event(struct siw_ts *ts)
 						ts->tdata[i].orientation);
 
 			if (press_mask & (1 << i)) {
-				t_dev_dbg_abs(idev, "%d finger press:<%d>(%4d,%4d,%4d)\n",
+				t_dev_dbg_abs(idev, "%d finger press <%d> (%4d, %4d, %4d)\n",
 						ts->tcount,
 						i,
 						ts->tdata[i].x,
@@ -130,7 +130,7 @@ void siw_touch_report_event(struct siw_ts *ts)
 		} else if (release_mask & (1 << i)) {
 			input_mt_slot(ts->input, i);
 			siw_input_report_abs(ts->input, ABS_MT_TRACKING_ID, -1);
-			t_dev_dbg_abs(idev, "finger release:<%d>(%4d,%4d,%4d)\n",
+			t_dev_dbg_abs(idev, "finger release <%d> (%4d, %4d, %4d)\n",
 					i,
 					ts->tdata[i].x,
 					ts->tdata[i].y,
@@ -145,6 +145,7 @@ void siw_touch_report_event(struct siw_ts *ts)
 
 void siw_touch_report_all_event(struct siw_ts *ts)
 {
+	ts->is_palm = 1;
 	if (ts->old_mask) {
 		ts->new_mask = 0;
 		siw_touch_report_event(ts);
