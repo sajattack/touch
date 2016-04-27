@@ -92,9 +92,9 @@
 		// firmware
 		use_firmware = <0>;
 		use_fw_upgrade = <0>;
-	//	fw_image = "siw/lg4894/ph1/L0W57PH1_0_02.img";
-	//	panel_spec = "siw/lg4894/ph1/ph1_limit.txt";
-	//	panel_spec_mfts = "siw/lg4894/ph1/ph1_limit_mfts.txt";
+		fw_image = "siw/sw1828/sw1828_test.img";	// in android -> /lib/firmware/siw/...
+	//	panel_spec = "siw/sw1828/ph1_limit.txt";
+	//	panel_spec_mfts = "siw/sw1828/ph1_limit_mfts.txt";
 	};
 //
 
@@ -127,12 +127,63 @@
 		use_lpwg_test = <1>;
 
 		// firmware
-		use_firmware = <0>;
-		use_fw_upgrade = <0>;
-		fw_image = "siw/lg4894/ph1/L0W57PH1_0_02.img";
-		panel_spec = "siw/lg4894/ph1/ph1_limit.txt";
-		panel_spec_mfts = "siw/lg4894/ph1/ph1_limit_mfts.txt";
+		use_firmware = <1>;
+		use_fw_upgrade = <1>;
+		fw_image = "siw/lg4894/lg4894_test.img";	// in android -> /lib/firmware/siw/...
+		panel_spec = "siw/lg4894/ph1_limit.txt";
+		panel_spec_mfts = "siw/lg4894/ph1_limit_mfts.txt";
 	};
 */
 };
+
+&spi_1 {
+	status = "okay";
+	samsung,spi-src-clk = <0>;
+	num-cs = <1>;
+
+	lg4895@0 {
+		status = "okay";
+	//	#address-cells = <1>;
+	//	#size-cells = <0>;
+		compatible = "siw,lg4895";
+		reg = <0>;
+		spi-max-frequency = <20000000>;
+
+		interrupt-parent = <&gpx1>;	// interrupt source : GPIO group 'gpx1'
+		interrupts = <6 0x02>;		// index 6(0~7) in gpx1 external interrupts
+		irqflags = <0x2002>;		// IRQF_ONESHOT(0x2000) | IRQF_TRIGGER_FALLING(0x2)
+
+		chip_flags = <0x100>;		// TOUCH_USE_MON_THREAD
+
+		reset-gpio = <&gpx1 7 GPIO_ACTIVE_LOW>;	// index 7 in gpx1
+		irq-gpio = <&gpx1 6 GPIO_ACTIVE_LOW>;	// index 6 in gpx1
+
+		// Caps
+		max_x = <720>;
+		max_y = <1280>;
+		max_pressure = <0xff>;
+		max_width = <15>;
+		max_orientation = <1>;
+		max_id = <10>;
+
+		// role
+		hw_reset_delay = <210>;
+		sw_reset_delay = <90>;
+		use_lpwg = <1>;
+		use_lpwg_test = <1>;
+
+		// firmware
+		use_firmware = <0>;
+		use_fw_upgrade = <0>;
+	//	fw_image = "siw/lg4895/lg4895_test.img";	// in android -> /lib/firmware/siw/...
+	//	panel_spec = "siw/lg4895/ph1_limit.txt";
+	//	panel_spec_mfts = "siw/lg4895/ph1_limit_mfts.txt";
+
+		controller-data {
+			samsung,spi-feedback-delay = <0>;
+		};
+	};
+};
+
+
 
