@@ -1403,6 +1403,11 @@ static int siw_hal_fw_compare(struct device *dev, const struct firmware *fw)
 		update = !!(bin_minor > dev_minor);
 	}
 
+	if(!dev_major && !dev_minor){
+		t_dev_err(dev, "fw can not be 0.0!! Check your panel connection!!\n");
+		update = 0;
+	}
+
 	t_dev_info(dev,
 		"FW compare: bin-ver: %d.%02d (%s), dev-ver: %d.%02d - update %d, force_fwup %d\n",
 		bin_major, bin_minor, pid, dev_major, dev_minor,
@@ -1547,7 +1552,7 @@ static int siw_hal_fw_upgrade(struct device *dev,
 
 	/* download check */
 	ret = siw_hal_condition_wait(dev, reg->tc_flash_dn_status, &data,
-				FLASH_CODE_DNCHK_VALUE, 0xFFFFFFFF, 10, 200);
+				FLASH_CODE_DNCHK_VALUE, 0xFFFFFFFF, 30, 600);
 	if (ret < 0) {
 		t_dev_err(dev, "FW upgrade: failed - code check\n");
 		return ret;
@@ -2817,6 +2822,7 @@ static int siw_hal_irq_abs_data(struct device *dev)
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
 	struct siw_hal_touch_data *data = chip->info.data;
+	struct siw_hal_touch_data *data_curr;
 	struct touch_data *tdata;
 	u32 touch_count = 0;
 	u8 finger_index = 0;
