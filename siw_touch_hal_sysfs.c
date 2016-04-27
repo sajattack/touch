@@ -386,11 +386,14 @@ static ssize_t _show_reset_ctrl(struct device *dev, char *buf)
 
 	size += siw_snprintf(buf, size, "%s\n", "Reset Control Usage");
 	size += siw_snprintf(buf, size,
-				" SW Reset : echo %d > hal_reset_ctrl\n",
+				" SW Reset        : echo %d > hal_reset_ctrl\n",
 				SW_RESET);
 	size += siw_snprintf(buf, size,
-				" HW Reset : echo %d > hal_reset_ctrl\n",
-				HW_RESET);
+				" HW Reset(Async) : echo %d > hal_reset_ctrl\n",
+				HW_RESET_ASYNC);
+	size += siw_snprintf(buf, size,
+				" HW Reset(Sync)  : echo %d > hal_reset_ctrl\n",
+				HW_RESET_SYNC);
 
 	return size;
 }

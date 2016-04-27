@@ -824,9 +824,13 @@ static void siw_hal_ic_info_abnormal(struct device *dev)
 
 	t_dev_info(dev, "[%s] FW is in abnormal state\n",
 			touch_chip_name(ts));
+#if 1
+	siw_hal_reset_ctrl(dev, HW_RESET_ASYNC);
+#else
 	siw_hal_power(dev, POWER_OFF);
 	siw_hal_power(dev, POWER_ON);
 	touch_msleep(ts->caps.hw_reset_delay);
+#endif
 }
 
 static int siw_hal_ic_info_ver_check(struct device *dev)
@@ -1320,16 +1324,20 @@ static int siw_hal_sw_reset(struct device *dev)
 	return ret;
 }
 
-static int siw_hal_hw_reset(struct device *dev)
+static int siw_hal_hw_reset(struct device *dev, int ctrl)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
 
 	t_dev_info(dev, "HW Reset\n");
 
-	siw_hal_reinit(dev, 0, 0, 0, NULL);
+	if (ctrl == HW_RESET_ASYNC) {
+		siw_hal_reinit(dev, 0, 0, 0, NULL);
+		siw_touch_qd_init_work_hw(ts);
+		return 0;
+	}
 
-	siw_touch_qd_init_work_hw(ts);
+	siw_hal_reinit(dev, 0, ts->caps.hw_reset_delay, 1, siw_hal_init);
 
 	return 0;
 }
@@ -1348,8 +1356,9 @@ static int siw_hal_reset_ctrl(struct device *dev, int ctrl)
 		siw_hal_sw_reset(dev);
 		break;
 
-	case HW_RESET:
-		siw_hal_hw_reset(dev);
+	case HW_RESET_ASYNC:
+	case HW_RESET_SYNC:
+		siw_hal_hw_reset(dev, ctrl);
 		break;
 	}
 
@@ -3434,7 +3443,7 @@ out:
 	if (ret < 0) {
 		t_dev_err(dev, "mon self-reset : recovery begins(hw reset)\n");
 
-		siw_hal_reset_ctrl(dev, HW_RESET);
+		siw_hal_reset_ctrl(dev, HW_RESET_SYNC);
 	} else {
 		t_dev_dbg_trace(dev, "mon self-reset : chip id check ok\n");
 	}

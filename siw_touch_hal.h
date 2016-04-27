@@ -73,7 +73,8 @@ enum {
 
 enum {
 	SW_RESET = 0,
-	HW_RESET,
+	HW_RESET_ASYNC,
+	HW_RESET_SYNC,
 };
 
 enum {

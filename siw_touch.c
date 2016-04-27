@@ -526,7 +526,7 @@ static void siw_touch_upgrade_work_func(struct work_struct *work)
 	}
 
 #if 1
-	siw_ops_reset(ts, HW_RESET);
+	siw_ops_reset(ts, HW_RESET_ASYNC);
 #else
 	siw_ops_power(ts, POWER_OFF);
 	touch_msleep(1);
@@ -835,7 +835,7 @@ static int _siw_touch_do_irq_thread(struct siw_ts *ts)
 				touch_chip_name(ts), ret);
 		if (ret == -ERESTART) {
 			siw_touch_qd_sys_reset_work_now(ts);
-			siw_ops_reset(ts, HW_RESET);
+			siw_ops_reset(ts, HW_RESET_ASYNC);
 		}
 		return ret;
 	}
