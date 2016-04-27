@@ -516,7 +516,9 @@ static void siw_touch_upgrade_work_func(struct work_struct *work)
 	ts->test_fwpath[0] = '\0';
 
 	if (ret < 0) {
-		if (ret != -EPERM) {
+		if (ret == -EPERM) {
+			t_dev_info(dev, "FW upgrade skipped\n");
+		} else {
 			t_dev_info(dev, "FW upgrade halted, %d\n", ret);
 		}
 		atomic_set(&ts->state.core, CORE_NORMAL);
