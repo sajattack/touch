@@ -2890,7 +2890,6 @@ static int siw_hal_check_status(struct device *dev)
 	u32 ic_status = chip->info.ic_status;
 	u32 status_mask = 0;
 	int ret = 0;
-	int ret_sub = 0;
 
 	status_mask = status ^ INT_NORMAL_MASK;
 
@@ -2915,20 +2914,21 @@ static int siw_hal_check_status(struct device *dev)
 			status, ic_status, status_mask & INT_LOGGING_CLR_BIT);
 		ret = -ERANGE;
 	}
+	if (ret < 0) {
+		goto out;
+	}
 
 	switch(touch_chip_type(ts)) {
 	case CHIP_LG4895:
 	case CHIP_LG4946:
-		ret_sub = siw_hal_check_status_type_1(dev);
+		ret = siw_hal_check_status_type_1(dev);
 		break;
 	default:
-		ret_sub = siw_hal_check_status_default(dev);
+		ret = siw_hal_check_status_default(dev);
 		break;
 	}
-	if (ret_sub < 0) {
-		ret = ret_sub;
-	}
 
+out:
 	return ret;
 }
 
