@@ -1945,12 +1945,16 @@ static int siw_hal_clock(struct device *dev, bool onoff)
 	struct siw_ts *ts = chip->ts;
 	int ret = 0;
 
+	siw_touch_sys_osc(dev, onoff);
+
 	switch(touch_chip_type(ts)) {
 //	case CHIP_LG4895:
 	case CHIP_LG4946:
 		ret = siw_hal_clock_type_1(dev, onoff);
 		break;
 	default:
+		atomic_set(&ts->state.sleep,
+			(onoff)? IC_NORMAL : IC_DEEP_SLEEP);
 		break;
 	}
 
@@ -2152,6 +2156,11 @@ static int siw_hal_tc_driving(struct device *dev, int mode)
 	u32 rdata;
 	int re_init = 0;
 	int ret = 0;
+
+	if (atomic_read(&ts->state.sleep) == IC_DEEP_SLEEP) {
+		t_dev_warn(dev, "can not control tc driving - deep sleep state\n");
+		return 0;
+	}
 
 	chip->driving_mode = mode;
 
@@ -2403,7 +2412,11 @@ static int siw_hal_lpwg_mode(struct device *dev)
 			/* deep sleep */
 			t_dev_dbg_lpwg(dev, "suspend sensor == PROX_NEAR\n");
 
-			siw_hal_deep_sleep(dev);
+			if (ts->lpwg.screen) {
+				siw_hal_clock(dev, 1);
+			} else {
+				siw_hal_deep_sleep(dev);
+			}
 		} else if (ts->lpwg.screen) {
 			t_dev_dbg_lpwg(dev, "Skip lpwg_mode\n");
 
@@ -2438,6 +2451,7 @@ static int siw_hal_lpwg_mode(struct device *dev)
 		/* wake up */
 		t_dev_dbg_lpwg(dev, "resume ts->lpwg.mode == LPWG_NONE\n");
 
+	//	siw_hal_deep_sleep(dev);
 		siw_hal_tc_driving(dev, LCD_MODE_STOP);
 	} else {
 		/* partial */

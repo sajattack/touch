@@ -21,4 +21,7 @@ extern int siw_touch_sys_gpio_setpull(int pin, int value);
 
 extern int siw_touch_sys_panel_reset(struct device *dev);
 
+extern int siw_touch_sys_osc(struct device *dev, int onoff);
+
 #endif	/* __SIW_TOUCH_SYS_H */
+
