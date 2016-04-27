@@ -23,6 +23,8 @@
 
 #define __SIW_SUPPORT_XFER
 
+//#define __SIW_SUPPORT_DEBUG_OPTION
+
 #if defined(CONFIG_OF)
 #define __SIW_CONFIG_OF
 #endif

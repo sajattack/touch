@@ -560,12 +560,42 @@ static ssize_t _store_debug_tool_state(struct device *dev,
 
 static ssize_t _show_debug_option_state(struct device *dev, char *buf)
 {
+#if defined(__SIW_SUPPORT_DEBUG_OPTION)
+	struct siw_ts *ts = to_touch_core(dev);
+	int value = 0;
+	int size = 0;
+
+	value = atomic_read(&ts->state.debug_option_mask);
+
+	size += siw_snprintf(buf, size, "Debug option : %d\n", value);
+
+	return (ssize_t)size;
+#else
 	return 0;
+#endif
 }
 
 static ssize_t _store_debug_option_state(struct device *dev,
 				const char *buf, size_t count)
 {
+#if defined(__SIW_SUPPORT_DEBUG_OPTION)
+	struct siw_ts *ts = to_touch_core(dev);
+	int new_mask = 0;
+
+	if (sscanf(buf, "%d", &new_mask) <= 0) {
+		siw_sysfs_err_invalid_param(dev);
+		return count;
+	}
+
+	if (new_mask >= DEBUG_OPTION_DISABLE
+		&& new_mask <= DEBUG_OPTION_1_2_3) {
+		atomic_set(&ts->state.debug_option_mask, new_mask);
+		t_dev_info(dev, "Debug option : Input masking value = %d",
+				new_mask);
+	} else {
+		t_dev_info(dev, "Debug option : Invalid value, %d\n", new_mask);
+	}
+#endif
 	return count;
 }
 

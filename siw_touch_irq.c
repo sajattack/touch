@@ -84,10 +84,49 @@ void siw_touch_disable_irq(struct device *dev, unsigned int irq)
 	t_dev_dbg_irq(dev, "irq(%d) disabled\n", irq);
 }
 
+#if 0
+extern void check_irq_resend(struct irq_desc *desc, unsigned int irq);
+
+static void siw_touch_resend_irq(struct device *dev, unsigned int irq)
+{
+	struct irq_desc *desc = irq_to_desc(irq);
+
+	if (desc) {
+		if (desc->istate & IRQS_PENDING) {
+			t_dev_dbg_irq(dev, "irq(%d) pending\n", irq);
+		}
+		check_irq_resend(desc, irq);
+	}
+}
+
+static void siw_touch_set_irq_pending(struct device *dev, unsigned int irq)
+{
+	t_dev_dbg_irq(dev, "irq = %d\n", irq);
+#if 0
+	irq_set_pending(irq);
+#else
+	{
+		struct irq_desc *desc = irq_to_desc(irq);
+		raw_spin_lock(&desc->lock);
+		desc->istate |= IRQS_PENDING;
+		raw_spin_unlock(&desc->lock);
+	}
+#endif
+}
+
+void siw_touch_resume_irq(struct device *dev)
+{
+	struct siw_ts *ts = to_touch_core(dev);
+
+	siw_touch_set_irq_pending(dev, ts->irq);
+	siw_touch_resend_irq(dev, ts->irq);
+}
+#else
 void siw_touch_resume_irq(struct device *dev)
 {
 	t_dev_dbg_irq(dev, "nop...\n");
 }
+#endif
 
 void siw_touch_irq_control(struct device *dev, int on_off)
 {
