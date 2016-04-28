@@ -92,7 +92,7 @@ enum CHIP_CAPABILITY {
 };
 #endif
 
-static const struct tci_info touch_lg4895_tci_info[2] = {
+static const struct tci_info chip_tci_info[2] = {
 	[TCI_1] = {
 		.tap_count		= 2,
 		.min_intertap	= 0,
@@ -111,14 +111,14 @@ static const struct tci_info touch_lg4895_tci_info[2] = {
 	},
 };
 
-static const struct reset_area touch_lg4895_tci_reset_area = {
+static const struct reset_area chip_tci_reset_area = {
 	.x1	= ((35<<16) | 35),
 	.y1 = ((684<<16) | 684),
 	.x2 = ((35<<16) | 35),
 	.y2 = ((1324<<16) | 1324),
 };
 
-static const struct siw_hal_swipe_ctrl touch_lg4895_swipe_info = {
+static const struct siw_hal_swipe_ctrl chip_swipe_info = {
 	.mode	= SWIPE_LEFT_BIT | SWIPE_RIGHT_BIT,
 	.info = {
 		[SWIPE_R] = {
@@ -148,7 +148,7 @@ static const struct siw_hal_swipe_ctrl touch_lg4895_swipe_info = {
 	},
 };
 
-static const struct reset_area touch_lg4895_watch_win_range = {
+static const struct reset_area chip_watch_win_range = {
 	.x1	= 520,
 	.y1 = 0,
 	.x2 = 720,
@@ -246,14 +246,16 @@ static const struct siw_touch_pdata chip_pdata = {
 	.ops				= NULL,
 	/* */
 	//See 'siw_hal_get_tci_info' [siw_touch_hal.c]
-	.tci_info			= touch_lg4895_tci_info,
-	.tci_reset_area		= touch_lg4895_tci_reset_area,
+	.tci_info			= chip_tci_info,
+	.tci_reset_area		= chip_tci_reset_area,
 	.tci_qcover_open	= NULL,
 	.tci_qcover_close	= NULL,
 	//See 'siw_hal_get_swipe_info' [siw_touch_hal.c]
-	.swipe_ctrl			= touch_lg4895_swipe_info,
+	.swipe_ctrl			= chip_swipe_info,
 	//See 'store_ext_watch_config_font_position' [siw_touch_hal_watch.c]
-	.watch_win			= touch_lg4895_watch_win_range,
+	.watch_win			= chip_watch_win_range,
+	//See 'siw_setup_operations'
+	.reg_quirks			= NULL,
 };
 
 static struct siw_touch_chip_data chip_data = {

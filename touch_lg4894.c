@@ -90,6 +90,7 @@ enum CHIP_CAPABILITY {
 };
 #endif
 
+
 /*
  * of_device_is_compatible(dev->of_node, CHIP_COMPATIBLE_NAME)
  */
@@ -188,6 +189,8 @@ static const struct siw_touch_pdata chip_pdata = {
 	.swipe_ctrl			= NULL,
 	//See 'store_ext_watch_config_font_position' [siw_touch_hal_watch.c]
 	.watch_win			= NULL,
+	//See 'siw_setup_operations' [siw_touch.c]
+	.reg_quirks			= NULL,
 };
 
 static struct siw_touch_chip_data chip_data = {

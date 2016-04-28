@@ -533,6 +533,8 @@ struct siw_touch_pdata {
 	void *tci_qcover_close;
 	void *swipe_ctrl;
 	void *watch_win;
+
+	void *reg_quirks;
 };
 
 struct siw_touch_chip_data {
@@ -1092,21 +1094,6 @@ static inline void touch_set_vio(struct siw_ts *ts, void *vio)
 }
 
 
-/*
- * SiW Operations
- */
-static inline void *siw_setup_operations(struct siw_ts *ts, struct siw_touch_operations *ops_ext)
-{
-	if (!ops_ext)
-		return NULL;
-
-	ts->ops_ext = ops_ext;
-	memcpy(&ts->ops_in, ops_ext, sizeof(struct siw_touch_operations));
-	ts->ops = &ts->ops_in;
-
-	return ts->ops;
-}
-
 static inline void *siw_ops_reg(struct siw_ts *ts)
 {
 	return ts->ops->reg;
@@ -1214,6 +1201,8 @@ static inline int __siw_touch_op_dbg(struct siw_op_dbg *op,
 							(const char *)_fmt, ##_args);	\
 		_n_size;	\
 	})
+
+extern void *siw_setup_operations(struct siw_ts *ts, struct siw_touch_operations *ops_ext);
 
 extern int siw_touch_set(struct device *dev, u32 cmd, void *buf);
 extern int siw_touch_get(struct device *dev, u32 cmd, void *buf);

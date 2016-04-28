@@ -93,6 +93,12 @@ enum CHIP_CAPABILITY {
 };
 #endif
 
+static const struct siw_hal_reg_quirk chip_reg_quirks[] = {
+	{ .old_addr = TC_CONFDN_BASE_ADDR, .new_addr = 0x284 },
+	{ .old_addr = ~0, .new_addr = ~0 },		// End signal
+};
+
+
 /*
  * of_device_is_compatible(dev->of_node, CHIP_COMPATIBLE_NAME)
  */
@@ -191,6 +197,8 @@ static const struct siw_touch_pdata chip_pdata = {
 	.swipe_ctrl			= NULL,
 	//See 'store_ext_watch_config_font_position' [siw_touch_hal_watch.c]
 	.watch_win			= NULL,
+	//See 'siw_setup_operations'
+	.reg_quirks			= chip_reg_quirks,
 };
 
 static struct siw_touch_chip_data chip_data = {

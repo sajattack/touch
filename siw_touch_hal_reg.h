@@ -273,6 +273,12 @@ struct siw_hal_reg {
 #define cmd_abt_ocd_on_write			cmd_raw_data_report_mode_write
 #define cmd_abt_ocd_on_read				cmd_raw_data_report_mode_read
 
+/* Reg. exchange */
+struct siw_hal_reg_quirk {
+	u32 old_addr;
+	u32 new_addr;
+};
+
 #endif	/* __SIW_TOUCH_HAL_REG_H */
 
 

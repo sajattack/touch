@@ -76,6 +76,51 @@ module_param_named(pr_dbg_mask, t_pr_dbg_mask, uint, S_IRUGO|S_IWUSR|S_IWGRP);
 module_param_named(dev_dbg_mask, t_dev_dbg_mask, uint, S_IRUGO|S_IWUSR|S_IWGRP);
 
 
+/*
+ * SiW Operations
+ */
+void *siw_setup_operations(struct siw_ts *ts, struct siw_touch_operations *ops_ext)
+{
+	if (!ops_ext)
+		return NULL;
+
+	ts->ops_ext = ops_ext;
+	memcpy(&ts->ops_in, ops_ext, sizeof(struct siw_touch_operations));
+	ts->ops = &ts->ops_in;
+
+	if (ts->pdata->reg_quirks) {
+	//	struct siw_hal_reg *reg = siw_ops_reg(ts);
+		u32 *curr_reg;
+		struct siw_hal_reg_quirk *reg_quirks = ts->pdata->reg_quirks;
+		int cnt = sizeof(struct siw_hal_reg)>>2;
+		int i;
+
+		while (1) {
+			if (!reg_quirks->old_addr ||
+				!reg_quirks->new_addr ||
+				(reg_quirks->old_addr == ~0) ||
+				(reg_quirks->new_addr == ~0))
+				break;
+
+			curr_reg = siw_ops_reg(ts);
+			for (i=0 ; i<cnt ; i++) {
+				if ((*curr_reg) == reg_quirks->old_addr) {
+					(*curr_reg) = reg_quirks->new_addr;
+					t_dev_info(ts->dev, "%s reg quirks: %Xh -> %Xh\n",
+						touch_chip_name(ts),
+						reg_quirks->old_addr, reg_quirks->new_addr);
+					break;
+				}
+				curr_reg++;
+			}
+			reg_quirks++;
+		}
+	}
+
+	return ts->ops;
+}
+
+
 /**
  * siw_touch_set() - set touch data
  * @dev: device to use

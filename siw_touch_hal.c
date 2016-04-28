@@ -1667,21 +1667,9 @@ static int siw_hal_fw_upgrade(struct device *dev,
 	fw_data = (u8 *)fw->data;
 
 	if (include_conf) {
-		u32 confdn_base_addr;
 		u32 conf_dn_addr;
 
-		/* conf base address read */
-		switch (touch_chip_type(ts)) {
-	#if 0
-		case CHIP_SW1828:
-			confdn_base_addr = ...
-			break;
-	#endif
-		default:
-			confdn_base_addr = reg->tc_confdn_base_addr;
-			break;
-		}
-		ret = siw_hal_fw_up_rd_value(dev, confdn_base_addr, &data);
+		ret = siw_hal_fw_up_rd_value(dev, reg->tc_confdn_base_addr, &data);
 		if (ret < 0) {
 			goto out;
 		}
