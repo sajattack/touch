@@ -136,7 +136,7 @@ void siw_touch_irq_control(struct device *dev, int on_off)
 
 	if (on_off == INTERRUPT_ENABLE) {
 		if (atomic_cmpxchg(&ts->state.irq_enable, 0, 1)) {
-			t_dev_warn(dev, "(warn) alread irq enabled\n");
+			t_dev_warn(dev, "(warn) already irq enabled\n");
 			return;
 		}
 
@@ -149,7 +149,7 @@ void siw_touch_irq_control(struct device *dev, int on_off)
 	}
 
 	if (!atomic_cmpxchg(&ts->state.irq_enable, 1, 0)) {
-		t_dev_warn(dev, "(warn) alread irq disabled\n");
+		t_dev_warn(dev, "(warn) already irq disabled\n");
 		return;
 	}
 
