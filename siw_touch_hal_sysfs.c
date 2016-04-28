@@ -410,9 +410,9 @@ static ssize_t _store_reset_ctrl(struct device *dev,
 		return count;
 	}
 
-	mutex_lock(&ts->lock);
+//	mutex_lock(&ts->lock);
 	siw_ops_reset(ts, value);
-	mutex_lock(&ts->lock);
+//	mutex_lock(&ts->lock);
 
 //	siw_hal_init(dev);
 
