@@ -477,7 +477,6 @@ struct siw_touch_operations {
 };
 
 struct siw_touch_bus_info {
-	void *bus_drv;
 	u32 bus_type;
 	u32 buf_size;
 	/* */
@@ -535,6 +534,11 @@ struct siw_touch_pdata {
 	void *watch_win;
 };
 
+struct siw_touch_chip_data {
+	const struct siw_touch_pdata *pdata;
+	void *bus_drv;
+};
+
 #define CHIP_QUIRK_NOT_SUPPORT_XFER				_CHIP_QUIRK_NOT_SUPPORT_XFER
 
 #define CHIP_QUIRK_NOT_SUPPORT_ASC				_CHIP_QUIRK_NOT_SUPPORT_ASC
@@ -577,16 +581,6 @@ static inline u32 pdata_chip_type(struct siw_touch_pdata *pdata)
 static inline u32 pdata_mode_allowed(struct siw_touch_pdata *pdata, u32 mode_bit)
 {
 	return (pdata->mode_allowed & mode_bit);
-}
-
-static inline void pdata_set_bus_drv(struct siw_touch_pdata *pdata, void *bus_drv)
-{
-	pdata->bus_info.bus_drv = bus_drv;
-}
-
-static inline void *pdata_get_bus_drv(struct siw_touch_pdata *pdata)
-{
-	return pdata->bus_info.bus_drv;
 }
 
 static inline u32 pdata_bus_type(struct siw_touch_pdata *pdata)
@@ -1314,16 +1308,16 @@ static inline void siwmon_submit_ops(struct device *dev, char *ops, u32 *data, i
 #define __siw_setup_str(_name, _fn, _var)
 #endif	/* MODULE */
 
-#define siw_chip_module_init(_name, _pdata, _desc, _author)	\
+#define siw_chip_module_init(_name, _data, _desc, _author)	\
 		static int __init chip_driver_init(void)\
 		{	\
 			t_pr_info("%s driver init\n", _name);	\
-			return siw_touch_bus_add_driver(&_pdata);	\
+			return siw_touch_bus_add_driver(&_data);	\
 		}	\
 		static void __exit chip_driver_exit(void)	\
 		{	\
 			t_pr_info("%s driver exit\n", _name);	\
-			(void)siw_touch_bus_del_driver(&_pdata);\
+			(void)siw_touch_bus_del_driver(&_data);\
 		}	\
 		module_init(chip_driver_init);	\
 		module_exit(chip_driver_exit);	\

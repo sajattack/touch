@@ -157,6 +157,9 @@ static inline void siw_hal_bus_xfer_add_tx_seq(struct touch_xfer_msg *xfer,
 extern int siw_touch_bus_pin_get(struct siw_ts *ts);
 extern int siw_touch_bus_pin_put(struct siw_ts *ts);
 
+extern void *siw_touch_bus_create_bus_drv(int bus_type);
+extern void *siw_touch_bus_create_bus_pdata(int bus_type);
+
 extern int siw_touch_bus_alloc_buffer(struct siw_ts *ts);
 extern int siw_touch_bus_free_buffer(struct siw_ts *ts);
 
@@ -168,8 +171,8 @@ extern void siw_touch_bus_err_dump_data(struct device *dev,
 							u8 *buf, int len,
 							int idx, char *name);
 
-extern int siw_touch_bus_add_driver(struct siw_touch_pdata *pdata);
-extern int siw_touch_bus_del_driver(struct siw_touch_pdata *pdata);
+extern int siw_touch_bus_add_driver(struct siw_touch_chip_data *chip_data);
+extern int siw_touch_bus_del_driver(struct siw_touch_chip_data *chip_data);
 
 #endif	/* __SIW_TOUCH_BUS_H */
 

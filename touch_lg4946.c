@@ -187,7 +187,7 @@ module_param_string(dname, chip_drv_name, sizeof(chip_drv_name), 0);
 static char chip_idrv_name[32] = SIW_TOUCH_INPUT;
 module_param_string(iname, chip_idrv_name, sizeof(chip_idrv_name), 0);
 
-static struct siw_touch_pdata chip_pdata = {
+static const struct siw_touch_pdata chip_pdata = {
 	/* Configuration */
 	.chip_id			= CHIP_ID,
 	.chip_name			= chip_name,
@@ -254,8 +254,13 @@ static struct siw_touch_pdata chip_pdata = {
 	.watch_win			= touch_lg4946_watch_win_range,
 };
 
+static struct siw_touch_chip_data chip_data = {
+	.pdata = &chip_pdata,
+	.bus_drv = NULL,
+};
+
 siw_chip_module_init(CHIP_DEVICE_NAME,
-				chip_pdata,
+				chip_data,
 				CHIP_DEVICE_DESC,
 				"kimhh@siliconworks.co.kr");
 

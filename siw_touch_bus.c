@@ -142,6 +142,28 @@ int siw_touch_bus_pin_put(struct siw_ts *ts)
 }
 #endif	/* __SIW_SUPPORT_PINCTRL */
 
+void *siw_touch_bus_create_bus_drv(int bus_type)
+{
+	struct siw_touch_bus_drv *bus_drv;
+
+	bus_drv = kzalloc(sizeof(*bus_drv), GFP_KERNEL);
+	if (!bus_drv) {
+		t_pr_err("faied to allocate bus_drv(%d)\n", bus_type);
+	}
+	return bus_drv;
+}
+
+void *siw_touch_bus_create_bus_pdata(int bus_type)
+{
+	struct siw_touch_pdata *pdata;
+
+	pdata = kzalloc(sizeof(*pdata), GFP_KERNEL);
+	if (!pdata) {
+		t_pr_err("faied to allocate pdata(%d)\n", bus_type);
+	}
+	return pdata;
+}
+
 static void *__buffer_alloc(struct device *dev, size_t size,
 				dma_addr_t *dma_handle, gfp_t gfp)
 {
@@ -356,15 +378,23 @@ static const struct siw_op_dbg siw_bus_init_ops[2][2] = {
 
 #define SIW_BUS_MAX		sizeof(siw_bus_init_ops) / sizeof(siw_bus_init_ops[0])
 
-static int __siw_touch_bus_add_chk(struct siw_touch_pdata *pdata)
+static int __siw_touch_bus_add_chk(struct siw_touch_chip_data *chip_data)
 {
-	if (pdata == NULL) {
-		t_pr_err("NULL touch driver\n");
+	int bus_type;
+
+	if (chip_data == NULL) {
+		t_pr_err("NULL touch chip data\n");
 		return -ENODEV;
 	}
 
-	if (pdata_bus_type(pdata) >= SIW_BUS_MAX) {
-		t_pr_err("Unknown touch interface : %d\n", pdata_bus_type(pdata));
+	if (chip_data->pdata == NULL) {
+		t_pr_err("NULL touch pdata\n");
+		return -ENODEV;
+	}
+
+	bus_type = pdata_bus_type((struct siw_touch_pdata *)chip_data->pdata);
+	if (bus_type >= SIW_BUS_MAX) {
+		t_pr_err("Unknown touch interface : %d\n", bus_type);
 		return -EINVAL;
 	}
 
@@ -372,18 +402,18 @@ static int __siw_touch_bus_add_chk(struct siw_touch_pdata *pdata)
 }
 
 static int __siw_touch_bus_add_op(
-					struct siw_touch_pdata *pdata,
+					struct siw_touch_chip_data *chip_data,
 					void *op_func)
 {
 	struct siw_op_dbg *op = op_func;
 	int ret = 0;
 
-	ret = __siw_touch_bus_add_chk(pdata);
+	ret = __siw_touch_bus_add_chk(chip_data);
 	if (ret)
 		goto out;
 
 //	t_pr_info("%s\n", op->name);
-	ret = __siw_touch_op_dbg(op, pdata);
+	ret = __siw_touch_op_dbg(op, chip_data);
 	if (ret) {
 		t_pr_err("%s failed, %d\n", op->name, ret);
 		goto out;
@@ -393,20 +423,20 @@ out:
 	return ret;
 }
 
-static int __siw_touch_bus_add_driver(struct siw_touch_pdata *pdata, int on_off)
+static int __siw_touch_bus_add_driver(struct siw_touch_chip_data *chip_data, int on_off)
 {
-	return __siw_touch_bus_add_op(pdata,
-			(void *)&siw_bus_init_ops[pdata_bus_type(pdata)][on_off]);
+	return __siw_touch_bus_add_op(chip_data,
+			(void *)&siw_bus_init_ops[chip_data->pdata->bus_info.bus_type][on_off]);
 }
 
-int siw_touch_bus_add_driver(struct siw_touch_pdata *pdata)
+int siw_touch_bus_add_driver(struct siw_touch_chip_data *chip_data)
 {
-	return __siw_touch_bus_add_driver(pdata, DRIVER_INIT);
+	return __siw_touch_bus_add_driver(chip_data, DRIVER_INIT);
 }
 
-int siw_touch_bus_del_driver(struct siw_touch_pdata *pdata)
+int siw_touch_bus_del_driver(struct siw_touch_chip_data *chip_data)
 {
-	return __siw_touch_bus_add_driver(pdata, DRIVER_FREE);
+	return __siw_touch_bus_add_driver(chip_data, DRIVER_FREE);
 }
 
 

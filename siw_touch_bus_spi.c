@@ -437,23 +437,39 @@ static struct spi_device_id siw_touch_spi_id[] = {
 
 int siw_touch_spi_add_driver(void *data)
 {
-	struct siw_touch_pdata *pdata = data;
+	struct siw_touch_chip_data *chip_data = data;
 	struct siw_touch_bus_drv *bus_drv = NULL;
+	struct siw_touch_pdata *pdata = NULL;
 	struct spi_driver *spi_drv = NULL;
 	char *drv_name = NULL;
+	int bus_type;
 	int ret = 0;
 
-	if (pdata == NULL) {
+	if (chip_data == NULL) {
 		t_pr_err("NULL chip data\n");
 		return -EINVAL;
 	}
 
-	bus_drv = (struct siw_touch_bus_drv *)kzalloc(sizeof(*bus_drv), GFP_KERNEL);
+	if (chip_data->pdata == NULL) {
+		t_pr_err("NULL chip pdata\n");
+		return -EINVAL;
+	}
+
+	bus_type = pdata_bus_type((struct siw_touch_pdata *)chip_data->pdata);
+
+	bus_drv = siw_touch_bus_create_bus_drv(bus_type);
 	if (!bus_drv) {
-		t_pr_err("faied to allocate bus_drv(%d)\n", pdata_bus_type(pdata));
 		ret = -ENOMEM;
 		goto out_drv;
 	}
+
+	pdata = siw_touch_bus_create_bus_pdata(bus_type);
+	if (!pdata) {
+		ret = -ENOMEM;
+		goto out_pdata;
+	}
+
+	memcpy(pdata, chip_data->pdata, sizeof(*pdata));
 
 	drv_name = pdata_drv_name(pdata);
 
@@ -483,11 +499,14 @@ int siw_touch_spi_add_driver(void *data)
 		goto out_client;
 	}
 
-	pdata_set_bus_drv(pdata, bus_drv);
+	chip_data->bus_drv = bus_drv;
 
 	return 0;
 
 out_client:
+	kfree(pdata);
+
+out_pdata:
 	kfree(bus_drv);
 
 out_drv:
@@ -497,20 +516,25 @@ out_drv:
 
 int siw_touch_spi_del_driver(void *data)
 {
-	struct siw_touch_pdata *pdata = data;
-	void *bus_drv;
+	struct siw_touch_chip_data *chip_data = data;
+	struct siw_touch_bus_drv *bus_drv = NULL;
+//	struct siw_touch_pdata *pdata = NULL;
 
-	if (pdata == NULL) {
-		t_pr_err("NULL touch driver\n");
+	if (chip_data == NULL) {
+		t_pr_err("NULL touch chip data\n");
 		return -ENODEV;
 	}
 
-	bus_drv = (void *)pdata_get_bus_drv(pdata);
+	bus_drv = (void *)chip_data->bus_drv;
 	if (bus_drv) {
 		spi_unregister_driver(&((struct siw_touch_bus_drv *)bus_drv)->bus.spi_drv);
 
+		if (bus_drv->pdata) {
+			kfree(bus_drv->pdata);
+		}
+
 		kfree(bus_drv);
-		pdata_set_bus_drv(pdata, NULL);
+		chip_data->bus_drv = NULL;
 	}
 
 	return 0;
