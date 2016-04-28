@@ -627,11 +627,15 @@ static int siw_hal_condition_wait(struct device *dev,
 		touch_msleep(delay);
 
 		ret = siw_hal_read_value(dev, addr, &data);
-		if (expect == FLASH_CODE_DNCHK_VALUE) {
+		switch (expect) {
+		case FLASH_CODE_DNCHK_VALUE:
+		case FLASH_CONF_DNCHK_VALUE:
+		case FLASH_NOCF_DNCHK_VALUE:
 			t_dev_dbg_base(dev,
 				"wait read: addr[%04Xh] data[%08Xh], "
 				"mask[%08Xh], expect[%08Xh], %d\n",
 				addr, data, mask, expect, retry);
+			break;
 		}
 		if ((ret >= 0) && ((data & mask) == expect)) {
 			if (value)
@@ -741,6 +745,9 @@ static void siw_hal_get_tci_info(struct device *dev)
 	} else {
 		memcpy(&ts->tci.qcover_open, tci_qcover, sizeof(struct reset_area));
 	}
+	tci_qcover = &ts->tci.qcover_open;
+	t_dev_dbg_base(dev, "qcover_open : %Xh %Xh %Xh %Xh\n",
+			tci_qcover->x1, tci_qcover->y1, tci_qcover->x2, tci_qcover->y2);
 
 	tci_qcover = pdata_tci_qcover_close(ts->pdata);
 	if (!tci_qcover) {
@@ -748,6 +755,9 @@ static void siw_hal_get_tci_info(struct device *dev)
 	} else {
 		memcpy(&ts->tci.qcover_close, tci_qcover, sizeof(struct reset_area));
 	}
+	tci_qcover = &ts->tci.qcover_close;
+	t_dev_dbg_base(dev, "qcover_close: %Xh %Xh %Xh %Xh\n",
+			tci_qcover->x1, tci_qcover->y1, tci_qcover->x2, tci_qcover->y2);
 }
 
 const struct siw_hal_swipe_ctrl siw_hal_swipe_info_default = {
@@ -1294,6 +1304,8 @@ static int siw_hal_sw_reset_default(struct device *dev)
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
 	struct siw_hal_reg *reg = chip->reg;
+	u32 chk_resp;
+	u32 data;
 	int ret = 0;
 
 	siw_touch_irq_control(dev, INTERRUPT_DISABLE);
@@ -1316,10 +1328,12 @@ static int siw_hal_sw_reset_default(struct device *dev)
 				1);
 
 	/* firmware boot done check */
-	ret = siw_hal_condition_wait(dev, reg->tc_flash_dn_status, NULL,
-				FLASH_BOOTCHK_VALUE, 0xFFFFFFFF, 10, 200);
+	chk_resp = FLASH_BOOTCHK_VALUE;
+	ret = siw_hal_condition_wait(dev, reg->tc_flash_dn_status, &data,
+				chk_resp, ~0, 10, 200);
 	if (ret < 0) {
-		t_dev_err(dev, "failed : \'boot check\'\n");
+		t_dev_err(dev, "failed : boot check(%Xh), %Xh\n",
+			chk_resp, data);
 		goto out;
 	}
 	siw_touch_qd_init_work_sw(ts);
@@ -1412,10 +1426,13 @@ static int siw_hal_fw_compare(struct device *dev, const struct firmware *fw)
 	u32 bin_pid_offset = *((u32 *)&fw->data[BIN_PID_OFFSET_POS]);
 	u8 dev_major = chip->fw.version[0];
 	u8 dev_minor = chip->fw.version[1];
-	char pid[12] = {0, 0};
+	char pid[12] = {0, };
 	u8 bin_major;
 	u8 bin_minor;
 	int update = 0;
+
+	t_dev_dbg_base(dev, "bin_ver_offset 0x%06Xh, bin_pid_offset 0x%06Xh\n",
+			bin_ver_offset, bin_pid_offset);
 
 	if ((bin_ver_offset > fw_max_size) ||
 		(bin_pid_offset > fw_max_size)) {
@@ -1427,6 +1444,14 @@ static int siw_hal_fw_compare(struct device *dev, const struct firmware *fw)
 	bin_major = fw->data[bin_ver_offset];
 	bin_minor = fw->data[bin_ver_offset + 1];
 	memcpy(pid, &fw->data[bin_pid_offset], 8);
+
+	t_dev_dbg_base(dev, "dev_major %02Xh, dev_minor %02Xh\n",
+			dev_major, dev_minor);
+
+	t_dev_dbg_base(dev, "bin_major %02Xh, bin_minor %02Xh\n",
+			bin_major, bin_minor);
+
+	t_dev_dbg_base(dev, "pid %s\n", pid);
 
 	if (dev_major > bin_major) {
 		ts->force_fwup = 1;
@@ -1456,8 +1481,60 @@ static int siw_hal_fw_compare(struct device *dev, const struct firmware *fw)
 	return update;
 }
 
+static int siw_hal_fw_up_rd_value(struct device *dev,
+				u32 addr, u32 *value)
+{
+	u32 data;
+	int ret;
+
+	ret = siw_hal_read_value(dev, addr, &data);
+	if (ret < 0) {
+		return ret;
+	}
+
+	t_dev_dbg_base(dev, "FW upgrade: reg rd: addr[%04Xh], value[%08Xh], %d\n",
+			addr, data, ret);
+
+	if (value)
+		*value = data;
+
+	return 0;
+}
+
+static int siw_hal_fw_up_wr_value(struct device *dev,
+				u32 addr, u32 value)
+{
+	int ret;
+
+	ret = siw_hal_write_value(dev, addr, value);
+	if (ret < 0) {
+		return ret;
+	}
+
+	t_dev_dbg_base(dev, "FW upgrade: reg wr: addr[%04Xh], value[%08Xh], %d\n",
+			addr, value, ret);
+
+	return 0;
+}
+
+static int siw_hal_fw_up_wr_seq(struct device *dev,
+				u32 addr, u8 *data, int size)
+{
+	int ret;
+
+	ret = siw_hal_reg_write(dev, addr, (void *)data,size);
+	if (ret < 0) {
+		return ret;
+	}
+
+	t_dev_dbg_base(dev, "FW upgrade: reg wr: addr[%04Xh], data[%02X ...], %d\n",
+			addr, data[0], ret);
+
+	return 0;
+}
+
 static int siw_hal_fw_upgrade(struct device *dev,
-			     const struct firmware *fw)
+			     const struct firmware *fw, int retry)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
@@ -1465,74 +1542,68 @@ static int siw_hal_fw_upgrade(struct device *dev,
 	u8 *fw_data;
 	int fw_size, fw_size_max;
 	int fw_pos, curr_size;
-	u32 data;
+	u32 dn_cmd, chk_resp, data;
+	u32 include_conf;
 	int ret = 0;
 
-	t_dev_info(dev, "FW upgrade: start\n");
+	t_dev_info(dev, "===== FW upgrade: start (%d) =====\n", retry);
+
+	/*
+	 * Stage 1: AP -> Touch SRAM
+	 */
 
 	/* Reset CM3 core */
-	ret = siw_hal_write_value(dev,
-				reg->spr_rst_ctl,
-				2);
+	ret = siw_hal_fw_up_wr_value(dev, reg->spr_rst_ctl, 2);
 	if (ret < 0) {
 		goto out;
 	}
-	t_dev_dbg_base(dev, "FW upgrade: reg: addr[%04Xh], value[%08Xh], %d\n",
-				reg->spr_rst_ctl, 2, ret);
 
 	/* Disable SRAM write protection */
-	ret = siw_hal_write_value(dev,
-				reg->spr_sram_ctl,
-				1);
+	ret = siw_hal_fw_up_wr_value(dev, reg->spr_sram_ctl, 1);
 	if (ret < 0) {
 		goto out;
 	}
-	t_dev_dbg_base(dev, "FW upgrade: reg: addr[%04Xh], value[%08Xh], %d\n",
-				reg->spr_sram_ctl, 1, ret);
 
 	fw_data = (u8 *)fw->data;
 	fw_size = (int)fw->size;
-	switch (touch_chip_type(ts)) {
-	case CHIP_SW1828:
-		fw_size_max = (65<<10);			//65KB
-		break;
-	default :
-		fw_size_max = FLASH_FW_SIZE;	//69KB
-		break;
-	}
-	if (fw_size > fw_size_max) {
-		t_dev_err(dev, "FW upgrade: file size overflow - %0Xh > %0Xh\n",
-			fw_size_max, fw_size_max);
-		ret = -EOVERFLOW;
+	fw_size_max = touch_fw_size(ts);
+	if ((fw_size != fw_size_max) &&
+		(fw_size != (fw_size_max + FLASH_CONF_SIZE)))
+	{
+		t_dev_err(dev, "FW upgrade: wrong file size - %Xh,\n",
+			fw_size);
+		t_dev_err(dev, "            shall be '%Xh' or '%Xh + %Xh'\n",
+			fw_size_max, fw_size_max, FLASH_CONF_SIZE);
+		ret = -EFAULT;
 		goto out;
 	}
 
+	include_conf = !!(fw_size == (fw_size_max + FLASH_CONF_SIZE));
+	t_dev_info(dev, "FW upgrade:%s include conf data\n",
+			(include_conf)?" ":" not");
+
+	t_dev_dbg_base(dev, "FW upgrade: fw size %08Xh, fw_size_max %08Xh\n",
+			fw_size, fw_size_max);
+
 	fw_pos = 0;
 	while (fw_size) {
-		t_dev_dbg_base(dev, "FW upgrade: fw[%06Xh ...] = %02Xh %02Xh %02Xh %02Xh\n",
+		t_dev_dbg_base(dev, "FW upgrade: fw_pos[%06Xh ...] = %02X %02X %02X %02X ...\n",
 				fw_pos,
 				fw_data[0], fw_data[1], fw_data[2], fw_data[3]);
 
 		curr_size = min(fw_size, MAX_RW_SIZE);
 
 		/* code sram base address write */
-		ret = siw_hal_write_value(dev,
-					reg->spr_code_offset,
-					fw_pos>>2);
+		ret = siw_hal_fw_up_wr_value(dev, reg->spr_code_offset, fw_pos>>2);
 		if (ret < 0) {
 			goto out;
 		}
-		t_dev_dbg_base(dev, "FW upgrade: reg: addr[%04Xh], value[%08Xh], %d\n",
-				reg->spr_code_offset, fw_pos>>2, ret);
 
-		ret = siw_hal_reg_write(dev,
-					reg->code_access_addr,
+		ret = siw_hal_fw_up_wr_seq(dev, reg->code_access_addr,
 					(void *)fw_data, curr_size);
 		if (ret < 0) {
 			goto out;
 		}
-		t_dev_dbg_base(dev, "FW upgrade: reg: addr[%04Xh], value[%08Xh], %d\n",
-				reg->code_access_addr, fw_data[0], ret);
 
 		fw_data += curr_size;
 		fw_pos += curr_size;
@@ -1540,79 +1611,84 @@ static int siw_hal_fw_upgrade(struct device *dev,
 	}
 
 	/* Enable SRAM write protection */
-	ret = siw_hal_write_value(dev,
-				reg->spr_sram_ctl,
-				0);
+	ret = siw_hal_fw_up_wr_value(dev, reg->spr_sram_ctl, 0);
 	if (ret < 0) {
 		goto out;
 	}
-	t_dev_dbg_base(dev, "FW upgrade: reg: addr[%04Xh], value[%08Xh], %d\n",
-				reg->spr_sram_ctl, 0, ret);
 
 	/* Release CM3 core */
-	ret = siw_hal_write_value(dev,
-				reg->spr_rst_ctl,
-				0);
+	ret = siw_hal_fw_up_wr_value(dev, reg->spr_rst_ctl, 0);
 	if (ret < 0) {
 		goto out;
 	}
-	t_dev_dbg_base(dev, "FW upgrade: reg: addr[%04Xh], value[%08Xh], %d\n",
-				reg->spr_rst_ctl, 0, ret);
 
 	/* Set Serial Dump Done */
-	ret = siw_hal_write_value(dev,
-				reg->spr_boot_ctl,
-				1);
+	ret = siw_hal_fw_up_wr_value(dev, reg->spr_boot_ctl, 1);
 	if (ret < 0) {
 		goto out;
 	}
-	t_dev_dbg_base(dev, "FW upgrade: reg: addr[%04Xh], value[%08Xh], %d\n",
-				reg->spr_boot_ctl, 1, ret);
 
 	/* firmware boot done check */
-	ret = siw_hal_condition_wait(dev, reg->tc_flash_dn_status, NULL,
-				FLASH_BOOTCHK_VALUE, 0xFFFFFFFF, 10, 200);
+	chk_resp = FLASH_BOOTCHK_VALUE;
+	ret = siw_hal_condition_wait(dev, reg->tc_flash_dn_status, &data,
+				chk_resp, ~0, 10, 200);
 	if (ret < 0) {
-		t_dev_err(dev, "FW upgrade: failed - boot check\n");
+		t_dev_err(dev, "FW upgrade: failed - boot check(%Xh), %Xh\n",
+			chk_resp, data);
 		return ret;
 	}
 	t_dev_info(dev, "FW upgrade: boot check done\n");
 
 	/* Firmware Download Start */
-	ret = siw_hal_write_value(dev,
-				reg->tc_flash_dn_ctl,
-				(FLASH_KEY_CODE_CMD << 16) | 1);
+	dn_cmd = (FLASH_KEY_CODE_CMD << 16) | 1;
+	ret = siw_hal_fw_up_wr_value(dev, reg->tc_flash_dn_ctl, dn_cmd);
 	if (ret < 0) {
 		goto out;
 	}
-	t_dev_dbg_base(dev, "FW upgrade: reg: addr[%04Xh], value[%08Xh], %d\n",
-				reg->tc_flash_dn_ctl, (FLASH_KEY_CODE_CMD << 16) | 1, ret);
 
 	touch_msleep(ts->caps.hw_reset_delay);
 
 	/* download check */
+	chk_resp = FLASH_CODE_DNCHK_VALUE;
 	ret = siw_hal_condition_wait(dev, reg->tc_flash_dn_status, &data,
-				FLASH_CODE_DNCHK_VALUE, 0xFFFFFFFF, 30, 600);
+				chk_resp, ~0, 30, 600);
 	if (ret < 0) {
-		t_dev_err(dev, "FW upgrade: failed - code check\n");
-		return ret;
+		t_dev_err(dev, "FW upgrade: failed - code check(%Xh), %Xh\n",
+			chk_resp, data);
+		goto out;
 	}
 	t_dev_info(dev, "FW upgrade: code check done\n");
 
-#if 0
-	if (0) {
+
+	/*
+	 * Stage 2: Touch SRAM -> Touch Flash
+	 */
+
+	fw_data = (u8 *)fw->data;
+
+	if (include_conf) {
+		u32 confdn_base_addr;
 		u32 conf_dn_addr;
-		fw_data = (u8 *)fw->data;
 
 		/* conf base address read */
-		ret = siw_hal_read_value(dev,
-					reg->tc_confdn_base_addr,
-					&data);
+		switch (touch_chip_type(ts)) {
+	#if 0
+		case CHIP_SW1828:
+			confdn_base_addr = ...
+			break;
+	#endif
+		default:
+			confdn_base_addr = reg->tc_confdn_base_addr;
+			break;
+		}
+		ret = siw_hal_fw_up_rd_value(dev, confdn_base_addr, &data);
 		if (ret < 0) {
 			goto out;
 		}
+
 		conf_dn_addr = ((data >> 16) & 0xFFFF);
-		t_dev_info(dev, "conf_dn_addr : %08x data: %08x \n", conf_dn_addr, data);
+		t_dev_dbg_base(dev, "FW upgrade: conf_dn_addr %04Xh (%08Xh)\n",
+				conf_dn_addr, data);
 		if (conf_dn_addr >= (0x1200) || conf_dn_addr < (0x8C0)) {
 			t_dev_err(dev, "FW upgrade: failed - conf base invalid\n");
 			ret = -EPERM;
@@ -1620,43 +1696,47 @@ static int siw_hal_fw_upgrade(struct device *dev,
 		}
 
 		/* conf sram base address write */
-		ret = siw_hal_write_value(dev,
-					reg->spr_data_offset,
-					conf_dn_addr);
+		ret = siw_hal_fw_up_wr_value(dev, reg->spr_data_offset,	conf_dn_addr);
 		if (ret < 0) {
 			goto out;
 		}
+
 		/* Conf data download to conf sram */
-		ret = siw_hal_reg_write(dev,
-					reg->data_access_addr,
+		ret = siw_hal_fw_up_wr_seq(dev, reg->data_access_addr,
 					(void *)&fw_data[fw_size_max], FLASH_CONF_SIZE);
 		if (ret < 0) {
 			goto out;
 		}
-		/* Conf Download Start */
-		ret = siw_hal_write_value(dev,
-					reg->tc_flash_dn_ctl,
-					(FLASH_KEY_CONF_CMD << 16) | 2);
-		if (ret < 0) {
-			goto out;
-		}
-		/* Conf check */
-		ret = siw_hal_condition_wait(dev, reg->tc_flash_dn_status, &data,
-					FLASH_CONF_DNCHK_VALUE, 0xFFFFFFFF, 10, 200);
-		if (ret < 0) {
-			t_dev_err(dev, "FW upgrade: failed - conf check\n");
-			ret = -EPERM;
-			goto out;
-		}
+
+		chk_resp = FLASH_CONF_DNCHK_VALUE;
+	} else {
+		chk_resp = FLASH_NOCF_DNCHK_VALUE;
 	}
-#endif
+
+	/* Conf Download Start */
+	dn_cmd = (FLASH_KEY_CONF_CMD << 16) | 2;
+	ret = siw_hal_fw_up_wr_value(dev, reg->tc_flash_dn_ctl, dn_cmd);
+	if (ret < 0) {
+		goto out;
+	}
+
+	/* Conf check */
+	ret = siw_hal_condition_wait(dev, reg->tc_flash_dn_status, &data,
+				chk_resp, ~0, 30, 600);
+	if (ret < 0) {
+		t_dev_err(dev, "FW upgrade: failed - conf check(%Xh), %X\n",
+			chk_resp, data);
+		ret = -EPERM;
+		goto out;
+	}
+	t_dev_info(dev, "FW upgrade: conf check done\n");
 
 	/*
 	   if want to upgrade ic (not configure section writed)
 	   do write register:0xC04 value:7
 	   delay 1s
 	*/
-	t_dev_info(dev, "FW upgrade: done\n");
+	t_dev_info(dev, "===== FW upgrade: done (%d) =====\n", retry);
 
 	return 0;
 
@@ -1711,7 +1791,7 @@ static int siw_hal_upgrade(struct device *dev)
 		goto out;
 	}
 
-	t_dev_info(dev, "fw size:%zu, data: %p\n", fw->size, fw->data);
+	t_dev_info(dev, "fw size:%zu\n", fw->size);
 //	ret = -EINVAL;
 	ret = -EPERM;
 	ret_val = siw_hal_fw_compare(dev, fw);
@@ -1720,7 +1800,7 @@ static int siw_hal_upgrade(struct device *dev)
 	} else if (ret_val) {
 		touch_msleep(200);
 		for (i = 0; i < 2 && ret; i++) {
-			ret = siw_hal_fw_upgrade(dev, fw);
+			ret = siw_hal_fw_upgrade(dev, fw, i);
 		}
 	}
 
@@ -2290,7 +2370,8 @@ static int siw_hal_tc_driving(struct device *dev, int mode)
 	ret = siw_hal_write_value(dev,
 				reg->tc_drive_ctl,
 				ctrl);
-	t_dev_dbg_base(dev, "write 0x%04X on tc_drive_ctl\n", ctrl);
+	t_dev_dbg_base(dev, "write 0x%X on tc_drive_ctl[%04Xh]\n",
+			ctrl, reg->tc_drive_ctl);
 
 	touch_msleep(HAL_TC_DRIVING_DELAY);
 
@@ -3539,6 +3620,13 @@ out:
 
 static int siw_hal_mon_handler(struct device *dev)
 {
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+
+	if (atomic_read(&ts->state.core) != CORE_NORMAL) {
+		return 0;
+	}
+
 	t_dev_dbg_trace(dev, "mon handler begins\n");
 
 	siw_hal_mon_handler_self_reset(dev);

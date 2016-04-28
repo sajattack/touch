@@ -56,6 +56,7 @@
 									LCD_MODE_STOP |	\
 									0)
 
+#define CHIP_FW_SIZE				(72<<10)
 
 #define CHIP_INPUT_ID_BUSTYPE		BUS_SPI
 #define CHIP_INPUT_ID_VENDOR		0xABCD
@@ -197,6 +198,7 @@ static const struct siw_touch_pdata chip_pdata = {
 	.of_match_table		= of_match_ptr(chip_match_ids),
 	.chip_type			= CHIP_TYPE,
 	.mode_allowed		= CHIP_MODE_ALLOWED,
+	.fw_size			= CHIP_FW_SIZE,
 	.flags				= 0,	/* Caution : MSB(bit31) unavailable */
 	.irqflags			= 0,
 	.quirks				= CHIP_QUIRKS,

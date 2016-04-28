@@ -508,6 +508,8 @@ static void siw_touch_upgrade_work_func(struct work_struct *work)
 	ts->role.use_fw_upgrade = 0;
 
 	mutex_lock(&ts->lock);
+	siw_touch_irq_control(dev, INTERRUPT_DISABLE);
+
 	ret = siw_ops_upgrade(ts);
 	mutex_unlock(&ts->lock);
 
@@ -521,7 +523,8 @@ static void siw_touch_upgrade_work_func(struct work_struct *work)
 		} else {
 			t_dev_info(dev, "FW upgrade halted, %d\n", ret);
 		}
-		atomic_set(&ts->state.core, CORE_NORMAL);
+		siw_touch_qd_init_work_now(ts);
+	//	atomic_set(&ts->state.core, CORE_NORMAL);
 		return;
 	}
 

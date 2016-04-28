@@ -500,6 +500,7 @@ struct siw_touch_pdata {
 	const struct of_device_id *of_match_table;
 	u32 chip_type;
 	u32 mode_allowed;
+	u32 fw_size;		//Pure F/W size, not include config data(1K)
 
 	u32 flags;
 	unsigned long irqflags;
@@ -581,6 +582,11 @@ static inline u32 pdata_chip_type(struct siw_touch_pdata *pdata)
 static inline u32 pdata_mode_allowed(struct siw_touch_pdata *pdata, u32 mode_bit)
 {
 	return (pdata->mode_allowed & mode_bit);
+}
+
+static inline u32 pdata_fw_size(struct siw_touch_pdata *pdata)
+{
+	return pdata->fw_size;
 }
 
 static inline u32 pdata_bus_type(struct siw_touch_pdata *pdata)
@@ -949,6 +955,11 @@ static inline u32 touch_mode_allowed(struct siw_ts *ts, u32 mode_bit)
 static inline u32 touch_mode_not_allowed(struct siw_ts *ts, u32 mode_bit)
 {
 	return !pdata_mode_allowed(ts->pdata, mode_bit);
+}
+
+static inline u32 touch_fw_size(struct siw_ts *ts)
+{
+	return pdata_fw_size(ts->pdata);
 }
 
 static inline u32 touch_bus_type(struct siw_ts *ts)
