@@ -79,15 +79,8 @@ module_param_named(dev_dbg_mask, t_dev_dbg_mask, uint, S_IRUGO|S_IWUSR|S_IWGRP);
 /*
  * SiW Operations
  */
-void *siw_setup_operations(struct siw_ts *ts, struct siw_touch_operations *ops_ext)
+static void siw_setup_reg_quirks(struct siw_ts *ts)
 {
-	if (!ops_ext)
-		return NULL;
-
-	ts->ops_ext = ops_ext;
-	memcpy(&ts->ops_in, ops_ext, sizeof(struct siw_touch_operations));
-	ts->ops = &ts->ops_in;
-
 	if (ts->pdata->reg_quirks) {
 	//	struct siw_hal_reg *reg = siw_ops_reg(ts);
 		u32 *curr_reg;
@@ -116,6 +109,18 @@ void *siw_setup_operations(struct siw_ts *ts, struct siw_touch_operations *ops_e
 			reg_quirks++;
 		}
 	}
+}
+
+void *siw_setup_operations(struct siw_ts *ts, struct siw_touch_operations *ops_ext)
+{
+	if (!ops_ext)
+		return NULL;
+
+	ts->ops_ext = ops_ext;
+	memcpy(&ts->ops_in, ops_ext, sizeof(struct siw_touch_operations));
+	ts->ops = &ts->ops_in;
+
+	siw_setup_reg_quirks(ts);
 
 	return ts->ops;
 }

@@ -630,7 +630,6 @@ static int siw_hal_condition_wait(struct device *dev,
 		switch (expect) {
 		case FLASH_CODE_DNCHK_VALUE:
 		case FLASH_CONF_DNCHK_VALUE:
-		case FLASH_NOCF_DNCHK_VALUE:
 			t_dev_dbg_base(dev,
 				"wait read: addr[%04Xh] data[%08Xh], "
 				"mask[%08Xh], expect[%08Xh], %d\n",
