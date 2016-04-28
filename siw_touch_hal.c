@@ -1639,6 +1639,9 @@ static int siw_hal_fw_upgrade(struct device *dev,
 	}
 	t_dev_info(dev, "FW upgrade: boot check done\n");
 
+	/*
+	 * Stage 2: Code data upgrade
+	 */
 	/* Firmware Download Start */
 	dn_cmd = (FLASH_KEY_CODE_CMD << 16) | 1;
 	ret = siw_hal_fw_up_wr_value(dev, reg->tc_flash_dn_ctl, dn_cmd);
@@ -1659,13 +1662,9 @@ static int siw_hal_fw_upgrade(struct device *dev,
 	}
 	t_dev_info(dev, "FW upgrade: code check done\n");
 
-
 	/*
-	 * Stage 2: Touch SRAM -> Touch Flash
+	 * Stage 3: Config data upgrade
 	 */
-
-	fw_data = (u8 *)fw->data;
-
 	if (include_conf) {
 		u32 conf_dn_addr;
 
@@ -1689,6 +1688,8 @@ static int siw_hal_fw_upgrade(struct device *dev,
 			goto out;
 		}
 
+		fw_data = (u8 *)fw->data;
+
 		/* Conf data download to conf sram */
 		ret = siw_hal_fw_up_wr_seq(dev, reg->data_access_addr,
 					(void *)&fw_data[fw_size_max], FLASH_CONF_SIZE);
@@ -1697,27 +1698,25 @@ static int siw_hal_fw_upgrade(struct device *dev,
 		}
 
 		chk_resp = FLASH_CONF_DNCHK_VALUE;
-	} else {
-		chk_resp = FLASH_NOCF_DNCHK_VALUE;
-	}
 
-	/* Conf Download Start */
-	dn_cmd = (FLASH_KEY_CONF_CMD << 16) | 2;
-	ret = siw_hal_fw_up_wr_value(dev, reg->tc_flash_dn_ctl, dn_cmd);
-	if (ret < 0) {
-		goto out;
-	}
+		/* Conf Download Start */
+		dn_cmd = (FLASH_KEY_CONF_CMD << 16) | 2;
+		ret = siw_hal_fw_up_wr_value(dev, reg->tc_flash_dn_ctl, dn_cmd);
+		if (ret < 0) {
+			goto out;
+		}
 
-	/* Conf check */
-	ret = siw_hal_condition_wait(dev, reg->tc_flash_dn_status, &data,
-				chk_resp, ~0, 30, 600);
-	if (ret < 0) {
-		t_dev_err(dev, "FW upgrade: failed - conf check(%Xh), %X\n",
-			chk_resp, data);
-		ret = -EPERM;
-		goto out;
+		/* Conf check */
+		ret = siw_hal_condition_wait(dev, reg->tc_flash_dn_status, &data,
+					chk_resp, ~0, 30, 600);
+		if (ret < 0) {
+			t_dev_err(dev, "FW upgrade: failed - conf check(%Xh), %X\n",
+				chk_resp, data);
+			ret = -EPERM;
+			goto out;
+		}
+		t_dev_info(dev, "FW upgrade: conf check done\n");
 	}
-	t_dev_info(dev, "FW upgrade: conf check done\n");
 
 	/*
 	   if want to upgrade ic (not configure section writed)
