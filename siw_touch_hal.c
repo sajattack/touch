@@ -45,6 +45,9 @@
 #include "siw_touch_sys.h"
 
 
+//#define __FW_VERIFY_TEST
+
+
 extern int siw_hal_sysfs(struct device *dev, int on_off);
 
 #if defined(__SIW_SUPPORT_ABT)	//See siw_touch_cfg.h
@@ -1532,24 +1535,122 @@ static int siw_hal_fw_up_wr_seq(struct device *dev,
 	return 0;
 }
 
-static int siw_hal_fw_upgrade(struct device *dev,
-			     const struct firmware *fw, int retry)
+static int siw_hal_fw_up_sram_wr_enable(struct device *dev, int onoff)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
-	struct siw_ts *ts = chip->ts;
+//	struct siw_ts *ts = chip->ts;
 	struct siw_hal_reg *reg = chip->reg;
-	u8 *fw_data;
-	int fw_size, fw_size_max;
+	u32 data;
+	int ret;
+
+#if 1
+	ret = siw_hal_fw_up_rd_value(dev, reg->spr_sram_ctl, &data);
+	if (ret < 0) {
+		goto out;
+	}
+
+	if (onoff)
+		data |= 0x01;
+	else
+		data &= ~0x01;
+
+	ret = siw_hal_fw_up_wr_value(dev, reg->spr_sram_ctl, data);
+	if (ret < 0) {
+		goto out;
+	}
+#else
+	ret = siw_hal_fw_up_wr_value(dev, reg->spr_sram_ctl, !!onoff);
+	if (ret < 0) {
+		goto out;
+	}
+#endif
+
+out:
+	return ret;
+}
+
+#if defined(__FW_VERIFY_TEST)
+static int __siw_hal_fw_up_verify(struct device *dev, u8 *chk_buf, int chk_size)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+//	struct siw_ts *ts = chip->ts;
+	struct siw_hal_reg *reg = chip->reg;
+	u8 *fw_rd_data, *fw_data;
+	u8 *r_data, *w_data;
+	int fw_size;
 	int fw_pos, curr_size;
-	u32 dn_cmd, chk_resp, data;
-	u32 include_conf;
+	int i;
 	int ret = 0;
 
-	t_dev_info(dev, "===== FW upgrade: start (%d) =====\n", retry);
+	fw_size = chk_size;
 
-	/*
-	 * Stage 1: AP -> Touch SRAM
-	 */
+	fw_rd_data = kmalloc(fw_size, GFP_KERNEL);
+	if (!fw_rd_data) {
+		t_dev_err(dev, "FW upgrade: failed to allocate verifying memory\n");
+		ret = -ENOMEM;
+		goto out;
+	}
+
+	fw_data = fw_rd_data;
+	fw_pos = 0;
+	while (fw_size && fw_data) {
+		curr_size = min(fw_size, MAX_RW_SIZE);
+
+		/* code sram base address write */
+		ret = siw_hal_write_value(dev, reg->spr_code_offset, fw_pos>>2);
+		if (ret < 0) {
+			goto out_free;
+		}
+
+		ret = siw_hal_reg_read(dev, reg->code_access_addr,
+					(void *)fw_data, curr_size);
+		if (ret < 0) {
+			goto out_free;
+		}
+
+		fw_data += curr_size;
+		fw_pos += curr_size;
+		fw_size -= curr_size;
+	}
+
+	r_data = fw_rd_data;
+	w_data = chk_buf;
+	fw_size = chk_size;
+	for (i=0 ; i<fw_size ; i++) {
+		if ((*r_data) != (*w_data)) {
+			t_dev_err(dev, "* Err [%06X] rd(%02X) != wr(%02X)\n",
+				i, (*r_data), (*w_data));
+			ret = -EFAULT;
+		} else {
+		#if 0
+			t_dev_err(dev, "  OK! [%06X] rd(%02X) == wr(%02X)\n",
+				i, (*r_data), (*w_data));
+		#endif
+		}
+
+		r_data++;
+		w_data++;
+	}
+
+out_free:
+	kfree(fw_rd_data);
+
+out:
+	return ret;
+}
+#else	/* __FW_VERIFY_TEST */
+static int __siw_hal_fw_up_verify(struct device *dev, u8 *chk_buf, int chk_size)
+{
+	return 0;
+}
+#endif	/* __FW_VERIFY_TEST */
+
+static int siw_hal_fw_up_pre_fw_dn(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+//	struct siw_ts *ts = chip->ts;
+	struct siw_hal_reg *reg = chip->reg;
+	int ret;
 
 	/* Reset CM3 core */
 	ret = siw_hal_fw_up_wr_value(dev, reg->spr_rst_ctl, 2);
@@ -1558,59 +1659,25 @@ static int siw_hal_fw_upgrade(struct device *dev,
 	}
 
 	/* Disable SRAM write protection */
-	ret = siw_hal_fw_up_wr_value(dev, reg->spr_sram_ctl, 1);
+	ret = siw_hal_fw_up_sram_wr_enable(dev, 1);
 	if (ret < 0) {
 		goto out;
 	}
 
-	fw_data = (u8 *)fw->data;
-	fw_size = (int)fw->size;
-	fw_size_max = touch_fw_size(ts);
-	if ((fw_size != fw_size_max) &&
-		(fw_size != (fw_size_max + FLASH_CONF_SIZE)))
-	{
-		t_dev_err(dev, "FW upgrade: wrong file size - %Xh,\n",
-			fw_size);
-		t_dev_err(dev, "            shall be '%Xh' or '%Xh + %Xh'\n",
-			fw_size_max, fw_size_max, FLASH_CONF_SIZE);
-		ret = -EFAULT;
-		goto out;
-	}
+out:
+	return ret;
+}
 
-	include_conf = !!(fw_size == (fw_size_max + FLASH_CONF_SIZE));
-	t_dev_info(dev, "FW upgrade:%s include conf data\n",
-			(include_conf)?" ":" not");
-
-	t_dev_dbg_base(dev, "FW upgrade: fw size %08Xh, fw_size_max %08Xh\n",
-			fw_size, fw_size_max);
-
-	fw_pos = 0;
-	while (fw_size) {
-		t_dev_dbg_base(dev, "FW upgrade: fw_pos[%06Xh ...] = %02X %02X %02X %02X ...\n",
-				fw_pos,
-				fw_data[0], fw_data[1], fw_data[2], fw_data[3]);
-
-		curr_size = min(fw_size, MAX_RW_SIZE);
-
-		/* code sram base address write */
-		ret = siw_hal_fw_up_wr_value(dev, reg->spr_code_offset, fw_pos>>2);
-		if (ret < 0) {
-			goto out;
-		}
-
-		ret = siw_hal_fw_up_wr_seq(dev, reg->code_access_addr,
-					(void *)fw_data, curr_size);
-		if (ret < 0) {
-			goto out;
-		}
-
-		fw_data += curr_size;
-		fw_pos += curr_size;
-		fw_size -= curr_size;
-	}
+static int siw_hal_fw_up_post_fw_dn(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	struct siw_hal_reg *reg = chip->reg;
+	u32 dn_cmd, chk_resp, data;
+	int ret;
 
 	/* Enable SRAM write protection */
-	ret = siw_hal_fw_up_wr_value(dev, reg->spr_sram_ctl, 0);
+	ret = siw_hal_fw_up_sram_wr_enable(dev, 0);
 	if (ret < 0) {
 		goto out;
 	}
@@ -1639,7 +1706,7 @@ static int siw_hal_fw_upgrade(struct device *dev,
 	t_dev_info(dev, "FW upgrade: boot check done\n");
 
 	/*
-	 * Stage 2: Code data upgrade
+	 * Stage 1-2: upgrade code data
 	 */
 	/* Firmware Download Start */
 	dn_cmd = (FLASH_KEY_CODE_CMD << 16) | 1;
@@ -1653,7 +1720,7 @@ static int siw_hal_fw_upgrade(struct device *dev,
 	/* download check */
 	chk_resp = FLASH_CODE_DNCHK_VALUE;
 	ret = siw_hal_condition_wait(dev, reg->tc_flash_dn_status, &data,
-				chk_resp, ~0, 30, 600);
+				chk_resp, 0xFFFF, 30, 600);
 	if (ret < 0) {
 		t_dev_err(dev, "FW upgrade: failed - code check(%Xh), %Xh\n",
 			chk_resp, data);
@@ -1661,67 +1728,246 @@ static int siw_hal_fw_upgrade(struct device *dev,
 	}
 	t_dev_info(dev, "FW upgrade: code check done\n");
 
+out:
+	return ret;
+}
+
+static int siw_hal_fw_up_do_fw_dn(struct device *dev, u8 *dn_buf, int dn_size)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+//	struct siw_ts *ts = chip->ts;
+	struct siw_hal_reg *reg = chip->reg;
+	u8 *fw_data;
+	int fw_size;
+	int fw_pos, curr_size;
+	int ret = 0;
+
+	fw_data = dn_buf;
+	fw_size = dn_size;
+	fw_pos = 0;
+	while (fw_size) {
+		t_dev_dbg_base(dev, "FW upgrade: fw_pos[%06Xh ...] = %02X %02X %02X %02X ...\n",
+				fw_pos,
+				fw_data[0], fw_data[1], fw_data[2], fw_data[3]);
+
+		curr_size = min(fw_size, MAX_RW_SIZE);
+
+		/* code sram base address write */
+		ret = siw_hal_fw_up_wr_value(dev, reg->spr_code_offset, fw_pos>>2);
+		if (ret < 0) {
+			goto out;
+		}
+
+		ret = siw_hal_fw_up_wr_seq(dev, reg->code_access_addr,
+					(void *)fw_data, curr_size);
+		if (ret < 0) {
+			goto out;
+		}
+
+		fw_data += curr_size;
+		fw_pos += curr_size;
+		fw_size -= curr_size;
+	}
+
+out:
+	return ret;
+}
+
+static int siw_hal_fw_up_pre_conf_dn(struct device *dev, u32 *value)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+//	struct siw_ts *ts = chip->ts;
+	struct siw_hal_reg *reg = chip->reg;
+	int data = 0;
+	int ret;
+
+	ret = siw_hal_fw_up_rd_value(dev, reg->tc_confdn_base_addr, &data);
+	if (ret < 0) {
+		goto out;
+	}
+
+out:
+	if (value)
+		*value = data;
+
+	return ret;
+}
+
+static int siw_hal_fw_up_post_conf_dn(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+//	struct siw_ts *ts = chip->ts;
+	struct siw_hal_reg *reg = chip->reg;
+	u32 dn_cmd, chk_resp, data;
+	int ret;
+
+	/* Conf Download Start */
+	dn_cmd = (FLASH_KEY_CONF_CMD << 16) | 2;
+	ret = siw_hal_fw_up_wr_value(dev, reg->tc_flash_dn_ctl, dn_cmd);
+	if (ret < 0) {
+		goto out;
+	}
+
+	/* Conf check */
+	chk_resp = FLASH_CONF_DNCHK_VALUE;
+	ret = siw_hal_condition_wait(dev, reg->tc_flash_dn_status, &data,
+				chk_resp, 0xFFFF, 30, 600);
+	if (ret < 0) {
+		t_dev_err(dev, "FW upgrade: failed - conf check(%Xh), %X\n",
+			chk_resp, data);
+		ret = -EPERM;
+		goto out;
+	}
+	t_dev_info(dev, "FW upgrade: conf check done\n");
+
+out:
+	return ret;
+}
+
+
+static int siw_hal_fw_up_do_conf_dn(struct device *dev,
+				u32 addr, u8 *dn_buf, int dn_size)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+//	struct siw_ts *ts = chip->ts;
+	struct siw_hal_reg *reg = chip->reg;
+	int ret;
+
+	/* conf sram base address write */
+	ret = siw_hal_fw_up_wr_value(dev, reg->spr_data_offset,	addr);
+	if (ret < 0) {
+		goto out;
+	}
+
+	/* Conf data download to conf sram */
+	ret = siw_hal_fw_up_wr_seq(dev, reg->data_access_addr,
+				(void *)dn_buf, dn_size);
+	if (ret < 0) {
+		goto out;
+	}
+
+out:
+	return ret;
+}
+
+static int siw_hal_fw_upgrade_conf(struct device *dev,
+			     const struct firmware *fw)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	u8 *fw_data;
+	int fw_size, fw_size_max;
+	u32 conf_dn_addr;
+	u32 data;
+	int ret;
+
+	fw_size = (int)fw->size;
+	fw_size_max = touch_fw_size(ts);
+
 	/*
-	 * Stage 3: Config data upgrade
+	 * Stage 2-1: download config data
 	 */
-	if (include_conf) {
-		u32 conf_dn_addr;
+	ret = siw_hal_fw_up_pre_conf_dn(dev, &data);
+	if (ret < 0) {
+		goto out;
+	}
 
-		ret = siw_hal_fw_up_rd_value(dev, reg->tc_confdn_base_addr, &data);
-		if (ret < 0) {
-			goto out;
-		}
+	conf_dn_addr = ((data >> 16) & 0xFFFF);
+	t_dev_dbg_base(dev, "FW upgrade: conf_dn_addr %04Xh (%08Xh)\n",
+			conf_dn_addr, data);
+	if (conf_dn_addr >= (0x1200) || conf_dn_addr < (0x8C0)) {
+		t_dev_err(dev, "FW upgrade: failed - conf base invalid\n");
+		ret = -EPERM;
+		goto out;
+	}
 
-		conf_dn_addr = ((data >> 16) & 0xFFFF);
-		t_dev_dbg_base(dev, "FW upgrade: conf_dn_addr %04Xh (%08Xh)\n",
-				conf_dn_addr, data);
-		if (conf_dn_addr >= (0x1200) || conf_dn_addr < (0x8C0)) {
-			t_dev_err(dev, "FW upgrade: failed - conf base invalid\n");
-			ret = -EPERM;
-			goto out;
-		}
-
-		/* conf sram base address write */
-		ret = siw_hal_fw_up_wr_value(dev, reg->spr_data_offset,	conf_dn_addr);
-		if (ret < 0) {
-			goto out;
-		}
-
-		fw_data = (u8 *)fw->data;
-
-		/* Conf data download to conf sram */
-		ret = siw_hal_fw_up_wr_seq(dev, reg->data_access_addr,
-					(void *)&fw_data[fw_size_max], FLASH_CONF_SIZE);
-		if (ret < 0) {
-			goto out;
-		}
-
-		chk_resp = FLASH_CONF_DNCHK_VALUE;
-
-		/* Conf Download Start */
-		dn_cmd = (FLASH_KEY_CONF_CMD << 16) | 2;
-		ret = siw_hal_fw_up_wr_value(dev, reg->tc_flash_dn_ctl, dn_cmd);
-		if (ret < 0) {
-			goto out;
-		}
-
-		/* Conf check */
-		ret = siw_hal_condition_wait(dev, reg->tc_flash_dn_status, &data,
-					chk_resp, ~0, 30, 600);
-		if (ret < 0) {
-			t_dev_err(dev, "FW upgrade: failed - conf check(%Xh), %X\n",
-				chk_resp, data);
-			ret = -EPERM;
-			goto out;
-		}
-		t_dev_info(dev, "FW upgrade: conf check done\n");
+	fw_data = (u8 *)fw->data;
+	ret = siw_hal_fw_up_do_conf_dn(dev, conf_dn_addr,
+				(u8 *)&fw_data[fw_size_max], FLASH_CONF_SIZE);
+	if (ret < 0) {
+		goto out;
 	}
 
 	/*
-	   if want to upgrade ic (not configure section writed)
-	   do write register:0xC04 value:7
-	   delay 1s
-	*/
+	 * Stage 2-2: upgrade config data
+	 */
+	ret = siw_hal_fw_up_post_conf_dn(dev);
+	if (ret < 0) {
+		goto out;
+	}
+
+out:
+	return ret;
+}
+
+static int siw_hal_fw_upgrade(struct device *dev,
+			     const struct firmware *fw, int retry)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	u8 *fw_data;
+	int fw_size, fw_size_max;
+	u32 include_conf;
+	int ret = 0;
+
+	t_dev_info(dev, "===== FW upgrade: start (%d) =====\n", retry);
+
+	/*
+	 * Stage 1-1 : download code data
+	 */
+	fw_size = (int)fw->size;
+	fw_size_max = touch_fw_size(ts);
+	if ((fw_size != fw_size_max) &&
+		(fw_size != (fw_size_max + FLASH_CONF_SIZE)))
+	{
+		t_dev_err(dev, "FW upgrade: wrong file size - %Xh,\n",
+			fw_size);
+		t_dev_err(dev, "            shall be '%Xh' or '%Xh + %Xh'\n",
+			fw_size_max, fw_size_max, FLASH_CONF_SIZE);
+		ret = -EFAULT;
+		goto out;
+	}
+
+	include_conf = !!(fw_size == (fw_size_max + FLASH_CONF_SIZE));
+	t_dev_info(dev, "FW upgrade:%s include conf data\n",
+			(include_conf)?"":" not");
+
+	t_dev_dbg_base(dev, "FW upgrade: fw size %08Xh, fw_size_max %08Xh\n",
+			fw_size, fw_size_max);
+
+	ret = siw_hal_fw_up_pre_fw_dn(dev);
+	if (ret < 0) {
+		goto out;
+	}
+
+	/*
+	 * [Caution]
+	 * The size for F/W upgrade is fw_size_max, not fw->size
+	 * because the fw file can have config area.
+	 */
+	fw_data = (u8 *)fw->data;
+	ret = siw_hal_fw_up_do_fw_dn(dev, fw_data, fw_size_max);
+	if (ret < 0) {
+		goto out;
+	}
+
+	ret = __siw_hal_fw_up_verify(dev, fw_data, fw_size_max);
+	if (ret < 0) {
+		goto out;
+	}
+
+	ret = siw_hal_fw_up_post_fw_dn(dev);
+	if (ret < 0) {
+		goto out;
+	}
+
+	if (include_conf) {
+		ret = siw_hal_fw_upgrade_conf(dev, fw);
+		if (ret < 0) {
+			goto out;
+		}
+	}
+
 	t_dev_info(dev, "===== FW upgrade: done (%d) =====\n", retry);
 
 	return 0;
