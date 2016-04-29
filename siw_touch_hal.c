@@ -348,7 +348,7 @@ static int __used __siw_hal_do_reg_write(struct device *dev, u32 addr, void *dat
 		return -EFAULT;
 	}
 
-	ts->tx_buf[0] = (touch_bus_type(ts) == BUS_SPI)? 0x60 :
+	ts->tx_buf[0] = (touch_bus_type(ts) == BUS_IF_SPI)? 0x60 :
 					((size > 4) ? 0x60 : 0x40);
 	ts->tx_buf[0] |= ((addr >> 8) & 0x0f);
 	ts->tx_buf[1] = (addr  & 0xff);

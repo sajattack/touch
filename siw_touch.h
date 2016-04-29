@@ -38,7 +38,7 @@
 #include "siw_touch_dbg.h"
 
 
-#define SIW_DRV_VERSION		"v2.02"
+#define SIW_DRV_VERSION		"v2.03"
 
 
 enum {
@@ -54,6 +54,12 @@ enum {
 	TOUCH_IRQ_SWIPE_RIGHT	= (1 << 3),
 	TOUCH_IRQ_SWIPE_LEFT	= (1 << 4),
 	TOUCH_IRQ_ERROR			= (1 << 15),
+};
+
+enum _SIW_BUS_IF {
+	BUS_IF_I2C = 0,
+	BUS_IF_SPI,
+	BUS_IF_MAX,
 };
 
 enum {
@@ -669,7 +675,7 @@ static inline void *pdata_watch_win(struct siw_touch_pdata *pdata)
 #if defined(__SIW_SUPPORT_XFER)
 static inline int pdata_xfer_allowed(struct siw_touch_pdata *pdata)
 {
-	if (pdata_bus_type(pdata) != BUS_SPI)
+	if (pdata_bus_type(pdata) != BUS_IF_SPI)
 		return 0;
 
 	if (pdata_test_quirks(pdata, CHIP_QUIRK_NOT_SUPPORT_XFER))

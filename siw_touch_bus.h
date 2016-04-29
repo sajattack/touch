@@ -39,12 +39,6 @@ enum {
 	SPI_BUS_RX_DUMMY_SZ = 2,
 };
 
-enum _SIW_BUS_IF {
-	BUS_IF_I2C = 0,
-	BUS_IF_SPI,
-	BUS_IF_MAX,
-};
-
 struct touch_bus_msg {
 	u8 *tx_buf;
 	int tx_size;
