@@ -1705,9 +1705,6 @@ static int siw_hal_fw_up_post_fw_dn(struct device *dev)
 	}
 	t_dev_info(dev, "FW upgrade: boot check done\n");
 
-	/*
-	 * Stage 1-2: upgrade code data
-	 */
 	/* Firmware Download Start */
 	dn_cmd = (FLASH_KEY_CODE_CMD << 16) | 1;
 	ret = siw_hal_fw_up_wr_value(dev, reg->tc_flash_dn_ctl, dn_cmd);
@@ -1773,6 +1770,54 @@ out:
 	return ret;
 }
 
+static int siw_hal_fw_upgrade_fw(struct device *dev,
+				const struct firmware *fw)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	u8 *fw_data;
+	int fw_size_max;
+	int ret = 0;
+
+	/*
+	 * Stage 1-1 : download code data
+	 */
+	fw_size_max = touch_fw_size(ts);
+
+	ret = siw_hal_fw_up_pre_fw_dn(dev);
+	if (ret < 0) {
+		goto out;
+	}
+
+	/*
+	 * [Caution]
+	 * The size for F/W upgrade is fw_size_max, not fw->size
+	 * because the fw file can have config area.
+	 */
+	fw_data = (u8 *)fw->data;
+	ret = siw_hal_fw_up_do_fw_dn(dev, fw_data, fw_size_max);
+	if (ret < 0) {
+		goto out;
+	}
+
+	ret = __siw_hal_fw_up_verify(dev, fw_data, fw_size_max);
+	if (ret < 0) {
+		goto out;
+	}
+
+	/*
+	 * Stage 1-2: upgrade code data
+	 */
+	ret = siw_hal_fw_up_post_fw_dn(dev);
+	if (ret < 0) {
+		goto out;
+	}
+
+out:
+	return ret;
+}
+
+
 static int siw_hal_fw_up_pre_conf_dn(struct device *dev, u32 *value)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
@@ -1834,7 +1879,7 @@ static int siw_hal_fw_up_do_conf_dn(struct device *dev,
 	int ret;
 
 	/* conf sram base address write */
-	ret = siw_hal_fw_up_wr_value(dev, reg->spr_data_offset,	addr);
+	ret = siw_hal_fw_up_wr_value(dev, reg->spr_data_offset, addr);
 	if (ret < 0) {
 		goto out;
 	}
@@ -1905,16 +1950,12 @@ static int siw_hal_fw_upgrade(struct device *dev,
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
-	u8 *fw_data;
 	int fw_size, fw_size_max;
 	u32 include_conf;
 	int ret = 0;
 
 	t_dev_info(dev, "===== FW upgrade: start (%d) =====\n", retry);
 
-	/*
-	 * Stage 1-1 : download code data
-	 */
 	fw_size = (int)fw->size;
 	fw_size_max = touch_fw_size(ts);
 	if ((fw_size != fw_size_max) &&
@@ -1935,28 +1976,7 @@ static int siw_hal_fw_upgrade(struct device *dev,
 	t_dev_dbg_base(dev, "FW upgrade: fw size %08Xh, fw_size_max %08Xh\n",
 			fw_size, fw_size_max);
 
-	ret = siw_hal_fw_up_pre_fw_dn(dev);
-	if (ret < 0) {
-		goto out;
-	}
-
-	/*
-	 * [Caution]
-	 * The size for F/W upgrade is fw_size_max, not fw->size
-	 * because the fw file can have config area.
-	 */
-	fw_data = (u8 *)fw->data;
-	ret = siw_hal_fw_up_do_fw_dn(dev, fw_data, fw_size_max);
-	if (ret < 0) {
-		goto out;
-	}
-
-	ret = __siw_hal_fw_up_verify(dev, fw_data, fw_size_max);
-	if (ret < 0) {
-		goto out;
-	}
-
-	ret = siw_hal_fw_up_post_fw_dn(dev);
+	ret = siw_hal_fw_upgrade_fw(dev, fw);
 	if (ret < 0) {
 		goto out;
 	}
@@ -1969,8 +1989,6 @@ static int siw_hal_fw_upgrade(struct device *dev,
 	}
 
 	t_dev_info(dev, "===== FW upgrade: done (%d) =====\n", retry);
-
-	return 0;
 
 out:
 	return ret;
