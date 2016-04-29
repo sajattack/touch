@@ -236,12 +236,23 @@ int siw_touch_init_uevent(struct siw_ts *ts)
 	ts->udev.release = siw_touch_uevent_release;
 
 	ret = subsys_system_register(&ts->ubus, NULL);
-	if (ret < 0)
+	if (ret < 0) {
 		t_dev_err(ts->dev, "bus is not registered, %d\n", ret);
+		goto out_subsys;
+	}
 
 	ret = device_register(&ts->udev);
-	if (ret < 0)
+	if (ret < 0) {
 		t_dev_err(ts->dev, "device is not registered, %d\n",ret);
+		goto out_dev;
+	}
+
+	return 0;
+
+out_dev:
+	bus_unregister(&ts->ubus);
+
+out_subsys:
 
 	return ret;
 }
