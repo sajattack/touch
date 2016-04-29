@@ -1198,6 +1198,7 @@ static int siw_hal_init(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
+	int i;
 	int ret = 0;
 
 	if (atomic_read(&ts->state.core) == CORE_PROBE) {
@@ -1214,12 +1215,19 @@ static int siw_hal_init(struct device *dev)
 		siw_ops_abt_init(ts);
 	}
 
-	ret = siw_hal_ic_info(dev);
-	if (ret < 0) {
+	for (i=0 ; i<2 ; i++) {
+		ret = siw_hal_ic_info(dev);
+		if (!ret) {
+			break;
+		}
+
 		siw_touch_irq_control(dev, INTERRUPT_DISABLE);
 		siw_hal_power(dev, POWER_OFF);
 		siw_hal_power(dev, POWER_ON);
 		touch_msleep(ts->caps.hw_reset_delay);
+	}
+	if (ret < 0) {
+		goto out;
 	}
 
 	siw_hal_init_reg_set(dev);
@@ -1228,27 +1236,30 @@ static int siw_hal_init(struct device *dev)
 	atomic_set(&ts->state.sleep, IC_NORMAL);
 
 	ret = siw_hal_lpwg_mode(dev);
-	if (ret) {
+	if (ret < 0) {
 		t_dev_err(dev, "failed to lpwg_control, %d\n", ret);
+		goto out;
 	}
 
 	ret = siw_hal_check_watch(dev);
-	if (ret) {
+	if (ret < 0) {
 		t_dev_err(dev, "failed to check watch, %d\n", ret);
+		goto out;
 	}
 
+out:
 	if (ret) {
 		t_dev_err(dev, "%s init failed, %d\n",
-				touch_chip_name(ts), ret);
+			touch_chip_name(ts), ret);
 	} else {
 		t_dev_info(dev, "%s init done\n",
-				touch_chip_name(ts));
+			touch_chip_name(ts));
 	}
 
 	siwmon_submit_ops_step_chip_wh_name(dev, "%s init done",
 			touch_chip_name(ts), ret);
 
-	return 0;
+	return ret;
 }
 
 static int siw_hal_reinit(struct device *dev,
