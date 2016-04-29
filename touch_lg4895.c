@@ -246,14 +246,14 @@ static const struct siw_touch_pdata chip_pdata = {
 	.ops				= NULL,
 	/* */
 	//See 'siw_hal_get_tci_info' [siw_touch_hal.c]
-	.tci_info			= chip_tci_info,
-	.tci_reset_area		= chip_tci_reset_area,
+	.tci_info			= (void *)chip_tci_info,
+	.tci_reset_area		= (void *)&chip_tci_reset_area,
 	.tci_qcover_open	= NULL,
 	.tci_qcover_close	= NULL,
 	//See 'siw_hal_get_swipe_info' [siw_touch_hal.c]
-	.swipe_ctrl			= chip_swipe_info,
+	.swipe_ctrl			= (void *)&chip_swipe_info,
 	//See 'store_ext_watch_config_font_position' [siw_touch_hal_watch.c]
-	.watch_win			= chip_watch_win_range,
+	.watch_win			= (void *)&chip_watch_win_range,
 	//See 'siw_setup_operations'
 	.reg_quirks			= NULL,
 };
