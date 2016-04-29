@@ -1751,7 +1751,7 @@ static int ext_watch_fontdata_attr_init(struct device *dev)
 	}
 	watch->ext_wdata.font_data = buf;
 
-	t_watch_info(dev, "font buffer[%Xh] allocated\n", size);
+	t_dev_dbg_base(dev, "font buffer[%Xh] allocated\n", size);
 
 	sysfs_bin_attr_init(fontdata_attr);
 	fontdata_attr->attr.name = "config_fontdata";
@@ -1767,7 +1767,7 @@ static int ext_watch_fontdata_attr_init(struct device *dev)
 		goto out_bin;
 	}
 
-	t_watch_info(dev, "file[%s] file created\n",
+	t_dev_dbg_base(dev, "file[%s] file created\n",
 			fontdata_attr->attr.name);
 
 	return 0;
@@ -1784,8 +1784,15 @@ static void ext_watch_fontdata_attr_free(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct watch_data *watch = (struct watch_data *)chip->watch;
+	struct bin_attribute *fontdata_attr = &watch->fontdata_attr;
+	int size = (int)fontdata_attr->size;
 
-	sysfs_remove_bin_file(&chip->kobj, &watch->fontdata_attr);
+	t_dev_dbg_base(dev, "file[%s] file released\n",
+			fontdata_attr->attr.name);
+
+	sysfs_remove_bin_file(&chip->kobj, fontdata_attr);
+
+	t_dev_dbg_base(dev, "font buffer[%Xh] released\n", size);
 
 	kfree(watch->ext_wdata.font_data);
 	watch->ext_wdata.font_data = NULL;
