@@ -1423,7 +1423,7 @@ static int siw_hal_fw_compare(struct device *dev, const struct firmware *fw)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
-	int fw_max_size = ts->fw_max_size;
+	int fw_max_size = touch_fw_size(ts);
 	u32 bin_ver_offset = *((u32 *)&fw->data[BIN_VER_OFFSET_POS]);
 	u32 bin_pid_offset = *((u32 *)&fw->data[BIN_PID_OFFSET_POS]);
 	u8 dev_major = chip->fw.version[0];
@@ -1439,7 +1439,7 @@ static int siw_hal_fw_compare(struct device *dev, const struct firmware *fw)
 	if ((bin_ver_offset > fw_max_size) ||
 		(bin_pid_offset > fw_max_size)) {
 		t_dev_info(dev, "FW compare: invalid offset - ver %08Xh, pid %08Xh, max %08Xh\n",
-			bin_ver_offset, bin_pid_offset, ts->fw_max_size);
+			bin_ver_offset, bin_pid_offset, fw_max_size);
 		return -EINVAL;
 	}
 
@@ -1985,15 +1985,6 @@ static int siw_hal_upgrade(struct device *dev)
 	int ret = 0;
 	int ret_val = 0;
 	int i = 0;
-
-	switch (touch_chip_type(ts)) {
-	case CHIP_SW1828:
-		ts->fw_max_size = (65<<10); 		//65KB
-		break;
-	default :
-		ts->fw_max_size = FLASH_FW_SIZE;	//69KB
-		break;
-	}
 
 	if (atomic_read(&ts->state.fb) >= FB_SUSPEND) {
 		t_dev_warn(dev, "state.fb is not FB_RESUME\n");

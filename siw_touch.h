@@ -745,7 +745,6 @@ struct siw_ts {
 	const char *panel_spec;
 	const char *panel_spec_mfts;
 	u32 force_fwup;
-	u32 fw_max_size;
 
 	u8 *tx_buf;
 	u8 *rx_buf;
