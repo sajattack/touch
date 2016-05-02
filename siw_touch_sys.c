@@ -41,13 +41,19 @@
 #include "siw_touch.h"
 #include "siw_touch_sys.h"
 
-int siw_touch_sys_bus_use_dma(void)
+int siw_touch_sys_bus_use_dma(struct device *dev)
 {
 #if defined(__If_the_bus_of_your_chipset_needs_dma_control__)
-	return 1;
-#else
-	return 0;
+	{
+		return 1;
+	}
+#elif defined(CONFIG_ARCH_EXYNOS5)
+	{
+		return 0;
+	}
 #endif
+
+	return 0;
 }
 
 int siw_touch_get_boot_mode(void)

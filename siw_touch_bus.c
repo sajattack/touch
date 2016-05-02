@@ -164,8 +164,8 @@ void *siw_touch_bus_create_bus_pdata(int bus_type)
 static void *__buffer_alloc(struct device *dev, size_t size,
 				dma_addr_t *dma_handle, gfp_t gfp)
 {
-	if (siw_touch_sys_bus_use_dma()) {
-		return dma_alloc_coherent(dev, size, dma_handle, gfp);
+	if (siw_touch_sys_bus_use_dma(dev)) {
+		return dma_alloc_coherent(NULL, size, dma_handle, gfp);
 	}
 
 	return devm_kzalloc(dev, size, gfp);
@@ -174,8 +174,8 @@ static void *__buffer_alloc(struct device *dev, size_t size,
 static void __buffer_free(struct device *dev, size_t size,
 				void *buf, dma_addr_t dma_handle)
 {
-	if (siw_touch_sys_bus_use_dma() && dma_handle) {
-		dma_free_coherent(dev, size, buf, dma_handle);
+	if (siw_touch_sys_bus_use_dma(dev) && dma_handle) {
+		dma_free_coherent(NULL, size, buf, dma_handle);
 		return;
 	}
 
@@ -202,6 +202,7 @@ int siw_touch_bus_alloc_buffer(struct siw_ts *ts)
 				buf_size, &tx_pa, GFP_KERNEL);
 	if (!tx_buf) {
 		t_dev_err(dev, "failed to allocate tx_buf\n");
+		ret = -ENOMEM;
 		goto out_tx_buf;
 	}
 	t_dev_dbg_base(dev, "tx_buf %08Xh, tx_pa %08Xh, size %08Xh\n",
@@ -211,6 +212,7 @@ int siw_touch_bus_alloc_buffer(struct siw_ts *ts)
 				buf_size, &rx_pa, GFP_KERNEL);
 	if (!rx_buf) {
 		t_dev_err(dev, "failed to allocate rx_buf\n");
+		ret = -ENOMEM;
 		goto out_rx_buf;
 	}
 	t_dev_dbg_base(dev, "rx_buf %08Xh, rx_pa %08Xh, size %08Xh\n",
@@ -219,6 +221,7 @@ int siw_touch_bus_alloc_buffer(struct siw_ts *ts)
 	xfer = devm_kzalloc(dev, sizeof(struct touch_xfer_msg), GFP_KERNEL);
 	if (!xfer) {
 		t_dev_err(dev, "failed to allocate xfer\n");
+		ret = -ENOMEM;
 		goto out_xfer;
 	}
 	t_dev_dbg_base(dev, "xfer   : 0x%08X(0x%X)\n",

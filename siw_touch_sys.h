@@ -12,7 +12,7 @@
 #ifndef __SIW_TOUCH_SYS_H
 #define __SIW_TOUCH_SYS_H
 
-extern int siw_touch_sys_bus_use_dma(void);
+extern int siw_touch_sys_bus_use_dma(struct device *dev);
 
 extern int siw_touch_get_boot_mode(void);
 extern int siw_touch_boot_mode_check(struct device *dev);
