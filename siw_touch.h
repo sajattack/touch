@@ -961,7 +961,14 @@ static inline u32 touch_mode_allowed(struct siw_ts *ts, u32 mode_bit)
 
 static inline u32 touch_mode_not_allowed(struct siw_ts *ts, u32 mode_bit)
 {
-	return !pdata_mode_allowed(ts->pdata, mode_bit);
+	int ret;
+
+	ret = !pdata_mode_allowed(ts->pdata, mode_bit);
+	if (ret) {
+		t_dev_warn(ts->dev, "target mode(%d) not supported\n", mode_bit);
+	}
+
+	return ret;
 }
 
 static inline u32 touch_fw_size(struct siw_ts *ts)

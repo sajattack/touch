@@ -291,6 +291,8 @@ static int __used __siw_hal_do_reg_read(struct device *dev, u32 addr, void *data
 		return -EFAULT;
 	}
 
+//	t_dev_info(dev, "addr %04Xh, size %d\n", addr, size);
+
 	ts->tx_buf[0] = ((size > 4) ? 0x20 : 0x00);
 	ts->tx_buf[0] |= ((addr >> 8) & 0x0f);
 	ts->tx_buf[1] = (addr & 0xff);
@@ -596,7 +598,7 @@ int siw_hal_xfer_tx_seq(struct device *dev, u32 reg, u32 *data, int cnt)
 static int siw_hal_cmd_write(struct device *dev, u8 cmd)
 {
 //	struct siw_touch_chip *chip = to_touch_chip(dev);
-	struct touch_bus_msg msg;
+	struct touch_bus_msg msg = {0, };
 	u8 input[2] = {0, };
 	int ret = 0;
 
@@ -2528,7 +2530,7 @@ static inline int siw_hal_tc_driving_stop(struct device *dev)
 }
 
 #define SIW_HAL_SET_LCD_DRIVING_MODE_STR(_mode)	\
-		[LCD_MODE_##_mode] = #_mode
+		[LCD_MODE_IDX_##_mode] = #_mode
 
 static const char *siw_hal_lcd_driving_mode_str[] = {
 	SIW_HAL_SET_LCD_DRIVING_MODE_STR(U0),
@@ -2540,12 +2542,19 @@ static const char *siw_hal_lcd_driving_mode_str[] = {
 	SIW_HAL_SET_LCD_DRIVING_MODE_STR(STOP),
 };
 
-static inline const char *siw_hal_lcd_driving_mode_name(int mode)
+static inline const char *siw_hal_lcd_driving_mode_name(int mode_bit)
 {
-	return (mode < LCD_MODE_MAX)? siw_hal_lcd_driving_mode_str[mode] : "(invalid)";
+	int i;
+
+	for (i=0 ; i<LCD_MODE_IDX_MAX ; i++) {
+		if (BIT(i) == mode_bit) {
+			return siw_hal_lcd_driving_mode_str[i];
+		}
+	}
+	return "(invalid)";
 }
 
-static int siw_hal_tc_driving(struct device *dev, int mode)
+static int siw_hal_tc_driving(struct device *dev, int mode_bit)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
@@ -2561,14 +2570,13 @@ static int siw_hal_tc_driving(struct device *dev, int mode)
 		return 0;
 	}
 
-	chip->driving_mode = mode;
+	chip->driving_mode = mode_bit;
 
-	if (touch_mode_not_allowed(ts, mode)) {
-		t_dev_warn(dev, "target mode(%d) not supported\n", mode);
+	if (touch_mode_not_allowed(ts, mode_bit)) {
 		return 0;
 	}
 
-	switch (mode) {
+	switch (mode_bit) {
 	case LCD_MODE_U0:
 		ctrl = siw_hal_tc_driving_u0(dev);
 		break;
@@ -2594,25 +2602,25 @@ static int siw_hal_tc_driving(struct device *dev, int mode)
 		break;
 
 	default:
-		t_dev_err(dev, "mode(%d) not supported\n", mode);
+		t_dev_err(dev, "mode(%d) not supported\n", mode_bit);
 		return -ESRCH;
 	}
 
 	/* swipe set */
-	ret = siw_hal_swipe_mode(dev, mode);
+	ret = siw_hal_swipe_mode(dev, mode_bit);
 	if (ret < 0) {
 		t_dev_warn(dev, "swipe mode err, %d", ret);
 	}
 
 #if 0
 	if ((chip->fw.wfr == REV1) &&
-		((mode == LCD_MODE_U0) || (mode == LCD_MODE_U2))) {
+		((mode_bit == LCD_MODE_U0) || (mode_bit == LCD_MODE_U2))) {
 		touch_msleep(200);
 	}
 #endif
 
 	t_dev_info(dev, "current driving mode is %s\n",
-			siw_hal_lcd_driving_mode_name(mode));
+			siw_hal_lcd_driving_mode_name(mode_bit));
 
 	ret = siw_hal_read_value(dev,
 				reg->spr_subdisp_status,
@@ -2629,7 +2637,7 @@ static int siw_hal_tc_driving(struct device *dev, int mode)
 
 	t_dev_dbg_base(dev, "waiting %d msecs\n", HAL_TC_DRIVING_DELAY);
 
-	if (mode == LCD_MODE_U3_PARTIAL) {
+	if (mode_bit == LCD_MODE_U3_PARTIAL) {
 		atomic_set(&ts->recur_chk, 0);
 		return 0;
 	}
@@ -2653,7 +2661,7 @@ static int siw_hal_tc_driving(struct device *dev, int mode)
 	running_status &= 0x1F;
 
 	re_init = 0;
-	if (mode != LCD_MODE_STOP) {
+	if (mode_bit != LCD_MODE_STOP) {
 		if (!running_status ||
 			(running_status == 0x10) ||
 			(running_status == 0x0F)){
@@ -2665,14 +2673,14 @@ static int siw_hal_tc_driving(struct device *dev, int mode)
 
 	if (re_init) {
 		t_dev_err(dev, "command missed: mode %d, status %Xh\n",
-			mode, running_status);
+			mode_bit, running_status);
 
 		atomic_set(&ts->recur_chk, 1);
 
 		siw_hal_reinit(dev, 1, 100, 1, siw_hal_init);
 	} else {
 		t_dev_dbg_base(dev, "command done: mode %d, status %Xh\n",
-			mode, running_status);
+			mode_bit, running_status);
 	}
 
 	atomic_set(&ts->recur_chk, 0);
@@ -3546,22 +3554,32 @@ static void siw_hal_connect(struct device *dev)
 			chip->charger);
 }
 
-static void siw_hal_lcd_mode(struct device *dev, u32 mode)
+static void siw_hal_lcd_mode(struct device *dev, u32 mode_bit)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
 
-	t_dev_info(dev, "lcd_mode: %d (prev: %d)\n", mode, chip->lcd_mode);
+	if (touch_mode_not_allowed(ts, mode_bit)) {
+		return;
+	}
+
+	t_dev_info(dev, "lcd_mode: %d (prev: %d)\n", mode_bit, chip->lcd_mode);
 
 	if ((chip->lcd_mode == LCD_MODE_U2) &&
 		siw_hal_watch_is_disp_waton(dev)) {
 		siw_hal_watch_get_curr_time(dev, NULL, NULL);
 	}
 
-	if (mode == LCD_MODE_U2_UNBLANK)
-		mode = LCD_MODE_U2;
+	if (mode_bit == LCD_MODE_U2_UNBLANK)
+		mode_bit = LCD_MODE_U2;
 
 	chip->prev_lcd_mode = chip->lcd_mode;
-	chip->lcd_mode = mode;
+	chip->lcd_mode = mode_bit;
+}
+
+static void siw_hal_lcd_mode_idx(struct device *dev, u32 mode)
+{
+	siw_hal_lcd_mode(dev, BIT(mode));
 }
 
 static int siw_hal_usb_status(struct device *dev, u32 mode)
@@ -3668,7 +3686,7 @@ static int siw_hal_notify(struct device *dev, ulong event, void *data)
 		break;
 	case LCD_EVENT_LCD_MODE:
 		t_dev_info(dev, "notify: lcd_event: lcd mode\n");
-		siw_hal_lcd_mode(dev, *(u32 *)data);
+		siw_hal_lcd_mode_idx(dev, *(u32 *)data);
 		ret = siw_hal_check_mode(dev);
 		if (!ret) {
 			queue_delayed_work(ts->wq, &chip->fb_notify_work, 0);
