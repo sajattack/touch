@@ -803,6 +803,7 @@ struct siw_ts {
 	struct siw_touch_operations *ops;
 
 	/* */
+	int (*bus_init)(struct device *dev);
 	int (*bus_read)(struct device *dev, void *msg);
 	int (*bus_write)(struct device *dev, void *msg);
 	int (*bus_xfer)(struct device *dev, void *xfer);

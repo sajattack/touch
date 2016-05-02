@@ -65,13 +65,14 @@
 
 #define CHIP_QUIRKS					(0 |	\
 									CHIP_QUIRK_NOT_SUPPORT_IME |	\
+									CHIP_QUIRK_NOT_SUPPORT_XFER |	\
 									0)
 
 #define CHIP_BUS_TYPE				BUS_IF_SPI
 #define	CHIP_BUF_SIZE				0
 #define CHIP_SPI_MODE				SPI_MODE_0
 #define CHIP_BPW					8
-#define CHIP_MAX_FREQ				(10 * 1000000)
+#define CHIP_MAX_FREQ				(5 * 1000* 1000)
 #define CHIP_TX_HDR_SZ				SPI_BUS_TX_HDR_SZ
 #define CHIP_RX_HDR_SZ				SPI_BUS_RX_HDR_SZ
 #define CHIP_TX_DUMMY_SZ			SPI_BUS_TX_DUMMY_SZ

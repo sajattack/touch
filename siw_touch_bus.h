@@ -105,6 +105,7 @@ extern void *siw_touch_bus_create_bus_pdata(int bus_type);
 extern int siw_touch_bus_alloc_buffer(struct siw_ts *ts);
 extern int siw_touch_bus_free_buffer(struct siw_ts *ts);
 
+extern int siw_touch_bus_init(struct device *dev);
 extern int siw_touch_bus_read(struct device *dev, struct touch_bus_msg *msg);
 extern int siw_touch_bus_write(struct device *dev, struct touch_bus_msg *msg);
 extern int siw_touch_bus_xfer(struct device *dev, struct touch_xfer_msg *xfer);

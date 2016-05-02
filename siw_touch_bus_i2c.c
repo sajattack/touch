@@ -68,6 +68,11 @@ static void siw_touch_i2c_err_dump(struct i2c_client *client,
 	}
 }
 
+static int siw_touch_i2c_init(struct device *dev)
+{
+	return 0;
+}
+
 static int siw_touch_do_i2c_read(struct i2c_client *client,
 							struct touch_bus_msg *msg)
 {
@@ -177,6 +182,7 @@ static struct siw_ts *siw_touch_i2c_alloc(
 
 	siw_setup_operations(ts, bus_drv->pdata->ops);
 
+	ts->bus_init = siw_touch_i2c_init;
 	ts->bus_read = siw_touch_i2c_read;
 	ts->bus_write = siw_touch_i2c_write;
 	ts->bus_xfer = siw_touch_i2c_xfer;

@@ -53,6 +53,17 @@
 #define siwmon_submit_bus_spi_xfer(_spi, _data, _ret)	\
 		siwmon_submit_bus(&_spi->dev, "SPI_X", _data, _ret)
 
+static void siw_touch_spi_message_init(struct spi_device *spi,
+						struct spi_message *m)
+{
+	spi_message_init(m);
+}
+
+static int siw_touch_spi_sync(struct spi_device *spi,
+				struct spi_message *m)
+{
+	return spi_sync(spi, m);
+}
 
 static void siw_touch_spi_err_dump(struct spi_device *spi,
 							struct spi_transfer *xs, int num,
@@ -77,12 +88,31 @@ static void siw_touch_spi_err_dump(struct spi_device *spi,
 	}
 }
 
+static int siw_touch_spi_init(struct device *dev)
+{
+	struct spi_device *spi = to_spi_device(dev);
+	int ret;
+
+	ret = spi_setup(spi);
+	if (ret < 0) {
+		t_dev_err(dev, "failed to perform SPI setup\n");
+		return ret;
+	}
+
+	t_dev_info(dev, "spi init: %d Mhz, mode %d, bpw %d, cs %d (%s)\n",
+			spi->max_speed_hz/1000000,
+			spi->mode,
+			spi->bits_per_word,
+			spi->chip_select,
+			dev_name(&spi->master->dev));
+
+	return 0;
+}
+
 static int siw_touch_spi_do_read(struct spi_device *spi,
 							struct touch_bus_msg *msg)
 {
-	struct siw_ts *ts = spi_get_drvdata(spi);
-//	int bus_tx_dummy_size = touch_tx_dummy_size(ts);
-	int bus_rx_dummy_size = touch_rx_dummy_size(ts);
+//	struct siw_ts *ts = spi_get_drvdata(spi);
 	struct spi_transfer x = { 0, };
 	struct spi_message m;
 	int ret = 0;
@@ -98,13 +128,7 @@ static int siw_touch_spi_do_read(struct spi_device *spi,
 		return -EOVERFLOW;
 	}
 
-	spi_message_init(&m);
-
-	//Add dummy packet
-//	while (bus_tx_dummy_size--) {
-	while (bus_rx_dummy_size--) {
-		msg->tx_buf[msg->tx_size++] = 0;
-	}
+	siw_touch_spi_message_init(spi, &m);
 
 	x.tx_buf = msg->tx_buf;
 	x.rx_buf = msg->rx_buf;
@@ -114,7 +138,7 @@ static int siw_touch_spi_do_read(struct spi_device *spi,
 
 	spi_message_add_tail(&x, &m);
 
-	ret = spi_sync(spi, &m);
+	ret = siw_touch_spi_sync(spi, &m);
 	siwmon_submit_bus_spi_read(spi, msg, ret);
 	if (ret < 0)
 		siw_touch_spi_err_dump(spi, &x, 1, 1);
@@ -130,8 +154,7 @@ static int siw_touch_spi_read(struct device *dev, void *msg)
 int siw_touch_spi_do_write(struct spi_device *spi,
 						struct touch_bus_msg *msg)
 {
-	struct siw_ts *ts = spi_get_drvdata(spi);
-	int bus_tx_dummy_size = touch_tx_dummy_size(ts);
+//	struct siw_ts *ts = spi_get_drvdata(spi);
 	struct spi_transfer x = { 0, };
 	struct spi_message m;
 	int ret = 0;
@@ -146,12 +169,7 @@ int siw_touch_spi_do_write(struct spi_device *spi,
 		return -EOVERFLOW;
 	}
 
-	spi_message_init(&m);
-
-	//Add dummy packet
-	while (bus_tx_dummy_size--) {
-		msg->tx_buf[msg->tx_size++] = 0;
-	}
+	siw_touch_spi_message_init(spi, &m);
 
 	x.tx_buf = msg->tx_buf;
 	x.rx_buf = msg->rx_buf;
@@ -161,7 +179,7 @@ int siw_touch_spi_do_write(struct spi_device *spi,
 
 	spi_message_add_tail(&x, &m);
 
-	ret = spi_sync(spi, &m);
+	ret = siw_touch_spi_sync(spi, &m);
 	siwmon_submit_bus_spi_write(spi, msg, ret);
 	if (ret < 0)
 		siw_touch_spi_err_dump(spi, &x, 1, 0);
@@ -181,7 +199,9 @@ static void __siw_touch_spi_xfer_mon(struct spi_device *spi,
 {
 	struct touch_xfer_data_t *tx = NULL;
 	struct touch_xfer_data_t *rx = NULL;
-	struct touch_bus_msg msg;
+	struct touch_bus_msg *msg;
+	struct touch_bus_msg msg_buf[2];
+	int idx = 0;
 	int cnt = xfer->msg_count;
 	int i;
 
@@ -189,16 +209,18 @@ static void __siw_touch_spi_xfer_mon(struct spi_device *spi,
 		tx = &xfer->data[i].tx;
 		rx = &xfer->data[i].rx;
 
-		msg.tx_buf = tx->data;
-		msg.tx_size = tx->size;
-		msg.rx_buf = rx->data;
-		msg.rx_size = rx->size;
-		msg.bits_per_word = spi->bits_per_word;
-		msg.priv = (i<<8) | cnt;
+		msg = &msg_buf[idx];
+		msg->tx_buf = tx->data;
+		msg->tx_size = tx->size;
+		msg->rx_buf = rx->data;
+		msg->rx_size = rx->size;
+		msg->bits_per_word = spi->bits_per_word;
+		msg->priv = (i<<8) | cnt;
+		idx ^= 1;
 
 		//For xfer mon,
 		//the last character of dir string shall be 'X'
-		siwmon_submit_bus_spi_xfer(spi, &msg, ret);
+		siwmon_submit_bus_spi_xfer(spi, msg, ret);
 	}
 }
 #else	/* CONFIG_TOUCHSCREEN_SIWMON */
@@ -227,7 +249,8 @@ static int siw_touch_spi_do_xfer(struct spi_device *spi, struct touch_xfer_msg *
 		return -EINVAL;
 	}
 
-	spi_message_init(&m);
+	siw_touch_spi_message_init(spi, &m);
+
 	memset(x, 0, sizeof(x));
 
 	for (i = 0; i < cnt; i++) {
@@ -249,7 +272,7 @@ static int siw_touch_spi_do_xfer(struct spi_device *spi, struct touch_xfer_msg *
 		spi_message_add_tail(&x[i], &m);
 	}
 
-	ret = spi_sync(spi, &m);
+	ret = siw_touch_spi_sync(spi, &m);
 	__siw_touch_spi_xfer_mon(spi, xfer, ret);
 	if (ret < 0)
 		siw_touch_spi_err_dump(spi, &x[0], cnt, 0);
@@ -291,6 +314,7 @@ static struct siw_ts *siw_touch_spi_alloc(
 
 	siw_setup_operations(ts, bus_drv->pdata->ops);
 
+	ts->bus_init = siw_touch_spi_init;
 	ts->bus_read = siw_touch_spi_read;
 	ts->bus_write = siw_touch_spi_write;
 	ts->bus_xfer = siw_touch_spi_xfer;
@@ -321,7 +345,8 @@ static struct siw_ts *siw_touch_spi_alloc(
 		goto out_spi;
 	}
 	spi->max_speed_hz = tmp;
-	t_dev_info(dev, "spi alloc: %d Mhz\n", tmp/1000000);
+	t_dev_info(dev, "spi alloc: %d Mhz, mode %d, bpw %d\n",
+			tmp/1000000, spi->mode, spi->bits_per_word);
 
 	spi_set_drvdata(spi, ts);
 

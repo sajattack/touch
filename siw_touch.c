@@ -1013,27 +1013,47 @@ static struct siw_touch_pdata *_siw_touch_do_probe_common(struct siw_ts *ts)
 	}
 
 	ret = siw_touch_parse_data(ts);
-	if (ret) {
+	if (ret < 0) {
 		t_dev_err(dev, "failed to parse touch data, %d\n", ret);
 		goto out;
 	}
 
-	siw_touch_bus_alloc_buffer(ts);
-	siw_touch_bus_pin_get(ts);
+	ret = siw_touch_bus_alloc_buffer(ts);
+	if (ret < 0) {
+		t_dev_err(dev, "failed to alloc bus buffer, %d\n", ret);
+		goto out;
+	}
+
+	ret = siw_touch_bus_pin_get(ts);
+	if (ret < 0) {
+		t_dev_err(dev, "failed to setup bus pin, %d\n", ret);
+		goto out_bus_pin;
+	}
+
+	ret = siw_touch_bus_init(ts->dev);
+	if (ret < 0) {
+		t_dev_err(dev, "failed to setup bus, %d\n", ret);
+		goto out_bus_init;
+	}
 
 	ret = siw_ops_probe(ts);
 	if (ret) {
 		t_dev_err(dev, "failed to probe, %d\n", ret);
-		goto out_init;
+		goto out_ops_probe;
 	}
 
 	return pdata;
 
-out_init:
+out_ops_probe:
+
+out_bus_init:
 	siw_touch_bus_pin_put(ts);
+
+out_bus_pin:
 	siw_touch_bus_free_buffer(ts);
 
 out:
+
 	return NULL;
 }
 

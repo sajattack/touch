@@ -142,27 +142,27 @@ int siw_touch_bus_pin_get(struct siw_ts *ts)
 		}
 
 		t_dev_info(dev, "pinctrl not used\n");
-		goto pin_skip;
+		goto out;
 	}
 
 	pin_active = pinctrl_lookup_state(pin_ctrl,
 								TOUCH_PINCTRL_ACTIVE);
 	if (IS_ERR_OR_NULL(pin_active)) {
 		t_dev_dbg_gpio(dev, "cannot get pinctrl active\n");
-		goto pin_skip;
+		goto out;
 	}
 
 	pin_suspend = pinctrl_lookup_state(pin_ctrl,
 								TOUCH_PINCTRL_SLEEP);
 	if (IS_ERR_OR_NULL(pin_suspend)) {
 		t_dev_dbg_gpio(dev, "cannot get pinctrl suspend\n");
-		goto pin_skip;
+		goto out;
 	}
 
 	ret = pinctrl_select_state(pin_ctrl, pin_active);
 	if (ret) {
 		t_dev_dbg_gpio(dev, "cannot set pinctrl active\n");
-		goto pin_skip;
+		goto out;
 	}
 
 	t_dev_info(dev, "pinctrl set active\n");
@@ -171,14 +171,7 @@ int siw_touch_bus_pin_get(struct siw_ts *ts)
 	pinctrl->active = pin_active;
 	pinctrl->suspend = pin_suspend;
 
-pin_skip:
-	if (touch_bus_type(ts) == BUS_IF_SPI) {
-		ret = spi_setup(to_spi_device(dev));
-		if (ret < 0) {
-			t_dev_err(dev, "failed to perform SPI setup\n");
-		}
-	}
-
+out:
 	return ret;
 }
 
@@ -345,6 +338,19 @@ int siw_touch_bus_free_buffer(struct siw_ts *ts)
 	}
 
 	return 0;
+}
+
+int siw_touch_bus_init(struct device *dev)
+{
+	struct siw_ts *ts = to_touch_core(dev);
+
+	if (!ts->bus_init) {
+		t_dev_err(dev, "no bus_init %s(%d)\n",
+			dev_name(dev), touch_bus_type(ts));
+		return -EINVAL;
+	}
+
+	return ts->bus_init(dev);
 }
 
 int siw_touch_bus_read(struct device *dev,
