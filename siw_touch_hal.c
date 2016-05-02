@@ -3579,6 +3579,11 @@ static void siw_hal_lcd_mode(struct device *dev, u32 mode_bit)
 
 static void siw_hal_lcd_mode_idx(struct device *dev, u32 mode)
 {
+	if (mode >= LCD_MODE_IDX_MAX) {
+		t_dev_err(dev, "invalid mode index, %d\n", mode);
+		return;
+	}
+
 	siw_hal_lcd_mode(dev, BIT(mode));
 }
 
