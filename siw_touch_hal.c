@@ -277,7 +277,10 @@ static int __used __siw_hal_do_reg_read(struct device *dev, u32 addr, void *data
 	struct siw_ts *ts = chip->ts;
 	int bus_tx_hdr_size = touch_tx_hdr_size(ts);
 	int bus_rx_hdr_size = touch_rx_hdr_size(ts);
+//	int bus_tx_dummy_size = touch_tx_dummy_size(ts);
+	int bus_rx_dummy_size = touch_rx_dummy_size(ts);
 	struct touch_bus_msg msg;
+	int tx_size = bus_tx_hdr_size;
 	int ret = 0;
 
 #if 0
@@ -296,11 +299,13 @@ static int __used __siw_hal_do_reg_read(struct device *dev, u32 addr, void *data
 	ts->tx_buf[0] = ((size > 4) ? 0x20 : 0x00);
 	ts->tx_buf[0] |= ((addr >> 8) & 0x0f);
 	ts->tx_buf[1] = (addr & 0xff);
-//	ts->tx_buf[2] = 0;
-//	ts->tx_buf[3] = 0;
+//	while (bus_tx_dummy_size--) {
+	while (bus_rx_dummy_size--) {
+		ts->tx_buf[tx_size++] = 0;
+	}
 
 	msg.tx_buf = ts->tx_buf;
-	msg.tx_size = bus_tx_hdr_size;
+	msg.tx_size = tx_size;
 	msg.rx_buf = ts->rx_buf;
 	msg.rx_size = bus_rx_hdr_size + size;
 	msg.bits_per_word = 8;
@@ -403,6 +408,15 @@ static void __used __siw_hal_do_xfer_dbg(struct device *dev, struct touch_xfer_m
 	}
 }
 
+static void __siw_hal_do_xfer_to_single_interval(struct device *dev)
+{
+#if defined(CONFIG_TOUCHSCREEN_SIWMON)
+	if (siw_mon_ops && siw_mon_ops->submit_bus) {
+		usleep_range(100, 100);
+	}
+#endif
+}
+
 static int __used __siw_hal_do_xfer_to_single(struct device *dev, struct touch_xfer_msg *xfer)
 {
 	struct touch_xfer_data_t *tx = NULL;
@@ -421,10 +435,7 @@ static int __used __siw_hal_do_xfer_to_single(struct device *dev, struct touch_x
 			if (ret < 0) {
 				return ret;
 			}
-			continue;
-		}
-
-		if (tx->size) {
+		} else if (tx->size) {
 			ret = __siw_hal_do_reg_write(dev, tx->addr, tx->buf, tx->size);
 			t_dev_dbg_trace(dev, "xfer single [%d/%d] - wr(%04Xh, %d), %d\n",
 				i, xfer->msg_count, rx->addr, rx->size, ret);
@@ -432,6 +443,8 @@ static int __used __siw_hal_do_xfer_to_single(struct device *dev, struct touch_x
 				return ret;
 			}
 		}
+
+		__siw_hal_do_xfer_to_single_interval(dev);
 	}
 
 	return 0;
@@ -444,6 +457,9 @@ static int __used __siw_hal_do_xfer_msg(struct device *dev, struct touch_xfer_ms
 	struct touch_xfer_data_t *rx = NULL;
 	int bus_tx_hdr_size = touch_tx_hdr_size(ts);
 	int bus_rx_hdr_size = touch_rx_hdr_size(ts);
+//	int bus_tx_dummy_size = touch_tx_dummy_size(ts);
+	int bus_rx_dummy_size = touch_rx_dummy_size(ts);
+	int tx_size;
 	int i = 0;
 	int ret = 0;
 
@@ -463,12 +479,16 @@ static int __used __siw_hal_do_xfer_msg(struct device *dev, struct touch_xfer_ms
 				return -EFAULT;
 			}
 		#endif
+			tx_size = bus_tx_hdr_size;
 
 			tx->data[0] = (rx->size > 4) ? 0x20 : 0x00;
 			tx->data[0] |= ((rx->addr >> 8) & 0x0f);
 			tx->data[1] = (rx->addr & 0xff);
-			tx->data[2] = 0;
-			tx->data[3] = 0;
+			//	while (bus_tx_dummy_size--) {
+			while (bus_rx_dummy_size--) {
+				tx->data[tx_size++] = 0;
+			}
+			tx->size = tx_size;
 			rx->size += bus_rx_hdr_size;
 			continue;
 		}
@@ -575,22 +595,20 @@ int siw_hal_xfer_msg(struct device *dev, struct touch_xfer_msg *xfer)
 
 int siw_hal_xfer_rx_seq(struct device *dev, u32 reg, u32 *data, int cnt)
 {
-	struct siw_touch_chip *chip = to_touch_chip(dev);
-	struct siw_ts *ts = chip->ts;
+	struct siw_ts *ts = to_touch_core(dev);
 	struct touch_xfer_msg *xfer = ts->xfer;
 
-	siw_hal_bus_xfer_init(xfer);
+	siw_hal_bus_xfer_init(dev, xfer);
 	siw_hal_bus_xfer_add_rx_seq(xfer, reg, data, cnt);
 	return siw_hal_xfer_msg(dev, xfer);
 }
 
 int siw_hal_xfer_tx_seq(struct device *dev, u32 reg, u32 *data, int cnt)
 {
-	struct siw_touch_chip *chip = to_touch_chip(dev);
-	struct siw_ts *ts = chip->ts;
+	struct siw_ts *ts = to_touch_core(dev);
 	struct touch_xfer_msg *xfer = ts->xfer;
 
-	siw_hal_bus_xfer_init(xfer);
+	siw_hal_bus_xfer_init(dev, xfer);
 	siw_hal_bus_xfer_add_tx_seq(xfer, reg, data, cnt);
 	return siw_hal_xfer_msg(dev, xfer);
 }
@@ -931,7 +949,7 @@ static int siw_hal_ic_info(struct device *dev)
 	{
 		struct touch_xfer_msg *xfer = ts->xfer;
 
-		siw_hal_bus_xfer_init(xfer);
+		siw_hal_bus_xfer_init(dev, xfer);
 
 		siw_hal_bus_xfer_add_rx(xfer,
 				reg->spr_chip_id,
@@ -1154,7 +1172,7 @@ static void siw_hal_lcd_event_read_reg(struct device *dev)
 	{
 		struct touch_xfer_msg *xfer = ts->xfer;
 
-		siw_hal_bus_xfer_init(xfer);
+		siw_hal_bus_xfer_init(dev, xfer);
 
 		siw_hal_bus_xfer_add_rx(xfer,
 				reg->tc_ic_status,

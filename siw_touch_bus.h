@@ -84,69 +84,17 @@ struct siw_touch_bus_drv {
 	} while(0)
 
 
-static inline void siw_hal_bus_xfer_init(struct touch_xfer_msg *xfer)
-{
-	xfer->bits_per_word = 8;
-	xfer->msg_count = 0;
-}
+extern void siw_hal_bus_xfer_init(struct device *dev,
+							struct touch_xfer_msg *xfer);
+extern void siw_hal_bus_xfer_add_rx(struct touch_xfer_msg *xfer,
+						u32 reg, void *buf, u32 size);
+extern void siw_hal_bus_xfer_add_rx_seq(struct touch_xfer_msg *xfer,
+						u32 reg, u32 *data, int cnt);
+extern void siw_hal_bus_xfer_add_tx(struct touch_xfer_msg *xfer,
+						u32 reg, void *buf, u32 size);
+extern void siw_hal_bus_xfer_add_tx_seq(struct touch_xfer_msg *xfer,
+						u32 reg, u32 *data, int cnt);
 
-static inline void siw_hal_bus_xfer_add_rx(struct touch_xfer_msg *xfer,
-					u32 reg, void *buf, u32 size)
-{
-	struct touch_xfer_data_t *rx = &xfer->data[xfer->msg_count].rx;
-
-	if (xfer->msg_count >= SIW_TOUCH_MAX_XFER_COUNT) {
-		t_pr_err("msg_count overflow\n");
-		return;
-	}
-
-	rx->addr = reg;
-	rx->buf = buf;
-	rx->size = size;
-
-	xfer->msg_count++;
-}
-
-static inline void siw_hal_bus_xfer_add_rx_seq(struct touch_xfer_msg *xfer,
-					u32 reg, u32 *data, int cnt)
-{
-	int i;
-
-	for (i=0 ; i<cnt ; i++) {
-		siw_hal_bus_xfer_add_rx(xfer,
-				reg + i,
-				(u8 *)&(data[i]), sizeof(u32));
-	}
-}
-
-static inline void siw_hal_bus_xfer_add_tx(struct touch_xfer_msg *xfer,
-					u32 reg, void *buf, u32 size)
-{
-	struct touch_xfer_data_t *tx = &xfer->data[xfer->msg_count].tx;
-
-	if (xfer->msg_count >= SIW_TOUCH_MAX_XFER_COUNT) {
-		t_pr_err("msg_count overflow\n");
-		return;
-	}
-
-	tx->addr = reg;
-	tx->buf = buf;
-	tx->size = size;
-
-	xfer->msg_count++;
-}
-
-static inline void siw_hal_bus_xfer_add_tx_seq(struct touch_xfer_msg *xfer,
-					u32 reg, u32 *data, int cnt)
-{
-	int i;
-
-	for (i=0 ; i<cnt ; i++) {
-		siw_hal_bus_xfer_add_tx(xfer,
-				reg + i,
-				(u8 *)&(data[i]), sizeof(u32));
-	}
-}
 
 extern int siw_touch_bus_pin_get(struct siw_ts *ts);
 extern int siw_touch_bus_pin_put(struct siw_ts *ts);

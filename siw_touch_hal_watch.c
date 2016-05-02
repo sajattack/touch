@@ -431,7 +431,7 @@ static int ext_watch_get_position(struct device *dev, char *buf, int *len)
 	{
 		struct touch_xfer_msg *xfer = ts->xfer;
 
-		siw_hal_bus_xfer_init(xfer);
+		siw_hal_bus_xfer_init(dev, xfer);
 
 		siw_hal_bus_xfer_add_rx(xfer,
 				reg->ext_watch_position_r,
@@ -533,7 +533,7 @@ static int ext_watch_get_curr_time(struct device *dev, char *buf, int *len)
 	{
 		struct touch_xfer_msg *xfer = ts->xfer;
 
-		siw_hal_bus_xfer_init(xfer);
+		siw_hal_bus_xfer_init(dev, xfer);
 
 		siw_hal_bus_xfer_add_rx(xfer,
 				reg->ext_watch_state,
@@ -584,7 +584,7 @@ static int ext_watch_set_mode(struct device *dev)
 	{
 		struct touch_xfer_msg *xfer = ts->xfer;
 
-		siw_hal_bus_xfer_init(xfer);
+		siw_hal_bus_xfer_init(dev, xfer);
 
 		siw_hal_bus_xfer_add_rx(xfer,
 				reg->ext_watch_ctrl,
@@ -643,7 +643,7 @@ static int ext_watch_set_curr_time(struct device *dev)
 	{
 		struct touch_xfer_msg *xfer = ts->xfer;
 
-		siw_hal_bus_xfer_init(xfer);
+		siw_hal_bus_xfer_init(dev, xfer);
 
 		siw_hal_bus_xfer_add_tx(xfer,
 				reg->ext_watch_rtc_sct,
