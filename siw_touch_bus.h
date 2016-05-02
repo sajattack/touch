@@ -84,17 +84,6 @@ struct siw_touch_bus_drv {
 	} while(0)
 
 
-extern void siw_hal_bus_xfer_init(struct device *dev,
-							struct touch_xfer_msg *xfer);
-extern void siw_hal_bus_xfer_add_rx(struct touch_xfer_msg *xfer,
-						u32 reg, void *buf, u32 size);
-extern void siw_hal_bus_xfer_add_rx_seq(struct touch_xfer_msg *xfer,
-						u32 reg, u32 *data, int cnt);
-extern void siw_hal_bus_xfer_add_tx(struct touch_xfer_msg *xfer,
-						u32 reg, void *buf, u32 size);
-extern void siw_hal_bus_xfer_add_tx_seq(struct touch_xfer_msg *xfer,
-						u32 reg, u32 *data, int cnt);
-
 
 extern int siw_touch_bus_pin_get(struct siw_ts *ts);
 extern int siw_touch_bus_pin_put(struct siw_ts *ts);

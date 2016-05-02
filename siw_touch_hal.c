@@ -588,6 +588,75 @@ int siw_hal_reg_write(struct device *dev, u32 addr, void *data, int size)
 	return ret;
 }
 
+void siw_hal_xfer_init(struct device *dev, void *xfer_data)
+{
+	struct touch_xfer_msg *xfer = xfer_data;
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+
+	mutex_lock(&chip->bus_lock);
+	xfer->bits_per_word = 8;
+	xfer->msg_count = 0;
+	mutex_unlock(&chip->bus_lock);
+}
+
+void siw_hal_xfer_add_rx(void *xfer_data, u32 reg, void *buf, u32 size)
+{
+	struct touch_xfer_msg *xfer = xfer_data;
+	struct touch_xfer_data_t *rx = &xfer->data[xfer->msg_count].rx;
+
+	if (xfer->msg_count >= SIW_TOUCH_MAX_XFER_COUNT) {
+		t_pr_err("msg_count overflow\n");
+		return;
+	}
+
+	rx->addr = reg;
+	rx->buf = buf;
+	rx->size = size;
+
+	xfer->msg_count++;
+}
+
+void siw_hal_xfer_add_rx_seq(void *xfer_data, u32 reg, u32 *data, int cnt)
+{
+	struct touch_xfer_msg *xfer = xfer_data;
+	int i;
+
+	for (i=0 ; i<cnt ; i++) {
+		siw_hal_xfer_add_rx(xfer,
+				reg + i,
+				(u8 *)&(data[i]), sizeof(u32));
+	}
+}
+
+void siw_hal_xfer_add_tx(void *xfer_data, u32 reg, void *buf, u32 size)
+{
+	struct touch_xfer_msg *xfer = xfer_data;
+	struct touch_xfer_data_t *tx = &xfer->data[xfer->msg_count].tx;
+
+	if (xfer->msg_count >= SIW_TOUCH_MAX_XFER_COUNT) {
+		t_pr_err("msg_count overflow\n");
+		return;
+	}
+
+	tx->addr = reg;
+	tx->buf = buf;
+	tx->size = size;
+
+	xfer->msg_count++;
+}
+
+void siw_hal_xfer_add_tx_seq(void *xfer_data, u32 reg, u32 *data, int cnt)
+{
+	struct touch_xfer_msg *xfer = xfer_data;
+	int i;
+
+	for (i=0 ; i<cnt ; i++) {
+		siw_hal_xfer_add_tx(xfer,
+				reg + i,
+				(u8 *)&(data[i]), sizeof(u32));
+	}
+}
+
 int siw_hal_xfer_msg(struct device *dev, struct touch_xfer_msg *xfer)
 {
 	return __siw_hal_xfer_msg(dev, xfer);
@@ -598,8 +667,8 @@ int siw_hal_xfer_rx_seq(struct device *dev, u32 reg, u32 *data, int cnt)
 	struct siw_ts *ts = to_touch_core(dev);
 	struct touch_xfer_msg *xfer = ts->xfer;
 
-	siw_hal_bus_xfer_init(dev, xfer);
-	siw_hal_bus_xfer_add_rx_seq(xfer, reg, data, cnt);
+	siw_hal_xfer_init(dev, xfer);
+	siw_hal_xfer_add_rx_seq(xfer, reg, data, cnt);
 	return siw_hal_xfer_msg(dev, xfer);
 }
 
@@ -608,8 +677,8 @@ int siw_hal_xfer_tx_seq(struct device *dev, u32 reg, u32 *data, int cnt)
 	struct siw_ts *ts = to_touch_core(dev);
 	struct touch_xfer_msg *xfer = ts->xfer;
 
-	siw_hal_bus_xfer_init(dev, xfer);
-	siw_hal_bus_xfer_add_tx_seq(xfer, reg, data, cnt);
+	siw_hal_xfer_init(dev, xfer);
+	siw_hal_xfer_add_tx_seq(xfer, reg, data, cnt);
 	return siw_hal_xfer_msg(dev, xfer);
 }
 
@@ -949,45 +1018,45 @@ static int siw_hal_ic_info(struct device *dev)
 	{
 		struct touch_xfer_msg *xfer = ts->xfer;
 
-		siw_hal_bus_xfer_init(dev, xfer);
+		siw_hal_xfer_init(dev, xfer);
 
-		siw_hal_bus_xfer_add_rx(xfer,
+		siw_hal_xfer_add_rx(xfer,
 				reg->spr_chip_id,
 				(u8 *)&chip_id, sizeof(chip_id));
-		siw_hal_bus_xfer_add_rx(xfer,
+		siw_hal_xfer_add_rx(xfer,
 				reg->tc_version,
 				(u8 *)&version, sizeof(version));
-		siw_hal_bus_xfer_add_rx(xfer,
+		siw_hal_xfer_add_rx(xfer,
 				reg->info_chip_version,
 				(u8 *)&revision, sizeof(revision));
-		siw_hal_bus_xfer_add_rx(xfer,
+		siw_hal_xfer_add_rx(xfer,
 				reg->tc_product_id1,
 				(u8 *)&product[0], sizeof(product));
-		siw_hal_bus_xfer_add_rx(xfer,
+		siw_hal_xfer_add_rx(xfer,
 				reg->spr_boot_status,
 				(u8 *)&bootmode, sizeof(bootmode));
 
 		switch (touch_chip_type(ts)) {
 		case CHIP_LG4946:
-			siw_hal_bus_xfer_add_rx(xfer,
+			siw_hal_xfer_add_rx(xfer,
 					reg->info_fpc_type,
 					(u8 *)&fw->fpc, sizeof(fw->fpc));
-			siw_hal_bus_xfer_add_rx(xfer,
+			siw_hal_xfer_add_rx(xfer,
 					reg->info_wfr_type,
 					(u8 *)&fw->wfr, sizeof(fw->wfr));
-			siw_hal_bus_xfer_add_rx(xfer,
+			siw_hal_xfer_add_rx(xfer,
 					reg->info_cg_type,
 					(u8 *)&fw->cg, sizeof(fw->cg));
-			siw_hal_bus_xfer_add_rx(xfer,
+			siw_hal_xfer_add_rx(xfer,
 					reg->info_lot_num,
 					(u8 *)&fw->lot, sizeof(fw->lot));
-			siw_hal_bus_xfer_add_rx(xfer,
+			siw_hal_xfer_add_rx(xfer,
 					reg->info_serial_num,
 					(u8 *)&fw->sn, sizeof(fw->sn));
-			siw_hal_bus_xfer_add_rx(xfer,
+			siw_hal_xfer_add_rx(xfer,
 					reg->info_date,
 					(u8 *)&fw->date, sizeof(fw->date));
-			siw_hal_bus_xfer_add_rx(xfer,
+			siw_hal_xfer_add_rx(xfer,
 					reg->info_time,
 					(u8 *)&fw->time, sizeof(fw->time));
 			break;
@@ -1172,21 +1241,21 @@ static void siw_hal_lcd_event_read_reg(struct device *dev)
 	{
 		struct touch_xfer_msg *xfer = ts->xfer;
 
-		siw_hal_bus_xfer_init(dev, xfer);
+		siw_hal_xfer_init(dev, xfer);
 
-		siw_hal_bus_xfer_add_rx(xfer,
+		siw_hal_xfer_add_rx(xfer,
 				reg->tc_ic_status,
 				(u8 *)&rdata[0], sizeof(rdata[0]));
-		siw_hal_bus_xfer_add_rx(xfer,
+		siw_hal_xfer_add_rx(xfer,
 				reg->tc_status,
 				(u8 *)&rdata[1], sizeof(rdata[1]));
-		siw_hal_bus_xfer_add_rx(xfer,
+		siw_hal_xfer_add_rx(xfer,
 				reg->spr_subdisp_status,
 				(u8 *)&rdata[2], sizeof(rdata[2]));
-		siw_hal_bus_xfer_add_rx(xfer,
+		siw_hal_xfer_add_rx(xfer,
 				reg->tc_version,
 				(u8 *)&rdata[3], sizeof(rdata[3]));
-		siw_hal_bus_xfer_add_rx(xfer,
+		siw_hal_xfer_add_rx(xfer,
 				reg->spr_chip_id,
 				(u8 *)&rdata[4], sizeof(rdata[4]));
 	}

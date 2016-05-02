@@ -431,13 +431,13 @@ static int ext_watch_get_position(struct device *dev, char *buf, int *len)
 	{
 		struct touch_xfer_msg *xfer = ts->xfer;
 
-		siw_hal_bus_xfer_init(dev, xfer);
+		siw_hal_xfer_init(dev, xfer);
 
-		siw_hal_bus_xfer_add_rx(xfer,
+		siw_hal_xfer_add_rx(xfer,
 				reg->ext_watch_position_r,
 				(u8 *)&position, sizeof(u32)*3);
 
-		siw_hal_bus_xfer_add_rx(xfer,
+		siw_hal_xfer_add_rx(xfer,
 				reg->ext_watch_state,
 				(u8 *)&status, sizeof(u32));
 	}
@@ -533,13 +533,13 @@ static int ext_watch_get_curr_time(struct device *dev, char *buf, int *len)
 	{
 		struct touch_xfer_msg *xfer = ts->xfer;
 
-		siw_hal_bus_xfer_init(dev, xfer);
+		siw_hal_xfer_init(dev, xfer);
 
-		siw_hal_bus_xfer_add_rx(xfer,
+		siw_hal_xfer_add_rx(xfer,
 				reg->ext_watch_state,
 				(u8 *)&status, sizeof(u32));
 
-		siw_hal_bus_xfer_add_rx(xfer,
+		siw_hal_xfer_add_rx(xfer,
 				reg->ext_watch_rtc_ctst,
 				(u8 *)rtc_ctst, sizeof(u32));
 	}
@@ -584,25 +584,25 @@ static int ext_watch_set_mode(struct device *dev)
 	{
 		struct touch_xfer_msg *xfer = ts->xfer;
 
-		siw_hal_bus_xfer_init(dev, xfer);
+		siw_hal_xfer_init(dev, xfer);
 
-		siw_hal_bus_xfer_add_rx(xfer,
+		siw_hal_xfer_add_rx(xfer,
 				reg->ext_watch_ctrl,
 				(u8 *)&mode->watch_ctrl, sizeof(u32));
 
-		siw_hal_bus_xfer_add_rx(xfer,
+		siw_hal_xfer_add_rx(xfer,
 				reg->ext_watch_area_x,
 				(u8 *)&mode->watch_area_x, sizeof(u32));
 
-		siw_hal_bus_xfer_add_rx(xfer,
+		siw_hal_xfer_add_rx(xfer,
 				reg->ext_watch_area_y,
 				(u8 *)&mode->watch_area_y, sizeof(u32));
 
-		siw_hal_bus_xfer_add_rx(xfer,
+		siw_hal_xfer_add_rx(xfer,
 				reg->ext_watch_blink_area,
 				(u8 *)&mode->blink_area, sizeof(u32));
 
-		siw_hal_bus_xfer_add_rx(xfer,
+		siw_hal_xfer_add_rx(xfer,
 				reg->ext_watch_lut,
 				(u8 *)&mode->lut, sizeof(u32) * EXT_WATCH_LUT_NUM);
 	}
@@ -643,17 +643,17 @@ static int ext_watch_set_curr_time(struct device *dev)
 	{
 		struct touch_xfer_msg *xfer = ts->xfer;
 
-		siw_hal_bus_xfer_init(dev, xfer);
+		siw_hal_xfer_init(dev, xfer);
 
-		siw_hal_bus_xfer_add_tx(xfer,
+		siw_hal_xfer_add_tx(xfer,
 				reg->ext_watch_rtc_sct,
 				(u8 *)&time->rtc_sct, sizeof(u32));
 
-		siw_hal_bus_xfer_add_tx(xfer,
+		siw_hal_xfer_add_tx(xfer,
 				reg->ext_watch_rtc_sctcnt,
 				(u8 *)&time->rtc_sctcnt, sizeof(u32));
 
-		siw_hal_bus_xfer_add_tx(xfer,
+		siw_hal_xfer_add_tx(xfer,
 				reg->ext_watch_rtc_ecnt,
 				(u8 *)&rtc_ctrl, sizeof(u32));
 	}

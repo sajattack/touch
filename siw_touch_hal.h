@@ -296,10 +296,15 @@ static inline struct siw_touch_chip *to_touch_chip_from_kobj(struct kobject *kob
 								struct siw_touch_chip, kobj);
 }
 
-extern int siw_hal_reg_read(struct device *dev, u32 addr, void *data, int size);
-extern int siw_hal_reg_write(struct device *dev, u32 addr, void *data, int size);
 extern int siw_hal_read_value(struct device *dev, u32 addr, u32 *value);
 extern int siw_hal_write_value(struct device *dev, u32 addr, u32 value);
+extern int siw_hal_reg_read(struct device *dev, u32 addr, void *data, int size);
+extern int siw_hal_reg_write(struct device *dev, u32 addr, void *data, int size);
+extern void siw_hal_xfer_init(struct device *dev, void *xfer_data);
+extern void siw_hal_xfer_add_rx(void *xfer_data, u32 reg, void *buf, u32 size);
+extern void siw_hal_xfer_add_rx_seq(void *xfer_data, u32 reg, u32 *data, int cnt);
+extern void siw_hal_xfer_add_tx(void *xfer_data, u32 reg, void *buf, u32 size);
+extern void siw_hal_xfer_add_tx_seq(void *xfer_data, u32 reg, u32 *data, int cnt);
 extern int siw_hal_xfer_msg(struct device *dev, struct touch_xfer_msg *xfer);
 extern int siw_hal_xfer_rx_seq(struct device *dev, u32 reg, u32 *data, int size);
 extern int siw_hal_xfer_tx_seq(struct device *dev, u32 reg, u32 *data, int size);
