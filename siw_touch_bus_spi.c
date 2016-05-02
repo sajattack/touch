@@ -81,7 +81,8 @@ static int siw_touch_spi_do_read(struct spi_device *spi,
 							struct touch_bus_msg *msg)
 {
 	struct siw_ts *ts = spi_get_drvdata(spi);
-	int bus_tx_dummy_size = touch_tx_dummy_size(ts);
+//	int bus_tx_dummy_size = touch_tx_dummy_size(ts);
+	int bus_rx_dummy_size = touch_rx_dummy_size(ts);
 	struct spi_transfer x = { 0, };
 	struct spi_message m;
 	int ret = 0;
@@ -100,8 +101,8 @@ static int siw_touch_spi_do_read(struct spi_device *spi,
 	spi_message_init(&m);
 
 	//Add dummy packet
-	while (bus_tx_dummy_size--) {
-		msg->tx_buf[msg->tx_size++] = 0;
+//	while (bus_tx_dummy_size--) {
+	while (bus_rx_dummy_size--) {
 		msg->tx_buf[msg->tx_size++] = 0;
 	}
 
@@ -149,7 +150,6 @@ int siw_touch_spi_do_write(struct spi_device *spi,
 
 	//Add dummy packet
 	while (bus_tx_dummy_size--) {
-		msg->tx_buf[msg->tx_size++] = 0;
 		msg->tx_buf[msg->tx_size++] = 0;
 	}
 
