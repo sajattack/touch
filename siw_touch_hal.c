@@ -1105,7 +1105,7 @@ static int siw_hal_ic_info(struct device *dev)
 
 	siw_hal_ic_info_ver_check(dev);
 
-	return ret;
+	return 0;
 }
 
 static int siw_hal_fb_notifier_callback(struct notifier_block *self,
@@ -1306,9 +1306,11 @@ static int siw_hal_init(struct device *dev)
 
 	for (i=0 ; i<2 ; i++) {
 		ret = siw_hal_ic_info(dev);
-		if (!ret) {
+		if (ret >= 0) {
 			break;
 		}
+
+		t_dev_dbg_base(dev, "retry getting ic info\n");
 
 		siw_touch_irq_control(dev, INTERRUPT_DISABLE);
 		siw_hal_power(dev, POWER_OFF);
