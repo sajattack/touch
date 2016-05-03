@@ -1346,18 +1346,18 @@ static inline void siwmon_submit_ops(struct device *dev, char *ops, u32 *data, i
 #endif	/* MODULE */
 
 #define siw_chip_module_init(_name, _data, _desc, _author)	\
-		static int __init chip_driver_init(void)\
+		static int __init chip_##_name##_driver_init(void)\
 		{	\
 			t_pr_info("%s driver init - %s\n", _name, SIW_DRV_VERSION);	\
 			return siw_touch_bus_add_driver(&_data);	\
 		}	\
-		static void __exit chip_driver_exit(void)	\
+		static void __exit chip_##_name##_driver_exit(void)	\
 		{	\
 			(void)siw_touch_bus_del_driver(&_data);\
 			t_pr_info("%s driver exit - %s\n", _name, SIW_DRV_VERSION);	\
 		}	\
-		module_init(chip_driver_init);	\
-		module_exit(chip_driver_exit);	\
+		module_init(chip_##_name##_driver_init);	\
+		module_exit(chip_##_name##_driver_exit);	\
 		MODULE_AUTHOR(_author);	\
 		MODULE_DESCRIPTION(_desc);	\
 		MODULE_VERSION(SIW_DRV_VERSION);	\
