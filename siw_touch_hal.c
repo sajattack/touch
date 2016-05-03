@@ -1599,8 +1599,7 @@ static int siw_hal_fw_compare(struct device *dev, const struct firmware *fw)
 	} else if (bin_major && dev_major) {
 		update = !!(bin_minor != dev_minor);
 	} else if (bin_major ^ dev_major) {
-	//	update = 1;
-		update = 0;
+		update = !!(bin_major > dev_major);
 	} else if (!bin_major && !dev_major) {
 		update = !!(bin_minor > dev_minor);
 	}
