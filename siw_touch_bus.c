@@ -179,36 +179,43 @@ void *siw_touch_bus_create_bus_pdata(int bus_type)
 
 static void *__buffer_alloc(struct device *dev, size_t size,
 				dma_addr_t *dma_handle, gfp_t gfp,
-				const char *name)
+				char *name)
 {
-	void *buf;
+	void *buf = NULL;
+	dma_addr_t _dma = 0;
 
 	if (siw_touch_sys_bus_use_dma(dev) && dma_handle) {
-		buf = dma_alloc_coherent(NULL, size, dma_handle, gfp);
-		if (buf) {
-			t_dev_dbg_base(dev, "alloc %s: buf %08Xh, phy %Xh, size %Xh\n",
-					name, (u32)buf, (*dma_handle), size);
+		gfp &= ~GFP_DMA;
+		buf = dma_alloc_coherent(NULL, size, &_dma, gfp);
+		if (!buf || !_dma) {
+			t_dev_err(dev, "failed to allocate dma buffer %s, %Xh %Xh\n",
+				name, (u32)buf, (u32)_dma);
+			return NULL;
 		}
 	} else {
-		buf = devm_kzalloc(dev, size, gfp);
-		if (buf) {
-			t_dev_dbg_base(dev, "alloc %s: buf %08Xh, size %Xh\n",
-					name, (u32)buf, size);
-			if (dma_handle)
-				*dma_handle = 0;
+		buf = kmalloc(size, gfp);
+		if (!buf) {
+			t_dev_err(dev, "failed to allocate %s\n", name);
+			return NULL;
 		}
 	}
-	if (!buf) {
-		t_dev_err(dev, "failed to allocate %s\n", name);
-	}
+
+	t_dev_dbg_base(dev, "alloc %s: buf %08Xh, phy %Xh, size %Xh\n",
+				name, (u32)buf, _dma, size);
+
+	if (dma_handle)
+		*dma_handle = _dma;
 
 	return buf;
 }
 
 static void __buffer_free(struct device *dev, size_t size,
 				void *buf, dma_addr_t dma_handle,
-				const char *name)
+				char *name)
 {
+	if (!buf)
+		return;
+
 	if (siw_touch_sys_bus_use_dma(dev) && dma_handle) {
 		t_dev_dbg_base(dev, "free %s: buf %08Xh, phy %Xh, size %Xh\n",
 					name, (u32)buf, dma_handle, size);
@@ -218,36 +225,90 @@ static void __buffer_free(struct device *dev, size_t size,
 
 	t_dev_dbg_base(dev, "free %s: buf %08Xh, size %Xh\n",
 					name, (u32)buf, size);
-	devm_kfree(dev, buf);
+	kfree(buf);
+}
+
+static void siw_touch_buf_free(struct siw_ts *ts, int _tx)
+{
+	struct device *dev = ts->dev;
+	struct siw_touch_buf *t_buf = NULL;
+	char *title;
+	char name[16];
+	int i;
+
+	t_buf = (_tx)? ts->tx_buf : ts->rx_buf;
+	title = (_tx)? "tx_buf" : "rx_buf";
+
+	for (i=0 ; i<SIW_TOUCH_MAX_BUF_IDX ; i++) {
+		sprintf(name, "%s%d", title, i);
+		__buffer_free(dev, t_buf->size,
+				t_buf->buf, t_buf->dma, name);
+		t_buf++;
+	}
+
+	memset(t_buf, 0, sizeof(*t_buf) * SIW_TOUCH_MAX_BUF_IDX);
+}
+
+static int siw_touch_buf_alloc(struct siw_ts *ts, int _tx)
+{
+	struct device *dev = ts->dev;
+	struct siw_touch_buf *t_buf = NULL;
+	int buf_size = touch_get_act_buf_size(ts);
+	char *title;
+	char name[16];
+	u8 *buf;
+	dma_addr_t dma;
+	int i;
+
+	t_buf = (_tx)? ts->tx_buf : ts->rx_buf;
+	title = (_tx)? "tx_buf" : "rx_buf";
+
+	memset(t_buf, 0, sizeof(*t_buf) * SIW_TOUCH_MAX_BUF_IDX);
+
+	for (i=0 ; i<SIW_TOUCH_MAX_BUF_IDX ; i++) {
+		sprintf(name, "%s%d", title, i);
+		buf = __buffer_alloc(dev, buf_size, &dma,
+					GFP_KERNEL | GFP_DMA, name);
+		if (!buf) {
+			goto out;
+		}
+		t_buf->buf = buf;
+		t_buf->dma = dma;
+		t_buf->size = buf_size;
+		t_buf++;
+	}
+
+	return 0;
+
+out:
+	siw_touch_buf_free(ts, _tx);
+	return -ENOMEM;
 }
 
 int siw_touch_bus_alloc_buffer(struct siw_ts *ts)
 {
 	struct device *dev = ts->dev;
-	int buf_size = touch_buf_size(ts);
-	u8 *tx_buf = NULL;
-	u8 *rx_buf = NULL;
-	dma_addr_t tx_pa = 0;
-	dma_addr_t rx_pa = 0;
 	struct touch_xfer_msg *xfer = NULL;
+	int buf_size = touch_buf_size(ts);
 	int ret = 0;
 
-	if (!buf_size)
-		buf_size = SIW_TOUCH_MAX_XFER_BUF_SIZE;
+	if (!buf_size) {
+		buf_size = SIW_TOUCH_MAX_BUF_SIZE;
+	}
+	touch_set_act_buf_size(ts, buf_size);
 
 	t_dev_dbg_base(dev, "allocate touch bus buffer\n");
 
-	tx_buf = __buffer_alloc(dev, buf_size,
-					&tx_pa, GFP_KERNEL | GFP_DMA, "tx_buf");
-	if (!tx_buf) {
-		ret = -ENOMEM;
+	ts->tx_buf_idx = 0;
+	ts->rx_buf_idx = 0;
+
+	ret = siw_touch_buf_alloc(ts, 1);
+	if (ret < 0) {
 		goto out_tx_buf;
 	}
 
-	rx_buf = __buffer_alloc(dev, buf_size,
-					&rx_pa, GFP_KERNEL | GFP_DMA, "rx_buf");
-	if (!rx_buf) {
-		ret = -ENOMEM;
+	ret = siw_touch_buf_alloc(ts, 0);
+	if (ret < 0) {
 		goto out_rx_buf;
 	}
 
@@ -257,24 +318,15 @@ int siw_touch_bus_alloc_buffer(struct siw_ts *ts)
 		ret = -ENOMEM;
 		goto out_xfer;
 	}
-
 	ts->xfer = xfer;
-	ts->tx_buf = tx_buf;
-	ts->rx_buf = rx_buf;
-	ts->tx_pa = tx_pa;
-	ts->rx_pa = rx_pa;
 
 	return 0;
 
 out_xfer:
-	if (rx_buf) {
-		__buffer_free(dev, buf_size, rx_buf, rx_pa, "rx_buf");
-	}
+	siw_touch_buf_alloc(ts, 0);
 
 out_rx_buf:
-	if (tx_buf) {
-		__buffer_free(dev, buf_size, tx_buf, tx_pa, "tx_buf");
-	}
+	siw_touch_buf_alloc(ts, 1);
 
 out_tx_buf:
 
@@ -284,7 +336,6 @@ out_tx_buf:
 int siw_touch_bus_free_buffer(struct siw_ts *ts)
 {
 	struct device *dev = ts->dev;
-	int buf_size = touch_buf_size(ts);
 
 	t_dev_dbg_base(dev, "release touch bus buffer\n");
 
@@ -294,17 +345,8 @@ int siw_touch_bus_free_buffer(struct siw_ts *ts)
 		ts->xfer = NULL;
 	}
 
-	if (ts->rx_buf) {
-		__buffer_free(dev, buf_size,
-				ts->rx_buf, ts->rx_pa, "rx_buf");
-		ts->rx_buf= NULL;
-	}
-
-	if (ts->tx_buf) {
-		__buffer_free(dev, buf_size,
-				ts->tx_buf, ts->tx_pa, "tx_buf");
-		ts->tx_buf = NULL;
-	}
+	siw_touch_buf_alloc(ts, 0);
+	siw_touch_buf_alloc(ts, 1);
 
 	return 0;
 }

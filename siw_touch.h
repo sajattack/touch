@@ -56,6 +56,13 @@ enum {
 	TOUCH_IRQ_ERROR			= (1 << 15),
 };
 
+enum {
+	SIW_TOUCH_MAX_BUF_SIZE		= (32<<10),	//(64<<10),
+	SIW_TOUCH_MAX_BUF_IDX		= 4,
+	/* */
+	SIW_TOUCH_MAX_XFER_COUNT	= 10,
+};
+
 enum _SIW_BUS_IF {
 	BUS_IF_I2C = 0,
 	BUS_IF_SPI,
@@ -496,6 +503,12 @@ struct siw_touch_bus_info {
 	int bus_rx_dummy_size;
 };
 
+struct siw_touch_buf {
+	u8 *buf;
+	dma_addr_t dma;
+	int size;
+};
+
 struct siw_touch_pdata {
 	/* Config. */
 	char *chip_id;		//chip id(fixed)
@@ -752,11 +765,12 @@ struct siw_ts {
 	const char *panel_spec_mfts;
 	u32 force_fwup;
 
+	int buf_size;
 	struct touch_xfer_msg *xfer;
-	u8 *tx_buf;
-	u8 *rx_buf;
-	dma_addr_t tx_pa;
-	dma_addr_t rx_pa;
+	struct siw_touch_buf tx_buf[SIW_TOUCH_MAX_BUF_IDX];
+	struct siw_touch_buf rx_buf[SIW_TOUCH_MAX_BUF_IDX];
+	int tx_buf_idx;
+	int rx_buf_idx;
 
 	struct mutex lock;
 	struct workqueue_struct *wq;
@@ -1025,6 +1039,16 @@ static inline int touch_rx_dummy_size(struct siw_ts *ts)
 static inline int touch_xfer_allowed(struct siw_ts *ts)
 {
 	return pdata_xfer_allowed(ts->pdata);
+}
+
+static inline u32 touch_get_act_buf_size(struct siw_ts *ts)
+{
+	return ts->buf_size;
+}
+
+static inline void touch_set_act_buf_size(struct siw_ts *ts, int size)
+{
+	ts->buf_size = size;
 }
 
 static inline void touch_set_caps(struct siw_ts *ts,

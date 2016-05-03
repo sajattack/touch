@@ -21,10 +21,6 @@
 #include <linux/irq.h>
 
 
-#define SIW_TOUCH_MAX_BUF_SIZE			(64<<10)
-#define SIW_TOUCH_MAX_XFER_BUF_SIZE		(100<<10)
-#define SIW_TOUCH_MAX_XFER_COUNT		10
-
 enum {
 	I2C_BUS_TX_HDR_SZ = 2,
 	I2C_BUS_RX_HDR_SZ = 0,
@@ -44,6 +40,8 @@ struct touch_bus_msg {
 	int tx_size;
 	u8 *rx_buf;
 	int rx_size;
+	dma_addr_t tx_dma;
+	dma_addr_t rx_dma;
 	u8 bits_per_word;
 	int priv;
 };
@@ -52,7 +50,7 @@ struct touch_xfer_data_t {
 	u16 addr;
 	u16 size;
 	u8 *buf;
-	u8 data[SIW_TOUCH_MAX_XFER_BUF_SIZE];
+	u8 data[SIW_TOUCH_MAX_BUF_SIZE];
 };
 
 struct touch_xfer_data {

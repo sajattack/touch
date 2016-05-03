@@ -41,8 +41,18 @@
 #include "siw_touch.h"
 #include "siw_touch_sys.h"
 
+
+/*
+ * depends on AP bus
+ */
 int siw_touch_sys_bus_use_dma(struct device *dev)
 {
+	struct siw_ts *ts = to_touch_core(dev);
+
+	if (touch_bus_type(ts) != BUS_IF_SPI) {
+		return 0;
+	}
+
 #if defined(__If_the_bus_of_your_chipset_needs_dma_control__)
 	{
 		return 1;

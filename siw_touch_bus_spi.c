@@ -128,7 +128,7 @@ static int siw_touch_spi_do_read(struct spi_device *spi,
 
 	if ((msg->rx_size > SIW_TOUCH_MAX_BUF_SIZE) ||
 		(msg->tx_size > SIW_TOUCH_MAX_BUF_SIZE)) {
-		t_dev_err(&spi->dev, "spi read: buffer overflow - rx %Xh, tx %Xh\n",
+		t_dev_err(&spi->dev, "spi rd: buffer overflow - rx %Xh, tx %Xh\n",
 			msg->rx_size, msg->tx_size);
 		return -EOVERFLOW;
 	}
@@ -137,6 +137,8 @@ static int siw_touch_spi_do_read(struct spi_device *spi,
 
 	x.tx_buf = msg->tx_buf;
 	x.rx_buf = msg->rx_buf;
+	x.tx_dma = msg->tx_dma;
+	x.rx_dma = msg->rx_dma;
 	x.len = msg->rx_size;
 
 	spi_message_add_tail(&x, &m);
@@ -172,7 +174,7 @@ int siw_touch_spi_do_write(struct spi_device *spi,
 	 */
 
 	if (msg->tx_size > SIW_TOUCH_MAX_BUF_SIZE) {
-		t_dev_err(&spi->dev, "spi write: buffer overflow - tx %Xh\n",
+		t_dev_err(&spi->dev, "spi wr: buffer overflow - tx %Xh\n",
 			msg->tx_size);
 		return -EOVERFLOW;
 	}
@@ -181,6 +183,8 @@ int siw_touch_spi_do_write(struct spi_device *spi,
 
 	x.tx_buf = msg->tx_buf;
 	x.rx_buf = msg->rx_buf;
+	x.tx_dma = msg->tx_dma;
+	x.rx_dma = msg->rx_dma;
 	x.len = msg->tx_size;
 
 	spi_message_add_tail(&x, &m);
@@ -285,6 +289,14 @@ static int siw_touch_spi_do_xfer(struct spi_device *spi, struct touch_xfer_msg *
 			x->rx_buf = NULL;
 			x->len = tx->size;
 		}
+
+		if (x->len > SIW_TOUCH_MAX_BUF_SIZE) {
+			t_dev_err(&spi->dev, "spi xfer[%d, %d]: buffer overflow - %s %Xh\n",
+				i, cnt,
+				(rx->size)? "rd" : "wr", x->len);
+			break;
+		}
+
 		spi_message_add_tail(x, &m);
 
 		x++;

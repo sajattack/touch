@@ -93,6 +93,13 @@ static int siw_touch_do_i2c_read(struct i2c_client *client,
 	};
 	int ret = 0;
 
+	if ((msg->rx_size > SIW_TOUCH_MAX_BUF_SIZE) ||
+		(msg->tx_size > SIW_TOUCH_MAX_BUF_SIZE)) {
+		t_dev_err(&client->dev, "i2c rd: buffer overflow - rx %Xh, tx %Xh\n",
+			msg->rx_size, msg->tx_size);
+		return -EOVERFLOW;
+	}
+
 	/*
 	 * Bus control can need to be modifyed up to main chipset sepc.
 	 */
@@ -123,6 +130,12 @@ int siw_touch_do_i2c_write(struct i2c_client *client,
 		},
 	};
 	int ret = 0;
+
+	if (msg->tx_size > SIW_TOUCH_MAX_BUF_SIZE) {
+		t_dev_err(&client->dev, "i2c wr: buffer overflow - tx %Xh\n",
+			msg->tx_size);
+		return -EOVERFLOW;
+	}
 
 	/*
 	 * Bus control can need to be modifyed up to main chipset sepc.
