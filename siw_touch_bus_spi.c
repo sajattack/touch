@@ -113,7 +113,12 @@ static int siw_touch_spi_do_read(struct spi_device *spi,
 							struct touch_bus_msg *msg)
 {
 //	struct siw_ts *ts = spi_get_drvdata(spi);
-	struct spi_transfer x = { 0, };
+	struct spi_transfer x = {
+		.cs_change = 0,
+		.bits_per_word = spi->bits_per_word,
+		.delay_usecs = 0,
+		.speed_hz = spi->max_speed_hz,
+	};
 	struct spi_message m;
 	int ret = 0;
 
@@ -133,8 +138,6 @@ static int siw_touch_spi_do_read(struct spi_device *spi,
 	x.tx_buf = msg->tx_buf;
 	x.rx_buf = msg->rx_buf;
 	x.len = msg->rx_size;
-	x.cs_change = 0;
-	x.bits_per_word = spi->bits_per_word;
 
 	spi_message_add_tail(&x, &m);
 
@@ -155,7 +158,12 @@ int siw_touch_spi_do_write(struct spi_device *spi,
 						struct touch_bus_msg *msg)
 {
 //	struct siw_ts *ts = spi_get_drvdata(spi);
-	struct spi_transfer x = { 0, };
+	struct spi_transfer x = {
+		.cs_change = 0,
+		.bits_per_word = spi->bits_per_word,
+		.delay_usecs = 0,
+		.speed_hz = spi->max_speed_hz,
+	};
 	struct spi_message m;
 	int ret = 0;
 
@@ -174,8 +182,6 @@ int siw_touch_spi_do_write(struct spi_device *spi,
 	x.tx_buf = msg->tx_buf;
 	x.rx_buf = msg->rx_buf;
 	x.len = msg->tx_size;
-	x.cs_change = 0;
-	x.bits_per_word = spi->bits_per_word;
 
 	spi_message_add_tail(&x, &m);
 
@@ -200,7 +206,7 @@ static void __siw_touch_spi_xfer_mon(struct spi_device *spi,
 	struct touch_xfer_data_t *tx = NULL;
 	struct touch_xfer_data_t *rx = NULL;
 	struct touch_bus_msg *msg;
-	struct touch_bus_msg msg_buf[2];
+	struct touch_bus_msg msg_buf[SIW_TOUCH_MAX_XFER_COUNT];
 	int idx = 0;
 	int cnt = xfer->msg_count;
 	int i;
@@ -209,14 +215,13 @@ static void __siw_touch_spi_xfer_mon(struct spi_device *spi,
 		tx = &xfer->data[i].tx;
 		rx = &xfer->data[i].rx;
 
-		msg = &msg_buf[idx];
+		msg = &msg_buf[idx++];
 		msg->tx_buf = tx->data;
 		msg->tx_size = tx->size;
 		msg->rx_buf = rx->data;
 		msg->rx_size = rx->size;
 		msg->bits_per_word = spi->bits_per_word;
 		msg->priv = (i<<8) | cnt;
-		idx ^= 1;
 
 		//For xfer mon,
 		//the last character of dir string shall be 'X'
@@ -232,50 +237,63 @@ static inline void __siw_touch_spi_xfer_mon(struct spi_device *spi,
 static int siw_touch_spi_do_xfer(struct spi_device *spi, struct touch_xfer_msg *xfer)
 {
 //	struct siw_ts *ts = spi_get_drvdata(spi);
+	struct device *dev = &spi->dev;
 	struct touch_xfer_data_t *tx = NULL;
 	struct touch_xfer_data_t *rx = NULL;
-	struct spi_transfer x[SIW_TOUCH_MAX_XFER_COUNT];
+	struct spi_transfer _x[SIW_TOUCH_MAX_XFER_COUNT];
+	struct spi_transfer *x;
 	struct spi_message m;
 	int cnt = xfer->msg_count;
 	int i = 0;
 	int ret = 0;
+
+	if (!xfer) {
+		t_dev_err(dev, "NULL xfer\n");
+		return -EINVAL;
+	}
 
 	/*
 	 * Bus control can need to be modifyed up to main chipset sepc.
 	 */
 
 	if (cnt > SIW_TOUCH_MAX_XFER_COUNT) {
-		t_dev_err(&spi->dev, "cout exceed, %d\n", cnt);
+		t_dev_err(dev, "cout exceed, %d\n", cnt);
 		return -EINVAL;
 	}
 
 	siw_touch_spi_message_init(spi, &m);
 
-	memset(x, 0, sizeof(x));
+	memset(_x, 0, sizeof(_x));
 
+	x = _x;
 	for (i = 0; i < cnt; i++) {
 		tx = &xfer->data[i].tx;
 		rx = &xfer->data[i].rx;
 
-		x[i].cs_change = !!(i < (xfer->msg_count - 1));
-		x[i].bits_per_word = spi->bits_per_word;
+	//	x->cs_change = !!(i < (xfer->msg_count - 1));
+		x->cs_change = 1;
+		x->bits_per_word = spi->bits_per_word;
+		x->delay_usecs = 0;
+		x->speed_hz = spi->max_speed_hz;
 
 		if (rx->size) {
-			x[i].tx_buf = tx->data;
-			x[i].rx_buf = rx->data;
-			x[i].len = rx->size;
+			x->tx_buf = tx->data;
+			x->rx_buf = rx->data;
+			x->len = rx->size;
 		} else {
-			x[i].tx_buf = tx->data;
-			x[i].rx_buf = NULL;
-			x[i].len = tx->size;
+			x->tx_buf = tx->data;
+			x->rx_buf = NULL;
+			x->len = tx->size;
 		}
-		spi_message_add_tail(&x[i], &m);
+		spi_message_add_tail(x, &m);
+
+		x++;
 	}
 
 	ret = siw_touch_spi_sync(spi, &m);
 	__siw_touch_spi_xfer_mon(spi, xfer, ret);
 	if (ret < 0)
-		siw_touch_spi_err_dump(spi, &x[0], cnt, 0);
+		siw_touch_spi_err_dump(spi, _x, cnt, 0);
 
 	return ret;
 }
@@ -293,6 +311,7 @@ static struct siw_ts *siw_touch_spi_alloc(
 	struct siw_ts *ts = NULL;
 	struct siw_touch_pdata *pdata = NULL;
 	u32 tmp;
+	int ret = 0;
 
 	ts = devm_kzalloc(dev, sizeof(*ts), GFP_KERNEL);
 	if (ts == NULL) {

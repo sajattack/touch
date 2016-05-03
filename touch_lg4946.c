@@ -64,9 +64,17 @@
 #define CHIP_INPUT_ID_PRODUCT		0x9876
 #define CHIP_INPUT_ID_VERSION		0x1234
 
+#if defined(CONFIG_ARCH_EXYNOS5)
+#define __CHIP_QUIRK_ADD			CHIP_QUIRK_NOT_SUPPORT_XFER
+#else
+#define __CHIP_QUIRK_ADD			0
+#endif
+
 #define CHIP_QUIRKS					(0 |	\
 									CHIP_QUIRK_NOT_SUPPORT_IME |	\
+									__CHIP_QUIRK_ADD |	\
 									0)
+
 
 #define CHIP_BUS_TYPE				BUS_IF_SPI
 #define	CHIP_BUF_SIZE				0

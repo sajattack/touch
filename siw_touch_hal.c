@@ -279,7 +279,8 @@ static int __used __siw_hal_do_reg_read(struct device *dev, u32 addr, void *data
 	int bus_rx_hdr_size = touch_rx_hdr_size(ts);
 //	int bus_tx_dummy_size = touch_tx_dummy_size(ts);
 	int bus_rx_dummy_size = touch_rx_dummy_size(ts);
-	struct touch_bus_msg msg;
+	struct touch_bus_msg _msg;
+	struct touch_bus_msg *msg = &_msg;
 	int tx_size = bus_tx_hdr_size;
 	int ret = 0;
 
@@ -304,14 +305,14 @@ static int __used __siw_hal_do_reg_read(struct device *dev, u32 addr, void *data
 		ts->tx_buf[tx_size++] = 0;
 	}
 
-	msg.tx_buf = ts->tx_buf;
-	msg.tx_size = tx_size;
-	msg.rx_buf = ts->rx_buf;
-	msg.rx_size = bus_rx_hdr_size + size;
-	msg.bits_per_word = 8;
-	msg.priv = 0;
+	msg->tx_buf = ts->tx_buf;
+	msg->tx_size = tx_size;
+	msg->rx_buf = ts->rx_buf;
+	msg->rx_size = bus_rx_hdr_size + size;
+	msg->bits_per_word = 8;
+	msg->priv = 0;
 
-	ret = siw_touch_bus_read(dev, &msg);
+	ret = siw_touch_bus_read(dev, msg);
 	if (ret < 0) {
 		t_dev_err(dev, "touch bus read error(0x%04X, 0x%04X), %d\n",
 				(u32)addr, (u32)size, ret);
@@ -341,7 +342,8 @@ static int __used __siw_hal_do_reg_write(struct device *dev, u32 addr, void *dat
 	struct siw_ts *ts = chip->ts;
 	int bus_tx_hdr_size = touch_tx_hdr_size(ts);
 //	int bus_rx_hdr_size = touch_rx_hdr_size(ts);
-	struct touch_bus_msg msg;
+	struct touch_bus_msg _msg;
+	struct touch_bus_msg *msg = &_msg;
 	int ret = 0;
 
 #if 0
@@ -360,16 +362,16 @@ static int __used __siw_hal_do_reg_write(struct device *dev, u32 addr, void *dat
 	ts->tx_buf[0] |= ((addr >> 8) & 0x0f);
 	ts->tx_buf[1] = (addr  & 0xff);
 
-	msg.tx_buf = ts->tx_buf;
-	msg.tx_size = bus_tx_hdr_size + size;
-	msg.rx_buf = NULL;
-	msg.rx_size = 0;
-	msg.bits_per_word = 8;
-	msg.priv = 0;
+	msg->tx_buf = ts->tx_buf;
+	msg->tx_size = bus_tx_hdr_size + size;
+	msg->rx_buf = NULL;
+	msg->rx_size = 0;
+	msg->bits_per_word = 8;
+	msg->priv = 0;
 
 	memcpy(&ts->tx_buf[bus_tx_hdr_size], data, size);
 
-	ret = siw_touch_bus_write(dev, &msg);
+	ret = siw_touch_bus_write(dev, msg);
 	if (ret < 0) {
 		t_dev_err(dev, "touch bus write error(0x%04X, 0x%04X), %d\n",
 				(u32)addr, (u32)size, ret);
@@ -459,6 +461,8 @@ static int __used __siw_hal_do_xfer_msg(struct device *dev, struct touch_xfer_ms
 	int bus_rx_hdr_size = touch_rx_hdr_size(ts);
 //	int bus_tx_dummy_size = touch_tx_dummy_size(ts);
 	int bus_rx_dummy_size = touch_rx_dummy_size(ts);
+	int bus_dummy;
+	int buf_size = touch_buf_size(ts);
 	int tx_size;
 	int i = 0;
 	int ret = 0;
@@ -467,11 +471,17 @@ static int __used __siw_hal_do_xfer_msg(struct device *dev, struct touch_xfer_ms
 		return __siw_hal_do_xfer_to_single(dev, xfer);
 	}
 
+	if (!buf_size)
+		buf_size = SIW_TOUCH_MAX_XFER_BUF_SIZE;
+
+	t_dev_dbg_base(dev, "xfer: start\n");
+
 	for (i = 0; i < xfer->msg_count; i++) {
 		tx = &xfer->data[i].tx;
 		rx = &xfer->data[i].rx;
 
 		if (rx->size) {
+			t_dev_dbg_base(dev, "xfer: rd set(%d)\n", i);
 		#if 0
 			if (!rx->addr) {
 				t_dev_err(dev, "NULL xfer rx->addr(%i)\n", i);
@@ -480,18 +490,20 @@ static int __used __siw_hal_do_xfer_msg(struct device *dev, struct touch_xfer_ms
 			}
 		#endif
 			tx_size = bus_tx_hdr_size;
+			bus_dummy = bus_rx_dummy_size;
 
 			tx->data[0] = (rx->size > 4) ? 0x20 : 0x00;
 			tx->data[0] |= ((rx->addr >> 8) & 0x0f);
 			tx->data[1] = (rx->addr & 0xff);
-			//	while (bus_tx_dummy_size--) {
-			while (bus_rx_dummy_size--) {
+			while (bus_dummy--) {
 				tx->data[tx_size++] = 0;
 			}
 			tx->size = tx_size;
 			rx->size += bus_rx_hdr_size;
 			continue;
 		}
+
+		t_dev_dbg_base(dev, "xfer: wr set(%d)\n", i);
 
 	#if 0
 		if (!tx->addr) {
@@ -501,7 +513,7 @@ static int __used __siw_hal_do_xfer_msg(struct device *dev, struct touch_xfer_ms
 		}
 	#endif
 
-		if (tx->size > (SIW_TOUCH_MAX_XFER_BUF_SIZE - bus_tx_hdr_size)) {
+		if (tx->size > (buf_size - bus_tx_hdr_size)) {
 			t_dev_err(dev, "buffer overflow\n");
 			return -EOVERFLOW;
 		}
@@ -513,6 +525,8 @@ static int __used __siw_hal_do_xfer_msg(struct device *dev, struct touch_xfer_ms
 		memcpy(&tx->data[bus_tx_hdr_size], tx->buf, tx->size);
 		tx->size += bus_tx_hdr_size;
 	}
+
+	t_dev_dbg_base(dev, "xfer: call bus xfer\n");
 
 	ret = siw_touch_bus_xfer(dev, xfer);
 	if (ret < 0) {

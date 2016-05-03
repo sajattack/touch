@@ -61,11 +61,14 @@
 #define CHIP_INPUT_ID_PRODUCT		0x9876
 #define CHIP_INPUT_ID_VERSION		0x1234
 
+#define __CHIP_QUIRK_ADD			0
+
 #define CHIP_QUIRKS					(0 |	\
 									CHIP_QUIRK_NOT_SUPPORT_ASC |	\
 									CHIP_QUIRK_NOT_SUPPORT_LPWG |	\
 									CHIP_QUIRK_NOT_SUPPORT_WATCH |	\
 									CHIP_QUIRK_NOT_SUPPORT_IME |	\
+									__CHIP_QUIRK_ADD |	\
 									0)
 
 #define CHIP_BUS_TYPE				BUS_IF_I2C
