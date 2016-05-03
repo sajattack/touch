@@ -270,8 +270,8 @@ static int siw_touch_spi_do_xfer(struct spi_device *spi, struct touch_xfer_msg *
 		tx = &xfer->data[i].tx;
 		rx = &xfer->data[i].rx;
 
-	//	x->cs_change = !!(i < (xfer->msg_count - 1));
-		x->cs_change = 1;
+		x->cs_change = !!(i < (xfer->msg_count - 1));
+	//	x->cs_change = 1;
 		x->bits_per_word = spi->bits_per_word;
 		x->delay_usecs = 0;
 		x->speed_hz = spi->max_speed_hz;
