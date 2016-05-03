@@ -161,6 +161,7 @@ static struct siw_ts *siw_touch_i2c_alloc(
 	struct device *dev = &i2c->dev;
 	struct siw_ts *ts = NULL;
 	struct siw_touch_pdata *pdata = NULL;
+	int ret;
 
 	ts = devm_kzalloc(dev, sizeof(*ts), GFP_KERNEL);
 	if (ts == NULL) {
@@ -186,14 +187,17 @@ static struct siw_ts *siw_touch_i2c_alloc(
 	ts->bus_read = siw_touch_i2c_read;
 	ts->bus_write = siw_touch_i2c_write;
 	ts->bus_xfer = siw_touch_i2c_xfer;
-	ts->bus_tx_hdr_size = pdata_tx_hdr_size(pdata);
-	ts->bus_rx_hdr_size = pdata_rx_hdr_size(pdata);
-	ts->bus_tx_dummy_size = pdata_tx_dummy_size(pdata);
-	ts->bus_rx_dummy_size = pdata_rx_dummy_size(pdata);
+
+	ret = siw_touch_bus_tr_data_init(ts);
+	if (ret < 0) {
+		goto out_tr;
+	}
 
 	i2c_set_clientdata(i2c, ts);
 
 	return ts;
+
+out_tr:
 
 out_pdata:
 	devm_kfree(dev, ts);
@@ -208,6 +212,9 @@ static void siw_touch_i2c_free(struct i2c_client *i2c)
 	struct siw_ts *ts = to_touch_core(dev);
 
 	i2c_set_clientdata(i2c, NULL);
+
+	siw_touch_bus_tr_data_free(ts);
+
 	devm_kfree(dev, ts);
 }
 

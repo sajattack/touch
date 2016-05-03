@@ -752,11 +752,11 @@ struct siw_ts {
 	const char *panel_spec_mfts;
 	u32 force_fwup;
 
+	struct touch_xfer_msg *xfer;
 	u8 *tx_buf;
 	u8 *rx_buf;
-	struct touch_xfer_msg *xfer;
-	u32 tx_pa;
-	u32 rx_pa;
+	dma_addr_t tx_pa;
+	dma_addr_t rx_pa;
 
 	struct mutex lock;
 	struct workqueue_struct *wq;

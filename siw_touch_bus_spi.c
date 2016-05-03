@@ -318,10 +318,11 @@ static struct siw_ts *siw_touch_spi_alloc(
 	ts->bus_read = siw_touch_spi_read;
 	ts->bus_write = siw_touch_spi_write;
 	ts->bus_xfer = siw_touch_spi_xfer;
-	ts->bus_tx_hdr_size = pdata_tx_hdr_size(pdata);
-	ts->bus_rx_hdr_size = pdata_rx_hdr_size(pdata);
-	ts->bus_tx_dummy_size = pdata_tx_dummy_size(pdata);
-	ts->bus_rx_dummy_size = pdata_rx_dummy_size(pdata);
+
+	ret = siw_touch_bus_tr_data_init(ts);
+	if (ret < 0) {
+		goto out_tr;
+	}
 
 	spi->chip_select = 0;
 
@@ -353,6 +354,9 @@ static struct siw_ts *siw_touch_spi_alloc(
 	return ts;
 
 out_spi:
+	siw_touch_bus_tr_data_free(ts);
+
+out_tr:
 
 out_pdata:
 	devm_kfree(dev, ts);
@@ -367,6 +371,9 @@ static void siw_touch_spi_free(struct spi_device *spi)
 	struct siw_ts *ts = to_touch_core(dev);
 
 	spi_set_drvdata(spi, NULL);
+
+	siw_touch_bus_tr_data_free(ts);
+
 	devm_kfree(dev, ts);
 }
 

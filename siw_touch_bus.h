@@ -84,6 +84,8 @@ struct siw_touch_bus_drv {
 	} while(0)
 
 
+extern int siw_touch_bus_tr_data_init(struct siw_ts *ts);
+extern void siw_touch_bus_tr_data_free(struct siw_ts *ts);
 
 extern int siw_touch_bus_pin_get(struct siw_ts *ts);
 extern int siw_touch_bus_pin_put(struct siw_ts *ts);

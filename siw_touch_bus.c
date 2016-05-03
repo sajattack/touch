@@ -49,6 +49,22 @@
 #include "siw_touch_sys.h"
 
 
+int siw_touch_bus_tr_data_init(struct siw_ts *ts)
+{
+	struct siw_touch_pdata *pdata = ts->pdata;
+
+	ts->bus_tx_hdr_size = pdata_tx_hdr_size(pdata);
+	ts->bus_rx_hdr_size = pdata_rx_hdr_size(pdata);
+	ts->bus_tx_dummy_size = pdata_tx_dummy_size(pdata);
+	ts->bus_rx_dummy_size = pdata_rx_dummy_size(pdata);
+
+	return 0;
+}
+
+void siw_touch_bus_tr_data_free(struct siw_ts *ts)
+{
+
+}
 
 
 #define TOUCH_PINCTRL_ACTIVE	"touch_pin_active"
@@ -162,23 +178,46 @@ void *siw_touch_bus_create_bus_pdata(int bus_type)
 }
 
 static void *__buffer_alloc(struct device *dev, size_t size,
-				dma_addr_t *dma_handle, gfp_t gfp)
+				dma_addr_t *dma_handle, gfp_t gfp,
+				const char *name)
 {
-	if (siw_touch_sys_bus_use_dma(dev)) {
-		return dma_alloc_coherent(NULL, size, dma_handle, gfp);
+	void *buf;
+
+	if (siw_touch_sys_bus_use_dma(dev) && dma_handle) {
+		buf = dma_alloc_coherent(NULL, size, dma_handle, gfp);
+		if (buf) {
+			t_dev_dbg_base(dev, "alloc %s: buf %08Xh, phy %Xh, size %Xh\n",
+					name, (u32)buf, (*dma_handle), size);
+		}
+	} else {
+		buf = devm_kzalloc(dev, size, gfp);
+		if (buf) {
+			t_dev_dbg_base(dev, "alloc %s: buf %08Xh, size %Xh\n",
+					name, (u32)buf, size);
+			if (dma_handle)
+				*dma_handle = 0;
+		}
+	}
+	if (!buf) {
+		t_dev_err(dev, "failed to allocate %s\n", name);
 	}
 
-	return devm_kzalloc(dev, size, gfp);
+	return buf;
 }
 
 static void __buffer_free(struct device *dev, size_t size,
-				void *buf, dma_addr_t dma_handle)
+				void *buf, dma_addr_t dma_handle,
+				const char *name)
 {
 	if (siw_touch_sys_bus_use_dma(dev) && dma_handle) {
+		t_dev_dbg_base(dev, "free %s: buf %08Xh, phy %Xh, size %Xh\n",
+					name, (u32)buf, dma_handle, size);
 		dma_free_coherent(NULL, size, buf, dma_handle);
 		return;
 	}
 
+	t_dev_dbg_base(dev, "free %s: buf %08Xh, size %Xh\n",
+					name, (u32)buf, size);
 	devm_kfree(dev, buf);
 }
 
@@ -188,8 +227,8 @@ int siw_touch_bus_alloc_buffer(struct siw_ts *ts)
 	int buf_size = touch_buf_size(ts);
 	u8 *tx_buf = NULL;
 	u8 *rx_buf = NULL;
-	u32 tx_pa = 0;
-	u32 rx_pa = 0;
+	dma_addr_t tx_pa = 0;
+	dma_addr_t rx_pa = 0;
 	struct touch_xfer_msg *xfer = NULL;
 	int ret = 0;
 
@@ -198,38 +237,30 @@ int siw_touch_bus_alloc_buffer(struct siw_ts *ts)
 
 	t_dev_dbg_base(dev, "allocate touch bus buffer\n");
 
-	tx_buf = __buffer_alloc(dev,
-				buf_size, &tx_pa, GFP_KERNEL);
+	tx_buf = __buffer_alloc(dev, buf_size,
+					&tx_pa, GFP_KERNEL | GFP_DMA, "tx_buf");
 	if (!tx_buf) {
-		t_dev_err(dev, "failed to allocate tx_buf\n");
 		ret = -ENOMEM;
 		goto out_tx_buf;
 	}
-	t_dev_dbg_base(dev, "tx_buf %08Xh, tx_pa %08Xh, size %08Xh\n",
-				(u32)tx_buf, tx_pa, buf_size);
 
-	rx_buf = __buffer_alloc(dev,
-				buf_size, &rx_pa, GFP_KERNEL);
+	rx_buf = __buffer_alloc(dev, buf_size,
+					&rx_pa, GFP_KERNEL | GFP_DMA, "rx_buf");
 	if (!rx_buf) {
-		t_dev_err(dev, "failed to allocate rx_buf\n");
 		ret = -ENOMEM;
 		goto out_rx_buf;
 	}
-	t_dev_dbg_base(dev, "rx_buf %08Xh, rx_pa %08Xh, size %08Xh\n",
-				(u32)rx_buf, rx_pa, buf_size);
 
-	xfer = devm_kzalloc(dev, sizeof(struct touch_xfer_msg), GFP_KERNEL);
+	xfer = __buffer_alloc(dev, sizeof(struct touch_xfer_msg),
+					NULL, GFP_KERNEL, "xfer");
 	if (!xfer) {
-		t_dev_err(dev, "failed to allocate xfer\n");
 		ret = -ENOMEM;
 		goto out_xfer;
 	}
-	t_dev_dbg_base(dev, "xfer   : 0x%08X(0x%X)\n",
-				(u32)xfer, sizeof(struct touch_xfer_msg));
 
+	ts->xfer = xfer;
 	ts->tx_buf = tx_buf;
 	ts->rx_buf = rx_buf;
-	ts->xfer = xfer;
 	ts->tx_pa = tx_pa;
 	ts->rx_pa = rx_pa;
 
@@ -237,12 +268,12 @@ int siw_touch_bus_alloc_buffer(struct siw_ts *ts)
 
 out_xfer:
 	if (rx_buf) {
-		__buffer_free(dev, buf_size, rx_buf, rx_pa);
+		__buffer_free(dev, buf_size, rx_buf, rx_pa, "rx_buf");
 	}
 
 out_rx_buf:
 	if (tx_buf) {
-		__buffer_free(dev, buf_size, tx_buf, tx_pa);
+		__buffer_free(dev, buf_size, tx_buf, tx_pa, "tx_buf");
 	}
 
 out_tx_buf:
@@ -258,17 +289,20 @@ int siw_touch_bus_free_buffer(struct siw_ts *ts)
 	t_dev_dbg_base(dev, "release touch bus buffer\n");
 
 	if (ts->xfer) {
-		devm_kfree(dev, ts->xfer);
+		__buffer_free(dev, sizeof(struct touch_xfer_msg),
+				ts->xfer, 0, "xfer");
 		ts->xfer = NULL;
 	}
 
 	if (ts->rx_buf) {
-		__buffer_free(dev, buf_size, ts->rx_buf, ts->rx_pa);
+		__buffer_free(dev, buf_size,
+				ts->rx_buf, ts->rx_pa, "rx_buf");
 		ts->rx_buf= NULL;
 	}
 
 	if (ts->tx_buf) {
-		__buffer_free(dev, buf_size, ts->tx_buf, ts->tx_pa);
+		__buffer_free(dev, buf_size,
+				ts->tx_buf, ts->tx_pa, "tx_buf");
 		ts->tx_buf = NULL;
 	}
 
