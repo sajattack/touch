@@ -3,8 +3,11 @@ SiW Touch Driver
 
 This driver supports Silicon-works Touch Device.
 
+Author:
+kimhh@siliconworks.co.kr
+parksy5@siliconworks.co.kr
 
-Recommended base folder
+# Recommended base folder
 
 : {kernel top}/input/touchscreen/siw
 
@@ -14,7 +17,7 @@ List of supported devices
 : LG4894, LG4895, LG4946, SW1828
 
 
-[for Built-in]
+# for Built-in
 
 {kernel top}/input/touchscreen/siw $ mv Kconfig_builtin Kconfig
 
@@ -26,7 +29,7 @@ Add this 1 line into {kernel top}/input/touchscreen/Kconfig
 : source "drivers/input/touchscreen/siw/Kconfig"
 
 
-[for Module test]
+# for Module test
 
 {kernel top}/input/touchscreen/siw $ mv Makefile_module Makefile
 
