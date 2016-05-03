@@ -1356,15 +1356,18 @@ int siw_touch_probe(struct siw_ts *ts)
 int siw_touch_remove(struct siw_ts *ts)
 {
 	struct device *dev = ts->dev;
-
-	t_dev_info(dev, "SiW Touch Remove\n");
+	int ret;
 
 	if (siw_touch_get_boot_mode() == SIW_TOUCH_CHARGER_MODE) {
 		t_dev_info(dev, "Remove - Charger mode\n");
-		return siw_touch_remove_charger(ts);
+		ret = siw_touch_remove_charger(ts);
+	} else {
+		ret = siw_touch_remove_normal(ts);
 	}
 
-	return siw_touch_remove_normal(ts);
+	t_dev_info(dev, "SiW Touch Removed\n");
+
+	return ret;
 }
 
 
