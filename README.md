@@ -4,7 +4,9 @@ SiW Touch Driver
 This driver supports Silicon-works Touch Device.
 
 Author:
+
 kimhh@siliconworks.co.kr
+
 parksy5@siliconworks.co.kr
 
 # Recommended base folder
