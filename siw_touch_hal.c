@@ -1511,7 +1511,8 @@ static int siw_hal_hw_reset(struct device *dev, int ctrl)
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
 
-	t_dev_info(dev, "HW Reset\n");
+	t_dev_info(dev, "HW Reset(%s)\n",
+		(ctrl == HW_RESET_ASYNC)? "Async" : "Sync");
 
 	if (ctrl == HW_RESET_ASYNC) {
 		siw_hal_reinit(dev, 0, 0, 0, NULL);
