@@ -132,6 +132,16 @@ int siw_touch_sys_panel_reset(struct device *dev)
 	return 0;
 }
 
+int siw_touch_sys_get_panel_bl(struct device *dev)
+{
+	return 0;
+}
+
+int siw_touch_sys_set_panel_bl(struct device *dev, int level)
+{
+	return 0;
+}
+
 int siw_touch_sys_osc(struct device *dev, int onoff)
 {
 	return 0;

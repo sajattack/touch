@@ -162,6 +162,11 @@ static const struct reset_area chip_watch_win_range = {
 	.y2 = 80,
 };
 
+static const struct siw_hal_reg_quirk chip_reg_quirks[] = {
+	{ .old_addr = PRD_TUNE_RESULT_OFFSET, .new_addr = 0x2D9 },
+	{ .old_addr = ~0, .new_addr = ~0 },		// End signal
+};
+
 
 /*
  * of_device_is_compatible(dev->of_node, CHIP_COMPATIBLE_NAME)
@@ -262,7 +267,7 @@ static const struct siw_touch_pdata chip_pdata = {
 	//See 'store_ext_watch_config_font_position' [siw_touch_hal_watch.c]
 	.watch_win			= (void *)&chip_watch_win_range,
 	//See 'siw_setup_operations'
-	.reg_quirks			= NULL,
+	.reg_quirks			= (void *)chip_reg_quirks,
 };
 
 static struct siw_touch_chip_data chip_data = {

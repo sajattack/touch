@@ -84,9 +84,13 @@ static void siw_setup_reg_quirks(struct siw_ts *ts)
 	if (ts->pdata->reg_quirks) {
 	//	struct siw_hal_reg *reg = siw_ops_reg(ts);
 		u32 *curr_reg;
+		u32 *copy_reg;
+		struct siw_hal_reg reg_org;
 		struct siw_hal_reg_quirk *reg_quirks = ts->pdata->reg_quirks;
 		int cnt = sizeof(struct siw_hal_reg)>>2;
 		int i;
+
+		memcpy((void *)&reg_org, siw_ops_reg(ts), sizeof(reg_org));
 
 		while (1) {
 			if (!reg_quirks->old_addr ||
@@ -95,15 +99,17 @@ static void siw_setup_reg_quirks(struct siw_ts *ts)
 				(reg_quirks->new_addr == ~0))
 				break;
 
-			curr_reg = siw_ops_reg(ts);
+			copy_reg = (u32 *)&reg_org;
+			curr_reg = (u32 *)siw_ops_reg(ts);
 			for (i=0 ; i<cnt ; i++) {
-				if ((*curr_reg) == reg_quirks->old_addr) {
+				if ((*copy_reg) == reg_quirks->old_addr) {
 					(*curr_reg) = reg_quirks->new_addr;
 					t_dev_info(ts->dev, "%s reg quirks: %Xh -> %Xh\n",
 						touch_chip_name(ts),
 						reg_quirks->old_addr, reg_quirks->new_addr);
 					break;
 				}
+				copy_reg++;
 				curr_reg++;
 			}
 			reg_quirks++;

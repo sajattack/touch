@@ -4274,7 +4274,8 @@ static const struct siw_hal_reg siw_touch_default_reg = {
 	.raw_data_ctl_write			= RAW_DATA_CTL_WRITE,
 	.data_i2cbase_addr			= DATA_I2CBASE_ADDR,
 	.serial_data_offset			= SERIAL_DATA_OFFSET,
-#if defined(__SIW_SUPPORT_WATCH)
+	/* */
+	/* __SIW_SUPPORT_WATCH */
 	.ext_watch_font_offset		= EXT_WATCH_FONT_OFFSET,
 	.ext_watch_font_addr		= EXT_WATCH_FONT_ADDR,
 	.ext_watch_font_dn_addr_info = EXT_WATCH_FONT_DN_ADDR_INFO,
@@ -4300,7 +4301,15 @@ static const struct siw_hal_reg siw_touch_default_reg = {
 	.ext_watch_position_r		= EXT_WATCH_POSITION_R,
 	.ext_watch_state			= EXT_WATCH_STATE,
 	.sys_dispmode_status		= SYS_DISPMODE_STATUS,
-#endif	/* __SIW_SUPPORT_WATCH */
+	/* */
+	/* __SIW_SUPPORT_PRD */
+	.prd_serial_tcm_offset		= PRD_SERIAL_TCM_OFFSET,
+	.prd_tc_mem_sel				= PRD_TC_MEM_SEL,
+	.prd_tcm_base_addr			= PRD_TCM_BASE_ADDR,
+	.prd_tc_test_mode_ctl		= PRD_TC_TEST_MODE_CTL,
+	.prd_m1_m2_raw_offset		= PRD_M1_M2_RAW_OFFSET,
+	.prd_tune_result_offset		= PRD_TUNE_RESULT_OFFSET,
+	.prd_open3_short_offset		= PRD_OPEN3_SHORT_OFFSET,
 };
 
 enum {

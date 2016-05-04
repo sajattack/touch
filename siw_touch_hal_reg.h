@@ -120,7 +120,7 @@
 #define SERIAL_DATA_OFFSET			(0x07B)
 
 
-#if defined(__SIW_SUPPORT_WATCH)
+/* __SIW_SUPPORT_WATCH */
 #define EXT_WATCH_FONT_OFFSET		(0x07F)
 #define EXT_WATCH_FONT_ADDR			(0x307)
 #define EXT_WATCH_FONT_DN_ADDR_INFO	(0x2F7)
@@ -153,8 +153,18 @@
 #define EXT_WATCH_STATE				(0x270)	/*Watch state, Read only*/
 
 #define SYS_DISPMODE_STATUS			(0x021)	/* DIC status */
-#endif	/* __SIW_SUPPORT_WATCH */
+/* __SIW_SUPPORT_WATCH */
 
+
+/* __SIW_SUPPORT_PRD */
+#define PRD_SERIAL_TCM_OFFSET		(0x07C)
+#define PRD_TC_MEM_SEL				(0x457)
+#define PRD_TCM_BASE_ADDR			(0x303)
+#define PRD_TC_TEST_MODE_CTL		(0xC6E)
+#define PRD_M1_M2_RAW_OFFSET		(0x287)
+#define PRD_TUNE_RESULT_OFFSET		(0x289)	//See 'chip_reg_quirks' in touch_lg4895.c
+#define PRD_OPEN3_SHORT_OFFSET		(0x2FE)
+/* __SIW_SUPPORT_PRD */
 
 struct siw_hal_reg {
 	u32 spr_chip_id;
@@ -241,7 +251,7 @@ struct siw_hal_reg {
 	u32 data_i2cbase_addr;
 	u32 serial_data_offset;
 	/* */
-#if defined(__SIW_SUPPORT_WATCH)
+	/* __SIW_SUPPORT_WATCH */
 	u32 ext_watch_font_offset;
 	u32 ext_watch_font_addr;
 	u32 ext_watch_font_dn_addr_info;
@@ -267,7 +277,15 @@ struct siw_hal_reg {
 	u32 ext_watch_position_r;
 	u32 ext_watch_state;
 	u32 sys_dispmode_status;
-#endif	/* __SIW_SUPPORT_WATCH */
+	/* */
+	/* __SIW_SUPPORT_PRD */
+	u32 prd_serial_tcm_offset;
+	u32 prd_tc_mem_sel;
+	u32 prd_tcm_base_addr;
+	u32 prd_tc_test_mode_ctl;
+	u32 prd_m1_m2_raw_offset;
+	u32 prd_tune_result_offset;
+	u32 prd_open3_short_offset;
 };
 
 #define cmd_abt_ocd_on_write			cmd_raw_data_report_mode_write
