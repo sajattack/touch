@@ -109,6 +109,32 @@ enum {
 	LCD_MODE_IDX_MAX,
 };
 
+#define SIW_HAL_SET_LCD_DRIVING_MODE_STR(_mode)	\
+		[LCD_MODE_IDX_##_mode] = #_mode
+
+static const char *siw_hal_lcd_driving_mode_str[] = {
+	SIW_HAL_SET_LCD_DRIVING_MODE_STR(U0),
+	SIW_HAL_SET_LCD_DRIVING_MODE_STR(U2_UNBLANK),
+	SIW_HAL_SET_LCD_DRIVING_MODE_STR(U2),
+	SIW_HAL_SET_LCD_DRIVING_MODE_STR(U3),
+	SIW_HAL_SET_LCD_DRIVING_MODE_STR(U3_PARTIAL),
+	SIW_HAL_SET_LCD_DRIVING_MODE_STR(U3_QUICKCOVER),
+	SIW_HAL_SET_LCD_DRIVING_MODE_STR(STOP),
+};
+
+static inline const char *siw_hal_lcd_driving_mode_name(int mode_bit)
+{
+	int i;
+
+	for (i=0 ; i<LCD_MODE_IDX_MAX ; i++) {
+		if (BIT(i) == mode_bit) {
+			return siw_hal_lcd_driving_mode_str[i];
+		}
+	}
+	return "(invalid)";
+}
+
+
 enum {
 	LCD_MODE_U0 			= BIT(LCD_MODE_IDX_U0),
 	LCD_MODE_U2_UNBLANK		= BIT(LCD_MODE_IDX_U2_UNBLANK),

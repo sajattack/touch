@@ -419,6 +419,38 @@ static ssize_t _store_reset_ctrl(struct device *dev,
 	return count;
 }
 
+static ssize_t _show_lcd_mode(struct device *dev, char *buf)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	int size = 0;
+
+	size += siw_snprintf(buf, size, "current driving mode is %s\n",
+				siw_hal_lcd_driving_mode_name(chip->driving_mode));
+
+	return size;
+}
+
+static ssize_t _store_lcd_mode(struct device *dev,
+				const char *buf, size_t count)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	int value = 0;
+
+	if (sscanf(buf, "%d", &value) <= 0) {
+		siw_hal_sysfs_err_invalid_param(dev);
+		return count;
+	}
+
+	t_dev_info(dev, "try to change driving mode: %s -> %s\n",
+			siw_hal_lcd_driving_mode_name(chip->driving_mode),
+			siw_hal_lcd_driving_mode_name(BIT(value)));
+	siw_ops_notify(ts, LCD_EVENT_LCD_MODE, &value);
+
+	return count;
+}
+
+
 #define SIW_TOUCH_HAL_ATTR(_name, _show, _store)	\
 		TOUCH_ATTR(_name, _show, _store)
 
@@ -429,12 +461,14 @@ static SIW_TOUCH_HAL_ATTR(reg_ctrl, _show_reg_ctrl, _store_reg_ctrl);
 static SIW_TOUCH_HAL_ATTR(tci_debug, _show_tci_debug, _store_tci_debug);
 static SIW_TOUCH_HAL_ATTR(swipe_debug, _show_swipe_debug, _store_swipe_debug);
 static SIW_TOUCH_HAL_ATTR(reset_ctrl, _show_reset_ctrl, _store_reset_ctrl);
+static SIW_TOUCH_HAL_ATTR(lcd_mode, _show_lcd_mode, _store_lcd_mode);
 
 static struct attribute *siw_hal_attribute_list[] = {
 	&_SIW_TOUCH_HAL_ATTR_T(reg_ctrl).attr,
 	&_SIW_TOUCH_HAL_ATTR_T(tci_debug).attr,
 	&_SIW_TOUCH_HAL_ATTR_T(swipe_debug).attr,
 	&_SIW_TOUCH_HAL_ATTR_T(reset_ctrl).attr,
+	&_SIW_TOUCH_HAL_ATTR_T(lcd_mode).attr,
 	NULL,
 };
 
