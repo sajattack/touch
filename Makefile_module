@@ -58,6 +58,7 @@ obj-m := $(MODULE_NAME).o
 $(MODULE_NAME)-objs := siw_touch.o
 $(MODULE_NAME)-objs += siw_touch_hal.o siw_touch_hal_sysfs.o
 $(MODULE_NAME)-objs += siw_touch_hal_abt.o
+$(MODULE_NAME)-objs += siw_touch_hal_prd.o
 $(MODULE_NAME)-objs += siw_touch_hal_watch.o
 $(MODULE_NAME)-objs += siw_touch_bus.o
 $(MODULE_NAME)-objs += siw_touch_bus_i2c.o siw_touch_bus_spi.o

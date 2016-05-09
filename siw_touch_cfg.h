@@ -18,7 +18,7 @@
 //#define __SIW_SUPPORT_ASC
 
 #define __SIW_SUPPORT_ABT
-//#define __SIW_SUPPORT_PRD
+#define __SIW_SUPPORT_PRD
 #define __SIW_SUPPORT_WATCH
 
 #define __SIW_SUPPORT_XFER
