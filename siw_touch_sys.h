@@ -17,7 +17,7 @@ extern int siw_touch_sys_bus_use_dma(struct device *dev);
 extern int siw_touch_get_boot_mode(void);
 extern int siw_touch_boot_mode_check(struct device *dev);
 
-extern int siw_touch_sys_gpio_setpull(int pin, int value);
+extern int siw_touch_sys_gpio_set_pull(int pin, int value);
 
 extern int siw_touch_sys_panel_reset(struct device *dev);
 extern int siw_touch_sys_get_panel_bl(struct device *dev);

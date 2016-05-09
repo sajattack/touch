@@ -41,6 +41,7 @@
 #include "siw_touch_gpio.h"
 #include "siw_touch_sys.h"
 
+#if 1
 int siw_touch_gpio_init(struct device *dev,
 							int pin, const char *name)
 {
@@ -65,8 +66,7 @@ void siw_touch_gpio_free(struct device *dev, int pin)
 	}
 }
 
-void siw_touch_gpio_direction_input(struct device *dev,
-								int pin)
+void siw_touch_gpio_direction_input(struct device *dev, int pin)
 {
 	if (gpio_is_valid(pin)) {
 		t_dev_dbg_gpio(dev, "set pin(%d) input mode", pin);
@@ -74,21 +74,45 @@ void siw_touch_gpio_direction_input(struct device *dev,
 	}
 }
 
-void siw_touch_gpio_direction_output(
-		struct device *dev, int pin, int value)
+void siw_touch_gpio_direction_output(struct device *dev, int pin, int value)
 {
 	if (gpio_is_valid(pin)) {
 		t_dev_dbg_gpio(dev, "set pin(%d) output mode(%d)", pin, value);
 		gpio_direction_output(pin, value);
 	}
 }
+#else
+/* just test */
+int siw_touch_gpio_init(struct device *dev,	int pin, const char *name){ return 0; }
+void siw_touch_gpio_free(struct device *dev, int pin){ }
+void siw_touch_gpio_direction_input(struct device *dev, int pin)
+{
+	if (gpio_is_valid(pin)) {
+		gpio_request(pin, NULL);
+		t_dev_dbg_gpio(dev, "set pin(%d) input mode", pin);
+		gpio_direction_input(pin);
+		gpio_free(pin);
+	}
+}
+
+void siw_touch_gpio_direction_output(struct device *dev, int pin, int value)
+{
+	if (gpio_is_valid(pin)) {
+		gpio_request(pin, NULL);
+		t_dev_dbg_gpio(dev, "set pin(%d) output mode(%d)", pin, value);
+		gpio_direction_output(pin, value);
+		gpio_free(pin);
+	}
+}
+
+#endif
 
 void siw_touch_gpio_set_pull(struct device *dev, int pin, int value)
 {
 	if (gpio_is_valid(pin)) {
 		t_dev_dbg_gpio(dev, "set pin(%d) pull(%d)", pin, value);
 
-		siw_touch_sys_gpio_setpull(pin, value);
+		siw_touch_sys_gpio_set_pull(pin, value);
 	}
 
 	return;

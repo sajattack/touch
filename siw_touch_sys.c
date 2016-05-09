@@ -39,6 +39,7 @@
 #endif
 
 #include "siw_touch.h"
+#include "siw_touch_gpio.h"
 #include "siw_touch_sys.h"
 
 
@@ -107,21 +108,27 @@ int siw_touch_boot_mode_check(struct device *dev)
 	return ret;
 }
 
-int siw_touch_sys_gpio_setpull(int pin, int value)
+int siw_touch_sys_gpio_set_pull(int pin, int value)
 {
 	int ret = 0;
 
 #if defined(CONFIG_PLAT_SAMSUNG)
-/*
 	{
 		int pull_val;
 
-		pull_val = (value == GPIO_PULL_UP)? S3C_GPIO_PULL_UP :
-					(value == GPIO_PULL_DOWN)? S3C_GPIO_PULL_DOWN :
-					S3C_GPIO_PULL_NONE;
+		switch (value) {
+		case GPIO_PULL_UP:
+			pull_val = S3C_GPIO_PULL_UP;
+			break;
+		case GPIO_PULL_DOWN:
+			pull_val = S3C_GPIO_PULL_DOWN;
+			break;
+		default:
+			pull_val = S3C_GPIO_PULL_NONE;
+			break;
+		}
 		ret = s3c_gpio_setpull(pin, pull_val);
 	}
-*/
 #endif
 
 	return ret;

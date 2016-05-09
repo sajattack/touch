@@ -181,6 +181,12 @@ static void siw_hal_init_gpio_reset(struct device *dev)
 			reset_pin, GPIO_OUT_ONE);
 	t_dev_dbg_gpio(dev, "set %s(%d) as output\n",
 			SIW_HAL_GPIO_RST, reset_pin);
+
+	siw_touch_gpio_set_pull(dev,
+			reset_pin, GPIO_PULL_UP);
+	t_dev_dbg_gpio(dev, "set %s(%d) as pull-up(%d)\n",
+			SIW_HAL_GPIO_RST,
+			reset_pin, GPIO_NO_PULL);
 }
 
 static void siw_hal_free_gpio_reset(struct device *dev)
