@@ -122,13 +122,13 @@ static void siw_touch_of_array(struct device *dev, void *np,
 }
 
 static int siw_touch_of_string(struct device *dev, void *np,
-					void *string, const char *name)
+					void *string, const char **name)
 {
 	int ret;
 
-	ret = of_property_read_string(np, string, (const char **)&name);
+	ret = of_property_read_string(np, string, name);
 	if (!ret) {
-		t_dev_info(dev, "of_string : %s, %s\n", (char *)string, name);
+		t_dev_info(dev, "of_string : %s, %s\n", (char *)string, *name);
 	} else {
 		t_dev_warn(dev, "of_string : %s not found\n", (char *)string);
 	}
@@ -149,33 +149,33 @@ static int siw_touch_parset_dts_prd(struct siw_ts *ts)
 	struct device_node *np = dev->of_node;
 	int ret = 0;
 
-	ret = siw_touch_of_string(dev, np, "prd_in_file", ts->prd_in_file_path);
+	ret = siw_touch_of_string(dev, np, "prd_in_file", &ts->prd_in_file_path);
 	if (!ret) {
 		siw_hal_set_prd_file(dev, ts->prd_in_file_path, 0);
 	}
-	ret = siw_touch_of_string(dev, np, "prd_in_file_m", ts->prd_in_file_m_path);
+	ret = siw_touch_of_string(dev, np, "prd_in_file_m", &ts->prd_in_file_m_path);
 	if (!ret) {
-		siw_hal_set_prd_file(dev, ts->prd_in_file_m_path, 0);
+		siw_hal_set_prd_file(dev, ts->prd_in_file_m_path, 1);
 	}
-	ret = siw_touch_of_string(dev, np, "prd_out_file", ts->prd_out_file_path);
+	ret = siw_touch_of_string(dev, np, "prd_out_file", &ts->prd_out_file_path);
 	if (!ret) {
-		siw_hal_set_prd_file(dev, ts->prd_out_file_path, 0);
+		siw_hal_set_prd_file(dev, ts->prd_out_file_path, 2);
 	}
-	ret = siw_touch_of_string(dev, np, "prd_out_file_mo_aat", ts->prd_out_file_mo_aat_path);
+	ret = siw_touch_of_string(dev, np, "prd_out_file_mo_aat", &ts->prd_out_file_mo_aat_path);
 	if (!ret) {
-		siw_hal_set_prd_file(dev, ts->prd_out_file_mo_aat_path, 0);
+		siw_hal_set_prd_file(dev, ts->prd_out_file_mo_aat_path, 3);
 	}
-	ret = siw_touch_of_string(dev, np, "prd_out_file_mo_mfo", ts->prd_out_file_mo_mfo_path);
+	ret = siw_touch_of_string(dev, np, "prd_out_file_mo_mfo", &ts->prd_out_file_mo_mfo_path);
 	if (!ret) {
-		siw_hal_set_prd_file(dev, ts->prd_out_file_mo_mfo_path, 0);
+		siw_hal_set_prd_file(dev, ts->prd_out_file_mo_mfo_path, 4);
 	}
-	ret = siw_touch_of_string(dev, np, "prd_out_file_mo_mfl", ts->prd_out_file_mo_mfl_path);
+	ret = siw_touch_of_string(dev, np, "prd_out_file_mo_mfl", &ts->prd_out_file_mo_mfl_path);
 	if (!ret) {
-		siw_hal_set_prd_file(dev, ts->prd_out_file_mo_mfl_path, 0);
+		siw_hal_set_prd_file(dev, ts->prd_out_file_mo_mfl_path, 5);
 	}
-	ret = siw_touch_of_string(dev, np, "prd_out_file_mo_mcv", ts->prd_out_file_mo_mcv_path);
+	ret = siw_touch_of_string(dev, np, "prd_out_file_mo_mcv", &ts->prd_out_file_mo_mcv_path);
 	if (!ret) {
-		siw_hal_set_prd_file(dev, ts->prd_out_file_mo_mcv_path, 0);
+		siw_hal_set_prd_file(dev, ts->prd_out_file_mo_mcv_path, 6);
 	}
 
 	return 0;
@@ -262,8 +262,8 @@ static int siw_touch_parse_dts(struct siw_ts *ts)
 
 		siw_touch_of_array(dev, np, "fw_image", ts->def_fwpath, &ts->def_fwcnt);
 
-		siw_touch_of_string(dev, np, "panel_spec", ts->panel_spec);
-		siw_touch_of_string(dev, np, "panel_spec_mfts", ts->panel_spec_mfts);
+		siw_touch_of_string(dev, np, "panel_spec", &ts->panel_spec);
+		siw_touch_of_string(dev, np, "panel_spec_mfts", &ts->panel_spec_mfts);
 	} else {
 		role->use_fw_upgrade = 0;
 		ts->def_fwcnt = 0;
