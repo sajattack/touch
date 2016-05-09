@@ -77,7 +77,7 @@ static u32 siw_touch_of_u32(struct device *dev, void *np,
 		return 0;
 	}
 
-	t_dev_dbg_of(dev, "of u32   : %s, %d", (char *)string, val);
+	t_dev_dbg_of(dev, "of u32   : %s, %d\n", (char *)string, val);
 	return val;
 }
 
@@ -93,7 +93,7 @@ static int siw_touch_of_int(struct device *dev, void *np,
 		return -ENXIO;
 	}
 
-	t_dev_dbg_of(dev, "of int   : %s, %d", (char *)string, val);
+	t_dev_dbg_of(dev, "of int   : %s, %d\n", (char *)string, val);
 	return val;
 }
 
@@ -112,29 +112,82 @@ static void siw_touch_of_array(struct device *dev, void *np,
 	}
 
 	(*cnt) = ret;
-	t_dev_dbg_of(dev, "of count : %s, %d", (char *)string, (*cnt));
+	t_dev_dbg_of(dev, "of count : %s, %d\n", (char *)string, (*cnt));
 	for (i=0 ; i<(*cnt) ; i++) {
 		ret = of_property_read_string_index(np, string, i, (const char **)&name[i]);
 		if (!ret) {
-			t_dev_dbg_of(dev, "of string[%d/%d] : %s\n", i+1, (*cnt), name[i]);
+			t_dev_info(dev, "of string[%d/%d] : %s\n", i+1, (*cnt), name[i]);
 		}
 	}
 }
 
-static void siw_touch_of_string(struct device *dev, void *np,
+static int siw_touch_of_string(struct device *dev, void *np,
 					void *string, const char *name)
 {
-	of_property_read_string(np, string, (const char **)&name);
-	t_dev_dbg_of(dev, "of_string : %s, %s", (char *)string, name);
+	int ret;
+
+	ret = of_property_read_string(np, string, (const char **)&name);
+	if (!ret) {
+		t_dev_info(dev, "of_string : %s, %s\n", (char *)string, name);
+	} else {
+		t_dev_warn(dev, "of_string : %s not found\n", (char *)string);
+	}
+
+	return ret;
+}
+
+#if defined(__SIW_SUPPORT_PRD)
+extern int siw_hal_set_prd_file(struct device *dev, const char *path, int idx);
+#else	/* __SIW_SUPPORT_PRD */
+static inline int siw_hal_set_prd_file(struct device *dev, const char *path, int idx){ return 0; }
+#endif	/* __SIW_SUPPORT_PRD */
+
+/* __SIW_SUPPORT_PRD */
+static int siw_touch_parset_dts_prd(struct siw_ts *ts)
+{
+	struct device *dev = ts->dev;
+	struct device_node *np = dev->of_node;
+	int ret = 0;
+
+	ret = siw_touch_of_string(dev, np, "prd_in_file", ts->prd_in_file_path);
+	if (!ret) {
+		siw_hal_set_prd_file(dev, ts->prd_in_file_path, 0);
+	}
+	ret = siw_touch_of_string(dev, np, "prd_in_file_m", ts->prd_in_file_m_path);
+	if (!ret) {
+		siw_hal_set_prd_file(dev, ts->prd_in_file_m_path, 0);
+	}
+	ret = siw_touch_of_string(dev, np, "prd_out_file", ts->prd_out_file_path);
+	if (!ret) {
+		siw_hal_set_prd_file(dev, ts->prd_out_file_path, 0);
+	}
+	ret = siw_touch_of_string(dev, np, "prd_out_file_mo_aat", ts->prd_out_file_mo_aat_path);
+	if (!ret) {
+		siw_hal_set_prd_file(dev, ts->prd_out_file_mo_aat_path, 0);
+	}
+	ret = siw_touch_of_string(dev, np, "prd_out_file_mo_mfo", ts->prd_out_file_mo_mfo_path);
+	if (!ret) {
+		siw_hal_set_prd_file(dev, ts->prd_out_file_mo_mfo_path, 0);
+	}
+	ret = siw_touch_of_string(dev, np, "prd_out_file_mo_mfl", ts->prd_out_file_mo_mfl_path);
+	if (!ret) {
+		siw_hal_set_prd_file(dev, ts->prd_out_file_mo_mfl_path, 0);
+	}
+	ret = siw_touch_of_string(dev, np, "prd_out_file_mo_mcv", ts->prd_out_file_mo_mcv_path);
+	if (!ret) {
+		siw_hal_set_prd_file(dev, ts->prd_out_file_mo_mcv_path, 0);
+	}
+
+	return 0;
 }
 
 static int siw_touch_parse_dts(struct siw_ts *ts)
 {
-	struct device_node *np = ts->dev->of_node;
+	struct device *dev = ts->dev;
+	struct device_node *np = dev->of_node;
 	struct touch_pins *pins = &ts->pins;
 	struct touch_device_caps *caps = &ts->caps;
 	struct touch_operation_role *role = &ts->role;
-	struct device *dev = ts->dev;
 	int tmp;
 	int chip_flags = 0;
 	enum of_gpio_flags pin_flags;
@@ -218,6 +271,8 @@ static int siw_touch_parse_dts(struct siw_ts *ts)
 		ts->panel_spec = NULL;
 		ts->panel_spec_mfts = NULL;
 	}
+
+	siw_touch_parset_dts_prd(ts);
 
 	t_dev_info(dev,   "caps max_x           = %d\n", caps->max_x);
 	t_dev_info(dev,   "caps max_y           = %d\n", caps->max_y);

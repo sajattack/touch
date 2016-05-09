@@ -765,6 +765,16 @@ struct siw_ts {
 	const char *panel_spec_mfts;
 	u32 force_fwup;
 
+	/* __SIW_SUPPORT_PRD */
+	const char *prd_in_file_path;
+	const char *prd_in_file_m_path;
+	const char *prd_out_file_path;
+	const char *prd_out_file_mo_aat_path;
+	const char *prd_out_file_mo_mfo_path;
+	const char *prd_out_file_mo_mfl_path;
+	const char *prd_out_file_mo_mcv_path;
+	/* */
+
 	int buf_size;
 	struct touch_xfer_msg *xfer;
 	struct siw_touch_buf tx_buf[SIW_TOUCH_MAX_BUF_IDX];

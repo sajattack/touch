@@ -10,11 +10,10 @@
 #include <dt-bindings/gpio/gpio.h>
 
 /{
-
 /*
 	//GPIO default setup for lg4894 IRQn & RSTn
 	pinctrl@13400000 {
-		lg4894_touch_irq: lg4894_touch-irq {
+		touch_irq: touch-irq {
 			samsung,pins = "gpx1-6";
 			// 0 = input, 1 = output
 			samsung,pin-function = <0>;
@@ -22,7 +21,7 @@
 			samsung,pin-pud = <3>;
 		};
 
-		lg4894_touch_reset: lg4894_touch-reset {
+		touch_reset: touch-reset {
 			samsung,pins = "gpx1-7";
 			samsung,pin-function = <1>;
 			samsung,pin-pud = <0>;
@@ -90,11 +89,20 @@
 		use_lpwg_test = <0>;
 
 		// firmware
-		use_firmware = <0>;
-		use_fw_upgrade = <0>;
-		fw_image = "siw/sw1828/sw1828_test.img";	// in android -> /lib/firmware/siw/...
+		use_firmware = <1>;		// enable firmware control
+		use_fw_upgrade = <1>;	// auto-update during driver initialization
+		fw_image = "siw/sw1828/LA080WV9_9_02_00_3V.img";	// in android -> /lib/firmware/siw/...
 	//	panel_spec = "siw/sw1828/ph1_limit.txt";
 	//	panel_spec_mfts = "siw/sw1828/ph1_limit_mfts.txt";
+
+		//absoulte path
+		prd_in_file = "/mnt/sdcard/siw/sw1828_test_spec_V0.1.txt";
+		prd_in_file_m = "/mnt/sdcard/siw/sw1828_test_spec_mfts_V0.1.txt";
+		prd_out_file = "/mnt/sdcard/siw/touch_self_test.txt";
+	//	prd_out_file_mo_aat = "/mnt/sdcard/siw/touch_self_mfts_aat.txt";
+	//	prd_out_file_mo_mfo = "/mnt/sdcard/siw/touch_self_mfts_mfo.txt";
+	//	prd_out_file_mo_mfl = "/mnt/sdcard/siw/touch_self_mfts_mfl.txt";
+	//	prd_out_file_mo_mcv = "/mnt/sdcard/siw/touch_self_mfts_mcv.txt";
 	};
 //
 
@@ -127,18 +135,22 @@
 		use_lpwg_test = <1>;
 
 		// firmware
-		use_firmware = <1>;
-		use_fw_upgrade = <1>;
-		fw_image = "siw/lg4894/lg4894_test.img";	// in android -> /lib/firmware/siw/...
+		use_firmware = <1>;		// enable firmware control
+		use_fw_upgrade = <1>;		// auto-update during driver initialization
+		fw_image = "siw/lg4894/L0W53K6P_0_24.img";	// in android -> /lib/firmware/siw/...
 		panel_spec = "siw/lg4894/ph1_limit.txt";
 		panel_spec_mfts = "siw/lg4894/ph1_limit_mfts.txt";
+
+		prd_in_file = "/mnt/sdcard/siw/lg4894_test_spec_V0.1.txt";
+		prd_in_file_m = "/mnt/sdcard/siw/lg4894_test_spec_mfts_V0.1.txt";
+		prd_out_file = "/mnt/sdcard/siw/touch_self_test.txt";
 	};
 */
 };
 
-&spi_1 {
+&spi_1 {					// indicates parent device : SPI_1 master block
 	status = "okay";
-	samsung,spi-src-clk = <0>;
+	samsung,spi-src-clk = <0>;		//clk source indicator : sci->src_clk_nr -> '0' on spi_busclk0
 	num-cs = <1>;
 
 	lg4895@0 {
@@ -146,14 +158,14 @@
 	//	#address-cells = <1>;
 	//	#size-cells = <0>;
 		compatible = "siw,lg4895";
-		reg = <0>;
-		spi-max-frequency = <20000000>;
+		reg = <0>;		//chip select indicator : spi->chip_select
+		spi-max-frequency = <10000000>;
 
 		interrupt-parent = <&gpx1>;	// interrupt source : GPIO group 'gpx1'
 		interrupts = <6 0x02>;		// index 6(0~7) in gpx1 external interrupts
 		irqflags = <0x2002>;		// IRQF_ONESHOT(0x2000) | IRQF_TRIGGER_FALLING(0x2)
 
-		chip_flags = <0x100>;		// TOUCH_USE_MON_THREAD
+		chip_flags = <0>;
 
 		reset-gpio = <&gpx1 7 GPIO_ACTIVE_LOW>;	// index 7 in gpx1
 		irq-gpio = <&gpx1 6 GPIO_ACTIVE_LOW>;	// index 6 in gpx1
@@ -173,14 +185,20 @@
 		use_lpwg_test = <1>;
 
 		// firmware
-		use_firmware = <0>;
-		use_fw_upgrade = <0>;
-	//	fw_image = "siw/lg4895/lg4895_test.img";	// in android -> /lib/firmware/siw/...
+		use_firmware = <1>;
+		use_fw_upgrade = <1>;
+		fw_image = "siw/lg4895/L0W49P1_1_13.img";	// in android -> /lib/firmware/siw/...
 	//	panel_spec = "siw/lg4895/ph1_limit.txt";
 	//	panel_spec_mfts = "siw/lg4895/ph1_limit_mfts.txt";
 
+		prd_in_file = "/mnt/sdcard/siw/lg4895_test_spec_V0.1.txt";
+		prd_in_file_m = "/mnt/sdcard/siw/lg4895_test_spec_mfts_V0.1.txt";
+		prd_out_file = "/mnt/sdcard/siw/touch_self_test.txt";
+
 		controller-data {
+			cs-gpio = <&gpa2 5 GPIO_ACTIVE_LOW>;
 			samsung,spi-feedback-delay = <0>;
+			samsung,spi-chip-select-mode = <0>;	//MANUAL_CS_MODE = 0, AUTO_CS_MODE = 1,
 		};
 	};
 };
