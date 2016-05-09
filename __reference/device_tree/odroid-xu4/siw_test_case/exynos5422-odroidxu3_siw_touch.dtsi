@@ -96,13 +96,13 @@
 	//	panel_spec_mfts = "siw/sw1828/ph1_limit_mfts.txt";
 
 		//absoulte path
-		prd_in_file = "/mnt/sdcard/siw/sw1828_test_spec_V0.1.txt";
-		prd_in_file_m = "/mnt/sdcard/siw/sw1828_test_spec_mfts_V0.1.txt";
-		prd_out_file = "/mnt/sdcard/siw/touch_self_test.txt";
-	//	prd_out_file_mo_aat = "/mnt/sdcard/siw/touch_self_mfts_aat.txt";
-	//	prd_out_file_mo_mfo = "/mnt/sdcard/siw/touch_self_mfts_mfo.txt";
-	//	prd_out_file_mo_mfl = "/mnt/sdcard/siw/touch_self_mfts_mfl.txt";
-	//	prd_out_file_mo_mcv = "/mnt/sdcard/siw/touch_self_mfts_mcv.txt";
+		prd_in_file = "/sdcard/siw/sw1828_test_spec_V0.1.txt";
+		prd_in_file_m = "/sdcard/siw/sw1828_test_spec_mfts_V0.1.txt";
+		prd_out_file = "/sdcard/siw/touch_self_test.txt";
+	//	prd_out_file_mo_aat = "/sdcard/siw/touch_self_mfts_aat.txt";
+	//	prd_out_file_mo_mfo = "/sdcard/siw/touch_self_mfts_mfo.txt";
+	//	prd_out_file_mo_mfl = "/sdcard/siw/touch_self_mfts_mfl.txt";
+	//	prd_out_file_mo_mcv = "/sdcard/siw/touch_self_mfts_mcv.txt";
 	};
 //
 
@@ -141,9 +141,9 @@
 		panel_spec = "siw/lg4894/ph1_limit.txt";
 		panel_spec_mfts = "siw/lg4894/ph1_limit_mfts.txt";
 
-		prd_in_file = "/mnt/sdcard/siw/lg4894_test_spec_V0.1.txt";
-		prd_in_file_m = "/mnt/sdcard/siw/lg4894_test_spec_mfts_V0.1.txt";
-		prd_out_file = "/mnt/sdcard/siw/touch_self_test.txt";
+		prd_in_file = "/sdcard/siw/lg4894_test_spec_V0.1.txt";
+		prd_in_file_m = "/sdcard/siw/lg4894_test_spec_mfts_V0.1.txt";
+		prd_out_file = "/sdcard/siw/touch_self_test.txt";
 	};
 */
 };
@@ -191,9 +191,9 @@
 	//	panel_spec = "siw/lg4895/ph1_limit.txt";
 	//	panel_spec_mfts = "siw/lg4895/ph1_limit_mfts.txt";
 
-		prd_in_file = "/mnt/sdcard/siw/lg4895_test_spec_V0.1.txt";
-		prd_in_file_m = "/mnt/sdcard/siw/lg4895_test_spec_mfts_V0.1.txt";
-		prd_out_file = "/mnt/sdcard/siw/touch_self_test.txt";
+		prd_in_file = "/sdcard/siw/lg4895_test_spec_V0.1.txt";
+		prd_in_file_m = "/sdcard/siw/lg4895_test_spec_mfts_V0.1.txt";
+		prd_out_file = "/sdcard/siw/touch_self_test.txt";
 
 		controller-data {
 			cs-gpio = <&gpa2 5 GPIO_ACTIVE_LOW>;
