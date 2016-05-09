@@ -85,12 +85,12 @@ static void siw_setup_reg_quirks(struct siw_ts *ts)
 	//	struct siw_hal_reg *reg = siw_ops_reg(ts);
 		u32 *curr_reg;
 		u32 *copy_reg;
-		struct siw_hal_reg reg_org;
+		struct siw_hal_reg *reg_org;
 		struct siw_hal_reg_quirk *reg_quirks = ts->pdata->reg_quirks;
 		int cnt = sizeof(struct siw_hal_reg)>>2;
 		int i;
 
-		memcpy((void *)&reg_org, siw_ops_reg(ts), sizeof(reg_org));
+		reg_org = ts->ops_ext->reg;
 
 		while (1) {
 			if (!reg_quirks->old_addr ||
