@@ -1837,8 +1837,6 @@ static int ext_watch_fontdata_preload(struct device *dev)
 
 	atomic_set(&watch->state.font_status, FONT_DOWNLOADING);
 
-	mod_delayed_work(ts->wq, &chip->font_download_work, 20);
-
 out:
 	filp_close(filp, 0);
 
