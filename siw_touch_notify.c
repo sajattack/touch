@@ -107,14 +107,12 @@ void siw_touch_notify_wireless(u32 type)
 {
 	siw_touch_atomic_notifier_call(NOTIFY_WIRELEES, &type);
 }
-
 EXPORT_SYMBOL(siw_touch_notify_wireless);
 
 void siw_touch_notify_earjack(u32 type)
 {
 	siw_touch_atomic_notifier_call(NOTIFY_EARJACK, &type);
 }
-
 EXPORT_SYMBOL(siw_touch_notify_earjack);
 
 static int siw_touch_atomic_notifier_callback(struct notifier_block *this,
