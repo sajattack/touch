@@ -600,9 +600,9 @@ static inline u32 pdata_chip_type(struct siw_touch_pdata *pdata)
 	return pdata->chip_type;
 }
 
-static inline u32 pdata_mode_allowed(struct siw_touch_pdata *pdata, u32 mode_bit)
+static inline u32 pdata_mode_allowed(struct siw_touch_pdata *pdata, u32 mode)
 {
-	return (pdata->mode_allowed & mode_bit);
+	return (pdata->mode_allowed & BIT(mode));
 }
 
 static inline u32 pdata_fw_size(struct siw_touch_pdata *pdata)
@@ -983,18 +983,18 @@ static inline u32 touch_chip_type(struct siw_ts *ts)
 	return pdata_chip_type(ts->pdata);
 }
 
-static inline u32 touch_mode_allowed(struct siw_ts *ts, u32 mode_bit)
+static inline u32 touch_mode_allowed(struct siw_ts *ts, u32 mode)
 {
-	return pdata_mode_allowed(ts->pdata, mode_bit);
+	return pdata_mode_allowed(ts->pdata, mode);
 }
 
-static inline u32 touch_mode_not_allowed(struct siw_ts *ts, u32 mode_bit)
+static inline u32 touch_mode_not_allowed(struct siw_ts *ts, u32 mode)
 {
 	int ret;
 
-	ret = !pdata_mode_allowed(ts->pdata, mode_bit);
+	ret = !pdata_mode_allowed(ts->pdata, mode);
 	if (ret) {
-		t_dev_warn(ts->dev, "target mode(%d) not supported\n", mode_bit);
+		t_dev_warn(ts->dev, "target mode(%d) not supported\n", mode);
 	}
 
 	return ret;

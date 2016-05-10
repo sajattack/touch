@@ -49,11 +49,11 @@
 #define CHIP_TYPE					CHIP_LG4946
 
 #define CHIP_MODE_ALLOWED			(0 |	\
-									LCD_MODE_U0 |	\
-									LCD_MODE_U2 |	\
-									LCD_MODE_U3 |	\
-									LCD_MODE_U3_PARTIAL |	\
-									LCD_MODE_STOP |	\
+									LCD_MODE_BIT_U0 |	\
+									LCD_MODE_BIT_U2 |	\
+									LCD_MODE_BIT_U3 |	\
+									LCD_MODE_BIT_U3_PARTIAL |	\
+									LCD_MODE_BIT_STOP |	\
 									0)
 
 #define CHIP_FW_SIZE				(72<<10)

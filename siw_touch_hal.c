@@ -2657,7 +2657,7 @@ static inline int siw_hal_tc_driving_stop(struct device *dev)
 	return TC_DRIVE_CTL_STOP;
 }
 
-static int siw_hal_tc_driving(struct device *dev, int mode_bit)
+static int siw_hal_tc_driving(struct device *dev, int mode)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
@@ -2673,13 +2673,13 @@ static int siw_hal_tc_driving(struct device *dev, int mode_bit)
 		return 0;
 	}
 
-	chip->driving_mode = mode_bit;
+	chip->driving_mode = mode;
 
-	if (touch_mode_not_allowed(ts, mode_bit)) {
+	if (touch_mode_not_allowed(ts, mode)) {
 		return 0;
 	}
 
-	switch (mode_bit) {
+	switch (mode) {
 	case LCD_MODE_U0:
 		ctrl = siw_hal_tc_driving_u0(dev);
 		break;
@@ -2705,25 +2705,25 @@ static int siw_hal_tc_driving(struct device *dev, int mode_bit)
 		break;
 
 	default:
-		t_dev_err(dev, "mode(%d) not supported\n", mode_bit);
+		t_dev_err(dev, "mode(%d) not supported\n", mode);
 		return -ESRCH;
 	}
 
 	/* swipe set */
-	ret = siw_hal_swipe_mode(dev, mode_bit);
+	ret = siw_hal_swipe_mode(dev, mode);
 	if (ret < 0) {
 		t_dev_warn(dev, "swipe mode err, %d", ret);
 	}
 
 #if 0
 	if ((chip->fw.wfr == REV1) &&
-		((mode_bit == LCD_MODE_U0) || (mode_bit == LCD_MODE_U2))) {
+		((mode == LCD_MODE_U0) || (mode == LCD_MODE_U2))) {
 		touch_msleep(200);
 	}
 #endif
 
 	t_dev_info(dev, "current driving mode is %s\n",
-			siw_hal_lcd_driving_mode_name(mode_bit));
+			siw_lcd_driving_mode_str(mode));
 
 	ret = siw_hal_read_value(dev,
 				reg->spr_subdisp_status,
@@ -2740,7 +2740,7 @@ static int siw_hal_tc_driving(struct device *dev, int mode_bit)
 
 	t_dev_dbg_base(dev, "waiting %d msecs\n", HAL_TC_DRIVING_DELAY);
 
-	if (mode_bit == LCD_MODE_U3_PARTIAL) {
+	if (mode == LCD_MODE_U3_PARTIAL) {
 		atomic_set(&ts->recur_chk, 0);
 		return 0;
 	}
@@ -2764,7 +2764,7 @@ static int siw_hal_tc_driving(struct device *dev, int mode_bit)
 	running_status &= 0x1F;
 
 	re_init = 0;
-	if (mode_bit != LCD_MODE_STOP) {
+	if (mode != LCD_MODE_STOP) {
 		if (!running_status ||
 			(running_status == 0x10) ||
 			(running_status == 0x0F)){
@@ -2776,14 +2776,14 @@ static int siw_hal_tc_driving(struct device *dev, int mode_bit)
 
 	if (re_init) {
 		t_dev_err(dev, "command missed: mode %d, status %Xh\n",
-			mode_bit, running_status);
+			mode, running_status);
 
 		atomic_set(&ts->recur_chk, 1);
 
 		siw_hal_reinit(dev, 1, 100, 1, siw_hal_init);
 	} else {
 		t_dev_dbg_base(dev, "command done: mode %d, status %Xh\n",
-			mode_bit, running_status);
+			mode, running_status);
 	}
 
 	atomic_set(&ts->recur_chk, 0);
@@ -3698,37 +3698,27 @@ static void siw_hal_connect(struct device *dev)
 			chip->charger);
 }
 
-static void siw_hal_lcd_mode(struct device *dev, u32 mode_bit)
+static void siw_hal_lcd_mode(struct device *dev, u32 mode)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
 
-	if (touch_mode_not_allowed(ts, mode_bit)) {
+	if (touch_mode_not_allowed(ts, mode)) {
 		return;
 	}
 
-	t_dev_info(dev, "lcd_mode: %d (prev: %d)\n", mode_bit, chip->lcd_mode);
+	t_dev_info(dev, "lcd_mode: %d (prev: %d)\n", mode, chip->lcd_mode);
 
 	if ((chip->lcd_mode == LCD_MODE_U2) &&
 		siw_hal_watch_is_disp_waton(dev)) {
 		siw_hal_watch_get_curr_time(dev, NULL, NULL);
 	}
 
-	if (mode_bit == LCD_MODE_U2_UNBLANK)
-		mode_bit = LCD_MODE_U2;
+	if (mode == LCD_MODE_U2_UNBLANK)
+		mode = LCD_MODE_U2;
 
 	chip->prev_lcd_mode = chip->lcd_mode;
-	chip->lcd_mode = mode_bit;
-}
-
-static void siw_hal_lcd_mode_idx(struct device *dev, u32 mode)
-{
-	if (mode >= LCD_MODE_IDX_MAX) {
-		t_dev_err(dev, "invalid mode index, %d\n", mode);
-		return;
-	}
-
-	siw_hal_lcd_mode(dev, BIT(mode));
+	chip->lcd_mode = mode;
 }
 
 static int siw_hal_usb_status(struct device *dev, u32 mode)
@@ -3835,7 +3825,7 @@ static int siw_hal_notify(struct device *dev, ulong event, void *data)
 		break;
 	case LCD_EVENT_LCD_MODE:
 		t_dev_info(dev, "notify: lcd_event: lcd mode\n");
-		siw_hal_lcd_mode_idx(dev, *(u32 *)data);
+		siw_hal_lcd_mode(dev, *(u32 *)data);
 		ret = siw_hal_check_mode(dev);
 		if (!ret) {
 			queue_delayed_work(ts->wq, &chip->fb_notify_work, 0);
