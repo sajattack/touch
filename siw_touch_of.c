@@ -136,6 +136,17 @@ static int siw_touch_of_string(struct device *dev, void *np,
 	return ret;
 }
 
+static int siw_touch_parse_dts_watch(struct siw_ts *ts)
+{
+	struct device *dev = ts->dev;
+	struct device_node *np = dev->of_node;
+	int ret = 0;
+
+	ret = siw_touch_of_string(dev, np, "font_image", &ts->watch_font_image);
+
+	return 0;
+}
+
 #if defined(__SIW_SUPPORT_PRD)
 extern int siw_hal_set_prd_file(struct device *dev, const char *path, int idx);
 #else	/* __SIW_SUPPORT_PRD */
@@ -143,7 +154,7 @@ static inline int siw_hal_set_prd_file(struct device *dev, const char *path, int
 #endif	/* __SIW_SUPPORT_PRD */
 
 /* __SIW_SUPPORT_PRD */
-static int siw_touch_parset_dts_prd(struct siw_ts *ts)
+static int siw_touch_parse_dts_prd(struct siw_ts *ts)
 {
 	struct device *dev = ts->dev;
 	struct device_node *np = dev->of_node;
@@ -272,7 +283,9 @@ static int siw_touch_parse_dts(struct siw_ts *ts)
 		ts->panel_spec_mfts = NULL;
 	}
 
-	siw_touch_parset_dts_prd(ts);
+	siw_touch_parse_dts_watch(ts);
+
+	siw_touch_parse_dts_prd(ts);
 
 	t_dev_info(dev,   "caps max_x           = %d\n", caps->max_x);
 	t_dev_info(dev,   "caps max_y           = %d\n", caps->max_y);

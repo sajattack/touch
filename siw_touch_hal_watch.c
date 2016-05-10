@@ -1707,7 +1707,7 @@ static ssize_t ext_watch_access_write(struct file *filp, struct kobject *kobj,
 
 	if ((off + count) > SIW_MAX_FONT_SIZE)	 {
 		t_watch_err(dev, "access_read: size overflow : offset[%d] size[%d]\n",
-			 (int)off, (int)count);
+			(int)off, (int)count);
 		atomic_set(&watch->state.font_status, FONT_EMPTY);
 		ret = -EOVERFLOW;
 		goto out;
@@ -1794,6 +1794,58 @@ static void ext_watch_fontdata_attr_free(struct device *dev)
 	watch->font_written_size = 0;
 }
 
+static int ext_watch_fontdata_preload(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	struct watch_data *watch = chip->watch;
+	struct file *filp = NULL;
+	loff_t size;
+	int rd_size;
+	int ret = 0;
+
+	if (!ts->watch_font_image) {
+		t_watch_info(dev, "font_preload: watch_font_image not defined, skip\n");
+		return 0;
+	}
+
+	filp = filp_open(ts->watch_font_image, O_RDONLY, 0);
+	if (IS_ERR(filp)) {
+		return (int)PTR_ERR(filp);
+	}
+
+	size = vfs_llseek(filp, 0, SEEK_END);
+	if (size > SIW_MAX_FONT_SIZE)	 {
+		t_watch_warn(dev, "font_preload: size overflow, %d > %d\n",
+			(int)size, SIW_MAX_FONT_SIZE);
+		ret = -EOVERFLOW;
+		goto out;
+	}
+
+	rd_size = kernel_read(filp, 0,
+				(char *)watch->ext_wdata.font_data,
+				(unsigned long)size);
+	if (rd_size != (int)size) {
+		t_watch_warn(dev, "font_preload: failed to read[%d], %d\n",
+			(int)size, (int)rd_size);
+		memset(watch->ext_wdata.font_data, 0, SIW_MAX_FONT_SIZE);
+		ret = (rd_size < 0)? rd_size : -EFAULT;
+		goto out;
+	}
+
+	watch->font_written_size = (u32)size;
+
+	atomic_set(&watch->state.font_status, FONT_DOWNLOADING);
+
+	mod_delayed_work(ts->wq, &chip->font_download_work, 20);
+
+out:
+	filp_close(filp, 0);
+
+	return ret;
+}
+
+
 static int ext_watch_init(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
@@ -1860,28 +1912,36 @@ static int ext_watch_create_sysfs(struct device *dev)
 	ret = kobject_init_and_add(kobj, &ext_watch_kobj_type,
 			idev->kobj.parent, "%s", name);
 	if (ret < 0) {
-		t_watch_err(dev, "failed to create sysfs entry\n");
+		t_watch_err(dev, "failed to create sysfs kobj\n");
 		goto out_kobj;
 	}
 
 	ret = sysfs_create_group(kobj, &ext_watch_attribute_group);
 	if (ret < 0) {
-		t_watch_err(dev, "failed to create sysfs\n");
+		t_watch_err(dev, "failed to create sysfs group\n");
 		goto out_sys;
 	}
 
 	ret = ext_watch_fontdata_attr_init(dev);
 	if (ret < 0) {
-		t_watch_err(dev, "failed to create sysfs\n");
+		t_watch_err(dev, "failed to create fontdata attr\n");
 		goto out_init;
 	}
 
 	INIT_DELAYED_WORK(&chip->font_download_work, ext_watch_font_download);
 
+	ret = ext_watch_fontdata_preload(dev);
+	if (ret < 0) {
+		goto out_load;
+	}
+
 	t_dev_dbg_base(dev, "%s watch sysfs registered\n",
 			touch_chip_name(ts));
 
 	return 0;
+
+out_load:
+	ext_watch_fontdata_attr_free(dev);
 
 out_init:
 	sysfs_remove_group(kobj, &ext_watch_attribute_group);

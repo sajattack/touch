@@ -765,6 +765,10 @@ struct siw_ts {
 	const char *panel_spec_mfts;
 	u32 force_fwup;
 
+	/* __SIW_SUPPORT_WATCH */
+	const char *watch_font_image;
+	/* */
+
 	/* __SIW_SUPPORT_PRD */
 	const char *prd_in_file_path;
 	const char *prd_in_file_m_path;
