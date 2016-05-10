@@ -61,7 +61,7 @@ static const char *siw_hal_debug_type_str[] = {
 static int __show_reg_list(struct device *dev, char *buf, int size)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
-//	struct siw_ts *ts = chip->ts;
+	struct siw_ts *ts = chip->ts;
 	struct siw_hal_reg *reg = chip->reg;
 
 	size += siw_snprintf(buf, size, "# Reg. Map List\n");
@@ -145,6 +145,42 @@ static int __show_reg_list(struct device *dev, char *buf, int size)
 	size += _reg_snprintf(buf, size, reg, raw_data_ctl_write);
 	size += _reg_snprintf(buf, size, reg, data_i2cbase_addr);
 	size += _reg_snprintf(buf, size, reg, serial_data_offset);
+	/* __SIW_SUPPORT_WATCH */
+	if (!touch_test_quirks(ts, CHIP_QUIRK_NOT_SUPPORT_WATCH)) {
+		size += _reg_snprintf(buf, size, reg, ext_watch_font_offset);
+		size += _reg_snprintf(buf, size, reg, ext_watch_font_addr);
+		size += _reg_snprintf(buf, size, reg, ext_watch_font_dn_addr_info);
+		size += _reg_snprintf(buf, size, reg, ext_watch_font_crc);
+		size += _reg_snprintf(buf, size, reg, ext_watch_dcs_ctrl);
+		size += _reg_snprintf(buf, size, reg, ext_watch_mem_ctrl);
+		size += _reg_snprintf(buf, size, reg, ext_watch_ctrl);
+		size += _reg_snprintf(buf, size, reg, ext_watch_area_x);
+		size += _reg_snprintf(buf, size, reg, ext_watch_area_y);
+		size += _reg_snprintf(buf, size, reg, ext_watch_blink_area);
+		size += _reg_snprintf(buf, size, reg, ext_watch_lut);
+		size += _reg_snprintf(buf, size, reg, ext_watch_display_on);
+		size += _reg_snprintf(buf, size, reg, ext_watch_display_status);
+		size += _reg_snprintf(buf, size, reg, ext_watch_rtc_sct);
+		size += _reg_snprintf(buf, size, reg, ext_watch_rtc_sctcnt);
+		size += _reg_snprintf(buf, size, reg, ext_watch_rtc_capture);
+		size += _reg_snprintf(buf, size, reg, ext_watch_rtc_ctst);
+		size += _reg_snprintf(buf, size, reg, ext_watch_rtc_ecnt);
+		size += _reg_snprintf(buf, size, reg, ext_watch_hour_disp);
+		size += _reg_snprintf(buf, size, reg, ext_watch_blink_prd);
+		size += _reg_snprintf(buf, size, reg, ext_watch_rtc_run);
+		size += _reg_snprintf(buf, size, reg, ext_watch_position);
+		size += _reg_snprintf(buf, size, reg, ext_watch_position_r);
+		size += _reg_snprintf(buf, size, reg, ext_watch_state);
+		size += _reg_snprintf(buf, size, reg, sys_dispmode_status);
+	}
+	/* __SIW_SUPPORT_PRD */
+	size += _reg_snprintf(buf, size, reg, prd_serial_tcm_offset);
+	size += _reg_snprintf(buf, size, reg, prd_tc_mem_sel);
+	size += _reg_snprintf(buf, size, reg, prd_tcm_base_addr);
+	size += _reg_snprintf(buf, size, reg, prd_tc_test_mode_ctl);
+	size += _reg_snprintf(buf, size, reg, prd_m1_m2_raw_offset);
+	size += _reg_snprintf(buf, size, reg, prd_tune_result_offset);
+	size += _reg_snprintf(buf, size, reg, prd_open3_short_offset);
 
 	return size;
 }
