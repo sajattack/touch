@@ -286,14 +286,9 @@ struct watch_data {
 #define t_watch_dbg(_dev, fmt, args...)	\
 		t_dev_dbg_watch(_dev, SIW_WATCH_TAG fmt, ##args)
 
-#define siw_watch_snprintf(_buf, _max, _size, _fmt, _args...) \
-		({	\
-			int _n_size = 0;	\
-			if (_size < _max)	\
-				_n_size = snprintf(_buf + _size, _max - _size,\
-								(const char *)_fmt, ##_args);	\
-			_n_size;	\
-		})
+#define siw_watch_snprintf(_buf, _buf_max, _size, _fmt, _args...) \
+		__siw_snprintf(_buf, _buf_max, _size, _fmt, ##_args)
+
 
 #define TS_MODULE "[watch]"
 

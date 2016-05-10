@@ -3180,13 +3180,11 @@ enum {
 	INT_DEV_ABNORMAL_STATUS = ((1<<10) | (1<<9)),	//0x600
 };
 
-#define siw_chk_sts_snprintf(_dev, _buf, _max, _size, _fmt, _args...) \
+#define siw_chk_sts_snprintf(_dev, _buf, _buf_max, _size, _fmt, _args...) \
 		({	\
 			int _n_size = 0;	\
-			if (_size < _max)	\
-				_n_size = snprintf(_buf + _size, _max - _size,\
-								(const char *)_fmt, ##_args);	\
-			t_dev_dbg_trace(_dev, (const char *)_fmt, ##_args);\
+			_n_size = __siw_snprintf(_buf, _buf_max, _size, _fmt, ##_args);	\
+			t_dev_dbg_trace(_dev, (const char *)_fmt, ##_args);	\
 			_n_size;	\
 		})
 

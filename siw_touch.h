@@ -1240,14 +1240,19 @@ static inline int __siw_touch_op_dbg(struct siw_op_dbg *op,
 	return ret;
 }
 
+#define __siw_snprintf(_buf, _buf_max, _size, _fmt, _args...) \
+		({	\
+			int _n_size = 0;	\
+			if (_size < _buf_max)	\
+				_n_size = snprintf(_buf + _size, _buf_max - _size,\
+								(const char *)_fmt, ##_args);	\
+			_n_size;	\
+		})
+
+
 #define siw_snprintf(_buf, _size, _fmt, _args...) \
-	({	\
-		int _n_size = 0;	\
-		if (_size < PAGE_SIZE)	\
-			_n_size = snprintf(_buf + _size, PAGE_SIZE - _size,\
-							(const char *)_fmt, ##_args);	\
-		_n_size;	\
-	})
+		__siw_snprintf(_buf, PAGE_SIZE, _size, _fmt, ##_args)
+
 
 extern void *siw_setup_operations(struct siw_ts *ts, struct siw_touch_operations *ops_ext);
 

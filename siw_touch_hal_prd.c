@@ -146,7 +146,8 @@ enum {
 	PRD_ROW_SIZE		= __PRD_ROW_SIZE,
 	PRD_COL_SIZE		= __PRD_COL_SIZE,
 	PRD_M1_COL_SIZE		= (1<<1),
-	PRD_LOG_BUF_SIZE	= (1<<8),		//256
+	/* */
+	PRD_LOG_BUF_SIZE	= (1<<10),		//1K
 	PRD_BUF_SIZE		= (PAGE_SIZE<<1),
 	/* */
 	MAX_LOG_FILE_COUNT	= (4),
@@ -177,22 +178,10 @@ struct siw_hal_prd_data {
 };
 
 #define siw_prd_buf_snprintf(_buf, _size, _fmt, _args...) \
-		({	\
-			int _n_size = 0;	\
-			if (_size < PRD_BUF_SIZE)	\
-				_n_size = snprintf(_buf + _size, PRD_BUF_SIZE - _size,\
-								(const char *)_fmt, ##_args);	\
-			_n_size;	\
-		})
+		__siw_snprintf(_buf, PRD_BUF_SIZE, _size, _fmt, ##_args)
 
 #define siw_prd_log_buf_snprintf(_buf, _size, _fmt, _args...) \
-		({	\
-			int _n_size = 0;	\
-			if (_size < PRD_LOG_BUF_SIZE)	\
-				_n_size = snprintf(_buf + _size, PRD_LOG_BUF_SIZE - _size,\
-								(const char *)_fmt, ##_args);	\
-			_n_size;	\
-		})
+		__siw_snprintf(_buf, PRD_LOG_BUF_SIZE, _size, _fmt, ##_args)
 
 
 enum {
@@ -314,7 +303,7 @@ static char __prd_out_file_mo_mfl[PRD_TMP_FILE_NAME_SZ] =	\
 static char __prd_out_file_mo_mcv[PRD_TMP_FILE_NAME_SZ] =	\
 			"/sdcard/siw/prd_out_mfts_mcv.txt";
 
-#if !defined(MODULE)
+#if defined(MODULE)
 /* use eg. prd_if=arc1 to change name */
 module_param_string(prd_if, __prd_in_file, sizeof(__prd_in_file), 0);
 
