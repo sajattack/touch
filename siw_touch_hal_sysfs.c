@@ -461,7 +461,7 @@ static ssize_t _show_lcd_mode(struct device *dev, char *buf)
 	int size = 0;
 
 	size += siw_snprintf(buf, size, "current driving mode is %s\n",
-				siw_hal_lcd_driving_mode_name(chip->driving_mode));
+				siw_hal_lcd_driving_mode_name(chip->lcd_mode));
 
 	return size;
 }
@@ -479,7 +479,7 @@ static ssize_t _store_lcd_mode(struct device *dev,
 	}
 
 	t_dev_info(dev, "try to change driving mode: %s -> %s\n",
-			siw_hal_lcd_driving_mode_name(chip->driving_mode),
+			siw_hal_lcd_driving_mode_name(chip->lcd_mode),
 			siw_hal_lcd_driving_mode_name(BIT(value)));
 	siw_ops_notify(ts, LCD_EVENT_LCD_MODE, &value);
 
