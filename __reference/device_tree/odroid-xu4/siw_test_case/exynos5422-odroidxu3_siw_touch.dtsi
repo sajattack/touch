@@ -137,10 +137,11 @@
 		// firmware
 		use_firmware = <1>;		// enable firmware control
 		use_fw_upgrade = <1>;		// auto-update during driver initialization
-		fw_image = "siw/lg4894/L0W53K6P_0_24.img";	// in android -> /lib/firmware/siw/...
-		panel_spec = "siw/lg4894/ph1_limit.txt";
-		panel_spec_mfts = "siw/lg4894/ph1_limit_mfts.txt";
+		fw_image = "siw/lg4894/L0W53K6P_0_45.img";	// in android -> /lib/firmware/siw/...
+	//	panel_spec = "siw/lg4894/ph1_limit.txt";
+	//	panel_spec_mfts = "siw/lg4894/ph1_limit_mfts.txt";
 
+		//absoulte path
 		prd_in_file = "/sdcard/siw/lg4894_test_spec_V0.1.txt";
 		prd_in_file_m = "/sdcard/siw/lg4894_test_spec_mfts_V0.1.txt";
 		prd_out_file = "/sdcard/siw/touch_self_test.txt";
@@ -190,6 +191,9 @@
 		fw_image = "siw/lg4895/L0W49P1_1_13.img";	// in android -> /lib/firmware/siw/...
 	//	panel_spec = "siw/lg4895/ph1_limit.txt";
 	//	panel_spec_mfts = "siw/lg4895/ph1_limit_mfts.txt";
+
+		//absoulte path
+		font_image = "/sdcard/siw/lg4895_font_data.bin"
 
 		prd_in_file = "/sdcard/siw/lg4895_test_spec_V0.1.txt";
 		prd_in_file_m = "/sdcard/siw/lg4895_test_spec_mfts_V0.1.txt";
