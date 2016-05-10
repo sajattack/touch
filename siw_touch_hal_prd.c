@@ -124,12 +124,15 @@ enum {
 #if defined(__PRD_TYPE_S1)
 #define __PRD_ROW_SIZE	32
 #define __PRD_COL_SIZE	20
+#define __PRD_COL_ADD	0
 #elif defined(__PRD_TYPE_L2)
 #define __PRD_ROW_SIZE	32
 #define __PRD_COL_SIZE	18
+#define __PRD_COL_ADD	0
 #elif defined(__PRD_TYPE_L1)
 #define __PRD_ROW_SIZE	26
 #define __PRD_COL_SIZE	15
+#define __PRD_COL_ADD	1
 #else
 	#error Wrong PRD row and col size! check again!
 #define __PRD_ROW_SIZE	-1
@@ -140,20 +143,39 @@ enum {
 	PRD_DATA_NAME_SZ	= 128,
 	/* */
 	PRD_LINE_NUM		= 50000,
-	PRD_PATH_SIZE		= (1<<6),		//64
-	PRD_BURST_SIZE		= (1<<9),		//512
-	PRD_RAWDATA_SIZE	= (1<<1),
+//	PRD_PATH_SIZE		= (1<<6),		//64
+//	PRD_BURST_SIZE		= (1<<9),		//512
+	/* */
+	MAX_LOG_FILE_COUNT	= (4),
+	MAX_LOG_FILE_SIZE	= (10 * (1<<20)),	/* 10M byte */
+};
+
+enum {
+	PRD_RAWDATA_SZ_POW	= 1,
+	PRD_RAWDATA_SIZE	= (1<<PRD_RAWDATA_SZ_POW),
+	/* */
 	PRD_ROW_SIZE		= __PRD_ROW_SIZE,
 	PRD_COL_SIZE		= __PRD_COL_SIZE,
+	PRD_COL_ADD			= __PRD_COL_ADD,
 	PRD_M1_COL_SIZE		= (1<<1),
 	/* */
 	PRD_LOG_BUF_SIZE	= (1<<10),		//1K
 	PRD_BUF_SIZE		= (PAGE_SIZE<<1),
 	/* */
-	MAX_LOG_FILE_COUNT	= (4),
-	MAX_LOG_FILE_SIZE	= (10 * (1<<20)),	/* 10 M byte */
+//	RAWDATA_OFFSET		= (0xE00),	//for lg4946
+};
+
+enum {
+	PRD_M2_ROW_COL_SIZE		= (PRD_ROW_SIZE * PRD_COL_SIZE),
+	PRD_M2_ROW_COL_BUF_SIZE	= (PRD_ROW_SIZE * (PRD_COL_SIZE + PRD_COL_ADD)),
+	PRD_M1_ROW_COL_SIZE		= (PRD_ROW_SIZE * PRD_M1_COL_SIZE),
 	/* */
-	RAWDATA_OFFSET		= (0xE00),
+	PRD_M2_FRAME_SIZE		= (PRD_M2_ROW_COL_BUF_SIZE<<PRD_RAWDATA_SZ_POW),
+	PRD_M1_FRAME_SIZE		= (PRD_M1_ROW_COL_SIZE<<PRD_RAWDATA_SZ_POW),
+	/* */
+	PRD_DELTA_SIZE			= ((PRD_ROW_SIZE+2)*(PRD_COL_SIZE+2)),
+	/* */
+	PRD_LABEL_TMP_SIZE		= ((PRD_ROW_SIZE+2)*(PRD_COL_SIZE+2)),
 };
 
 struct siw_hal_prd_data {
@@ -163,18 +185,18 @@ struct siw_hal_prd_data {
 	char log_buf[PRD_LOG_BUF_SIZE];
 	char line[PRD_LINE_NUM];
 	char buf_write[PRD_BUF_SIZE];
-	int16_t	m1_buf_odd_rawdata[PRD_ROW_SIZE*PRD_M1_COL_SIZE];
-	int16_t	m1_buf_even_rawdata[PRD_ROW_SIZE*PRD_M1_COL_SIZE];
-	int16_t	m2_buf_odd_rawdata[PRD_ROW_SIZE*PRD_COL_SIZE];
-	int16_t	m2_buf_even_rawdata[PRD_ROW_SIZE*PRD_COL_SIZE];
-	int16_t	buf_delta[(PRD_ROW_SIZE+2)*(PRD_COL_SIZE+2)];
-	u8	buf_label_tmp[(PRD_ROW_SIZE+2)*(PRD_COL_SIZE+2)];
-	u8	buf_label[(PRD_ROW_SIZE)*(PRD_COL_SIZE)];
-//	int16_t	buf_m2_rawdata[PRD_ROW_SIZE*PRD_COL_SIZE];
-//	int16_t buf_m1_rawdata[PRD_ROW_SIZE*PRD_M1_COL_SIZE];
-	int16_t buf_m1_rawdata_tmp[PRD_ROW_SIZE*PRD_M1_COL_SIZE];
+	/* */
+	int16_t	m1_buf_odd_rawdata[PRD_M1_ROW_COL_SIZE];
+	int16_t	m1_buf_even_rawdata[PRD_M1_ROW_COL_SIZE];
+	int16_t	m2_buf_odd_rawdata[PRD_M2_ROW_COL_BUF_SIZE];
+	int16_t	m2_buf_even_rawdata[PRD_M2_ROW_COL_BUF_SIZE];
+	int16_t buf_m1_rawdata_tmp[PRD_M1_ROW_COL_SIZE];
 	int16_t image_lower[PRD_ROW_SIZE][PRD_COL_SIZE];
 	int16_t image_upper[PRD_ROW_SIZE][PRD_COL_SIZE];
+	/* */
+	int16_t	buf_delta[PRD_DELTA_SIZE];
+	u8	buf_label_tmp[PRD_LABEL_TMP_SIZE];
+	u8	buf_label[PRD_M2_ROW_COL_SIZE];
 };
 
 #define siw_prd_buf_snprintf(_buf, _size, _fmt, _args...) \
@@ -232,7 +254,28 @@ enum {
 	U0_M2_RAWDATA_TEST,
 	U0_M1_RAWDATA_TEST,
 	U3_BLU_JITTER_TEST = 12,
+	UX_INVALID,
 };
+
+static const char *prd_cmp_tool_str[][2] = {
+	[U3_M2_RAWDATA_TEST] = {
+		[0] = "U3_M2_Lower",
+		[1] = "U3_M2_Upper",
+	},
+	[U0_M1_RAWDATA_TEST] = {
+		[0] = "U0_M1_Lower",
+		[1] = "U0_M1_Upper",
+	},
+	[U0_M2_RAWDATA_TEST] = {
+		[0] = "U0_M2_Lower",
+		[1] = "U0_M2_Upper",
+	},
+	[U3_BLU_JITTER_TEST] = {
+		[0] = "U3_Blu_Jitter_Lower",
+		[1] = "U3_Blu_Jitter_Upper",
+	},
+};
+
 enum{
 	M1_ODD_DATA = 0,
 	M1_EVEN_DATA,
@@ -1442,78 +1485,13 @@ static int prd_open_short_test(struct siw_hal_prd_data *prd)
 	return openshort_all_result;
 }
 
-static int prd_print_u8(struct siw_hal_prd_data *prd, char *buf,
-				int size, u8 *rawdata_buf_u8,
-				int row_size, int col_size,
+static int prd_print_pre(struct siw_hal_prd_data *prd, char *buf,
+				int size, int row_size, int col_size,
 				const char *name)
 {
 	char *log_buf = prd->log_buf;
-	int i, j;
-	int col_i;
-	int min = 9999;
-	int max = 0;
-
-	t_prd_info(prd, "-------- %s(%d %d) --------\n",
-				name, row_size, col_size);
-
-	size += siw_prd_buf_snprintf(buf, size, "-------- %s(%d %d) --------",
-				name, row_size, col_size);
-
-	/* print a frame data */
-	size += siw_prd_buf_snprintf(buf, size, "\n   : ");
-
-	for (i = 0; i < col_size; i++) {
-		size += siw_prd_buf_snprintf(buf, size, " [%2d] ", i);
-	}
-
-	for (i = 0; i < row_size; i++) {
-		int log_ret = 0;
-
-		memset(log_buf, 0, sizeof(prd->log_buf));
-
-		size += siw_prd_buf_snprintf(buf, size, "\n[%2d] ", i);
-
-		log_ret += siw_prd_log_buf_snprintf(log_buf,
-						log_ret,  "[%2d]  ", i);
-
-		col_i = col_size * i;
-		for (j = 0; j < col_size; j++) {
-			size += siw_prd_buf_snprintf(buf, size,
-						"%5d ", rawdata_buf_u8[col_i+j]);
-
-			log_ret += siw_prd_buf_snprintf(log_buf,
-							log_ret,
-							"%5d ", rawdata_buf_u8[col_i+j]);
-
-			if (rawdata_buf_u8[col_i+j] != 0 &&
-				rawdata_buf_u8[col_i+j] < min) {
-				min = rawdata_buf_u8[col_i+j];
-			}
-			if (rawdata_buf_u8[col_i+j] > max) {
-				max = rawdata_buf_u8[col_i+j];
-			}
-		}
-		t_prd_info(prd, "%s\n", log_buf);
-	}
-
-	size += siw_prd_buf_snprintf(buf, size, "\n");
-
-	size += siw_prd_buf_snprintf(buf, size,
-				"\nRawdata min : %d , max : %d\n\n",
-				min, max);
-	return size;
-}
-
-static int prd_print_16(struct siw_hal_prd_data *prd, char *buf,
-				int size, int16_t *rawdata_buf_16,
-				int row_size, int col_size,
-				const char *name)
-{
-	char *log_buf = prd->log_buf;
-	int i, j;
-	int col_i;
-	int min = 9999;
-	int max = 0;
+	int i;
+	int log_size = 0;
 
 	t_prd_info(prd, "-------- %s(%d %d) --------\n",
 				name, row_size, col_size);
@@ -1523,85 +1501,155 @@ static int prd_print_16(struct siw_hal_prd_data *prd, char *buf,
 				name, row_size, col_size);
 
 	/* print a frame data */
-	size += siw_prd_buf_snprintf(buf, size, "\n   : ");
+	size += siw_prd_buf_snprintf(buf, size, "   : ");
+	log_size += siw_prd_log_buf_snprintf(log_buf,
+						log_size,  "   : ");
 
 	for (i = 0; i < col_size; i++) {
 		size += siw_prd_buf_snprintf(buf, size, " [%2d] ", i);
+		log_size += siw_prd_log_buf_snprintf(log_buf,
+						log_size,  " [%2d] ", i);
 	}
+	t_prd_info(prd, "%s\n", log_buf);
 
-	for (i = 0; i < PRD_ROW_SIZE; i++) {
-		int log_ret = 0;
+	return size;
+}
 
-		memset(log_buf, 0, sizeof(prd->log_buf));
-
-		size += siw_prd_buf_snprintf(buf, size, "\n[%2d] ", i);
-
-		log_ret += siw_prd_log_buf_snprintf(log_buf,
-						log_ret,  "[%2d]  ", i);
-
-		col_i = col_size * i;
-		for (j = 0; j < col_size; j++) {
-			size += siw_prd_buf_snprintf(buf, size,
-						"%5d ", rawdata_buf_16[col_i+j]);
-
-			log_ret += siw_prd_log_buf_snprintf(log_buf,
-							log_ret,
-							"%5d ", rawdata_buf_16[col_i+j]);
-			if (rawdata_buf_16[col_i+j] != 0 &&
-				rawdata_buf_16[col_i+j] < min) {
-				min = rawdata_buf_16[col_i+j];
-			}
-			if (rawdata_buf_16[col_i+j] > max) {
-				max = rawdata_buf_16[col_i+j];
-			}
-		}
-		t_prd_info(prd, "%s\n", log_buf);
-	}
-
+static int prd_print_post(struct siw_hal_prd_data *prd, char *buf,
+				int size, int min, int max)
+{
 	size += siw_prd_buf_snprintf(buf, size, "\n");
 
 	size += siw_prd_buf_snprintf(buf, size,
 				"\nRawdata min : %d , max : %d\n\n",
 				min, max);
+	t_prd_info(prd, "Rawdata min : %d , max : %d\n",
+				min, max);
+
 	return size;
 }
 
-static int prd_print_rawdata(struct siw_hal_prd_data *prd, char *buf, int type, int size)
+enum {
+	PRD_PRT_TYPE_U8 = 0,
+	PRD_PRT_TYPE_S16,
+	PRD_PRT_TYPE_MAX,
+};
+
+static int prd_print_xxx(struct siw_hal_prd_data *prd, char *buf,
+				int size, void *rawdata_buf,
+				int row_size, int col_size,
+				const char *name, int opt, int type)
+{
+	char *log_buf = prd->log_buf;
+	u8 *rawdata_u8 = rawdata_buf;
+	int16_t *rawdata_s16 = rawdata_buf;
+	int curr_raw;
+	int i, j;
+	int col_i = 0;
+	int col_add = (opt)? PRD_COL_ADD : 0;
+	int log_size = 0;
+	int min = 9999;
+	int max = 0;
+
+	if (type >= PRD_PRT_TYPE_MAX) {
+		t_prd_err(prd, "invalid print type, %d\n", type);
+		return -EINVAL;
+	}
+
+	size += prd_print_pre(prd, buf, size, row_size, col_size, name);
+
+	col_i = 0;
+	for (i = 0; i < row_size; i++) {
+		size += siw_prd_buf_snprintf(buf, size, "\n[%2d] ", i);
+
+		log_size = 0;
+		memset(log_buf, 0, sizeof(prd->log_buf));
+		log_size += siw_prd_log_buf_snprintf(log_buf,
+						log_size,  "[%2d]  ", i);
+
+		if (type == PRD_PRT_TYPE_S16) {
+			rawdata_s16 = &((int16_t *)rawdata_buf)[col_i];
+		} else {
+			rawdata_u8 = &((u8 *)rawdata_buf)[col_i];
+		}
+		for (j = 0; j < col_size; j++) {
+			if (type == PRD_PRT_TYPE_S16) {
+				curr_raw = *rawdata_s16++;
+			} else {
+				curr_raw = *rawdata_u8++;
+			}
+
+			size += siw_prd_buf_snprintf(buf, size,
+						"%5d ", curr_raw);
+
+			log_size += siw_prd_buf_snprintf(log_buf,
+							log_size,
+							"%5d ", curr_raw);
+
+			if (curr_raw && (curr_raw < min)) {
+				min = curr_raw;
+			}
+			if (curr_raw > max) {
+				max = curr_raw;
+			}
+		}
+		t_prd_info(prd, "%s\n", log_buf);
+
+		col_i += (col_size + col_add);
+	}
+
+	size += prd_print_post(prd, buf, size, min, max);
+
+	return size;
+}
+
+static int prd_print_u8(struct siw_hal_prd_data *prd, char *buf,
+				int size, u8 *rawdata_buf_u8,
+				int row_size, int col_size,
+				const char *name, int opt)
+{
+	return prd_print_xxx(prd, buf, size, (void *)rawdata_buf_u8,
+				row_size, col_size, name, opt, PRD_PRT_TYPE_U8);
+}
+
+static int prd_print_s16(struct siw_hal_prd_data *prd, char *buf,
+				int size, int16_t *rawdata_buf_u16,
+				int row_size, int col_size,
+				const char *name, int opt)
+{
+	return prd_print_xxx(prd, buf, size, (void *)rawdata_buf_u16,
+				row_size, col_size, name, opt, PRD_PRT_TYPE_S16);
+}
+
+static int prd_print_rawdata(struct siw_hal_prd_data *prd,
+			char *buf, int type, int size, int opt)
 {
 	int16_t *rawdata_buf_16 = NULL;
 	u8 *rawdata_buf_u8 = NULL;
 	const char *name = NULL;
-	int col_size = 0;
-	int row_size = 0;
+	int col_size = PRD_COL_SIZE;
+	int row_size = PRD_ROW_SIZE;
 
 	switch (type) {
 	case M1_ODD_DATA:
 		col_size = PRD_M1_COL_SIZE;
-		row_size = PRD_ROW_SIZE;
 		rawdata_buf_16 = prd->m1_buf_odd_rawdata;
 		name = "ODD Data";
 		break;
 	case M1_EVEN_DATA:
 		col_size = PRD_M1_COL_SIZE;
-		row_size = PRD_ROW_SIZE;
 		rawdata_buf_16 = prd->m1_buf_even_rawdata;
 		name = "EVEN Data";
 		break;
 	case M2_ODD_DATA:
-		col_size = PRD_COL_SIZE;
-		row_size = PRD_ROW_SIZE;
 		rawdata_buf_16 = prd->m2_buf_odd_rawdata;
 		name = "ODD Data";
 		break;
 	case M2_EVEN_DATA:
-		col_size = PRD_COL_SIZE;
-		row_size = PRD_ROW_SIZE;
 		rawdata_buf_16 = prd->m2_buf_even_rawdata;
 		name = "EVEN Data";
 		break;
 	case LABEL_DATA:
-		col_size = PRD_COL_SIZE;
-		row_size = PRD_ROW_SIZE;
 		rawdata_buf_u8 = prd->buf_label;
 		name = "LABEL Data";
 		break;
@@ -1611,11 +1659,11 @@ static int prd_print_rawdata(struct siw_hal_prd_data *prd, char *buf, int type, 
 	}
 
 	if (rawdata_buf_16) {
-		size = prd_print_16(prd, buf, size, rawdata_buf_16,
-				row_size, col_size, name);
+		size = prd_print_s16(prd, buf, size, rawdata_buf_16,
+				row_size, col_size, name, opt);
 	} else if (rawdata_buf_u8) {
 		size = prd_print_u8(prd, buf, size, rawdata_buf_u8,
-				row_size, col_size, name);
+				row_size, col_size, name, opt);
 	}
 
 	return size;
@@ -1625,26 +1673,39 @@ static int prd_print_rawdata(struct siw_hal_prd_data *prd, char *buf, int type, 
 *	return "result Pass:0 , Fail:1"
 */
 static int prd_compare_tool(struct siw_hal_prd_data *prd,
-				int print_index_cnt, int16_t **buf,
+				int test_cnt, int16_t **buf,
 				int row, int col, u8 type)
 {
 	int16_t *raw_buf;
+	int16_t *raw_curr;
 	int i, j ,k;
 	int col_i;
-	int	result = 0;
 	int size = 0;
 	int curr_raw;
+	int	result = 0;
 
-	for (k =0 ; k < print_index_cnt ; k++) {
+	if (!test_cnt) {
+		t_prd_err(prd, "zero test count\n");
+		result = 1;
+		size += siw_prd_buf_snprintf(prd->buf_write,
+					size,
+					"zero test count\n");
+		goto out;
+	}
+
+	for (k =0 ; k < test_cnt ; k++) {
 		size += siw_prd_buf_snprintf(prd->buf_write,
 					size,
 					"-------- Compare[%d/%d] --------\n",
-					k, print_index_cnt);
+					k, test_cnt);
 		raw_buf = buf[k];
 		col_i = 0;
+
 		for (i = 0 ; i < row ; i++) {
+			raw_curr = &raw_buf[col_i];
+
 			for (j = 0 ; j < col ; j++) {
-				curr_raw = raw_buf[col_i+j];
+				curr_raw = *raw_curr++;
 
 			#if 0	//for test
 				t_prd_info(prd, "%d %d\n",
@@ -1674,7 +1735,7 @@ static int prd_compare_tool(struct siw_hal_prd_data *prd,
 					}
 				}
 			}
-			col_i += col;
+			col_i += (col + PRD_COL_ADD);
 		}
 
 		if (!result) {
@@ -1686,81 +1747,61 @@ static int prd_compare_tool(struct siw_hal_prd_data *prd,
 
 	t_prd_info(prd, "type %d, result %d\n", type, result);
 
+out:
 	return result;
 }
 
-/* Rawdata compare result
-	Pass : reurn 0
-	Fail : return 1
-*/
+/*
+ * Rawdata compare result
+ * Pass : reurn 0
+ * Fail : return 1
+ */
 static int prd_compare_rawdata(struct siw_hal_prd_data *prd, u8 type)
 {
 //	struct device *dev = prd->dev;
 	/* spec reading */
 	char lower_str[64] = {0, };
 	char upper_str[64] = {0, };
-	int16_t *rawdata_buf[MAX_TEST_CNT] = {NULL,};
-	int col_size = 0;
-	int row_size = 0;
+	int16_t *rawdata_buf[MAX_TEST_CNT] = {
+		[0] = prd->m2_buf_odd_rawdata,
+		[1] = prd->m2_buf_even_rawdata,
+	};
+	int col_size = PRD_COL_SIZE;
+	int row_size = PRD_ROW_SIZE;
+	int test_cnt = 0;
 	int result = 0;
 
+	if ((type >= UX_INVALID) && !prd_cmp_tool_str[type]) {
+		t_prd_err(prd, "invalid type, %d\n", type);
+		return -EINVAL;
+	}
+
+	snprintf(lower_str, sizeof(lower_str), prd_cmp_tool_str[type][0]);
+	snprintf(upper_str, sizeof(upper_str), prd_cmp_tool_str[type][1]);
+
 	switch (type) {
+	case U0_M2_RAWDATA_TEST:
+		/* fall through */
+	case U3_M2_RAWDATA_TEST:
+		/* fall through */
+	case U3_BLU_JITTER_TEST:
+		test_cnt = M2_RAWDATA_TEST_CNT;
+		break;
+
 	case U0_M1_RAWDATA_TEST:
-		snprintf(lower_str, sizeof(lower_str),
-				"U0_M1_Lower");
-		snprintf(upper_str, sizeof(upper_str),
-				"U0_M1_Upper");
 		col_size = PRD_M1_COL_SIZE;
 		row_size = PRD_ROW_SIZE;
 		rawdata_buf[0] = prd->m1_buf_odd_rawdata;
 		rawdata_buf[1] = prd->m1_buf_even_rawdata;
-		break;
-	case U0_M2_RAWDATA_TEST:
-		snprintf(lower_str, sizeof(lower_str),
-				"U0_M2_Lower");
-		snprintf(upper_str, sizeof(upper_str),
-				"U0_M2_Upper");
-		col_size = PRD_COL_SIZE;
-		row_size = PRD_ROW_SIZE;
-		rawdata_buf[0] = prd->m2_buf_odd_rawdata;
-		rawdata_buf[1] = prd->m2_buf_even_rawdata;
-		break;
-	case U3_M2_RAWDATA_TEST:
-		snprintf(lower_str, sizeof(lower_str),
-				"U3_M2_Lower");
-		snprintf(upper_str, sizeof(upper_str),
-				"U3_M2_Upper");
-		col_size = PRD_COL_SIZE;
-		row_size = PRD_ROW_SIZE;
-		rawdata_buf[0] = prd->m2_buf_odd_rawdata;
-		rawdata_buf[1] = prd->m2_buf_even_rawdata;
-		break;
-	case U3_BLU_JITTER_TEST:
-		snprintf(lower_str, sizeof(lower_str),
-				"U3_Blu_Jitter_Lower");
-		snprintf(upper_str, sizeof(upper_str),
-				"U3_Blu_Jitter_Upper");
-		col_size = PRD_COL_SIZE;
-		row_size = PRD_ROW_SIZE;
-		rawdata_buf[0] = prd->m2_buf_odd_rawdata;
-		rawdata_buf[1] = prd->m2_buf_even_rawdata;
+		test_cnt = M1_RAWDATA_TEST_CNT;
 		break;
 	}
 
 	prd_get_limit(prd, lower_str, prd->image_lower);
 	prd_get_limit(prd, upper_str, prd->image_upper);
 
-	if (type == U0_M1_RAWDATA_TEST) {
-		result = prd_compare_tool(prd, M1_RAWDATA_TEST_CNT,
-						rawdata_buf, row_size, col_size,type);
-	}
-	else if((type == U3_M2_RAWDATA_TEST) ||
-			(type == U0_M2_RAWDATA_TEST) ||
-			(type == U3_BLU_JITTER_TEST))
-	{
-		result = prd_compare_tool(prd, M2_RAWDATA_TEST_CNT,
-						rawdata_buf, row_size, col_size, type);
-	}
+	result = prd_compare_tool(prd, test_cnt,
+				rawdata_buf, row_size, col_size, type);
 
 	return result;
 }
@@ -1856,25 +1897,50 @@ out:
 	return ret;
 }
 
+/*
+ * Conrtol LCD Backlightness
+ */
+static int prd_set_blu(struct device *dev)
+{
+	int backlightness;
+
+//	LCD brightness ON 742ms -> LCD brightness OFF 278mms -> LCD brightness ON 278ms
+
+	backlightness = siw_touch_sys_get_panel_bl(dev);
+
+	touch_msleep(742);
+
+	siw_touch_sys_set_panel_bl(dev, 0);
+
+	touch_msleep(278);
+
+	siw_touch_sys_set_panel_bl(dev, backlightness);
+
+	touch_msleep(278);
+
+	return 0;
+}
+
 static int prd_read_rawdata(struct siw_hal_prd_data *prd, u8 type)
 {
 	struct device *dev = prd->dev;
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_hal_reg *reg = chip->reg;
-	int __m1_frame_size = PRD_ROW_SIZE*PRD_M1_COL_SIZE*PRD_RAWDATA_SIZE;
-	int __m2_frame_size = PRD_ROW_SIZE*PRD_COL_SIZE*PRD_RAWDATA_SIZE;
+	int __m1_frame_size = PRD_M1_FRAME_SIZE;
+	int __m2_frame_size = PRD_M2_FRAME_SIZE;
 	u32 raw_offset_info = 0;
-	u16 raw_data_offset[MAX_TEST_CNT] = {0, };
-	int16_t *buf_rawdata[MAX_TEST_CNT] = {NULL, };
+	u32 raw_data_offset[MAX_TEST_CNT] = {0, };
+	int16_t *buf_rawdata[MAX_TEST_CNT] = {
+		[0] = prd->m2_buf_odd_rawdata,
+		[1] = prd->m2_buf_even_rawdata,
+	};
 	int16_t *raw_buf;
-//	u16 raw_data_odd_offset = 0;
-//	u16 raw_data_even_offset = 0;
 	int i, j = 0;
 	int ret = 0;
 
-	if (__m1_frame_size % 4)
+	if (__m1_frame_size & 0x3)
 		__m1_frame_size = (((__m1_frame_size >> 2) + 1) << 2);
-	if (__m2_frame_size % 4)
+	if (__m2_frame_size & 0x3)
 		__m2_frame_size = (((__m2_frame_size >> 2) + 1) << 2);
 
 	/* Odd/Even Frame Offeset Read */
@@ -1886,12 +1952,38 @@ static int prd_read_rawdata(struct siw_hal_prd_data *prd, u8 type)
 	}
 	raw_data_offset[0] = raw_offset_info & 0xFFFF;
 	raw_data_offset[1] = (raw_offset_info >> 16) & 0xFFFF;
-	t_prd_info(prd, "Test type=%d Odd Offset=%x Even offset=%x\n",
+	t_prd_info(prd, "test type %d, odd Offset %04Xh, even offset %04Xh\n",
 		type, raw_data_offset[0], raw_data_offset[1]);
 
 	switch (type) {
+	case U3_BLU_JITTER_TEST:
+		prd_set_blu(dev);
+		/* fall through */
+	case U3_M2_RAWDATA_TEST:
+		/* fall through */
+	case U0_M2_RAWDATA_TEST:
+		for (i=0 ; i<M2_RAWDATA_TEST_CNT; i++) {
+			/* raw data offset write */
+			ret = siw_hal_write_value(dev,
+						reg->tc_tsp_test_data_offset,
+						raw_data_offset[i]);
+			if (ret < 0) {
+				goto out;
+			}
+
+			/* raw data read */
+			memset(buf_rawdata[i], 0, __m2_frame_size);
+
+			ret = siw_hal_reg_read(dev,
+						reg->tc_tsp_data_access_addr,
+						(void *)buf_rawdata[i], __m2_frame_size);
+			if (ret < 0) {
+				goto out;
+			}
+		}
+		break;
+
 	case U0_M1_RAWDATA_TEST:
-	#if 1
 		buf_rawdata[0] = prd->m1_buf_odd_rawdata;
 		buf_rawdata[1] = prd->m1_buf_even_rawdata;
 
@@ -1899,113 +1991,27 @@ static int prd_read_rawdata(struct siw_hal_prd_data *prd, u8 type)
 			raw_buf = buf_rawdata[i];
 
 			/* raw data offset write */
-			ret = siw_hal_reg_write(dev,
+			ret = siw_hal_write_value(dev,
 						reg->tc_tsp_test_data_offset,
-						(void *)&raw_data_offset[i], sizeof(raw_data_offset[i]));
+						raw_data_offset[i]);
 			if (ret < 0) {
 				goto out;
 			}
 
 			/* raw data read */
-			memset(raw_buf, 0, sizeof(int16_t)*PRD_ROW_SIZE*PRD_COL_SIZE);
+			memset(raw_buf, 0, __m1_frame_size);
 			memset(prd->buf_m1_rawdata_tmp, 0, sizeof(prd->buf_m1_rawdata_tmp));
 
 			ret = siw_hal_reg_read(dev,
 						reg->tc_tsp_data_access_addr,
 						(u8 *)&prd->buf_m1_rawdata_tmp, __m1_frame_size);
+			if (ret < 0) {
+				goto out;
+			}
 
 			for (j = 0 ; j < PRD_ROW_SIZE; j++ ) {
 				raw_buf[i<<1] 	= prd->buf_m1_rawdata_tmp[PRD_ROW_SIZE+j];
 				raw_buf[(j<<1)+1] = prd->buf_m1_rawdata_tmp[j];
-			}
-		}
-	#else
-		/* odd raw data offset write */
-		ret = siw_hal_reg_write(dev,
-					reg->tc_tsp_test_data_offset,
-					(void *)&raw_data_offset[0], sizeof(raw_data_offset[0]));
-		if (ret < 0) {
-			goto out;
-		}
-		/* odd raw data read */
-		memset(prd->m1_buf_odd_rawdata, 0, sizeof(prd->m1_buf_odd_rawdata));
-		memset(prd->buf_m1_rawdata_tmp, 0, sizeof(prd->buf_m1_rawdata_tmp));
-
-		ret = siw_hal_reg_read(dev,
-					reg->tc_tsp_data_access_addr,
-					(void *)&prd->buf_m1_rawdata_tmp, __m1_frame_size);
-		if (ret < 0) {
-			goto out;
-		}
-		for (i = 0 ; i < PRD_ROW_SIZE ; i++) {
-			prd->m1_buf_odd_rawdata[i<<1] 	= prd->buf_m1_rawdata_tmp[PRD_ROW_SIZE+i];
-			prd->m1_buf_odd_rawdata[(i<<1)+1] = prd->buf_m1_rawdata_tmp[i];
-		}
-
-		/* even raw data offset write */
-		ret = siw_hal_reg_write(dev,
-					reg->tc_tsp_test_data_offset,
-					(void *)&raw_data_offset[1], sizeof(raw_data_offset[1]));
-		if (ret < 0) {
-			goto out;
-		}
-		/* even raw data read */
-		memset(prd->m1_buf_even_rawdata, 0, sizeof(prd->m1_buf_even_rawdata));
-		memset(prd->buf_m1_rawdata_tmp, 0, sizeof(prd->buf_m1_rawdata_tmp));
-
-		ret = siw_hal_reg_read(dev,
-					reg->tc_tsp_data_access_addr,
-					(u8 *)&prd->buf_m1_rawdata_tmp, __m1_frame_size);
-		if (ret < 0) {
-			goto out;
-		}
-		for(i = 0; i < PRD_ROW_SIZE; i++) {
-			prd->m1_buf_even_rawdata[i<<1] 	= prd->buf_m1_rawdata_tmp[PRD_ROW_SIZE+i];
-			prd->m1_buf_even_rawdata[(i<<1)+1] = prd->buf_m1_rawdata_tmp[i];
-		}
-	#endif
-		break;
-
-	case U3_M2_RAWDATA_TEST:
-	case U0_M2_RAWDATA_TEST:
-	case U3_BLU_JITTER_TEST:
-		/* Conrtol LCD Backlightness */
-		if(type == U3_BLU_JITTER_TEST){
-			int backlightness;
-
-		//	LCD brightness ON 742ms -> LCD brightness OFF 278mms -> LCD brightness ON 278ms
-
-			backlightness = siw_touch_sys_get_panel_bl(dev);
-
-			touch_msleep(742);
-
-			siw_touch_sys_set_panel_bl(dev, 0);
-
-			touch_msleep(278);
-
-			siw_touch_sys_set_panel_bl(dev, backlightness);
-
-			touch_msleep(278);
-		}
-
-		buf_rawdata[0] = prd->m2_buf_odd_rawdata;
-		buf_rawdata[1] = prd->m2_buf_even_rawdata;
-
-		for (i=0 ; i<M2_RAWDATA_TEST_CNT; i++) {
-			/* raw data offset write */
-			ret = siw_hal_reg_write(dev,
-						reg->tc_tsp_test_data_offset,
-						(void *)&raw_data_offset[i], sizeof(raw_data_offset[i]));
-			if (ret < 0) {
-				goto out;
-			}
-			/* raw data read */
-			memset(buf_rawdata[i], 0, sizeof(int16_t)*PRD_ROW_SIZE*PRD_COL_SIZE);
-			ret = siw_hal_reg_read(dev,
-						reg->tc_tsp_data_access_addr,
-						(void *)buf_rawdata[i], sizeof(int16_t)*PRD_ROW_SIZE*PRD_COL_SIZE);
-			if (ret < 0) {
-				goto out;
 			}
 		}
 		break;
@@ -2016,7 +2022,7 @@ out:
 }
 
 static void prd_tune_display(struct siw_hal_prd_data *prd, char *tc_tune_code,
-			int offset, int type)
+			int offset, int type, int result_on)
 {
 //	struct device *dev = prd->dev;
 	char log_buf[TC_TUNE_CODE_SIZE] = {0,};
@@ -2040,7 +2046,9 @@ static void prd_tune_display(struct siw_hal_prd_data *prd, char *tc_tune_code,
 		}
 		t_prd_info(prd, "%s\n", log_buf);
 		size += snprintf(log_buf + size, TC_TUNE_CODE_SIZE - size, "\n");
-		prd_write_file(prd, log_buf, TIME_INFO_SKIP);
+		if (result_on == RESULT_ON) {
+			prd_write_file(prd, log_buf, TIME_INFO_SKIP);
+		}
 		break;
 	case PRD_TUNE_DISPLAY_TYPE_2:
 		size = snprintf(log_buf, TC_TUNE_CODE_SIZE,
@@ -2061,7 +2069,9 @@ static void prd_tune_display(struct siw_hal_prd_data *prd, char *tc_tune_code,
 		}
 		t_prd_info(prd, "%s\n", log_buf);
 		size += snprintf(log_buf + size, TC_TUNE_CODE_SIZE - size, "\n");
-		prd_write_file(prd, log_buf, TIME_INFO_SKIP);
+		if (result_on == RESULT_ON) {
+			prd_write_file(prd, log_buf, TIME_INFO_SKIP);
+		}
 		break;
 	default:
 		t_prd_err(prd, "unknown tune type\n");
@@ -2072,7 +2082,7 @@ static void prd_tune_display(struct siw_hal_prd_data *prd, char *tc_tune_code,
 /*
 *	tune code result check
 */
-static int prd_read_tune_code(struct siw_hal_prd_data *prd, u8 type)
+static int prd_read_tune_code(struct siw_hal_prd_data *prd, int type, int result_on)
 {
 	struct device *dev = prd->dev;
 	struct siw_touch_chip *chip = to_touch_chip(dev);
@@ -2106,52 +2116,68 @@ static int prd_read_tune_code(struct siw_hal_prd_data *prd, u8 type)
 		goto out;
 	}
 
-	prd_write_file(prd, "\n[Read Tune Code]\n", TIME_INFO_SKIP);
+	if (result_on == RESULT_ON) {
+		prd_write_file(prd, "\n[Read Tune Code]\n", TIME_INFO_SKIP);
+	}
 
 	switch (type) {
 	case U0_M1_RAWDATA_TEST:
 		prd_tune_display(prd, tune_code_read_buf,
 					TSP_TUNE_CODE_L_GOFT_OFFSET,
-					PRD_TUNE_DISPLAY_TYPE_1);
+					PRD_TUNE_DISPLAY_TYPE_1,
+					result_on);
 		prd_tune_display(prd, tune_code_read_buf,
 					TSP_TUNE_CODE_R_GOFT_OFFSET,
-					PRD_TUNE_DISPLAY_TYPE_1);
+					PRD_TUNE_DISPLAY_TYPE_1,
+					result_on);
 		prd_tune_display(prd, tune_code_read_buf,
 					TSP_TUNE_CODE_L_M1_OFT_OFFSET,
-					PRD_TUNE_DISPLAY_TYPE_2);
+					PRD_TUNE_DISPLAY_TYPE_2,
+					result_on);
 		prd_tune_display(prd, tune_code_read_buf,
 					TSP_TUNE_CODE_R_M1_OFT_OFFSET,
-					PRD_TUNE_DISPLAY_TYPE_2);
+					PRD_TUNE_DISPLAY_TYPE_2,
+					result_on);
 		break;
 	case U3_M2_RAWDATA_TEST:
 	case U0_M2_RAWDATA_TEST:
 		prd_tune_display(prd, tune_code_read_buf,
 					TSP_TUNE_CODE_L_GOFT_OFFSET + 1,
-					PRD_TUNE_DISPLAY_TYPE_1);
+					PRD_TUNE_DISPLAY_TYPE_1,
+					result_on);
 		prd_tune_display(prd, tune_code_read_buf,
 					TSP_TUNE_CODE_R_GOFT_OFFSET + 1,
-					PRD_TUNE_DISPLAY_TYPE_1);
+					PRD_TUNE_DISPLAY_TYPE_1,
+					result_on);
 		prd_tune_display(prd, tune_code_read_buf,
 					TSP_TUNE_CODE_L_G1_OFT_OFFSET,
-					PRD_TUNE_DISPLAY_TYPE_2);
+					PRD_TUNE_DISPLAY_TYPE_2,
+					result_on);
 		prd_tune_display(prd, tune_code_read_buf,
 					TSP_TUNE_CODE_L_G2_OFT_OFFSET,
-					PRD_TUNE_DISPLAY_TYPE_2);
+					PRD_TUNE_DISPLAY_TYPE_2,
+					result_on);
 		prd_tune_display(prd, tune_code_read_buf,
 					TSP_TUNE_CODE_L_G3_OFT_OFFSET,
-					PRD_TUNE_DISPLAY_TYPE_2);
+					PRD_TUNE_DISPLAY_TYPE_2,
+					result_on);
 		prd_tune_display(prd, tune_code_read_buf,
 					TSP_TUNE_CODE_R_G1_OFT_OFFSET,
-					PRD_TUNE_DISPLAY_TYPE_2);
+					PRD_TUNE_DISPLAY_TYPE_2,
+					result_on);
 		prd_tune_display(prd, tune_code_read_buf,
 					TSP_TUNE_CODE_R_G2_OFT_OFFSET,
-					PRD_TUNE_DISPLAY_TYPE_2);
+					PRD_TUNE_DISPLAY_TYPE_2,
+					result_on);
 		prd_tune_display(prd, tune_code_read_buf,
 					TSP_TUNE_CODE_R_G3_OFT_OFFSET,
-					PRD_TUNE_DISPLAY_TYPE_2);
+					PRD_TUNE_DISPLAY_TYPE_2,
+					result_on);
 		break;
 	}
-	prd_write_file(prd, "\n", TIME_INFO_SKIP);
+	if (result_on == RESULT_ON) {
+		prd_write_file(prd, "\n", TIME_INFO_SKIP);
+	}
 
 out:
 	return ret;
@@ -2197,7 +2223,7 @@ static int prd_conrtol_rawdata_result(struct siw_hal_prd_data *prd, int type, in
 
 	/* print Raw Data */
 	for (i=0 ; i<test_cnt ; i++) {
-		size += prd_print_rawdata(prd, prd->buf_write, print_type[i], size);
+		size += prd_print_rawdata(prd, prd->buf_write, print_type[i], size, 1);
 	}
 	if (size)
 		size += siw_prd_buf_snprintf(prd->buf_write, size, "\n\n");
@@ -2286,8 +2312,8 @@ static int prd_do_rawdata_test(struct siw_hal_prd_data *prd,
 	ret = prd_conrtol_rawdata_result(prd, type, result_on);
 
 	/* tune code result check */
-	if (!(type == U3_BLU_JITTER_TEST)) {
-		prd_read_tune_code(prd, type);
+	if (type != U3_BLU_JITTER_TEST) {
+		prd_read_tune_code(prd, type, result_on);
 	}
 
 	return ret;
@@ -2445,7 +2471,8 @@ static int prd_write_test_control(struct siw_hal_prd_data *prd, u32 mode)
 	if (ret < 0) {
 		goto out;
 	}
-	t_prd_info(prd, "write tc_test_mode_ctl = %x\n", test_mode_enter_cmt);
+	t_prd_info(prd, "wr prd_tc_test_mode_ctl = %d\n",
+		test_mode_enter_cmt);
 
 	touch_msleep(delay_ms);
 
@@ -2455,7 +2482,8 @@ static int prd_write_test_control(struct siw_hal_prd_data *prd, u32 mode)
 	if (ret < 0) {
 		goto out;
 	}
-	t_prd_info(prd, "read tc_test_mode_ctl= %x\n", test_mode_enter_check);
+	t_prd_info(prd, "rd prd_tc_test_mode_ctl = %d\n",
+		test_mode_enter_check);
 
 out:
 	return ret;
@@ -2646,7 +2674,7 @@ static int prd_show_prd_get_data_raw_tcm(struct device *dev)
 	struct siw_ts *ts = chip->ts;
 	struct siw_hal_reg *reg = chip->reg;
 	struct siw_hal_prd_data *prd = (struct siw_hal_prd_data *)ts->prd;
-	int __m2_frame_size = PRD_ROW_SIZE*PRD_COL_SIZE*PRD_RAWDATA_SIZE;
+	int __m2_frame_size = PRD_M2_FRAME_SIZE;
 	int ret = 0;
 
 	/* 	LCD mode check 	*/
@@ -2685,7 +2713,7 @@ static int prd_show_prd_get_data_raw_tcm(struct device *dev)
 	}
 
 	/*	Print RawData Buffer	*/
-	prd_print_rawdata(prd, prd->buf_write, M2_ODD_DATA, 0);
+	prd_print_rawdata(prd, prd->buf_write, M2_ODD_DATA, 0, 0);
 
 out:
 	return ret;
@@ -2722,7 +2750,7 @@ static int prd_show_prd_get_data_raw_ait(struct device *dev)
 		goto out;
 	}
 
-	prd_print_rawdata(prd, prd->buf_write, M2_ODD_DATA, 0);
+	prd_print_rawdata(prd, prd->buf_write, M2_ODD_DATA, 0, 0);
 
 	ret = prd_start_firmware(prd);
 	if (ret < 0) {
@@ -2764,7 +2792,7 @@ static int prd_show_prd_get_data_ait_basedata_even(struct device *dev)
 		goto out;
 	}
 
-	prd_print_rawdata(prd, prd->buf_write, M2_EVEN_DATA, 0);
+	prd_print_rawdata(prd, prd->buf_write, M2_EVEN_DATA, 0, 0);
 
 	ret = prd_start_firmware(prd);
 	if (ret < 0) {
@@ -2807,7 +2835,7 @@ static int prd_show_prd_get_data_ait_basedata_odd(struct device *dev)
 		goto out;
 	}
 
-	prd_print_rawdata(prd, prd->buf_write, M2_ODD_DATA, 0);
+	prd_print_rawdata(prd, prd->buf_write, M2_ODD_DATA, 0, 0);
 
 	ret = prd_start_firmware(prd);
 	if (ret < 0) {
@@ -2853,13 +2881,13 @@ static int prd_show_prd_get_data_filtered_deltadata(struct device *dev)
 		goto out;
 	}
 
-	for(i = 0; i < PRD_ROW_SIZE*PRD_COL_SIZE; i++){
+	for(i = 0; i < PRD_M2_ROW_COL_SIZE; i++){
 		row = i / PRD_COL_SIZE;
 		col = i % PRD_COL_SIZE;
 		prd->m2_buf_odd_rawdata[i] = prd->buf_delta[(row + 1)*(PRD_COL_SIZE + 2) + (col + 1)];
 	}
 
-	prd_print_rawdata(prd, prd->buf_write, M2_ODD_DATA, 0);
+	prd_print_rawdata(prd, prd->buf_write, M2_ODD_DATA, 0, 0);
 
 	ret = prd_start_firmware(prd);
 	if (ret < 0) {
@@ -2905,13 +2933,13 @@ static int prd_show_prd_get_data_deltadata(struct device *dev)
 		goto out;
 	}
 
-	for(i = 0; i < PRD_ROW_SIZE*PRD_COL_SIZE; i++){
+	for(i = 0; i < PRD_M2_ROW_COL_SIZE; i++){
 		row = i / PRD_COL_SIZE;
 		col = i % PRD_COL_SIZE;
 		prd->m2_buf_odd_rawdata[i] = prd->buf_delta[(row + 1)*(PRD_COL_SIZE + 2) + (col + 1)];
 	}
 
-	prd_print_rawdata(prd, prd->buf_write, M2_ODD_DATA, 0);
+	prd_print_rawdata(prd, prd->buf_write, M2_ODD_DATA, 0, 0);
 
 	ret = prd_start_firmware(prd);
 	if (ret < 0) {
@@ -2958,13 +2986,13 @@ static int prd_show_prd_get_data_labeldata(struct device *dev)
 		goto out;
 	}
 
-	for(i = 0; i < PRD_ROW_SIZE*PRD_COL_SIZE; i++){
+	for(i = 0; i < PRD_M2_ROW_COL_SIZE; i++){
 		row = i / PRD_COL_SIZE;
 		col = i % PRD_COL_SIZE;
 		prd->buf_label[i] = prd->buf_label_tmp[(row + 1)*(PRD_COL_SIZE + 2) + (col + 1)];
 	}
 
-	prd_print_rawdata(prd, prd->buf_write, LABEL_DATA, 0);
+	prd_print_rawdata(prd, prd->buf_write, LABEL_DATA, 0, 0);
 
 	ret = prd_start_firmware(prd);
 	if (ret < 0) {
@@ -2996,7 +3024,7 @@ static int prd_show_prd_get_data_blu_jitter(struct device *dev)
 
 	prd_chip_driving(dev, LCD_MODE_STOP);
 
-	ret = prd_rawdata_test(prd, U3_BLU_JITTER_TEST,RESULT_OFF);
+	ret = prd_rawdata_test(prd, U3_BLU_JITTER_TEST, RESULT_OFF);
 
 	siw_touch_irq_control(dev, INTERRUPT_ENABLE);
 
