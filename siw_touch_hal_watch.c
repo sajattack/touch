@@ -1480,7 +1480,7 @@ static ssize_t store_ext_watch_config_font_position(struct device *dev,
 
 out:
 	return ret;
- }
+}
 
 static ssize_t store_ext_watch_config_time_sync(struct device *dev,
 					const char *buf, size_t count)
@@ -1577,7 +1577,7 @@ static SIW_WATCH_ATTR(query_fonteffect,
 					show_ext_watch_query_font_effect, NULL);
 static SIW_WATCH_ATTR(get_cfg, show_ext_watch_setting, NULL);
 
- static struct attribute *ext_watch_attribute_list[] = {
+static struct attribute *ext_watch_attribute_list[] = {
 	 &_SIW_WATCH_ATTR_T(rtc_onoff).attr,
 	 &_SIW_WATCH_ATTR_T(block_cfg).attr,
 	 &_SIW_WATCH_ATTR_T(config_fontonoff).attr,
@@ -1593,9 +1593,9 @@ static SIW_WATCH_ATTR(get_cfg, show_ext_watch_setting, NULL);
 	 &_SIW_WATCH_ATTR_T(query_fonteffect).attr,
 	 &_SIW_WATCH_ATTR_T(get_cfg).attr,
 	 NULL,
- };
+};
 
- static const struct attribute_group ext_watch_attribute_group = {
+static const struct attribute_group ext_watch_attribute_group = {
 	 .attrs = ext_watch_attribute_list,
 };
 
@@ -1664,8 +1664,8 @@ static ssize_t ext_watch_access_read(struct file *filp, struct kobject *kobj,
 				touch_msleep(10);
 			}
 			ext_watch_font_dump(dev, watch->ext_wdata.font_data);
-		 }
-	 }
+		}
+	}
 
 	if ((off + count) > SIW_MAX_FONT_SIZE) {
 		t_watch_err(dev, "access_read: size overflow : offset[%d] size[%d]\n",
@@ -1725,7 +1725,7 @@ static ssize_t ext_watch_access_write(struct file *filp, struct kobject *kobj,
 
  out:
 	 return ret;
- }
+}
 
 static int ext_watch_fontdata_attr_init(struct device *dev)
 {
