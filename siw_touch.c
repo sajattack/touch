@@ -99,7 +99,7 @@ static void siw_setup_reg_quirks(struct siw_ts *ts)
 				(reg_quirks->new_addr == ~0))
 				break;
 
-			copy_reg = (u32 *)&reg_org;
+			copy_reg = (u32 *)reg_org;
 			curr_reg = (u32 *)siw_ops_reg(ts);
 			for (i=0 ; i<cnt ; i++) {
 				if ((*copy_reg) == reg_quirks->old_addr) {
