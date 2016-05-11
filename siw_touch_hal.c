@@ -4001,6 +4001,10 @@ static void siw_hal_mon_handler_self_reset(struct device *dev)
 		return;
 	}
 
+	if (chip->lcd_mode < LCD_MODE_U3) {
+		return;
+	}
+
 	mutex_lock(&ts->lock);
 
 	ret = siw_hal_read_value(dev,
