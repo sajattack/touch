@@ -75,25 +75,32 @@ module_param_named(pr_dbg_mask, t_pr_dbg_mask, uint, S_IRUGO|S_IWUSR|S_IWGRP);
  */
 module_param_named(dev_dbg_mask, t_dev_dbg_mask, uint, S_IRUGO|S_IWUSR|S_IWGRP);
 
+static u32 t_mfts_lpwg = 0;
 static u32 t_lpwg_mode = LPWG_NONE;
 static u32 t_lpwg_screen = 1;
 static u32 t_lpwg_sensor = PROX_FAR;
 
 /* usage
- * (1) echo <value> > /sys/module/{Siw Touch Module Name}/parameters/t_lpwg_mode
- * (2) insmod {Siw Touch Module Name}.ko t_lpwg_mode=<value>
+ * (1) echo <value> > /sys/module/{Siw Touch Module Name}/parameters/mfts_lpwg_mode
+ * (2) insmod {Siw Touch Module Name}.ko mfts_lpwg_mode=<value>
+ */
+module_param_named(mfts_lpwg_mode, t_mfts_lpwg, uint, S_IRUGO|S_IWUSR|S_IWGRP);
+
+/* usage
+ * (1) echo <value> > /sys/module/{Siw Touch Module Name}/parameters/lpwg_mode
+ * (2) insmod {Siw Touch Module Name}.ko lpwg_mode=<value>
  */
 module_param_named(lpwg_mode, t_lpwg_mode, uint, S_IRUGO|S_IWUSR|S_IWGRP);
 
 /* usage
- * (1) echo <value> > /sys/module/{Siw Touch Module Name}/parameters/t_lpwg_screen
- * (2) insmod {Siw Touch Module Name}.ko t_lpwg_screen=<value>
+ * (1) echo <value> > /sys/module/{Siw Touch Module Name}/parameters/lpwg_screen
+ * (2) insmod {Siw Touch Module Name}.ko lpwg_screen=<value>
  */
 module_param_named(lpwg_screen, t_lpwg_screen, uint, S_IRUGO|S_IWUSR|S_IWGRP);
 
 /* usage
- * (1) echo <value> > /sys/module/{Siw Touch Module Name}/parameters/t_lpwg_sensor
- * (2) insmod {Siw Touch Module Name}.ko t_lpwg_sensor=<value>
+ * (1) echo <value> > /sys/module/{Siw Touch Module Name}/parameters/lpwg_sensor
+ * (2) insmod {Siw Touch Module Name}.ko lpwg_sensor=<value>
  */
 module_param_named(lpwg_sensor, t_lpwg_sensor, uint, S_IRUGO|S_IWUSR|S_IWGRP);
 
@@ -1111,6 +1118,8 @@ static int siw_touch_do_probe_normal(void *data)
 	dev = ts->dev;
 
 	/* set defalut lpwg value because of AAT */
+	ts->role.mfts_lpwg = t_mfts_lpwg;
+
 	ts->lpwg.mode = t_lpwg_mode;
 	ts->lpwg.screen = t_lpwg_screen;
 	ts->lpwg.sensor = t_lpwg_sensor;
@@ -1432,8 +1441,12 @@ EXPORT_SYMBOL_GPL(siw_mon_deregister);
 
 #endif	/* CONFIG_TOUCHSCREEN_SIWMON */
 
-__siw_setup_u32("siw_lpwg_mode=", siw_lpwg_setup_mode, t_lpwg_mode);
-__siw_setup_u32("siw_lpwg_screen=", siw_lpwg_setup_screen, t_lpwg_screen);
-__siw_setup_u32("siw_lpwg_sensor=", siw_lpwg_setup_sensor, t_lpwg_sensor);
+__siw_setup_u32("siw_pr_dbg_mask=", siw_setup_pr_dbg_mask, t_pr_dbg_mask);
+__siw_setup_u32("siw_dev_dbg_mask=", siw_setup_dev_dbg_mask, t_dev_dbg_mask);
+
+__siw_setup_u32("siw_mfts_lpwg=", siw_setup_mfts_lpwg, t_mfts_lpwg);
+__siw_setup_u32("siw_lpwg_mode=", siw_setup_lpwg_mode, t_lpwg_mode);
+__siw_setup_u32("siw_lpwg_screen=", siw_setup_lpwg_screen, t_lpwg_screen);
+__siw_setup_u32("siw_lpwg_sensor=", siw_setup_lpwg_sensor, t_lpwg_sensor);
 
 
