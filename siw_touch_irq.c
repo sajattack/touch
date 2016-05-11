@@ -107,9 +107,11 @@ static void siw_touch_set_irq_pending(struct device *dev, unsigned int irq)
 #else
 	{
 		struct irq_desc *desc = irq_to_desc(irq);
-		raw_spin_lock(&desc->lock);
+		unsigned long flags;
+
+		raw_spin_lock_irqsave(&desc->lock, flags);
 		desc->istate |= IRQS_PENDING;
-		raw_spin_unlock(&desc->lock);
+		raw_spin_unlock_irqrestore(&desc->lock, flags);
 	}
 #endif
 }
