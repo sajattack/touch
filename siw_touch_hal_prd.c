@@ -95,22 +95,6 @@ enum {
 	LINE_FILTER_OPTION	= (0x40000),
 };
 
-/* tune code */
-enum {
-	TC_TUNE_CODE_SIZE				= ((1<<8)+4),	//260
-	TC_TOTAL_CH_SIZE				= (1<<5),		//32
-	TSP_TUNE_CODE_L_GOFT_OFFSET		= 0,
-	TSP_TUNE_CODE_L_M1_OFT_OFFSET	= (1<<1),
-	TSP_TUNE_CODE_L_G1_OFT_OFFSET	= (TSP_TUNE_CODE_L_M1_OFT_OFFSET + TC_TOTAL_CH_SIZE),
-	TSP_TUNE_CODE_L_G2_OFT_OFFSET	= (TSP_TUNE_CODE_L_G1_OFT_OFFSET + TC_TOTAL_CH_SIZE),
-	TSP_TUNE_CODE_L_G3_OFT_OFFSET	= (TSP_TUNE_CODE_L_G2_OFT_OFFSET + TC_TOTAL_CH_SIZE),
-	TSP_TUNE_CODE_R_GOFT_OFFSET		= (TSP_TUNE_CODE_L_G3_OFT_OFFSET + TC_TOTAL_CH_SIZE),
-	TSP_TUNE_CODE_R_M1_OFT_OFFSET	= (TSP_TUNE_CODE_R_GOFT_OFFSET + 2),
-	TSP_TUNE_CODE_R_G1_OFT_OFFSET	= (TSP_TUNE_CODE_R_M1_OFT_OFFSET + TC_TOTAL_CH_SIZE),
-	TSP_TUNE_CODE_R_G2_OFT_OFFSET	= (TSP_TUNE_CODE_R_G1_OFT_OFFSET + TC_TOTAL_CH_SIZE),
-	TSP_TUNE_CODE_R_G3_OFT_OFFSET	= (TSP_TUNE_CODE_R_G2_OFT_OFFSET + TC_TOTAL_CH_SIZE),
-};
-
 #if defined(CONFIG_TOUCHSCREEN_SIW_SW1828)
 #define __PRD_TYPE_S1
 #elif defined(CONFIG_TOUCHSCREEN_SIW_LG4946)
@@ -122,22 +106,41 @@ enum {
 #endif
 
 #if defined(__PRD_TYPE_S1)
-#define __PRD_ROW_SIZE	32
-#define __PRD_COL_SIZE	20
-#define __PRD_COL_ADD	0
+#define __PRD_ROW_SIZE		32
+#define __PRD_COL_SIZE		20
+#define __PRD_COL_ADD		0
+#define __TC_TOTAL_CH_SIZE	32
 #elif defined(__PRD_TYPE_L2)
-#define __PRD_ROW_SIZE	32
-#define __PRD_COL_SIZE	18
-#define __PRD_COL_ADD	0
+#define __PRD_ROW_SIZE		32
+#define __PRD_COL_SIZE		18
+#define __PRD_COL_ADD		0
+#define __TC_TOTAL_CH_SIZE	34
 #elif defined(__PRD_TYPE_L1)
-#define __PRD_ROW_SIZE	26
-#define __PRD_COL_SIZE	15
-#define __PRD_COL_ADD	1
+#define __PRD_ROW_SIZE		26
+#define __PRD_COL_SIZE		15
+#define __PRD_COL_ADD		1
+#define __TC_TOTAL_CH_SIZE	32
 #else
 	#error Wrong PRD row and col size! check again!
-#define __PRD_ROW_SIZE	-1
-#define __PRD_COL_SIZE	1
+#define __PRD_ROW_SIZE		-1
+#define __PRD_COL_SIZE		1
 #endif
+
+/* tune code */
+enum {
+	TC_TOTAL_CH_SIZE				= __TC_TOTAL_CH_SIZE,
+	TC_TUNE_CODE_SIZE				= ((TC_TOTAL_CH_SIZE<<3)+4),
+	TSP_TUNE_CODE_L_GOFT_OFFSET		= 0,
+	TSP_TUNE_CODE_L_M1_OFT_OFFSET	= (1<<1),
+	TSP_TUNE_CODE_L_G1_OFT_OFFSET	= (TSP_TUNE_CODE_L_M1_OFT_OFFSET + TC_TOTAL_CH_SIZE),
+	TSP_TUNE_CODE_L_G2_OFT_OFFSET	= (TSP_TUNE_CODE_L_G1_OFT_OFFSET + TC_TOTAL_CH_SIZE),
+	TSP_TUNE_CODE_L_G3_OFT_OFFSET	= (TSP_TUNE_CODE_L_G2_OFT_OFFSET + TC_TOTAL_CH_SIZE),
+	TSP_TUNE_CODE_R_GOFT_OFFSET		= (TSP_TUNE_CODE_L_G3_OFT_OFFSET + TC_TOTAL_CH_SIZE),
+	TSP_TUNE_CODE_R_M1_OFT_OFFSET	= (TSP_TUNE_CODE_R_GOFT_OFFSET + 2),
+	TSP_TUNE_CODE_R_G1_OFT_OFFSET	= (TSP_TUNE_CODE_R_M1_OFT_OFFSET + TC_TOTAL_CH_SIZE),
+	TSP_TUNE_CODE_R_G2_OFT_OFFSET	= (TSP_TUNE_CODE_R_G1_OFT_OFFSET + TC_TOTAL_CH_SIZE),
+	TSP_TUNE_CODE_R_G3_OFT_OFFSET	= (TSP_TUNE_CODE_R_G2_OFT_OFFSET + TC_TOTAL_CH_SIZE),
+};
 
 enum {
 	PRD_DATA_NAME_SZ	= 128,
@@ -2087,7 +2090,7 @@ static int prd_read_tune_code(struct siw_hal_prd_data *prd, int type, int result
 	struct device *dev = prd->dev;
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_hal_reg *reg = chip->reg;
-	u8 tune_code_read_buf[276] = {0,};
+	u8 tune_code_read_buf[TC_TUNE_CODE_SIZE] = {0,};
 	u32 tune_code_offset;
 	u32 offset;
 	int ret = 0;
