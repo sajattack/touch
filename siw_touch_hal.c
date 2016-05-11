@@ -642,6 +642,7 @@ void siw_hal_xfer_add_rx(void *xfer_data, u32 reg, void *buf, u32 size)
 {
 	struct touch_xfer_msg *xfer = xfer_data;
 	struct touch_xfer_data_t *rx = &xfer->data[xfer->msg_count].rx;
+	struct touch_xfer_data_t *tx = &xfer->data[xfer->msg_count].tx;
 
 	if (xfer->msg_count >= SIW_TOUCH_MAX_XFER_COUNT) {
 		t_pr_err("msg_count overflow\n");
@@ -651,6 +652,10 @@ void siw_hal_xfer_add_rx(void *xfer_data, u32 reg, void *buf, u32 size)
 	rx->addr = reg;
 	rx->buf = buf;
 	rx->size = size;
+
+	tx->addr = 0;
+	tx->buf = NULL;
+	tx->size = 0;
 
 	xfer->msg_count++;
 }
@@ -670,12 +675,17 @@ void siw_hal_xfer_add_rx_seq(void *xfer_data, u32 reg, u32 *data, int cnt)
 void siw_hal_xfer_add_tx(void *xfer_data, u32 reg, void *buf, u32 size)
 {
 	struct touch_xfer_msg *xfer = xfer_data;
+	struct touch_xfer_data_t *rx = &xfer->data[xfer->msg_count].rx;
 	struct touch_xfer_data_t *tx = &xfer->data[xfer->msg_count].tx;
 
 	if (xfer->msg_count >= SIW_TOUCH_MAX_XFER_COUNT) {
 		t_pr_err("msg_count overflow\n");
 		return;
 	}
+
+	rx->addr = 0;
+	rx->buf = NULL;
+	rx->size = 0;
 
 	tx->addr = reg;
 	tx->buf = buf;
@@ -2244,6 +2254,14 @@ static int siw_hal_tci_knock(struct device *dev)
 	lpwg_data[5] = info1->tap_distance | (info2->tap_distance << 16);
 	lpwg_data[6] = info1->intr_delay | (info2->intr_delay << 16);
 
+	t_dev_dbg_base(dev, "lpwg_data[0] : %08Xh\n", lpwg_data[0]);
+	t_dev_dbg_base(dev, "lpwg_data[1] : %08Xh\n", lpwg_data[1]);
+	t_dev_dbg_base(dev, "lpwg_data[2] : %08Xh\n", lpwg_data[2]);
+	t_dev_dbg_base(dev, "lpwg_data[3] : %08Xh\n", lpwg_data[3]);
+	t_dev_dbg_base(dev, "lpwg_data[4] : %08Xh\n", lpwg_data[4]);
+	t_dev_dbg_base(dev, "lpwg_data[5] : %08Xh\n", lpwg_data[5]);
+	t_dev_dbg_base(dev, "lpwg_data[6] : %08Xh\n", lpwg_data[6]);
+
 #if 1
 	ret = siw_hal_xfer_tx_seq(dev,
 				reg->tci_enable_w,
@@ -3575,12 +3593,14 @@ static int siw_hal_irq_lpwg(struct device *dev)
 			siw_hal_get_tci_data(dev,
 				ts->tci.info[TCI_1].tap_count);
 			ts->intr_status = TOUCH_IRQ_KNOCK;
+			t_dev_info(dev, "TOUCH_IRQ_KNOCK\n");
 		}
 	} else if (chip->info.wakeup_type == KNOCK_2) {
 		if (ts->lpwg.mode == LPWG_PASSWORD) {
 			siw_hal_get_tci_data(dev,
 				ts->tci.info[TCI_2].tap_count);
 			ts->intr_status = TOUCH_IRQ_PASSWD;
+			t_dev_info(dev, "TOUCH_IRQ_PASSWD\n");
 		}
 	} else if (chip->info.wakeup_type == SWIPE_LEFT) {
 		t_dev_info(dev, "SWIPE_LEFT\n");
@@ -3627,6 +3647,9 @@ static int siw_hal_irq_handler(struct device *dev)
 	if (ret < 0) {
 		goto out;
 	}
+
+	t_dev_dbg_irq(dev, "hal irq handler: wakeup_type %d\n",
+			chip->info.wakeup_type);
 
 	if (chip->info.wakeup_type == ABS_MODE) {
 		ret = siw_hal_irq_abs(dev);
