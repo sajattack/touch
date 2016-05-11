@@ -193,7 +193,7 @@
 	//	panel_spec_mfts = "siw/lg4895/ph1_limit_mfts.txt";
 
 		//absoulte path
-		font_image = "/sdcard/siw/lg4895_font_data.bin"
+		font_image = "/sdcard/siw/lg4895_font_data.bin";
 
 		prd_in_file = "/sdcard/siw/lg4895_test_spec_V0.1.txt";
 		prd_in_file_m = "/sdcard/siw/lg4895_test_spec_mfts_V0.1.txt";
