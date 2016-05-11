@@ -499,20 +499,22 @@ static ssize_t _store_sp_link_touch_off(struct device *dev,
 {
 	struct siw_ts *ts = to_touch_core(dev);
 	int value = 0;
+	int opt = 0;
 
-	if (sscanf(buf, "%d", &value) <= 0) {
+	if (sscanf(buf, "%d %d", &value, &opt) <= 0) {
 		siw_sysfs_err_invalid_param(dev);
 		return count;
 	}
+	value = !!value;
 
-	atomic_set(&ts->state.sp_link, value);
+	siw_touch_irq_control(ts->dev,
+			(value == SP_CONNECT)?
+			INTERRUPT_DISABLE : INTERRUPT_ENABLE);
 
-	if (atomic_read(&ts->state.sp_link) == SP_CONNECT) {
-		siw_touch_irq_control(ts->dev, INTERRUPT_DISABLE);
-		t_dev_info(dev, "SP Mirroring Connected\n");
-	} else if(atomic_read(&ts->state.sp_link) == SP_DISCONNECT) {
-		siw_touch_irq_control(ts->dev, INTERRUPT_ENABLE);
-		t_dev_info(dev, "SP Mirroring Disconnected\n");
+	if (opt) {
+		t_dev_info(dev, "SP Mirroring %s\n",
+			(value == SP_CONNECT)? "Connected" : "Disconnected");
+		atomic_set(&ts->state.sp_link, value);
 	}
 
 	return count;
