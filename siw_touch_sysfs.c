@@ -499,25 +499,62 @@ static ssize_t _store_sp_link_touch_off(struct device *dev,
 {
 	struct siw_ts *ts = to_touch_core(dev);
 	int value = 0;
-	int opt = 0;
 
-	if (sscanf(buf, "%d %d", &value, &opt) <= 0) {
+	if (sscanf(buf, "%d", &value) <= 0) {
 		siw_sysfs_err_invalid_param(dev);
 		return count;
 	}
-	value = !!value;
+
+	mutex_lock(&ts->lock);
 
 	siw_touch_irq_control(ts->dev,
 			(value == SP_CONNECT)?
 			INTERRUPT_DISABLE : INTERRUPT_ENABLE);
 
-	if (opt) {
-		t_dev_info(dev, "SP Mirroring %s\n",
-			(value == SP_CONNECT)? "Connected" : "Disconnected");
-		atomic_set(&ts->state.sp_link, value);
-	}
+	t_dev_info(dev, "SP Mirroring %s\n",
+		(value == SP_CONNECT)? "Connected" : "Disconnected");
+
+	atomic_set(&ts->state.sp_link, value);
+
+	mutex_unlock(&ts->lock);
 
 	return count;
+}
+
+static ssize_t _show_irq_state(struct device *dev, char *buf)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	int irq_status = atomic_read(&ts->state.irq_enable);
+	int size = 0;
+
+	size = siw_snprintf(buf, size,
+				"Irq State : %s\n",
+				(irq_status)? "Enabled" : "Disabled");
+
+	return size;
+}
+
+static ssize_t _store_irq_state(struct device *dev,
+				const char *buf, size_t count)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	int value = 0;
+
+	if (sscanf(buf, "%d", &value) <= 0) {
+		siw_sysfs_err_invalid_param(dev);
+		return count;
+	}
+
+	mutex_lock(&ts->lock);
+
+	siw_touch_irq_control(ts->dev,
+			(value)? INTERRUPT_ENABLE : INTERRUPT_DISABLE);
+
+	mutex_unlock(&ts->lock);
+
+	return (ssize_t)count;
 }
 
 static ssize_t _show_debug_tool_state(struct device *dev, char *buf)
@@ -873,6 +910,9 @@ static SIW_TOUCH_ATTR(mfts_lpwg,
 static SIW_TOUCH_ATTR(sp_link_touch_off,
 						_show_sp_link_touch_off,
 						_store_sp_link_touch_off);
+static SIW_TOUCH_ATTR(irq_state,
+						_show_irq_state,
+						_store_irq_state);
 static SIW_TOUCH_ATTR(debug_tool,
 						_show_debug_tool_state,
 						_store_debug_tool_state);
@@ -914,6 +954,7 @@ static struct attribute *siw_touch_attribute_list[] = {
 	&_SIW_TOUCH_ATTR_T(mfts).attr,
 	&_SIW_TOUCH_ATTR_T(mfts_lpwg).attr,
 	&_SIW_TOUCH_ATTR_T(sp_link_touch_off).attr,
+	&_SIW_TOUCH_ATTR_T(irq_state).attr,
 	&_SIW_TOUCH_ATTR_T(debug_tool).attr,
 	&_SIW_TOUCH_ATTR_T(debug_option).attr,
 #if defined(__SIW_SUPPORT_ASC)

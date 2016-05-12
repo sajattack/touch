@@ -3263,39 +3263,6 @@ out:
 	return (ssize_t)size;
 }
 
-static ssize_t prd_show_irq_state(struct device *dev, char *buf)
-{
-	struct siw_touch_chip *chip = to_touch_chip(dev);
-	struct siw_ts *ts = chip->ts;
-	int irq_status = atomic_read(&ts->state.irq_enable);
-	int size = 0;
-
-	size = siw_snprintf(buf, size,
-				"Irq State : %s\n",
-				(irq_status)? "Enabled" : "Disabled");
-
-	return size;
-}
-
-static ssize_t prd_store_irq_state(struct device *dev,
-				const char *buf, size_t count)
-{
-	struct siw_touch_chip *chip = to_touch_chip(dev);
-	struct siw_ts *ts = chip->ts;
-	struct siw_hal_prd_data *prd = (struct siw_hal_prd_data *)ts->prd;
-	int value = 0;
-
-	if (sscanf(buf, "%d", &value) <= 0) {
-		siw_prd_sysfs_err_invalid_param(prd);
-		return count;
-	}
-
-	siw_touch_irq_control(ts->dev,
-				(value)? INTERRUPT_ENABLE : INTERRUPT_DISABLE);
-
-	return (ssize_t)count;
-}
-
 
 #define __PRD_FILE_RW_TEST
 
@@ -3439,7 +3406,6 @@ static SIW_TOUCH_HAL_PRD_ATTR(rawdata_ait, prd_show_rawdata_ait, NULL);
 static SIW_TOUCH_HAL_PRD_ATTR(base_even, prd_show_basedata_even, NULL);
 static SIW_TOUCH_HAL_PRD_ATTR(base_odd, prd_show_basedata_odd, NULL);
 static SIW_TOUCH_HAL_PRD_ATTR(lpwg_sd, prd_show_lpwg_sd, NULL);
-static SIW_TOUCH_HAL_PRD_ATTR(irq_state, prd_show_irq_state, prd_store_irq_state);
 static SIW_TOUCH_HAL_PRD_ATTR(file_test, prd_show_file_test, prd_store_file_test);
 
 static struct attribute *siw_hal_prd_attribute_list[] = {
@@ -3452,7 +3418,6 @@ static struct attribute *siw_hal_prd_attribute_list[] = {
 	&_SIW_TOUCH_HAL_PRD_T(base_even).attr,
 	&_SIW_TOUCH_HAL_PRD_T(base_odd).attr,
 	&_SIW_TOUCH_HAL_PRD_T(lpwg_sd).attr,
-	&_SIW_TOUCH_HAL_PRD_T(irq_state).attr,
 	&_SIW_TOUCH_HAL_PRD_T(file_test).attr,
 	NULL,
 };
