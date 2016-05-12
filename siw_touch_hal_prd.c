@@ -2508,7 +2508,10 @@ static int prd_show_do_sd(struct siw_hal_prd_data *prd, char *buf)
 
 	siw_touch_irq_control(dev, INTERRUPT_DISABLE);
 
-	prd_chip_driving(dev, LCD_MODE_STOP);
+	ret = prd_chip_driving(dev, LCD_MODE_STOP);
+	if (ret < 0) {
+		goto out_reset;
+	}
 
 	/*
 	 * U3_M2_RAWDATA_TEST
@@ -2577,8 +2580,8 @@ static int prd_show_do_sd(struct siw_hal_prd_data *prd, char *buf)
 
 	prd_write_test_control(prd, CMD_TEST_EXIT);
 
+out_reset:
 	prd_chip_driving(dev, LCD_MODE_U3);
-
 	prd_chip_reset(dev);
 
 out:
@@ -2647,7 +2650,10 @@ static int prd_show_prd_get_data_raw_prd(struct device *dev)
 
 	siw_touch_irq_control(dev, INTERRUPT_DISABLE);
 
-	prd_chip_driving(dev, LCD_MODE_STOP);
+	ret = prd_chip_driving(dev, LCD_MODE_STOP);
+	if (ret < 0) {
+		goto out;
+	}
 
 	ret = prd_rawdata_test(prd, U3_M2_RAWDATA_TEST, RESULT_OFF);
 
@@ -3025,7 +3031,10 @@ static int prd_show_prd_get_data_blu_jitter(struct device *dev)
 
 	siw_touch_irq_control(dev, INTERRUPT_DISABLE);
 
-	prd_chip_driving(dev, LCD_MODE_STOP);
+	ret = prd_chip_driving(dev, LCD_MODE_STOP);
+	if (ret < 0) {
+		goto out;
+	}
 
 	ret = prd_rawdata_test(prd, U3_BLU_JITTER_TEST, RESULT_OFF);
 
@@ -3188,7 +3197,10 @@ static int prd_show_do_lpwg_sd(struct siw_hal_prd_data *prd, char *buf)
 
 	siw_touch_irq_control(dev, INTERRUPT_DISABLE);
 
-	prd_chip_driving(dev, LCD_MODE_STOP);
+	ret = prd_chip_driving(dev, LCD_MODE_STOP);
+	if (ret < 0) {
+		goto out;
+	}
 
 	/*
 	 * U0_M2_RAWDATA_TEST & U0_M1_RAWDATA_TEST
