@@ -1,8 +1,6 @@
-#
-# SiW Touch Monitor configuration
-#
+menu "SiW Touch Monitor"
 
-config CONFIG_TOUCHSCREEN_SIWMON
+config TOUCHSCREEN_SIWMON
 	bool "Silicon Works Touch Driver Monitor"
 	depends on TOUCHSCREEN_SIW
 	default y
@@ -10,4 +8,6 @@ config CONFIG_TOUCHSCREEN_SIWMON
 	  If you select this option,
 	  a component which captures the SiW operation traffic such as bus, input
 	  will be build.
+
+endmenu
 
