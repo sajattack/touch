@@ -36,5 +36,7 @@ config TOUCHSCREEN_SIW_SW1828
 	help
 	  If your device is sw1828, say Y
 
+source "drivers/input/touchscreen/siw/mon/Kconfig"
+
 endmenu
 
