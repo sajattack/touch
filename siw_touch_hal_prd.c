@@ -215,11 +215,13 @@ struct siw_hal_prd_data {
 	char line[PRD_LINE_NUM];
 	char buf_write[PRD_BUF_SIZE];
 	/* */
-	int16_t	m1_buf_odd_rawdata[PRD_M1_ROW_COL_SIZE];
-	int16_t	m1_buf_even_rawdata[PRD_M1_ROW_COL_SIZE];
 	int16_t	m2_buf_odd_rawdata[PRD_M2_ROW_COL_BUF_SIZE];
 	int16_t	m2_buf_even_rawdata[PRD_M2_ROW_COL_BUF_SIZE];
-	int16_t buf_m1_rawdata_tmp[PRD_M1_ROW_COL_SIZE];
+	/* */
+	int16_t	m1_buf_odd_rawdata[PRD_M1_ROW_COL_SIZE];
+	int16_t	m1_buf_even_rawdata[PRD_M1_ROW_COL_SIZE];
+	int16_t m1_buf_tmp[PRD_M1_ROW_COL_SIZE];
+	/* */
 	int16_t image_lower[PRD_ROW_SIZE][PRD_COL_SIZE];
 	int16_t image_upper[PRD_ROW_SIZE][PRD_COL_SIZE];
 	/* */
@@ -1703,12 +1705,13 @@ static int prd_print_rawdata(struct siw_hal_prd_data *prd,
 */
 static int prd_compare_tool(struct siw_hal_prd_data *prd,
 				int test_cnt, int16_t **buf,
-				int row, int col, u8 type)
+				int row, int col, int type, int opt)
 {
 	int16_t *raw_buf;
 	int16_t *raw_curr;
 	int i, j ,k;
 	int col_i;
+	int col_add = (opt)? PRD_COL_ADD : 0;
 	int size = 0;
 	int curr_raw;
 	int	result = 0;
@@ -1764,7 +1767,7 @@ static int prd_compare_tool(struct siw_hal_prd_data *prd,
 					}
 				}
 			}
-			col_i += (col + PRD_COL_ADD);
+			col_i += (col + col_add);
 		}
 
 		if (!result) {
@@ -1785,7 +1788,7 @@ out:
  * Pass : reurn 0
  * Fail : return 1
  */
-static int prd_compare_rawdata(struct siw_hal_prd_data *prd, u8 type)
+static int prd_compare_rawdata(struct siw_hal_prd_data *prd, int type)
 {
 //	struct device *dev = prd->dev;
 	/* spec reading */
@@ -1798,6 +1801,7 @@ static int prd_compare_rawdata(struct siw_hal_prd_data *prd, u8 type)
 	int col_size = PRD_COL_SIZE;
 	int row_size = PRD_ROW_SIZE;
 	int test_cnt = 0;
+	int opt = 1;
 	int result = 0;
 
 	if ((type >= UX_INVALID) && !prd_cmp_tool_str[type]) {
@@ -1823,6 +1827,7 @@ static int prd_compare_rawdata(struct siw_hal_prd_data *prd, u8 type)
 		rawdata_buf[0] = prd->m1_buf_odd_rawdata;
 		rawdata_buf[1] = prd->m1_buf_even_rawdata;
 		test_cnt = M1_RAWDATA_TEST_CNT;
+		opt = 0;
 		break;
 	}
 
@@ -1830,7 +1835,7 @@ static int prd_compare_rawdata(struct siw_hal_prd_data *prd, u8 type)
 	prd_get_limit(prd, upper_str, prd->image_upper);
 
 	result = prd_compare_tool(prd, test_cnt,
-				rawdata_buf, row_size, col_size, type);
+				rawdata_buf, row_size, col_size, type, opt);
 
 	return result;
 }
@@ -1954,6 +1959,7 @@ static int prd_read_rawdata(struct siw_hal_prd_data *prd, u8 type)
 {
 	struct device *dev = prd->dev;
 	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
 	struct siw_hal_reg *reg = chip->reg;
 	int __m1_frame_size = PRD_M1_FRAME_SIZE;
 	int __m2_frame_size = PRD_M2_FRAME_SIZE;
@@ -1963,6 +1969,7 @@ static int prd_read_rawdata(struct siw_hal_prd_data *prd, u8 type)
 		[0] = prd->m2_buf_odd_rawdata,
 		[1] = prd->m2_buf_even_rawdata,
 	};
+	int16_t *tmp_buf = prd->m1_buf_tmp;
 	int16_t *raw_buf;
 	int i, j = 0;
 	int ret = 0;
@@ -2029,18 +2036,25 @@ static int prd_read_rawdata(struct siw_hal_prd_data *prd, u8 type)
 
 			/* raw data read */
 			memset(raw_buf, 0, __m1_frame_size);
-			memset(prd->buf_m1_rawdata_tmp, 0, sizeof(prd->buf_m1_rawdata_tmp));
+			memset(tmp_buf, 0, __m1_frame_size);
 
 			ret = siw_hal_reg_read(dev,
 						reg->tc_tsp_data_access_addr,
-						(u8 *)&prd->buf_m1_rawdata_tmp, __m1_frame_size);
+						(void *)tmp_buf, __m1_frame_size);
 			if (ret < 0) {
 				goto out;
 			}
 
-			for (j = 0 ; j < PRD_ROW_SIZE; j++ ) {
-				raw_buf[i<<1] 	= prd->buf_m1_rawdata_tmp[PRD_ROW_SIZE+j];
-				raw_buf[(j<<1)+1] = prd->buf_m1_rawdata_tmp[j];
+			switch (touch_chip_type(ts)) {
+			case CHIP_LG4894:
+				memcpy(raw_buf, tmp_buf, PRD_ROW_SIZE);
+				break;
+			default:
+				for (j = 0 ; j < PRD_ROW_SIZE; j++ ) {
+					raw_buf[j<<1] 	= tmp_buf[PRD_ROW_SIZE+j];
+					raw_buf[(j<<1)+1] = tmp_buf[j];
+				}
+				break;
 			}
 		}
 		break;
@@ -2220,6 +2234,7 @@ static int prd_conrtol_rawdata_result(struct siw_hal_prd_data *prd, int type, in
 {
 	int print_type[2] = {0, };
 	int i,test_cnt;
+	int opt = 1;
 	int size = 0;
 	int result = 0;
 
@@ -2228,11 +2243,6 @@ static int prd_conrtol_rawdata_result(struct siw_hal_prd_data *prd, int type, in
 		print_type[0] = M2_ODD_DATA;
 		print_type[1] = M2_EVEN_DATA;
 		test_cnt = M2_RAWDATA_TEST_CNT;
-		break;
-	case U0_M1_RAWDATA_TEST:
-		print_type[0] = M1_ODD_DATA;
-		print_type[1] = M1_EVEN_DATA;
-		test_cnt = M1_RAWDATA_TEST_CNT;
 		break;
 	case U0_M2_RAWDATA_TEST:
 		print_type[0] = M2_ODD_DATA;
@@ -2245,6 +2255,13 @@ static int prd_conrtol_rawdata_result(struct siw_hal_prd_data *prd, int type, in
 		test_cnt = M2_RAWDATA_TEST_CNT;
 		break;
 
+	case U0_M1_RAWDATA_TEST:
+		print_type[0] = M1_ODD_DATA;
+		print_type[1] = M1_EVEN_DATA;
+		test_cnt = M1_RAWDATA_TEST_CNT;
+		opt = 0;
+		break;
+
 	default:
 		t_prd_err(prd, "conrtol_rawdata_result Type not defined, %d\n", type);
 		return 1;
@@ -2252,7 +2269,7 @@ static int prd_conrtol_rawdata_result(struct siw_hal_prd_data *prd, int type, in
 
 	/* print Raw Data */
 	for (i=0 ; i<test_cnt ; i++) {
-		size += prd_print_rawdata(prd, prd->buf_write, print_type[i], size, 1);
+		size += prd_print_rawdata(prd, prd->buf_write, print_type[i], size, opt);
 	}
 	if (size)
 		size += siw_prd_buf_snprintf(prd->buf_write, size, "\n\n");
