@@ -183,6 +183,10 @@ static int _siw_touch_do_notify(struct siw_ts *ts,
 		ret = siw_ops_notify(ts, event, data);
 		break;
 
+	case LCD_EVENT_TOUCH_INIT_LATE:
+		ret = siw_touch_init_late(ts);
+		break;
+
 	default:
 		ret = siw_ops_notify(ts, event, data);
 		break;

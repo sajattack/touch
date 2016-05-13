@@ -527,6 +527,8 @@ struct siw_touch_pdata {
 	unsigned long quirks;
 #define _CHIP_QUIRK_NOT_SUPPORT_XFER		(1L<<0)
 
+#define _CHIP_QUIRK_NOT_SUPPORT_PROBE_INIT	(1L<<8)
+
 #define _CHIP_QUIRK_NOT_SUPPORT_ASC			(1L<<16)
 #define _CHIP_QUIRK_NOT_SUPPORT_LPWG		(1L<<17)
 #define _CHIP_QUIRK_NOT_SUPPORT_WATCH		(1L<<18)
@@ -562,6 +564,8 @@ struct siw_touch_chip_data {
 };
 
 #define CHIP_QUIRK_NOT_SUPPORT_XFER				_CHIP_QUIRK_NOT_SUPPORT_XFER
+
+#define CHIP_QUIRK_NOT_SUPPORT_PROBE_INIT		_CHIP_QUIRK_NOT_SUPPORT_PROBE_INIT
 
 #define CHIP_QUIRK_NOT_SUPPORT_ASC				_CHIP_QUIRK_NOT_SUPPORT_ASC
 #define CHIP_QUIRK_NOT_SUPPORT_LPWG				_CHIP_QUIRK_NOT_SUPPORT_LPWG
@@ -842,6 +846,9 @@ struct siw_ts {
 
 	/* */
 	atomic_t recur_chk;
+
+	/* */
+	int (*init_late)(void *data);
 };
 
 #define IRQ_USE_WAKE				_IRQ_USE_WAKE
@@ -1277,6 +1284,7 @@ extern void siw_touch_atomic_notifer_work_func(struct work_struct *work);
 extern int siw_touch_probe(struct siw_ts *ts);
 extern int siw_touch_remove(struct siw_ts *ts);
 
+extern int siw_touch_init_late(void *data);
 
 
 #if defined(CONFIG_TOUCHSCREEN_SIWMON)

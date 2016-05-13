@@ -1102,6 +1102,44 @@ static void _siw_touch_do_remove_common(struct siw_ts *ts)
 	siw_touch_bus_free_buffer(ts);
 }
 
+static int siw_touch_probe_init(void *data)
+{
+	struct siw_ts *ts = data;
+	struct device *dev = ts->dev;
+	int ret;
+
+	ts->init_late = NULL;
+
+	t_dev_dbg_base(dev, "hw_reset_delay : %d ms\n", ts->caps.hw_reset_delay);
+	siw_touch_qd_init_work_hw(ts);
+
+	ret = siw_touch_init_thread(ts);
+	if (ret) {
+		t_dev_err(ts->dev, "failed to create workqueue\n");
+		goto out;
+	}
+
+out:
+	return ret;
+}
+
+static int siw_touch_do_normal_probe_init(struct siw_ts *ts)
+{
+	if (touch_test_quirks(ts, CHIP_QUIRK_NOT_SUPPORT_PROBE_INIT)) {
+		/*
+		 * Postpone actual init control
+		 * This is related to LCD_EVENT_TOUCH_INIT_LATE and
+		 * shall be controlled by MIPI via notifier
+		 */
+		ts->init_late = siw_touch_probe_init;
+		return 0;
+	}
+
+	ts->init_late = NULL;
+
+	return siw_touch_probe_init(ts);
+}
+
 static int siw_touch_do_probe_normal(void *data)
 {
 	struct siw_ts *ts = data;
@@ -1184,18 +1222,14 @@ static int siw_touch_do_probe_normal(void *data)
 		goto out_init_sysfs;
 	}
 
-	t_dev_dbg_base(dev, "hw_reset_delay : %d ms\n", ts->caps.hw_reset_delay);
-	siw_touch_qd_init_work_hw(ts);
-
-	ret = siw_touch_init_thread(ts);
-	if (ret) {
-		t_dev_err(ts->dev, "failed to create workqueue\n");
-		goto out_init_thread;
+	ret = siw_touch_do_normal_probe_init(ts);
+	if (ret < 0) {
+		goto out_probe_late;
 	}
 
 	return 0;
 
-out_init_thread:
+out_probe_late:
 
 out_init_sysfs:
 	siw_touch_free_uevent(ts);
@@ -1408,7 +1442,19 @@ int siw_touch_remove(struct siw_ts *ts)
 	return ret;
 }
 
+int siw_touch_init_late(void *data)
+{
+	struct siw_ts *ts = data;
+	int ret = 0;
 
+	if (ts->init_late) {
+		ret = ts->init_late(ts);
+
+		ts->init_late = NULL;
+	}
+
+	return ret;
+}
 
 #if defined(CONFIG_TOUCHSCREEN_SIWMON)
 

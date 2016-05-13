@@ -45,6 +45,7 @@
 #define LCD_EVENT_TOUCH_RESET_END				0x11
 /* to let lcd-driver know touch-driver's status */
 #define LCD_EVENT_TOUCH_DRIVER_UNREGISTERED		0x80
+#define LCD_EVENT_TOUCH_INIT_LATE				0x90
 
 struct siw_touch_event {
 		void *data;
