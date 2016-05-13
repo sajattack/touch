@@ -72,25 +72,6 @@ struct siw_hal_prd_test_off_info {
 #define TSP_FRAME0_OFFSET				(0x2A98)
 #define TSP_REPORT						(0x2A30)
 
-#define DELTA_DATA_OFFSET				(0xD95)
-#define LABLE_DATA_OFFSET				(0xE83)
-#define AIT_RAW_DATA_OFFSET				(0xA8C)
-#define AIT_BASE_DATA_EVNE_OFFSET		(0xC0F)
-#define AIT_BASE_DATA_ODD_OFFSET		(0xCD2)
-
-#define FILTERED_DELTA_DATA_OFFSET		(0x7FD)
-
-/*
- * define M1_M2_RAWDATA_TEST_CNT
- * if you have odd/even frame setting num 2
- * if you have 1 frame setting num 1
- */
-enum {
-	M1_RAWDATA_TEST_CNT		= 1,
-	M2_RAWDATA_TEST_CNT 	= 2,
-	MAX_TEST_CNT			= 2,
-};
-
 enum {
 	LINE_FILTER_OPTION	= (0x40000),
 };
@@ -106,25 +87,70 @@ enum {
 #endif
 
 #if defined(__PRD_TYPE_S1)
-#define __PRD_ROW_SIZE		32
-#define __PRD_COL_SIZE		20
-#define __PRD_COL_ADD		0
-#define __TC_TOTAL_CH_SIZE	32
+#define __M1_RAWDATA_TEST_CNT	1
+#define __M2_RAWDATA_TEST_CNT	1
+#define __PRD_ROW_SIZE			32
+#define __PRD_COL_SIZE			20
+#define __PRD_COL_ADD			0
+#define __TC_TOTAL_CH_SIZE		32
+enum {
+	__DELTA_DATA_OFFSET			= 0xD95,
+	__LABLE_DATA_OFFSET			= 0xE83,
+	__AIT_BASE_DATA_EVNE_OFFSET	= 0xC0F,
+	__AIT_BASE_DATA_ODD_OFFSET	= 0xCD2,
+};
 #elif defined(__PRD_TYPE_L2)
-#define __PRD_ROW_SIZE		32
-#define __PRD_COL_SIZE		18
-#define __PRD_COL_ADD		0
-#define __TC_TOTAL_CH_SIZE	34
+#define __M1_RAWDATA_TEST_CNT	1
+#define __M2_RAWDATA_TEST_CNT	1
+#define __PRD_ROW_SIZE			32
+#define __PRD_COL_SIZE			18
+#define __PRD_COL_ADD			0
+#define __TC_TOTAL_CH_SIZE		34
+enum {
+	__DELTA_DATA_OFFSET			= 0xF80,
+	__LABLE_DATA_OFFSET			= 0x10E8,
+	__AIT_BASE_DATA_EVNE_OFFSET	= 0xE4E,
+	__AIT_BASE_DATA_ODD_OFFSET	= 0xD1C,
+};
 #elif defined(__PRD_TYPE_L1)
-#define __PRD_ROW_SIZE		26
-#define __PRD_COL_SIZE		15
-#define __PRD_COL_ADD		1
-#define __TC_TOTAL_CH_SIZE	32
+#define __M1_RAWDATA_TEST_CNT	2
+#define __M2_RAWDATA_TEST_CNT	2
+#define __PRD_ROW_SIZE			26
+#define __PRD_COL_SIZE			15
+#define __PRD_COL_ADD			1
+#define __TC_TOTAL_CH_SIZE		32
+enum {
+	__DELTA_DATA_OFFSET			= 0xD95,
+	__LABLE_DATA_OFFSET			= 0xE83,
+	__AIT_BASE_DATA_EVNE_OFFSET	= 0xC0F,
+	__AIT_BASE_DATA_ODD_OFFSET	= 0xCD2,
+};
 #else
 	#error Wrong PRD row and col size! check again!
 #define __PRD_ROW_SIZE		-1
 #define __PRD_COL_SIZE		1
 #endif
+
+
+/*
+ * define M1_M2_RAWDATA_TEST_CNT
+ * if you have odd/even frame setting num 2
+ * if you have 1 frame setting num 1
+ */
+enum {
+	M1_RAWDATA_TEST_CNT		= __M1_RAWDATA_TEST_CNT,
+	M2_RAWDATA_TEST_CNT 	= __M2_RAWDATA_TEST_CNT,
+	MAX_TEST_CNT			= 2,
+};
+
+enum {
+	DELTA_DATA_OFFSET			= __DELTA_DATA_OFFSET,
+	LABLE_DATA_OFFSET			= __LABLE_DATA_OFFSET,
+	AIT_RAW_DATA_OFFSET			= 0xA8C,
+	AIT_BASE_DATA_EVNE_OFFSET	= __AIT_BASE_DATA_EVNE_OFFSET,
+	AIT_BASE_DATA_ODD_OFFSET	= __AIT_BASE_DATA_ODD_OFFSET,
+	FILTERED_DELTA_DATA_OFFSET	= 0x7FD,
+};
 
 /* tune code */
 enum {
