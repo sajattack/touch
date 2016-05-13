@@ -96,8 +96,8 @@ enum {
 enum {
 	__DELTA_DATA_OFFSET			= 0xD95,
 	__LABLE_DATA_OFFSET			= 0xE83,
-	__AIT_BASE_DATA_EVNE_OFFSET	= 0xC0F,
-	__AIT_BASE_DATA_ODD_OFFSET	= 0xCD2,
+	__AIT_RAW_DATA_OFFSET		= 0xA8C,
+	__AIT_BASE_DATA_ODD_OFFSET	= 0xC0F,
 };
 #elif defined(__PRD_TYPE_L2)
 #define __M1_RAWDATA_TEST_CNT	1
@@ -109,8 +109,8 @@ enum {
 enum {
 	__DELTA_DATA_OFFSET			= 0xF80,
 	__LABLE_DATA_OFFSET			= 0x10E8,
-	__AIT_BASE_DATA_EVNE_OFFSET	= 0xE4E,
-	__AIT_BASE_DATA_ODD_OFFSET	= 0xD1C,
+	__AIT_RAW_DATA_OFFSET		= 0xD1C,
+	__AIT_BASE_DATA_ODD_OFFSET	= 0xE4E,
 };
 #elif defined(__PRD_TYPE_L1)
 #define __M1_RAWDATA_TEST_CNT	2
@@ -122,8 +122,8 @@ enum {
 enum {
 	__DELTA_DATA_OFFSET			= 0xD95,
 	__LABLE_DATA_OFFSET			= 0xE83,
-	__AIT_BASE_DATA_EVNE_OFFSET	= 0xC0F,
-	__AIT_BASE_DATA_ODD_OFFSET	= 0xCD2,
+	__AIT_RAW_DATA_OFFSET		= 0xA8C,
+	__AIT_BASE_DATA_ODD_OFFSET	= 0xC0F,
 };
 #else
 	#error Wrong PRD row and col size! check again!
@@ -146,9 +146,9 @@ enum {
 enum {
 	DELTA_DATA_OFFSET			= __DELTA_DATA_OFFSET,
 	LABLE_DATA_OFFSET			= __LABLE_DATA_OFFSET,
-	AIT_RAW_DATA_OFFSET			= 0xA8C,
-	AIT_BASE_DATA_EVNE_OFFSET	= __AIT_BASE_DATA_EVNE_OFFSET,
+	AIT_RAW_DATA_OFFSET			= __AIT_RAW_DATA_OFFSET,
 	AIT_BASE_DATA_ODD_OFFSET	= __AIT_BASE_DATA_ODD_OFFSET,
+	AIT_BASE_DATA_EVEN_OFFSET	= 0xCD2,
 	FILTERED_DELTA_DATA_OFFSET	= 0x7FD,
 };
 
@@ -1725,7 +1725,7 @@ static int prd_compare_tool(struct siw_hal_prd_data *prd,
 		goto out;
 	}
 
-	for (k =0 ; k < test_cnt ; k++) {
+	for (k = 0; k < test_cnt; k++) {
 		size += siw_prd_buf_snprintf(prd->buf_write,
 					size,
 					"-------- Compare[%d/%d] --------\n",
@@ -1959,7 +1959,6 @@ static int prd_read_rawdata(struct siw_hal_prd_data *prd, u8 type)
 {
 	struct device *dev = prd->dev;
 	struct siw_touch_chip *chip = to_touch_chip(dev);
-	struct siw_ts *ts = chip->ts;
 	struct siw_hal_reg *reg = chip->reg;
 	int __m1_frame_size = PRD_M1_FRAME_SIZE;
 	int __m2_frame_size = PRD_M2_FRAME_SIZE;
@@ -2023,7 +2022,7 @@ static int prd_read_rawdata(struct siw_hal_prd_data *prd, u8 type)
 		buf_rawdata[0] = prd->m1_buf_odd_rawdata;
 		buf_rawdata[1] = prd->m1_buf_even_rawdata;
 
-		for (i=0 ; i<M1_RAWDATA_TEST_CNT ; i++) {
+		for (i = 0; i < M1_RAWDATA_TEST_CNT; i++) {
 			raw_buf = buf_rawdata[i];
 
 			/* raw data offset write */
@@ -2045,17 +2044,11 @@ static int prd_read_rawdata(struct siw_hal_prd_data *prd, u8 type)
 				goto out;
 			}
 
-			switch (touch_chip_type(ts)) {
-			case CHIP_LG4894:
-				memcpy(raw_buf, tmp_buf, PRD_ROW_SIZE);
-				break;
-			default:
-				for (j = 0 ; j < PRD_ROW_SIZE; j++ ) {
-					raw_buf[j<<1] 	= tmp_buf[PRD_ROW_SIZE+j];
-					raw_buf[(j<<1)+1] = tmp_buf[j];
-				}
-				break;
+			for (j = 0; j < PRD_ROW_SIZE; j++ ) {
+				raw_buf[j<<1]   = tmp_buf[j];
+				raw_buf[(j<<1)+1] = tmp_buf[PRD_ROW_SIZE+j];
 			}
+
 		}
 		break;
 	}
@@ -2698,7 +2691,16 @@ static int prd_show_prd_get_data_raw_prd(struct device *dev)
 		goto out;
 	}
 
-	ret = prd_rawdata_test(prd, U3_M2_RAWDATA_TEST, RESULT_OFF);
+	if (chip->lcd_mode == LCD_MODE_U3) {
+		ret = prd_rawdata_test(prd, U3_M2_RAWDATA_TEST, RESULT_OFF);
+	} else if (chip->lcd_mode == LCD_MODE_U0) {
+		ret = prd_rawdata_test(prd, U0_M2_RAWDATA_TEST, RESULT_OFF);
+	} else {
+		t_prd_err(prd, "LCD mode is not U3 or U0!! current mode = %d\n",
+				chip->lcd_mode);
+		ret = -EINVAL;
+		goto out;
+	}
 
 	siw_touch_irq_control(dev, INTERRUPT_ENABLE);
 
@@ -2830,7 +2832,7 @@ static int prd_show_prd_get_data_ait_basedata_even(struct device *dev)
 
 	ret = siw_hal_write_value(dev,
 				reg->tc_tsp_test_data_offset,
-				AIT_BASE_DATA_EVNE_OFFSET);
+				AIT_BASE_DATA_EVEN_OFFSET);
 	if (ret < 0) {
 		goto out;
 	}
@@ -3177,6 +3179,16 @@ static ssize_t prd_show_delta(struct device *dev, char *buf)
 
 static ssize_t prd_show_label(struct device *dev, char *buf)
 {
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	int size = 0;
+
+	/* LCD mode check */
+	if (chip->lcd_mode != LCD_MODE_U3) {
+		size += siw_snprintf(buf, size,
+					"Current LCD mode(%d) is not U3, halted\n",
+					chip->lcd_mode);
+		return (ssize_t)size;
+	}
 	return (ssize_t)prd_show_get_data_common(dev, buf, CMD_LABELDATA);
 }
 
@@ -3192,6 +3204,16 @@ static ssize_t prd_show_rawdata_tcm(struct device *dev, char *buf)
 
 static ssize_t prd_show_rawdata_ait(struct device *dev, char *buf)
 {
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	int size = 0;
+
+	/* LCD mode check */
+	if (chip->lcd_mode != LCD_MODE_U3) {
+		size += siw_snprintf(buf, size,
+					"Current LCD mode(%d) is not U3, halted\n",
+					chip->lcd_mode);
+		return (ssize_t)size;
+	}
 	return (ssize_t)prd_show_get_data_common(dev, buf, CMD_RAWDATA_AIT);
 }
 
@@ -3202,8 +3224,9 @@ static ssize_t prd_show_basedata_even(struct device *dev, char *buf)
 
 	/* LCD mode check */
 	if (chip->lcd_mode != LCD_MODE_U3) {
-		size = siw_snprintf(buf, size,
-					"LCD mode is not U3. Test Result : Fail\n");
+		size += siw_snprintf(buf, size,
+					"Current LCD mode(%d) is not U3, halted\n",
+					chip->lcd_mode);
 		return size;
 	}
 
@@ -3217,8 +3240,9 @@ static ssize_t prd_show_basedata_odd(struct device *dev, char *buf)
 
 	/* LCD mode check */
 	if (chip->lcd_mode != LCD_MODE_U3) {
-		size = siw_snprintf(buf, size,
-					"LCD mode is not U3. Test Result : Fail\n");
+		size += siw_snprintf(buf, size,
+					"Current LCD mode(%d) is not U3, halted\n",
+					chip->lcd_mode);
 		return size;
 	}
 
@@ -3458,8 +3482,8 @@ static SIW_TOUCH_HAL_PRD_ATTR(label, prd_show_label, NULL);
 static SIW_TOUCH_HAL_PRD_ATTR(rawdata_prd, prd_show_rawdata_prd, NULL);
 static SIW_TOUCH_HAL_PRD_ATTR(rawdata_tcm, prd_show_rawdata_tcm, NULL);
 static SIW_TOUCH_HAL_PRD_ATTR(rawdata_ait, prd_show_rawdata_ait, NULL);
-static SIW_TOUCH_HAL_PRD_ATTR(base_even, prd_show_basedata_even, NULL);
 static SIW_TOUCH_HAL_PRD_ATTR(base_odd, prd_show_basedata_odd, NULL);
+static SIW_TOUCH_HAL_PRD_ATTR(base_even, prd_show_basedata_even, NULL);
 static SIW_TOUCH_HAL_PRD_ATTR(lpwg_sd, prd_show_lpwg_sd, NULL);
 static SIW_TOUCH_HAL_PRD_ATTR(file_test, prd_show_file_test, prd_store_file_test);
 
@@ -3470,8 +3494,8 @@ static struct attribute *siw_hal_prd_attribute_list[] = {
 	&_SIW_TOUCH_HAL_PRD_T(rawdata_prd).attr,
 	&_SIW_TOUCH_HAL_PRD_T(rawdata_tcm).attr,
 	&_SIW_TOUCH_HAL_PRD_T(rawdata_ait).attr,
-	&_SIW_TOUCH_HAL_PRD_T(base_even).attr,
 	&_SIW_TOUCH_HAL_PRD_T(base_odd).attr,
+	&_SIW_TOUCH_HAL_PRD_T(base_even).attr,
 	&_SIW_TOUCH_HAL_PRD_T(lpwg_sd).attr,
 	&_SIW_TOUCH_HAL_PRD_T(file_test).attr,
 	NULL,
