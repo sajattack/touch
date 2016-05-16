@@ -1227,6 +1227,8 @@ static int siw_touch_do_probe_normal(void *data)
 		goto out_probe_late;
 	}
 
+	t_dev_info(dev, "probe(normal) done\n");
+
 	return 0;
 
 out_probe_late:
@@ -1323,6 +1325,8 @@ static int siw_touch_do_probe_charger(void *data)
 	siw_touch_blocking_notifier_call(
 							LCD_EVENT_TOUCH_DRIVER_REGISTERED,
 							NULL);
+
+	t_dev_info(dev, "probe(charger) done\n");
 
 	return 0;
 
@@ -1445,16 +1449,23 @@ int siw_touch_remove(struct siw_ts *ts)
 int siw_touch_init_late(void *data)
 {
 	struct siw_ts *ts = data;
+	struct device *dev = ts->dev;
 	int ret = 0;
 
 	if (ts->init_late) {
 		ret = ts->init_late(ts);
+		if (ret < 0) {
+			t_dev_err(dev, "init_late failed, %d\n", ret);
+		} else {
+			t_dev_info(dev, "init_late done\n");
+		}
 
 		ts->init_late = NULL;
 	}
 
 	return ret;
 }
+
 
 #if defined(CONFIG_TOUCHSCREEN_SIWMON)
 
