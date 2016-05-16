@@ -66,6 +66,7 @@ static int __show_reg_list(struct device *dev, char *buf, int size)
 
 	size += siw_snprintf(buf, size, "# Reg. Map List\n");
 
+	size += _reg_snprintf(buf, size, reg, spr_chip_id);
 	size += _reg_snprintf(buf, size, reg, spr_rst_ctl);
 	size += _reg_snprintf(buf, size, reg, spr_boot_ctl);
 	size += _reg_snprintf(buf, size, reg, spr_sram_ctl);
@@ -279,7 +280,7 @@ static ssize_t _store_reg_ctrl(struct device *dev,
 	int value = 0;
 	int ret = 0;
 
-	if (sscanf(buf, "%5s %x %x", command, &reg, &value) <= 0) {
+	if (sscanf(buf, "%5s %X %X", command, &reg, &value) <= 0) {
 		siw_hal_sysfs_err_invalid_param(dev);
 		return count;
 	}
@@ -291,7 +292,7 @@ static ssize_t _store_reg_ctrl(struct device *dev,
 					reg_addr,
 					data);
 		if (ret >= 0) {
-			t_dev_info(dev, "reg[%x] = 0x%x\n", reg_addr, data);
+			t_dev_info(dev, "reg[0x%04X] = 0x%08X\n", reg_addr, data);
 		}
 		goto out;
 	}
@@ -301,14 +302,16 @@ static ssize_t _store_reg_ctrl(struct device *dev,
 					reg_addr,
 					&data);
 		if (ret >= 0) {
-			t_dev_info(dev, "reg[%x] = 0x%x\n", reg_addr, data);
+			t_dev_info(dev, "reg[0x%04X] = 0x%08X\n", reg_addr, data);
 		}
 		goto out;
 	}
 
-	t_dev_dbg_base(dev, "Usage\n");
-	t_dev_dbg_base(dev, "Write reg value\n");
-	t_dev_dbg_base(dev, "Read reg\n");
+	t_dev_dbg_base(dev, "[Usage]\n");
+	t_dev_dbg_base(dev,
+		" echo write 0x1234 {value} > /sys/devices/virtual/input/siw_touch_input/reg_ctrl\n");
+	t_dev_dbg_base(dev,
+		" echo read 0x1234 > /sys/devices/virtual/input/siw_touch_input/reg_ctrl\n");
 
 out:
 	return count;
