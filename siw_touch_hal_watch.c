@@ -417,6 +417,17 @@ static int ext_watch_mem_ctrl(struct device *dev, int on_off, const char *msg)
 	return 0;
 }
 
+static void __store_log_buf(struct device *dev, char *buf,
+				char *log, int *buflen, int loglen)
+{
+	if (buf) {
+		memcpy(&buf[*buflen], log, loglen);
+		*buflen += loglen;
+	} else {
+		t_watch_info(dev, "%s", log);
+	}
+}
+
 static int ext_watch_get_mode(struct device *dev, char *buf, int *len)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
@@ -424,6 +435,7 @@ static int ext_watch_get_mode(struct device *dev, char *buf, int *len)
 	struct siw_hal_reg *reg = chip->reg;
 	struct watch_data *watch = (struct watch_data *)chip->watch;
 	struct ext_watch_cfg_mode *mode = &watch->ext_wdata.mode;
+	struct ext_watch_bits_lut *lut;
 	char log[FONT_TEMP_LOG_SZ] = {0, };
 	int loglen = 0;
 	int buflen = 0;
@@ -443,13 +455,12 @@ static int ext_watch_get_mode(struct device *dev, char *buf, int *len)
 	ptr[0] = val & 0xFF;
 	ptr[1] = (val>>8) & 0xFF;
 	loglen = siw_watch_snprintf(log, FONT_TEMP_LOG_SZ, 0,
-					"watch_ctrl[%04Xh] %02X %02X\n",
-					reg->ext_watch_ctrl, ptr[0], ptr[1]);
-	if (buf) {
-		memcpy(&buf[buflen], log, loglen);
-		buflen += loglen;
-	}
-	t_watch_info(dev, "%s", log);
+					"watch_ctrl[%04Xh] dispmode %d, alpha %d\n",
+					reg->ext_watch_ctrl,
+					mode->watch_ctrl.dispmode,
+					mode->watch_ctrl.alpha);
+
+	__store_log_buf(dev, buf, log, &buflen, loglen);
 
 	ret = siw_hal_read_value(dev, reg->ext_watch_area_x, &val);
 	if (ret < 0) {
@@ -460,13 +471,12 @@ static int ext_watch_get_mode(struct device *dev, char *buf, int *len)
 	ptr[1] = (val>>8) & 0xFF;
 	ptr[2] = (val>>16) & 0xFF;
 	loglen = siw_watch_snprintf(log, FONT_TEMP_LOG_SZ, 0,
-					"watch_area_x[%04Xh] %02X %02X %02X\n",
-					reg->ext_watch_area_x, ptr[0], ptr[1], ptr[2]);
-	if (buf) {
-		memcpy(&buf[buflen], log, loglen);
-		buflen += loglen;
-	}
-	t_watch_info(dev, "%s", log);
+					"watch_area_x[%04Xh] sx %d, ex %d\n",
+					reg->ext_watch_area_x,
+					mode->watch_area_x.watstart,
+					mode->watch_area_x.watend);
+
+	__store_log_buf(dev, buf, log, &buflen, loglen);
 
 	ret = siw_hal_read_value(dev, reg->ext_watch_area_y, &val);
 	if (ret < 0) {
@@ -477,13 +487,12 @@ static int ext_watch_get_mode(struct device *dev, char *buf, int *len)
 	ptr[1] = (val>>8) & 0xFF;
 	ptr[2] = (val>>16) & 0xFF;
 	loglen = siw_watch_snprintf(log, FONT_TEMP_LOG_SZ, 0,
-					"watch_area_y[%04Xh] %02X %02X %02X\n",
-					reg->ext_watch_area_y, ptr[0], ptr[1], ptr[2]);
-	if (buf) {
-		memcpy(&buf[buflen], log, loglen);
-		buflen += loglen;
-	}
-	t_watch_info(dev, "%s", log);
+					"watch_area_y[%04Xh] sy %d, ey %d\n",
+					reg->ext_watch_area_y,
+					mode->watch_area_y.watstart,
+					mode->watch_area_y.watend);
+
+	__store_log_buf(dev, buf, log, &buflen, loglen);
 
 	ret = siw_hal_read_value(dev, reg->ext_watch_blink_area, &val);
 	if (ret < 0) {
@@ -494,32 +503,31 @@ static int ext_watch_get_mode(struct device *dev, char *buf, int *len)
 	ptr[1] = (val>>8) & 0xFF;
 	ptr[2] = (val>>16) & 0xFF;
 	loglen = siw_watch_snprintf(log, FONT_TEMP_LOG_SZ, 0,
-					"blink_area[%04Xh] %02X %02X %02X\n",
-					reg->ext_watch_blink_area, ptr[0], ptr[1], ptr[2]);
-	if (buf) {
-		memcpy(&buf[buflen], log, loglen);
-		buflen += loglen;
-	}
-	t_watch_info(dev, "%s", log);
+					"blink_area[%04Xh] bsx %d, bex %d\n",
+					reg->ext_watch_blink_area,
+					mode->blink_area.bstartx,
+					mode->blink_area.bendx);
 
+	__store_log_buf(dev, buf, log, &buflen, loglen);
+
+	lut = mode->lut;
 	for (i=0 ; i<EXT_WATCH_LUT_NUM ; i++) {
 		ret = siw_hal_read_value(dev, reg->ext_watch_lut + i, &val);
 		if (ret < 0) {
 			goto out;
 		}
-		ptr = (u8 *)&mode->lut[i];
+		ptr = (u8 *)lut;
 		ptr[0] = val & 0xFF;
 		ptr[1] = (val>>8) & 0xFF;
 		ptr[2] = (val>>16) & 0xFF;
 		loglen = siw_watch_snprintf(log, FONT_TEMP_LOG_SZ, 0,
-					"LUT[%d][%04Xh] %02X %02X %02X\n",
+					"LUT[%d][%04Xh] b %d, g %d, r %d\n",
 					i, reg->ext_watch_blink_area + i,
-					ptr[0], ptr[1], ptr[2]);
-		if (buf) {
-			memcpy(&buf[buflen], log, loglen);
-			buflen += loglen;
-		}
-		t_watch_info(dev, "%s", log);
+					lut->b, lut->g, lut->r);
+
+		__store_log_buf(dev, buf, log, &buflen, loglen);
+
+		lut++;
 	}
 
 	if (len)
@@ -573,18 +581,13 @@ static int ext_watch_get_position(struct device *dev, char *buf, int *len)
 	}
 
 	loglen = siw_watch_snprintf(log, FONT_TEMP_LOG_SZ, 0,
-					"position[%04Xh ~ %04Xh] %d %d %d %d %d ",
+					"position[%04Xh ~ %04Xh] h10x %d, h1x %d, m10x %d, m1x %d, clx %d\n",
 					reg->ext_watch_position_r,
 					reg->ext_watch_position_r + 3,
 					position.h10x_pos, position.h1x_pos,
-		 			position.clx_pos, position.m10x_pos,
-		 			position.m1x_pos);
-
-	if (buf) {
-		memcpy(&buf[buflen], log, loglen);
-		buflen += loglen;
-	}
-	t_watch_info(dev, "%s", log);
+		 			position.m10x_pos, position.m1x_pos,
+		 			position.clx_pos);
+	__store_log_buf(dev, buf, log, &buflen, loglen);
 
 	position.zero_disp = status.zero_en;
 	position.h24_en = status.en_24;
@@ -593,37 +596,27 @@ static int ext_watch_get_position(struct device *dev, char *buf, int *len)
 	position.bhprd = status.bhprd;
 
 	loglen = siw_watch_snprintf(log, FONT_TEMP_LOG_SZ, 0,
-					"state[%04Xh] zero display %d, 24H mode %d, clock mode %d\n",
+					"state[%04Xh] zero disp %d, 24H mode %d, clock mode %d\n",
 					reg->ext_watch_state,
 					position.zero_disp, position.h24_en,
 					position.clock_disp_mode);
 
-	if (buf) {
-		memcpy(&buf[buflen], log, loglen);
-		buflen += loglen;
-	}
-	t_watch_info(dev, "%s", log);
+	__store_log_buf(dev, buf, log, &buflen, loglen);
 
 	loglen = siw_watch_snprintf(log, FONT_TEMP_LOG_SZ, 0,
 					"state[%04Xh] midnight mode %d, blink period %d\n",
 					reg->ext_watch_state,
 					position.midnight_hour_zero_en,
 					position.bhprd);
-	if (buf) {
-		memcpy(&buf[buflen], log, loglen);
-		buflen += loglen;
-	}
-	t_watch_info(dev, "%s", log);
+
+	__store_log_buf(dev, buf, log, &buflen, loglen);
 
 	loglen = siw_watch_snprintf(log, FONT_TEMP_LOG_SZ, 0,
-					"state[%04Xh] tep %d, enable %d\n",
+					"state[%04Xh] step %d, enable %d\n",
 					reg->ext_watch_state,
 		 			status.step, status.en);
-	if (buf) {
-		memcpy(&buf[buflen], log, loglen);
-		buflen += loglen;
-	}
-	t_watch_info(dev, "%s", log);
+
+	__store_log_buf(dev, buf, log, &buflen, loglen);
 
 	if (len)
 		*len = buflen;
@@ -683,11 +676,7 @@ static int ext_watch_get_curr_time(struct device *dev, char *buf, int *len)
 					status.cur_hour, status.cur_min, status.cur_sec,
 	 				rtc_ctst->hour, rtc_ctst->min, rtc_ctst->sec);
 
-	if (buf) {
-		memcpy(&buf[buflen], log, loglen);
-		buflen += loglen;
-	}
-	t_watch_info(dev, "%s", log);
+	__store_log_buf(dev, buf, log, &buflen, loglen);
 
 	if (len)
 		*len = buflen;
@@ -696,6 +685,58 @@ static int ext_watch_get_curr_time(struct device *dev, char *buf, int *len)
 
 out:
 	t_watch_err(dev, "get curr time: failed, %d\n", ret);
+	return ret;
+}
+
+static int ext_watch_get_dic_st(struct device *dev, char *buf, int *len)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+//	struct siw_ts *ts = chip->ts;
+	struct siw_hal_reg *reg = chip->reg;
+	u32 dic_status = 0;
+	u32 watch_status = 0;
+	char log[FONT_TEMP_LOG_SZ] = {0, };
+	int loglen = 0;
+	int buflen = 0;
+	int ret = 0;
+
+	if (len)
+		buflen = *len;
+
+	ret = siw_hal_read_value(dev,
+				reg->sys_dispmode_status,
+				&dic_status);
+	if (ret < 0) {
+		goto out;
+	}
+
+	ret = siw_hal_read_value(dev,
+				reg->ext_watch_display_status,
+				&watch_status);
+	if (ret < 0) {
+		goto out;
+	}
+
+	if (dic_status == 2) {
+		loglen = siw_watch_snprintf(log, FONT_TEMP_LOG_SZ, 0,
+						"display mode U2, watch display %s\n",
+						(watch_status & 1) ? "on" : "off");
+	} else {
+		loglen = siw_watch_snprintf(log, FONT_TEMP_LOG_SZ, 0,
+						"display mode U%d\n",
+						dic_status);
+	}
+
+	__store_log_buf(dev, buf, log, &buflen, loglen);
+
+	if (len)
+		*len = buflen;
+
+	return 0;
+
+out:
+	t_watch_err(dev, "get dic st: failed, %d\n", ret);
+
 	return ret;
 }
 
@@ -742,7 +783,7 @@ static int ext_watch_set_mode(struct device *dev)
 
 	ret = siw_hal_reg_write(dev,
 				reg->ext_watch_lut,
-				(void *)&mode->lut,
+				(void *)mode->lut,
 				sizeof(u32) * EXT_WATCH_LUT_NUM);
 	if (ret < 0) {
 		goto out;
@@ -1223,63 +1264,6 @@ out:
 	return ret;
 }
 
-static int ext_watch_get_dic_st(struct device *dev, char *buf, int *len)
-{
-	struct siw_touch_chip *chip = to_touch_chip(dev);
-//	struct siw_ts *ts = chip->ts;
-	struct siw_hal_reg *reg = chip->reg;
-	u32 dic_status = 0;
-	u32 watch_status = 0;
-	char log[FONT_TEMP_LOG_SZ] = {0, };
-	int loglen = 0;
-	int buflen = 0;
-	int ret = 0;
-
-	if (len)
-		buflen = *len;
-
-	ret = siw_hal_read_value(dev,
-				reg->sys_dispmode_status,
-				&dic_status);
-	if (ret < 0) {
-		goto out;
-	}
-
-	ret = siw_hal_read_value(dev,
-				reg->ext_watch_display_status,
-				&watch_status);
-	if (ret < 0) {
-		goto out;
-	}
-
-	if (dic_status == 2) {
-		loglen = siw_watch_snprintf(log, FONT_TEMP_LOG_SZ, 0,
-						"display mode U2, watch display %s\n",
-						(watch_status & 1) ? "on" : "off");
-	} else {
-		loglen = siw_watch_snprintf(log, FONT_TEMP_LOG_SZ, 0,
-						"display mode U%d\n",
-						dic_status);
-	}
-	if (buf) {
-		memcpy(&buf[buflen], log, loglen);
-		buflen += loglen;
-	}
-	t_watch_info(dev, "%s", log);
-
-	if (len)
-		*len = buflen;
-
-	t_watch_info(dev, "get dic st: done\n");
-
-	return 0;
-
-out:
-	t_watch_err(dev, "get dic st: failed, %d\n", ret);
-
-	return ret;
-}
-
 static ssize_t store_ext_watch_rtc_onoff(struct device *dev,
 		 			const char *buf, size_t count)
 {
@@ -1421,8 +1405,8 @@ static ssize_t store_ext_watch_config_font_effect(struct device *dev,
 	//	cfg.clock_disp_type = 0;
 	//	cfg.midnight_hour_zero_en = 0;
 		cfg.blink.blink_type = 3;
-		cfg.blink.bstartx = winx + (2<<4) + 4;
-		cfg.blink.bendx = cfg.blink.bstartx + 8;
+		cfg.blink.bstartx = winx + (2<<4);
+		cfg.blink.bendx = cfg.blink.bstartx + 16;
 		cfg.watchon = 1;
 	} else {
 		memcpy((char *)&cfg, buf, sizeof(cfg));
