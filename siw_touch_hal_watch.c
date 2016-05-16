@@ -131,13 +131,13 @@ struct ext_watch_config_font_lut {
 	u32	rgb_red;
 };
 
-struct ext_watch_config_font_property {
+struct ext_watch_config_font_prop {
 	u32	len;
 	u32	max_num;		/* The number of LUT */
 	struct ext_watch_config_font_lut lut[EXT_WATCH_LUT_MAX];
 };
 
-struct ext_watch_config_font_position {
+struct ext_watch_config_font_pos {
 	u32 len;
 	u32	watstartx;	/* 520 <= watstartx, watstartx <= watendx */
 	u32	watendx;	/* watch end positon. watendx <= 720 */
@@ -208,6 +208,14 @@ __packed struct ext_watch_cfg_time {	/* 36 bytes */
 	u32 rtc_capture;					/* 0x084 */
 	struct ext_watch_bits_time rtc_ctst;	/* 0x087 */
 	u32 rtc_ecnt;						/* 0x088 */
+};
+
+enum {
+	POS_MAX_H10X	= (1<<9),
+	POS_MAX_H1X		= (1<<9),
+	POS_MAX_M10X	= (1<<9),
+	POS_MAX_M1X		= (1<<9),
+	POS_MAX_CLX		= (1<<9),
 };
 
 __packed struct ext_watch_cfg_position {	/* 0xC11 */
@@ -409,6 +417,120 @@ static int ext_watch_mem_ctrl(struct device *dev, int on_off, const char *msg)
 	return 0;
 }
 
+static int ext_watch_get_mode(struct device *dev, char *buf, int *len)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+//	struct siw_ts *ts = chip->ts;
+	struct siw_hal_reg *reg = chip->reg;
+	struct watch_data *watch = (struct watch_data *)chip->watch;
+	struct ext_watch_cfg_mode *mode = &watch->ext_wdata.mode;
+	char log[FONT_TEMP_LOG_SZ] = {0, };
+	int loglen = 0;
+	int buflen = 0;
+	u8 *ptr = NULL;
+	u32 val;
+	int i;
+	int ret = 0;
+
+	if (len)
+		buflen = *len;
+
+	ret = siw_hal_read_value(dev, reg->ext_watch_ctrl, &val);
+	if (ret < 0) {
+		goto out;
+	}
+	ptr = (u8 *)&mode->watch_ctrl;
+	ptr[0] = val & 0xFF;
+	ptr[1] = (val>>8) & 0xFF;
+	loglen = siw_watch_snprintf(log, FONT_TEMP_LOG_SZ, 0,
+					"watch_ctrl[%04Xh] %02X %02X\n",
+					reg->ext_watch_ctrl, ptr[0], ptr[1]);
+	if (buf) {
+		memcpy(&buf[buflen], log, loglen);
+		buflen += loglen;
+	}
+	t_watch_info(dev, "%s", log);
+
+	ret = siw_hal_read_value(dev, reg->ext_watch_area_x, &val);
+	if (ret < 0) {
+		goto out;
+	}
+	ptr = (u8 *)&mode->watch_area_x;
+	ptr[0] = val & 0xFF;
+	ptr[1] = (val>>8) & 0xFF;
+	ptr[2] = (val>>16) & 0xFF;
+	loglen = siw_watch_snprintf(log, FONT_TEMP_LOG_SZ, 0,
+					"watch_area_x[%04Xh] %02X %02X %02X\n",
+					reg->ext_watch_area_x, ptr[0], ptr[1], ptr[2]);
+	if (buf) {
+		memcpy(&buf[buflen], log, loglen);
+		buflen += loglen;
+	}
+	t_watch_info(dev, "%s", log);
+
+	ret = siw_hal_read_value(dev, reg->ext_watch_area_y, &val);
+	if (ret < 0) {
+		goto out;
+	}
+	ptr = (u8 *)&mode->watch_area_y;
+	ptr[0] = val & 0xFF;
+	ptr[1] = (val>>8) & 0xFF;
+	ptr[2] = (val>>16) & 0xFF;
+	loglen = siw_watch_snprintf(log, FONT_TEMP_LOG_SZ, 0,
+					"watch_area_y[%04Xh] %02X %02X %02X\n",
+					reg->ext_watch_area_y, ptr[0], ptr[1], ptr[2]);
+	if (buf) {
+		memcpy(&buf[buflen], log, loglen);
+		buflen += loglen;
+	}
+	t_watch_info(dev, "%s", log);
+
+	ret = siw_hal_read_value(dev, reg->ext_watch_blink_area, &val);
+	if (ret < 0) {
+		goto out;
+	}
+	ptr = (u8 *)&mode->blink_area;
+	ptr[0] = val & 0xFF;
+	ptr[1] = (val>>8) & 0xFF;
+	ptr[2] = (val>>16) & 0xFF;
+	loglen = siw_watch_snprintf(log, FONT_TEMP_LOG_SZ, 0,
+					"blink_area[%04Xh] %02X %02X %02X\n",
+					reg->ext_watch_blink_area, ptr[0], ptr[1], ptr[2]);
+	if (buf) {
+		memcpy(&buf[buflen], log, loglen);
+		buflen += loglen;
+	}
+	t_watch_info(dev, "%s", log);
+
+	for (i=0 ; i<EXT_WATCH_LUT_NUM ; i++) {
+		ret = siw_hal_read_value(dev, reg->ext_watch_lut + i, &val);
+		if (ret < 0) {
+			goto out;
+		}
+		ptr = (u8 *)&mode->lut[i];
+		ptr[0] = val & 0xFF;
+		ptr[1] = (val>>8) & 0xFF;
+		ptr[2] = (val>>16) & 0xFF;
+		loglen = siw_watch_snprintf(log, FONT_TEMP_LOG_SZ, 0,
+					"LUT[%d][%04Xh] %02X %02X %02X\n",
+					i, reg->ext_watch_blink_area + i,
+					ptr[0], ptr[1], ptr[2]);
+		if (buf) {
+			memcpy(&buf[buflen], log, loglen);
+			buflen += loglen;
+		}
+		t_watch_info(dev, "%s", log);
+	}
+
+	if (len)
+		*len = buflen;
+
+	return 0;
+
+out:
+	return ret;
+}
+
 static int ext_watch_get_position(struct device *dev, char *buf, int *len)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
@@ -439,11 +561,11 @@ static int ext_watch_get_position(struct device *dev, char *buf, int *len)
 
 		siw_hal_xfer_add_rx(xfer,
 				reg->ext_watch_position_r,
-				(u8 *)&position, sizeof(u32)*3);
+				(void *)&position, sizeof(u32)*3);
 
 		siw_hal_xfer_add_rx(xfer,
 				reg->ext_watch_state,
-				(u8 *)&status, sizeof(u32));
+				(void *)&status, sizeof(u32));
 	}
 	ret = siw_hal_xfer_msg(dev, ts->xfer);
 	if (ret < 0) {
@@ -451,7 +573,9 @@ static int ext_watch_get_position(struct device *dev, char *buf, int *len)
 	}
 
 	loglen = siw_watch_snprintf(log, FONT_TEMP_LOG_SZ, 0,
-					"position %d %d %d %d %d ",
+					"position[%04Xh ~ %04Xh] %d %d %d %d %d ",
+					reg->ext_watch_position_r,
+					reg->ext_watch_position_r + 3,
 					position.h10x_pos, position.h1x_pos,
 		 			position.clx_pos, position.m10x_pos,
 		 			position.m1x_pos);
@@ -459,8 +583,6 @@ static int ext_watch_get_position(struct device *dev, char *buf, int *len)
 	if (buf) {
 		memcpy(&buf[buflen], log, loglen);
 		buflen += loglen;
-	} else {
-		t_watch_warn(dev, "get position: NULL buffer");
 	}
 	t_watch_info(dev, "%s", log);
 
@@ -471,7 +593,8 @@ static int ext_watch_get_position(struct device *dev, char *buf, int *len)
 	position.bhprd = status.bhprd;
 
 	loglen = siw_watch_snprintf(log, FONT_TEMP_LOG_SZ, 0,
-					"zero display %d, 24H mode %d, clock mode %d\n",
+					"state[%04Xh] zero display %d, 24H mode %d, clock mode %d\n",
+					reg->ext_watch_state,
 					position.zero_disp, position.h24_en,
 					position.clock_disp_mode);
 
@@ -482,7 +605,8 @@ static int ext_watch_get_position(struct device *dev, char *buf, int *len)
 	t_watch_info(dev, "%s", log);
 
 	loglen = siw_watch_snprintf(log, FONT_TEMP_LOG_SZ, 0,
-					"midnight mode %d, blink period %d\n",
+					"state[%04Xh] midnight mode %d, blink period %d\n",
+					reg->ext_watch_state,
 					position.midnight_hour_zero_en,
 					position.bhprd);
 	if (buf) {
@@ -492,7 +616,8 @@ static int ext_watch_get_position(struct device *dev, char *buf, int *len)
 	t_watch_info(dev, "%s", log);
 
 	loglen = siw_watch_snprintf(log, FONT_TEMP_LOG_SZ, 0,
-					"step %d, enable %d\n",
+					"state[%04Xh] tep %d, enable %d\n",
+					reg->ext_watch_state,
 		 			status.step, status.en);
 	if (buf) {
 		memcpy(&buf[buflen], log, loglen);
@@ -541,11 +666,11 @@ static int ext_watch_get_curr_time(struct device *dev, char *buf, int *len)
 
 		siw_hal_xfer_add_rx(xfer,
 				reg->ext_watch_state,
-				(u8 *)&status, sizeof(u32));
+				(void *)&status, sizeof(u32));
 
 		siw_hal_xfer_add_rx(xfer,
 				reg->ext_watch_rtc_ctst,
-				(u8 *)rtc_ctst, sizeof(u32));
+				(void *)rtc_ctst, sizeof(u32));
 	}
 	ret = siw_hal_xfer_msg(dev, ts->xfer);
 	if (ret < 0) {
@@ -553,15 +678,14 @@ static int ext_watch_get_curr_time(struct device *dev, char *buf, int *len)
 	}
 
 	loglen = siw_watch_snprintf(log, FONT_TEMP_LOG_SZ, 0,
-					"display %02d:%02d:%02d, rtc %02d:%02d:%02d\n",
+					"state[%04Xh, %04Xh] display %02d:%02d:%02d, rtc %02d:%02d:%02d\n",
+					reg->ext_watch_state, reg->ext_watch_rtc_ctst,
 					status.cur_hour, status.cur_min, status.cur_sec,
 	 				rtc_ctst->hour, rtc_ctst->min, rtc_ctst->sec);
 
 	if (buf) {
 		memcpy(&buf[buflen], log, loglen);
 		buflen += loglen;
-	} else {
-		t_watch_warn(dev, "get curr time: NULL buffer");
 	}
 	t_watch_info(dev, "%s", log);
 
@@ -578,40 +702,48 @@ out:
 static int ext_watch_set_mode(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
-	struct siw_ts *ts = chip->ts;
+//	struct siw_ts *ts = chip->ts;
 	struct siw_hal_reg *reg = chip->reg;
 	struct watch_data *watch = (struct watch_data *)chip->watch;
 	struct ext_watch_cfg_mode *mode = &watch->ext_wdata.mode;
+	u8 *ptr = NULL;
+	u32 val;
 	int ret;
 
 	mode->watch_ctrl.alpha = 1; /* bypass foreground */
 
-	{
-		struct touch_xfer_msg *xfer = ts->xfer;
-
-		siw_hal_xfer_init(dev, xfer);
-
-		siw_hal_xfer_add_tx(xfer,
-				reg->ext_watch_ctrl,
-				(u8 *)&mode->watch_ctrl, sizeof(u32));
-
-		siw_hal_xfer_add_tx(xfer,
-				reg->ext_watch_area_x,
-				(u8 *)&mode->watch_area_x, sizeof(u32));
-
-		siw_hal_xfer_add_tx(xfer,
-				reg->ext_watch_area_y,
-				(u8 *)&mode->watch_area_y, sizeof(u32));
-
-		siw_hal_xfer_add_tx(xfer,
-				reg->ext_watch_blink_area,
-				(u8 *)&mode->blink_area, sizeof(u32));
-
-		siw_hal_xfer_add_tx(xfer,
-				reg->ext_watch_lut,
-				(u8 *)&mode->lut, sizeof(u32) * EXT_WATCH_LUT_NUM);
+	ptr = (u8 *)&mode->watch_ctrl;
+	val = (ptr[1]<<8) | ptr[0];
+	ret = siw_hal_write_value(dev, reg->ext_watch_ctrl, val);
+	if (ret < 0) {
+		goto out;
 	}
-	ret = siw_hal_xfer_msg(dev, ts->xfer);
+
+	ptr = (u8 *)&mode->watch_area_x;
+	val = (ptr[2]<<16) | (ptr[1]<<8) | ptr[0];
+	ret = siw_hal_write_value(dev, reg->ext_watch_area_x, val);
+	if (ret < 0) {
+		goto out;
+	}
+
+	ptr = (u8 *)&mode->watch_area_y;
+	val = (ptr[2]<<16) | (ptr[1]<<8) | ptr[0];
+	ret = siw_hal_write_value(dev, reg->ext_watch_area_y, val);
+	if (ret < 0) {
+		goto out;
+	}
+
+	ptr = (u8 *)&mode->blink_area;
+	val = (ptr[2]<<16) | (ptr[1]<<8) | ptr[0];
+	ret = siw_hal_write_value(dev, reg->ext_watch_blink_area, val);
+	if (ret < 0) {
+		goto out;
+	}
+
+	ret = siw_hal_reg_write(dev,
+				reg->ext_watch_lut,
+				(void *)&mode->lut,
+				sizeof(u32) * EXT_WATCH_LUT_NUM);
 	if (ret < 0) {
 		goto out;
 	}
@@ -653,15 +785,15 @@ static int ext_watch_set_curr_time(struct device *dev)
 
 		siw_hal_xfer_add_tx(xfer,
 				reg->ext_watch_rtc_sct,
-				(u8 *)&time->rtc_sct, sizeof(u32));
+				(void *)&time->rtc_sct, sizeof(u32));
 
 		siw_hal_xfer_add_tx(xfer,
 				reg->ext_watch_rtc_sctcnt,
-				(u8 *)&time->rtc_sctcnt, sizeof(u32));
+				(void *)&time->rtc_sctcnt, sizeof(u32));
 
 		siw_hal_xfer_add_tx(xfer,
 				reg->ext_watch_rtc_ecnt,
-				(u8 *)&rtc_ctrl, sizeof(u32));
+				(void *)&rtc_ctrl, sizeof(u32));
 	}
 	ret = siw_hal_xfer_msg(dev, ts->xfer);
 	if (ret < 0) {
@@ -1132,8 +1264,6 @@ static int ext_watch_get_dic_st(struct device *dev, char *buf, int *len)
 	if (buf) {
 		memcpy(&buf[buflen], log, loglen);
 		buflen += loglen;
-	} else {
-		t_watch_warn(dev, "get dic st: NULL buffer");
 	}
 	t_watch_info(dev, "%s", log);
 
@@ -1291,7 +1421,7 @@ static ssize_t store_ext_watch_config_font_effect(struct device *dev,
 	//	cfg.clock_disp_type = 0;
 	//	cfg.midnight_hour_zero_en = 0;
 		cfg.blink.blink_type = 3;
-		cfg.blink.bstartx = winx + (2<<4) + 8;
+		cfg.blink.bstartx = winx + (2<<4) + 4;
 		cfg.blink.bendx = cfg.blink.bstartx + 8;
 		cfg.watchon = 1;
 	} else {
@@ -1351,6 +1481,88 @@ static ssize_t store_ext_watch_config_font_effect(struct device *dev,
 	return count;
 }
 
+static int __ext_watch_chk_font_pos_range(struct device *dev,
+				u32 sx, u32 ex, u32 tx, u32 tx_max, char *name)
+{
+	if (tx >= tx_max) {
+		t_watch_err(dev, "invalid %s, %d >= %d(max)", name, tx, tx_max);
+		return -EINVAL;
+	}
+	if (tx < sx) {
+		t_watch_err(dev, "invalid %s, %d < %d(sx)", name, tx, sx);
+		return -EINVAL;
+	}
+	if (tx >= ex) {
+		t_watch_err(dev, "invalid %s, %d >= %d(ex)", name, tx, ex);
+		return -EINVAL;
+	}
+	return 0;
+}
+
+static int __ext_watch_chk_font_pos(struct device *dev,
+				struct ext_watch_config_font_pos *cfg)
+{
+	int ret = 0;
+
+	ret = __ext_watch_chk_font_pos_range(dev,
+				cfg->watstartx, cfg->watendx,
+				cfg->h10x_pos, POS_MAX_H10X,
+				"h10x_pos");
+	if (ret < 0) {
+		goto out;
+	}
+
+	ret = __ext_watch_chk_font_pos_range(dev,
+					cfg->watstartx, cfg->watendx,
+					cfg->h1x_pos, POS_MAX_H1X,
+					"h1x_pos");
+	if (ret < 0) {
+		goto out;
+	}
+
+	ret = __ext_watch_chk_font_pos_range(dev,
+					cfg->watstartx, cfg->watendx,
+					cfg->m10x_pos, POS_MAX_M10X,
+					"m10x_pos");
+	if (ret < 0) {
+		goto out;
+	}
+
+	ret = __ext_watch_chk_font_pos_range(dev,
+					cfg->watstartx, cfg->watendx,
+					cfg->m1x_pos, POS_MAX_M1X,
+					"m1x_pos");
+	if (ret < 0) {
+		goto out;
+	}
+
+	ret = __ext_watch_chk_font_pos_range(dev,
+					cfg->watstartx, cfg->watendx,
+					cfg->clx_pos, POS_MAX_CLX,
+					"clx_pos");
+	if (ret < 0) {
+		goto out;
+	}
+
+	return 0;
+
+out:
+	t_watch_err(dev,
+			"  set area: sx %d, ex %d, sy %d, ey %d\n",
+			cfg->watstartx,
+			cfg->watendx,
+			cfg->watstarty,
+			cfg->watendy);
+	t_watch_err(dev,
+			"  set position: h10x %d, h1x %d, m10x %d, m1x %d, c1x %d\n",
+			cfg->h10x_pos,
+			cfg->h1x_pos,
+			cfg->m10x_pos,
+			cfg->m1x_pos,
+			cfg->clx_pos);
+	return -EINVAL;;
+}
+
 static ssize_t store_ext_watch_config_font_position(struct device *dev,
 					const char *buf, size_t count)
 {
@@ -1359,7 +1571,7 @@ static ssize_t store_ext_watch_config_font_position(struct device *dev,
 	struct watch_data *watch = (struct watch_data *)chip->watch;
 	struct ext_watch_cfg_mode *mode = &watch->ext_wdata.mode;
 	struct ext_watch_cfg_position *position = &watch->ext_wdata.position;
-	struct ext_watch_config_font_position cfg;
+	struct ext_watch_config_font_pos cfg;
 	struct reset_area *watch_win = pdata_watch_win(ts->pdata);
 	int ret = 0;
 
@@ -1389,6 +1601,11 @@ static ssize_t store_ext_watch_config_font_position(struct device *dev,
 		cfg.m1x_pos =  winx + (4<<4);
 	} else {
 		memcpy((char *)&cfg, buf, sizeof(cfg));
+	}
+
+	ret = __ext_watch_chk_font_pos(dev, &cfg);
+	if (ret < 0) {
+		goto out;
 	}
 
 	mode->watch_area_x.watstart = cfg.watstartx;
@@ -1441,7 +1658,7 @@ static ssize_t store_ext_watch_config_font_property(struct device *dev,
 	struct watch_data *watch = (struct watch_data *)chip->watch;
 	struct ext_watch_cfg_mode *mode = &watch->ext_wdata.mode;
 	struct ext_watch_bits_lut *lut;
-	struct ext_watch_config_font_property cfg;
+	struct ext_watch_config_font_prop cfg;
 	struct ext_watch_config_font_lut *lut_src;
 	char log[FONT_TEMP_LOG_SZ] = {0, };
 	int loglen = 0;
@@ -1455,6 +1672,8 @@ static ssize_t store_ext_watch_config_font_property(struct device *dev,
 
 	if (buf[0] == EXT_WATCH_CFG_DEFAULT) {	//for the case of using echo command
 		memset((char *)&cfg, 0, sizeof(cfg));
+
+		cfg.max_num = EXT_WATCH_LUT_NUM;
 	} else {
 		memcpy((char *)&cfg, buf, sizeof(cfg));
 	}
@@ -1693,7 +1912,7 @@ static ssize_t show_ext_watch_setting(struct device *dev, char *buf)
 
 	t_watch_dbg(dev, "show watch setting\n");
 
-	//ext_watch_get_mode(dev, buf, &len);
+	ext_watch_get_mode(dev, buf, &len);
 	ext_watch_get_position(dev, buf, &len);
 	ext_watch_get_curr_time(dev, buf, &len);
 	ext_watch_get_dic_st(dev, buf, &len);
