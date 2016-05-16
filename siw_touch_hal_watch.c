@@ -747,11 +747,12 @@ static int ext_watch_set_mode(struct device *dev)
 	struct siw_hal_reg *reg = chip->reg;
 	struct watch_data *watch = (struct watch_data *)chip->watch;
 	struct ext_watch_cfg_mode *mode = &watch->ext_wdata.mode;
+	struct ext_watch_cfg_position *position = &watch->ext_wdata.position;
 	u8 *ptr = NULL;
 	u32 val;
 	int ret;
 
-	mode->watch_ctrl.alpha = 1; /* bypass foreground */
+	mode->watch_ctrl.alpha = !!position->bhprd;	/* bypass foreground */
 
 	ptr = (u8 *)&mode->watch_ctrl;
 	val = (ptr[1]<<8) | ptr[0];
@@ -1375,13 +1376,14 @@ static ssize_t store_ext_watch_config_font_effect(struct device *dev,
 		 			const char *buf, size_t count)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
 	struct watch_data *watch = (struct watch_data *)chip->watch;
 	struct ext_watch_cfg_mode *mode = &watch->ext_wdata.mode;
 	struct ext_watch_cfg_time *time = &watch->ext_wdata.time;
 	struct ext_watch_cfg_position *position = &watch->ext_wdata.position;
 	struct ext_watch_config_font_effect cfg;
 	char period[16];
-	int blink_type;
+	int blink_type, blink_max, blink_boundary, blink_unit;
 
 	if (atomic_read(&chip->block_watch_cfg) == BLOCKED) {
 		t_watch_err(dev, "store font effect blocked\n");
@@ -1389,7 +1391,6 @@ static ssize_t store_ext_watch_config_font_effect(struct device *dev,
 	}
 
 	if (buf[0] == EXT_WATCH_CFG_DEFAULT) {	//for the case of using echo command
-		struct siw_ts *ts = chip->ts;
 		struct reset_area *watch_win = pdata_watch_win(ts->pdata);
 		u32 winx;
 
@@ -1414,30 +1415,38 @@ static ssize_t store_ext_watch_config_font_effect(struct device *dev,
 
 	blink_type = cfg.blink.blink_type;
 
-	switch (blink_type) {
-	case 7:
-		/* fall through */
-	case 6:
-		/* fall through */
-	case 5:
-		/* fall through */
-	case 4:
-		snprintf(period, sizeof(period), "%d s",
-			1<<(blink_type - 4));
+	switch (touch_chip_type(ts)) {
+	case CHIP_LG4946:
+		/*
+		 * 2:1s, 3:2s
+		 * 1:500ms
+		 */
+		blink_max = 3;
+		blink_boundary = 2;
+		blink_unit = 500;
 		break;
-
-	case 3:
-		/* fall through */
-	case 2:
-		/* fall through */
-	case 1:
-		snprintf(period, sizeof(period), "%d ms",
-			(1<<(blink_type - 1))*125);
-		break;
-
 	default:
-		snprintf(period, sizeof(period), "off");
+		/*
+		 * 4:1s, 5:2s, 6:4s, 7:8s
+		 * 1:125ms, 2:250ms, 3:500ms
+		 */
+		blink_max = 7;
+		blink_boundary = 4;
+		blink_unit = 125;
 		break;
+	}
+
+	if (blink_type > blink_max)
+		blink_type = blink_max;
+
+	if (blink_type >= blink_boundary) {
+		snprintf(period, sizeof(period), "%d s",
+			1<<(blink_type - blink_boundary));
+	} else if (blink_type) {
+		snprintf(period, sizeof(period), "%d ms",
+			(1<<(blink_type - 1))*blink_unit);
+	} else {
+		snprintf(period, sizeof(period), "off");
 	}
 
 	position->h24_en = cfg.h24_en;
