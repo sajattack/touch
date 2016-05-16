@@ -156,7 +156,7 @@ static const struct siw_hal_swipe_ctrl chip_swipe_info = {
 };
 
 static const struct reset_area chip_watch_win_range = {
-	.x1	= 520,
+	.x1	= 320,
 	.y1 = 0,
 	.x2 = 720,
 	.y2 = 80,

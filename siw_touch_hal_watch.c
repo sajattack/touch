@@ -30,6 +30,10 @@
 #define SIW_FONT_MAGIC_CODE_SIZE	(4)
 
 enum {
+	EXT_WATCH_CFG_DEFAULT = 'd',
+};
+
+enum {
 	EXT_WATCH_LUT_MAX	= 7,
 	EXT_WATCH_LUT_NUM	= 7,
 };
@@ -105,9 +109,9 @@ __packed struct ext_watch_query_font_effect {
 };
 
 struct ext_watch_config_font_effect_blink {
-	u32	blink_type; /* 0:blink disable, 1:500ms, 2:1sec, 3:2sec. */
-	u32	bstartx; /* blink startx.watstartx<=bstartx, bstartx<=bendx */
-	u32	bendx; /* blink end position. bendx <= watendx */
+	u32	blink_type; /* 0:off, 1:125ms, 2:250ms, 3:500ms, 4:1s, 5:2sec. 6:4s, 7:8s */
+	u32	bstartx; /* blink startx: watstartx <= bstartx <= bendx */
+	u32	bendx; /* blink end: bendx <= watendx */
 };
 
 struct ext_watch_config_font_effect {
@@ -143,7 +147,7 @@ struct ext_watch_config_font_position {
 	u32	h10x_pos;	/* 10, 20 hour position */
 	u32	m1x_pos;	/* 1 ~ 9min position */
 	u32	m10x_pos;	/* 10 ~ 50 min position */
-	u32	clx_pos;	/* 1 ~ 60 second position */
+	u32	clx_pos;	/* colon position */
 };
 
 struct ext_watch_config_time_sync {	/* to sync with AP's current time */
@@ -210,18 +214,23 @@ __packed struct ext_watch_cfg_position {	/* 0xC11 */
 	u32 h10x_pos:9;
 	u32 h1x_pos:9;
 	u32 reserved0:14;
+	/* */
 	u32 m10x_pos:9;
 	u32 m1x_pos:9;
 	u32 reserved1:14;
+	/* */
 	u32 clx_pos:9;
 	u32 reserved2:23;
+	/* */
 	u32 zero_disp:1;
 	u32 h24_en:1;
 	u32 clock_disp_mode:1;
 	u32 midnight_hour_zero_en:1;
 	u32 reserved3:28;
+	/* */
 	u32 bhprd:3;
 	u32 reserved4:29;
+	/* */
 	u32 num_width:8;
 	u32 colon_width:8;
 	u32 height:8;
@@ -566,7 +575,6 @@ out:
 	return ret;
 }
 
-#if 0
 static int ext_watch_set_mode(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
@@ -576,28 +584,30 @@ static int ext_watch_set_mode(struct device *dev)
 	struct ext_watch_cfg_mode *mode = &watch->ext_wdata.mode;
 	int ret;
 
+	mode->watch_ctrl.alpha = 1; /* bypass foreground */
+
 	{
 		struct touch_xfer_msg *xfer = ts->xfer;
 
 		siw_hal_xfer_init(dev, xfer);
 
-		siw_hal_xfer_add_rx(xfer,
+		siw_hal_xfer_add_tx(xfer,
 				reg->ext_watch_ctrl,
 				(u8 *)&mode->watch_ctrl, sizeof(u32));
 
-		siw_hal_xfer_add_rx(xfer,
+		siw_hal_xfer_add_tx(xfer,
 				reg->ext_watch_area_x,
 				(u8 *)&mode->watch_area_x, sizeof(u32));
 
-		siw_hal_xfer_add_rx(xfer,
+		siw_hal_xfer_add_tx(xfer,
 				reg->ext_watch_area_y,
 				(u8 *)&mode->watch_area_y, sizeof(u32));
 
-		siw_hal_xfer_add_rx(xfer,
+		siw_hal_xfer_add_tx(xfer,
 				reg->ext_watch_blink_area,
 				(u8 *)&mode->blink_area, sizeof(u32));
 
-		siw_hal_xfer_add_rx(xfer,
+		siw_hal_xfer_add_tx(xfer,
 				reg->ext_watch_lut,
 				(u8 *)&mode->lut, sizeof(u32) * EXT_WATCH_LUT_NUM);
 	}
@@ -606,13 +616,14 @@ static int ext_watch_set_mode(struct device *dev)
 		goto out;
 	}
 
+	t_watch_info(dev, "set mode: done\n");
+
 	return 0;
 
 out:
 	t_watch_err(dev, "set mode: failed, %d\n", ret);
 	return ret;
 }
-#endif
 
 static int ext_watch_set_curr_time(struct device *dev)
 {
@@ -663,10 +674,10 @@ static int ext_watch_set_curr_time(struct device *dev)
 	}
 
 	t_watch_info(dev, "set time : %02d:%02d:%02d, clk[%d Hz]\n",
-		 time->rtc_sct.hour,
-		 time->rtc_sct.min,
-		 time->rtc_sct.sec,
-		 time->rtc_ecnt);
+		time->rtc_sct.hour,
+		time->rtc_sct.min,
+		time->rtc_sct.sec,
+		time->rtc_ecnt);
 
 	atomic_set(&watch->state.rtc_status, RTC_RUN);
 
@@ -686,6 +697,12 @@ static int ext_watch_set_position(struct device *dev, char log)
 	struct ext_watch_cfg_position *position = &watch->ext_wdata.position;
 //	u8 *ptr = (u8 *)position;
 	int ret = 0;
+
+	if (chip->lcd_mode != LCD_MODE_U3) {
+		t_watch_info(dev, "lcd mode is %s, skip\n",
+			siw_lcd_driving_mode_str(chip->lcd_mode));
+		return 0;
+	}
 
 	ret = siw_hal_reg_write(dev,
 				reg->ext_watch_position,
@@ -1060,8 +1077,17 @@ static int ext_watch_set_cfg(struct device *dev, char log)
 {
 	int ret = 0;
 
-	ret = ext_watch_set_position(dev, log);
+	ret = ext_watch_set_mode(dev);
+	if (ret < 0) {
+		goto out;
+	}
 
+	ret = ext_watch_set_position(dev, log);
+	if (ret < 0) {
+		goto out;
+	}
+
+out:
 	return ret;
 }
 
@@ -1157,16 +1183,24 @@ static ssize_t store_ext_watch_block_cfg(struct device *dev,
 		 const char *buf, size_t count)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
-	u8 buf_val, value;
-	u8 zero = '0';
+	u8 buf_val, buf_val_org, value;
 
 	buf_val = buf[0];
-	value = !((buf_val == UNBLOCKED) || (buf_val == zero));
+	buf_val_org = buf_val;
+	if (buf_val >= '0')
+		buf_val -= '0';
+	if (buf_val > BLOCKED) {
+		t_watch_err(dev, "invalid param, %d\n", buf_val_org);
+		goto out;
+	};
+
+	value = buf_val;
 
 	atomic_set(&chip->block_watch_cfg, value);
 
 	t_watch_info(dev, "%s\n", (value)? "BLOCKED" : "UNBLOCKED");
 
+out:
 	return count;
 }
 
@@ -1176,8 +1210,7 @@ static ssize_t store_ext_watch_font_onoff(struct device *dev,
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
 	struct watch_data *watch = (struct watch_data *)chip->watch;
-	u8 buf_val, value;
-	u8 zero = '0';
+	u8 buf_val, buf_val_org, value;
 	int ret = 0;
 
 	if (atomic_read(&chip->block_watch_cfg) == BLOCKED) {
@@ -1188,7 +1221,11 @@ static ssize_t store_ext_watch_font_onoff(struct device *dev,
 	mutex_lock(&ts->lock);
 
 	buf_val = buf[0];
-	value = !((buf_val == POWER_OFF) || (buf_val == zero));
+	buf_val_org = buf_val;
+	if (buf_val >= '0')
+		buf_val -= '0';
+
+	value = !!buf_val;
 
 	ret = ext_watch_set_cfg(dev, 1);
 	if (ret < 0) {
@@ -1204,6 +1241,313 @@ static ssize_t store_ext_watch_font_onoff(struct device *dev,
 		goto out;
 	}
 
+	t_watch_info(dev, "Power %s\n", (value)? "ON" : "OFF" );
+
+	ret = count;
+
+out:
+	mutex_unlock(&ts->lock);
+	return ret;
+}
+
+static const struct reset_area watch_win_default = {
+	.x1	= 320,
+	.y1 = 0,
+	.x2 = 720,
+	.y2 = 80,
+};
+
+static ssize_t store_ext_watch_config_font_effect(struct device *dev,
+		 			const char *buf, size_t count)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct watch_data *watch = (struct watch_data *)chip->watch;
+	struct ext_watch_cfg_mode *mode = &watch->ext_wdata.mode;
+	struct ext_watch_cfg_time *time = &watch->ext_wdata.time;
+	struct ext_watch_cfg_position *position = &watch->ext_wdata.position;
+	struct ext_watch_config_font_effect cfg;
+	char period[16];
+	int blink_type;
+
+	if (atomic_read(&chip->block_watch_cfg) == BLOCKED) {
+		t_watch_err(dev, "store font effect blocked\n");
+		return __ret_val_blocked(count);
+	}
+
+	if (buf[0] == EXT_WATCH_CFG_DEFAULT) {	//for the case of using echo command
+		struct siw_ts *ts = chip->ts;
+		struct reset_area *watch_win = pdata_watch_win(ts->pdata);
+		u32 winx;
+
+		if (!watch_win) {
+			watch_win = (struct reset_area *)&watch_win_default;
+		}
+		winx = watch_win->x1;
+
+		memset((char *)&cfg, 0, sizeof(cfg));
+
+	//	cfg.h24_en = 0;
+	//	cfg.zero_disp = 0;
+	//	cfg.clock_disp_type = 0;
+	//	cfg.midnight_hour_zero_en = 0;
+		cfg.blink.blink_type = 3;
+		cfg.blink.bstartx = winx + (2<<4) + 8;
+		cfg.blink.bendx = cfg.blink.bstartx + 8;
+		cfg.watchon = 1;
+	} else {
+		memcpy((char *)&cfg, buf, sizeof(cfg));
+	}
+
+	blink_type = cfg.blink.blink_type;
+
+	switch (blink_type) {
+	case 7:
+		/* fall through */
+	case 6:
+		/* fall through */
+	case 5:
+		/* fall through */
+	case 4:
+		snprintf(period, sizeof(period), "%d s",
+			1<<(blink_type - 4));
+		break;
+
+	case 3:
+		/* fall through */
+	case 2:
+		/* fall through */
+	case 1:
+		snprintf(period, sizeof(period), "%d ms",
+			(1<<(blink_type - 1))*125);
+		break;
+
+	default:
+		snprintf(period, sizeof(period), "off");
+		break;
+	}
+
+	position->h24_en = cfg.h24_en;
+	position->zero_disp = cfg.zero_disp;
+	position->clock_disp_mode = cfg.clock_disp_type;
+	position->midnight_hour_zero_en = cfg.midnight_hour_zero_en;
+	position->bhprd = blink_type;
+
+	mode->blink_area.bstartx = cfg.blink.bstartx;
+	mode->blink_area.bendx = cfg.blink.bendx;
+
+	time->disp_waton = cfg.watchon;
+
+	t_watch_info(dev,
+		"24h mode %s, zero dispaly %s, %s type, %s mode\n",
+		(cfg.h24_en) ? "on" : "off",
+		(cfg.zero_disp) ? "on" : "off",
+		(cfg.clock_disp_type) ? "MM:SS" : "HH:MM",
+		(cfg.midnight_hour_zero_en) ? "00:00" : "12:00");
+	t_watch_info(dev,
+		"blink area [%d , %d] period %s, watch display %s\n",
+		cfg.blink.bstartx, cfg.blink.bendx, period,
+		(time->disp_waton)? "on" : "off");
+
+	return count;
+}
+
+static ssize_t store_ext_watch_config_font_position(struct device *dev,
+					const char *buf, size_t count)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	struct watch_data *watch = (struct watch_data *)chip->watch;
+	struct ext_watch_cfg_mode *mode = &watch->ext_wdata.mode;
+	struct ext_watch_cfg_position *position = &watch->ext_wdata.position;
+	struct ext_watch_config_font_position cfg;
+	struct reset_area *watch_win = pdata_watch_win(ts->pdata);
+	int ret = 0;
+
+	if (atomic_read(&chip->block_watch_cfg) == BLOCKED) {
+		t_watch_err(dev, "store font position blocked\n");
+		return __ret_val_blocked(count);
+	}
+
+	if (!watch_win) {
+		watch_win = (struct reset_area *)&watch_win_default;
+	}
+
+	if (buf[0] == EXT_WATCH_CFG_DEFAULT) {	//for the case of using echo command
+		u32 winx = watch_win->x1;
+
+		memset((char *)&cfg, 0, sizeof(cfg));
+
+		cfg.watstartx = watch_win->x1;
+		cfg.watendx = watch_win->x2;
+		cfg.watstarty = watch_win->y1;
+		cfg.watendy = watch_win->y2;
+
+		cfg.h10x_pos =  winx + (0<<4);
+		cfg.h1x_pos =  winx + (1<<4);
+		cfg.clx_pos =  winx + (2<<4) + 4;
+		cfg.m10x_pos =  winx + (3<<4);
+		cfg.m1x_pos =  winx + (4<<4);
+	} else {
+		memcpy((char *)&cfg, buf, sizeof(cfg));
+	}
+
+	mode->watch_area_x.watstart = cfg.watstartx;
+	mode->watch_area_x.watend = cfg.watendx;
+	mode->watch_area_y.watstart = cfg.watstarty;
+	mode->watch_area_y.watend = cfg.watendy;
+
+	position->h10x_pos = cfg.h10x_pos;
+	position->h1x_pos = cfg.h1x_pos;
+	position->m10x_pos = cfg.m10x_pos;
+	position->m1x_pos = cfg.m1x_pos;
+	position->clx_pos = cfg.clx_pos;
+
+	if ((cfg.watstartx < watch_win->x1) || (cfg.watendx > watch_win->x2) ||
+		(cfg.watstarty <  watch_win->y1) || (cfg.watendy > watch_win->y2)) {
+		t_watch_err(dev, "check the position. (invalid range)\n");
+		ret = -EINVAL;
+	}
+
+	t_watch_info(dev,
+			"watch area: sx %d, ex %d, sy %d, ey %d\n",
+			mode->watch_area_x.watstart,
+			mode->watch_area_x.watend,
+			mode->watch_area_y.watstart,
+			mode->watch_area_y.watend);
+	t_watch_info(dev,
+			"watch position: h10x %d, h1x %d, m10x %d, m1x %d, c1x %d\n",
+			position->h10x_pos,
+			position->h1x_pos,
+			position->m10x_pos,
+			position->m1x_pos,
+			position->clx_pos);
+
+	if (ret < 0)
+		goto out;
+
+	siw_touch_blocking_notifier_call(LCD_EVENT_TOUCH_WATCH_POS_UPDATE, (void*)(&cfg));
+
+	ret = count;
+
+out:
+	return ret;
+}
+
+static ssize_t store_ext_watch_config_font_property(struct device *dev,
+ 					const char *buf, size_t count)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+//	struct siw_ts *ts = chip->ts;
+	struct watch_data *watch = (struct watch_data *)chip->watch;
+	struct ext_watch_cfg_mode *mode = &watch->ext_wdata.mode;
+	struct ext_watch_bits_lut *lut;
+	struct ext_watch_config_font_property cfg;
+	struct ext_watch_config_font_lut *lut_src;
+	char log[FONT_TEMP_LOG_SZ] = {0, };
+	int loglen = 0;
+	int idx = 0;
+//	int ret = 0;
+
+	if (atomic_read(&chip->block_watch_cfg) == BLOCKED) {
+		t_watch_err(dev, "store font property blocked\n");
+		return __ret_val_blocked(count);
+	}
+
+	if (buf[0] == EXT_WATCH_CFG_DEFAULT) {	//for the case of using echo command
+		memset((char *)&cfg, 0, sizeof(cfg));
+	} else {
+		memcpy((char *)&cfg, buf, sizeof(cfg));
+	}
+
+	loglen += siw_watch_snprintf(log, FONT_TEMP_LOG_SZ, loglen,
+				"lut[%d] ", cfg.max_num);
+
+	lut = mode->lut;
+	lut_src = cfg.lut;
+	for (idx = 0; idx < (int)cfg.max_num; idx++) {
+		lut->b = lut_src->rgb_blue;
+		lut->g = lut_src->rgb_green;
+		lut->r = lut_src->rgb_red;
+
+		loglen += siw_watch_snprintf(log, FONT_TEMP_LOG_SZ, loglen,
+					"%d:%02X%02X%02X ",
+					idx + 1,
+					lut_src->rgb_blue,
+					lut_src->rgb_green,
+					lut_src->rgb_red);
+
+		lut++;
+		lut_src++;
+	}
+
+	t_watch_info(dev, "%s\n", log);
+
+	siw_touch_blocking_notifier_call(LCD_EVENT_TOUCH_WATCH_LUT_UPDATE, (void*)(&cfg));
+
+	return count;
+}
+
+
+static ssize_t store_ext_watch_config_time_sync(struct device *dev,
+					const char *buf, size_t count)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	struct watch_data *watch = (struct watch_data *)chip->watch;
+	struct ext_watch_cfg_time *time = &watch->ext_wdata.time;
+	struct ext_watch_config_time_sync cfg;
+	int ret = 0;
+
+	if (atomic_read(&chip->block_watch_cfg) == BLOCKED) {
+		t_watch_err(dev, "store time sync blocked\n");
+		return __ret_val_blocked(count);
+	}
+
+	mutex_lock(&ts->lock);
+
+	t_watch_dbg(dev, "store config type sync\n");
+
+	if (buf[0] == EXT_WATCH_CFG_DEFAULT) {	//for the case of using echo command
+		struct timespec my_time;
+		struct tm my_date;
+
+		my_time = current_kernel_time();
+		time_to_tm(my_time.tv_sec,
+				sys_tz.tz_minuteswest * 60 * (-1),
+				&my_date);
+
+		t_watch_info(dev, "get system time\n");
+
+		memset((char *)&cfg, 0, sizeof(cfg));
+
+		cfg.rtc_cwhour = my_date.tm_hour;
+		cfg.rtc_cwmin = my_date.tm_min;
+		cfg.rtc_cwsec = my_date.tm_sec;
+		cfg.rtc_cwmilli = my_time.tv_nsec/1000000;
+	} else {
+		memcpy((char *)&cfg, buf, sizeof(cfg));
+	}
+
+	time->rtc_sct.hour = cfg.rtc_cwhour;
+	time->rtc_sct.min = cfg.rtc_cwmin;
+	time->rtc_sct.sec = cfg.rtc_cwsec;
+	time->rtc_sctcnt = cfg.rtc_cwmilli;
+
+	ret = ext_watch_set_curr_time(dev);
+	if (ret < 0) {
+		goto out;
+	}
+
+	ret = ext_watch_get_curr_time(dev, NULL, NULL);
+	if (ret < 0) {
+		goto out;
+	}
+
+	ret = ext_watch_display_onoff(dev, 1);
+	if (ret < 0) {
+		goto out;
+	}
+
 	ret = count;
 
 out:
@@ -1213,14 +1557,27 @@ out:
 
 static ssize_t show_ext_watch_query_font_data(struct device *dev, char *buf)
 {
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
 	struct ext_watch_query_font_data query;
 	ssize_t size = sizeof(struct ext_watch_query_font_data);
 
 	query.Font_supported = SUPPORT;
-	query.max_font_x_size = 255;
-	query.max_font_y_size = 184;
-	query.max_cln_x_size = 255;
-	query.max_cln_y_size = 48;
+
+	switch (touch_chip_type(ts)) {
+	case CHIP_LG4946:
+		query.max_font_x_size = 255;
+		query.max_font_y_size = 184;
+		query.max_cln_x_size = 255;
+		query.max_cln_y_size = 48;
+		break;
+	default:
+		query.max_font_x_size = 160;
+		query.max_font_y_size = 64;
+		query.max_cln_x_size = 160;
+		query.max_cln_y_size = 24;
+		break;
+	};
 
 	memcpy(buf, (void *)&query, size);
 
@@ -1229,13 +1586,45 @@ static ssize_t show_ext_watch_query_font_data(struct device *dev, char *buf)
 
 static ssize_t show_ext_watch_query_font_position(struct device *dev, char *buf)
 {
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	struct watch_data *watch = (struct watch_data *)chip->watch;
+	struct ext_watch_cfg_mode *mode = &watch->ext_wdata.mode;
+	struct ext_watch_cfg_position *position = &watch->ext_wdata.position;
 	struct ext_watch_query_font_position query;
 	ssize_t size = sizeof(struct ext_watch_query_font_position);
 
-	query.vertical_position_supported = SUPPORT;
+	switch (touch_chip_type(ts)) {
+	case CHIP_LG4946:
+		query.vertical_position_supported = SUPPORT;
+		break;
+	default:
+		query.vertical_position_supported = NOT_SUPPORT;
+		break;
+	}
 	query.horizontal_position_supported = SUPPORT;
 
 	memcpy(buf, (void *)&query, size);
+
+	t_watch_info(dev,
+			"watch area: sx %d, ex %d, sy %d, ey %d\n",
+			mode->watch_area_x.watstart,
+			mode->watch_area_x.watend,
+			mode->watch_area_y.watstart,
+			mode->watch_area_y.watend);
+
+	t_watch_info(dev,
+			"blink area: sx %d, ex %d\n",
+			mode->blink_area.bstartx,
+			mode->blink_area.bendx);
+
+	t_watch_info(dev,
+			"watch pos: h10x %d, h1x %d, m10x %d, m1x %d, c1x %d\n",
+			position->h10x_pos,
+			position->h1x_pos,
+			position->m10x_pos,
+			position->m1x_pos,
+			position->clx_pos);
 
 	return size;
 }
@@ -1297,238 +1686,6 @@ static ssize_t show_ext_watch_curr_time(struct device *dev, char *buf)
 	return len;
 }
 
-static ssize_t store_ext_watch_config_font_effect(struct device *dev,
-		 			const char *buf, size_t count)
-{
-	struct siw_touch_chip *chip = to_touch_chip(dev);
-//	struct siw_ts *ts = chip->ts;
-	struct watch_data *watch = (struct watch_data *)chip->watch;
-	struct ext_watch_cfg_mode *mode = &watch->ext_wdata.mode;
-	struct ext_watch_cfg_time *time = &watch->ext_wdata.time;
-	struct ext_watch_cfg_position *position = &watch->ext_wdata.position;
-	struct ext_watch_config_font_effect cfg;
-	char *period;
-
-	if (atomic_read(&chip->block_watch_cfg) == BLOCKED) {
-		t_watch_err(dev, "store font effect blocked\n");
-		return __ret_val_blocked(count);
-	}
-
-	memcpy((char *)&cfg, buf, sizeof(struct ext_watch_config_font_effect));
-
-	position->h24_en = cfg.h24_en;
-	position->zero_disp = cfg.zero_disp;
-	position->clock_disp_mode = cfg.clock_disp_type;
-	position->midnight_hour_zero_en = cfg.midnight_hour_zero_en;
-	position->bhprd = cfg.blink.blink_type;
-
-	mode->blink_area.bstartx = cfg.blink.bstartx;
-	mode->blink_area.bendx = cfg.blink.bendx;
-
-	time->disp_waton = cfg.watchon;
-
-	switch (cfg.blink.blink_type) {
-	case 3:
-		period = "2 sec";
-		break;
-	case 2:
-		period = "1 sec";
-		break;
-	case 1:
-		period = "0.5 sec";
-		break;
-	case 0:
-		/* fall through */
-	default:
-		period = "off";
-		break;
-	}
-
-	t_watch_info(dev,
-		"24h mode %s, Zero Dispaly %s,%s Type %s mode "
-		"blink area [%d , %d] Period %s "
-		"watch display on/off : %s\n",
-		(cfg.h24_en) ? "on" : "off",
-		(cfg.zero_disp) ? "on" : "off",
-		(cfg.clock_disp_type) ? "MM:SS" : "HH:MM",
-		(cfg.midnight_hour_zero_en) ? "00:00" : "12:00",
-		cfg.blink.bstartx, cfg.blink.bendx, period,
-		(time->disp_waton)? "on" : "off");
-
-	return count;
-}
-
-static ssize_t store_ext_watch_config_font_property(struct device *dev,
- 					const char *buf, size_t count)
-{
-	struct siw_touch_chip *chip = to_touch_chip(dev);
-//	struct siw_ts *ts = chip->ts;
-	struct watch_data *watch = (struct watch_data *)chip->watch;
-	struct ext_watch_cfg_mode *mode = &watch->ext_wdata.mode;
-	struct ext_watch_bits_lut *lut;
-	struct ext_watch_config_font_property cfg;
-	struct ext_watch_config_font_lut *lut_src;
-	char log[FONT_TEMP_LOG_SZ] = {0, };
-	int loglen = 0;
-	int idx = 0;
-//	int ret = 0;
-
-	if (atomic_read(&chip->block_watch_cfg) == BLOCKED) {
-		t_watch_err(dev, "store font property blocked\n");
-		return __ret_val_blocked(count);
-	}
-
-	memcpy((char *)&cfg, buf, sizeof(struct ext_watch_config_font_property));
-
-
-	loglen += siw_watch_snprintf(log, FONT_TEMP_LOG_SZ, loglen,
-				"lut[%d] ", cfg.max_num);
-
-	lut = mode->lut;
-	lut_src = cfg.lut;
-	for (idx = 0; idx < (int)cfg.max_num; idx++) {
-		lut->b = lut_src->rgb_blue;
-		lut->g = lut_src->rgb_green;
-		lut->r = lut_src->rgb_red;
-
-		loglen += siw_watch_snprintf(log, FONT_TEMP_LOG_SZ, loglen,
-					"%d:%02X%02X%02X ",
-					idx + 1,
-					lut_src->rgb_blue,
-					lut_src->rgb_green,
-					lut_src->rgb_red);
-
-		lut++;
-		lut_src++;
-	}
-
-	t_watch_info(dev, "%s\n", log);
-
-	siw_touch_blocking_notifier_call(LCD_EVENT_TOUCH_WATCH_LUT_UPDATE, (void*)(&cfg));
-
-	return count;
-}
-
-static const struct reset_area watch_win_default = {
-	.x1	= 520,
-	.y1 = 0,
-	.x2 = 720,
-	.y2 = 80,
-};
-
-static ssize_t store_ext_watch_config_font_position(struct device *dev,
-					const char *buf, size_t count)
-{
-	struct siw_touch_chip *chip = to_touch_chip(dev);
-	struct siw_ts *ts = chip->ts;
-	struct watch_data *watch = (struct watch_data *)chip->watch;
-	struct ext_watch_cfg_mode *mode = &watch->ext_wdata.mode;
-	struct ext_watch_cfg_position *position = &watch->ext_wdata.position;
-	struct ext_watch_config_font_position cfg;
-	struct reset_area *watch_win = pdata_watch_win(ts->pdata);
-	int ret = 0;
-
-	if (atomic_read(&chip->block_watch_cfg) == BLOCKED) {
-		t_watch_err(dev, "store font position blocked\n");
-		return __ret_val_blocked(count);
-	}
-
-	if (!watch_win) {
-		watch_win = (struct reset_area *)&watch_win_default;
-	}
-
-	memcpy((char *)&cfg, buf, sizeof(struct ext_watch_config_font_position));
-
-	mode->watch_area_x.watstart = cfg.watstartx;
-	mode->watch_area_x.watend = cfg.watendx;
-	mode->watch_area_y.watstart = cfg.watstarty;
-	mode->watch_area_y.watend = cfg.watendy;
-
-	position->h10x_pos = cfg.h10x_pos;
-	position->h1x_pos = cfg.h1x_pos;
-	position->m10x_pos = cfg.m10x_pos;
-	position->m1x_pos = cfg.m1x_pos;
-	position->clx_pos = cfg.clx_pos;
-
-#if 1
-	if ((cfg.watstartx < watch_win->x1) || (cfg.watendx > watch_win->x2) ||
-		(cfg.watstarty <  watch_win->y1) || (cfg.watendy > watch_win->y2)) {
-		t_watch_err(dev, "check the position. (invalid range)\n");
-		ret = -EINVAL;
-	}
-#else
-	if ((cfg.watstartx < 0x208) || (cfg.watendx > 0x2D0) ||
-		(cfg.watstarty < 0x0) || (cfg.watendy > 0x50)) {
-		t_watch_err(dev, "check the position. (invalid range)\n");
-		ret = -EINVAL;
-	}
-#endif
-
-	t_watch_info(dev,
-			"watch area: sx %d, ex %d, sy %d, ey %d]\n",
-			cfg.watstartx, cfg.watendx, cfg.watstarty, cfg.watendy);
-	t_watch_info(dev,
-			"watch position: h10x %d, h1x %d, c1x %d, m10x %d, m1x %d]\n",
-		 	cfg.h10x_pos, cfg.h1x_pos, cfg.clx_pos, cfg.m10x_pos, cfg.m1x_pos);
-
-	if (ret < 0)
-		goto out;
-
-	siw_touch_blocking_notifier_call(LCD_EVENT_TOUCH_WATCH_POS_UPDATE, (void*)(&cfg));
-
-	ret = count;
-
-out:
-	return ret;
-}
-
-static ssize_t store_ext_watch_config_time_sync(struct device *dev,
-					const char *buf, size_t count)
-{
-	struct siw_touch_chip *chip = to_touch_chip(dev);
-	struct siw_ts *ts = chip->ts;
-	struct watch_data *watch = (struct watch_data *)chip->watch;
-	struct ext_watch_cfg_time *time = &watch->ext_wdata.time;
-	struct ext_watch_config_time_sync cfg;
-	int ret = 0;
-
-	if (atomic_read(&chip->block_watch_cfg) == BLOCKED) {
-		t_watch_err(dev, "store time sync blocked\n");
-		return __ret_val_blocked(count);
-	}
-
-	mutex_lock(&ts->lock);
-
-	t_watch_dbg(dev, "store config type sync\n");
-
-	memcpy((char *)&cfg, buf, sizeof(struct ext_watch_config_time_sync));
-
-	time->rtc_sct.hour = cfg.rtc_cwhour;
-	time->rtc_sct.min = cfg.rtc_cwmin;
-	time->rtc_sct.sec = cfg.rtc_cwsec;
-	time->rtc_sctcnt = cfg.rtc_cwmilli;
-
-	ret = ext_watch_set_curr_time(dev);
-	if (ret < 0) {
-		goto out;
-	}
-
-	ret = ext_watch_get_curr_time(dev, NULL, NULL);
-	if (ret < 0) {
-		goto out;
-	}
-
-	ret = ext_watch_display_onoff(dev, 1);
-	if (ret < 0) {
-		goto out;
-	}
-
-	ret = count;
-
-out:
-	mutex_unlock(&ts->lock);
-	return ret;
-}
 
 static ssize_t show_ext_watch_setting(struct device *dev, char *buf)
 {
@@ -1558,10 +1715,10 @@ static SIW_WATCH_ATTR(config_fontonoff, NULL,
 					store_ext_watch_font_onoff);
 static SIW_WATCH_ATTR(config_fonteffect, NULL,
 					store_ext_watch_config_font_effect);
-static SIW_WATCH_ATTR(config_fontproperty, NULL,
-					store_ext_watch_config_font_property);
 static SIW_WATCH_ATTR(config_fontposition, NULL,
 					store_ext_watch_config_font_position);
+static SIW_WATCH_ATTR(config_fontproperty, NULL,
+					store_ext_watch_config_font_property);
 static SIW_WATCH_ATTR(config_timesync, NULL,
 					store_ext_watch_config_time_sync);
 static SIW_WATCH_ATTR(current_time, show_ext_watch_curr_time, NULL);
@@ -1800,6 +1957,7 @@ static int ext_watch_fontdata_preload(struct device *dev)
 	struct siw_ts *ts = chip->ts;
 	struct watch_data *watch = chip->watch;
 	struct file *filp = NULL;
+	char *buf;
 	loff_t size;
 	int rd_size;
 	int ret = 0;
@@ -1808,6 +1966,12 @@ static int ext_watch_fontdata_preload(struct device *dev)
 		t_watch_info(dev, "font_preload: watch_font_image not defined, skip\n");
 		return 0;
 	}
+
+	if (!watch->ext_wdata.font_data) {
+		t_watch_info(dev, "font_preload: no font data buffer! check!\n");
+		return 0;
+	}
+	buf = watch->ext_wdata.font_data;
 
 	filp = filp_open(ts->watch_font_image, O_RDONLY, 0);
 	if (IS_ERR(filp)) {
@@ -1823,7 +1987,7 @@ static int ext_watch_fontdata_preload(struct device *dev)
 	}
 
 	rd_size = kernel_read(filp, 0,
-				(char *)watch->ext_wdata.font_data,
+				(char *)buf,
 				(unsigned long)size);
 	if (rd_size != (int)size) {
 		t_watch_warn(dev, "font_preload: failed to read[%d], %d\n",
@@ -1836,6 +2000,16 @@ static int ext_watch_fontdata_preload(struct device *dev)
 	watch->font_written_size = (u32)size;
 
 	atomic_set(&watch->state.font_status, FONT_DOWNLOADING);
+
+	t_watch_info(dev, "font image preload done:\n");
+	t_watch_info(dev, " %s, %d\n",
+			ts->watch_font_image, (u32)size);
+	t_watch_info(dev,
+			" %02X %02X %02X %02X"
+			" %02X %02X %02X %02X"
+			" ...\n",
+			buf[0], buf[1], buf[2], buf[3],
+			buf[4], buf[5], buf[6], buf[7]);
 
 out:
 	filp_close(filp, 0);
