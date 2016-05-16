@@ -668,7 +668,7 @@ void siw_hal_xfer_add_rx_seq(void *xfer_data, u32 reg, u32 *data, int cnt)
 	for (i=0 ; i<cnt ; i++) {
 		siw_hal_xfer_add_rx(xfer,
 				reg + i,
-				(u8 *)&(data[i]), sizeof(u32));
+				(void *)&(data[i]), sizeof(u32));
 	}
 }
 
@@ -702,7 +702,7 @@ void siw_hal_xfer_add_tx_seq(void *xfer_data, u32 reg, u32 *data, int cnt)
 	for (i=0 ; i<cnt ; i++) {
 		siw_hal_xfer_add_tx(xfer,
 				reg + i,
-				(u8 *)&(data[i]), sizeof(u32));
+				(void *)&(data[i]), sizeof(u32));
 	}
 }
 
@@ -1071,43 +1071,43 @@ static int siw_hal_ic_info(struct device *dev)
 
 		siw_hal_xfer_add_rx(xfer,
 				reg->spr_chip_id,
-				(u8 *)&chip_id, sizeof(chip_id));
+				(void *)&chip_id, sizeof(chip_id));
 		siw_hal_xfer_add_rx(xfer,
 				reg->tc_version,
-				(u8 *)&version, sizeof(version));
+				(void *)&version, sizeof(version));
 		siw_hal_xfer_add_rx(xfer,
 				reg->info_chip_version,
-				(u8 *)&revision, sizeof(revision));
+				(void *)&revision, sizeof(revision));
 		siw_hal_xfer_add_rx(xfer,
 				reg->tc_product_id1,
-				(u8 *)&product[0], sizeof(product));
+				(void *)&product[0], sizeof(product));
 		siw_hal_xfer_add_rx(xfer,
 				reg->spr_boot_status,
-				(u8 *)&bootmode, sizeof(bootmode));
+				(void *)&bootmode, sizeof(bootmode));
 
 		switch (touch_chip_type(ts)) {
 		case CHIP_LG4946:
 			siw_hal_xfer_add_rx(xfer,
 					reg->info_fpc_type,
-					(u8 *)&fw->fpc, sizeof(fw->fpc));
+					(void *)&fw->fpc, sizeof(fw->fpc));
 			siw_hal_xfer_add_rx(xfer,
 					reg->info_wfr_type,
-					(u8 *)&fw->wfr, sizeof(fw->wfr));
+					(void *)&fw->wfr, sizeof(fw->wfr));
 			siw_hal_xfer_add_rx(xfer,
 					reg->info_cg_type,
-					(u8 *)&fw->cg, sizeof(fw->cg));
+					(void *)&fw->cg, sizeof(fw->cg));
 			siw_hal_xfer_add_rx(xfer,
 					reg->info_lot_num,
-					(u8 *)&fw->lot, sizeof(fw->lot));
+					(void *)&fw->lot, sizeof(fw->lot));
 			siw_hal_xfer_add_rx(xfer,
 					reg->info_serial_num,
-					(u8 *)&fw->sn, sizeof(fw->sn));
+					(void *)&fw->sn, sizeof(fw->sn));
 			siw_hal_xfer_add_rx(xfer,
 					reg->info_date,
-					(u8 *)&fw->date, sizeof(fw->date));
+					(void *)&fw->date, sizeof(fw->date));
 			siw_hal_xfer_add_rx(xfer,
 					reg->info_time,
-					(u8 *)&fw->time, sizeof(fw->time));
+					(void *)&fw->time, sizeof(fw->time));
 			break;
 		}
 	}
@@ -1296,19 +1296,19 @@ static void siw_hal_lcd_event_read_reg(struct device *dev)
 
 		siw_hal_xfer_add_rx(xfer,
 				reg->tc_ic_status,
-				(u8 *)&rdata[0], sizeof(rdata[0]));
+				(void *)&rdata[0], sizeof(rdata[0]));
 		siw_hal_xfer_add_rx(xfer,
 				reg->tc_status,
-				(u8 *)&rdata[1], sizeof(rdata[1]));
+				(void *)&rdata[1], sizeof(rdata[1]));
 		siw_hal_xfer_add_rx(xfer,
 				reg->spr_subdisp_status,
-				(u8 *)&rdata[2], sizeof(rdata[2]));
+				(void *)&rdata[2], sizeof(rdata[2]));
 		siw_hal_xfer_add_rx(xfer,
 				reg->tc_version,
-				(u8 *)&rdata[3], sizeof(rdata[3]));
+				(void *)&rdata[3], sizeof(rdata[3]));
 		siw_hal_xfer_add_rx(xfer,
 				reg->spr_chip_id,
-				(u8 *)&rdata[4], sizeof(rdata[4]));
+				(void *)&rdata[4], sizeof(rdata[4]));
 	}
 	ret = siw_hal_xfer_msg(dev, ts->xfer);
 	if (ret < 0) {
