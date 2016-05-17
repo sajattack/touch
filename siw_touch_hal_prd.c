@@ -1128,6 +1128,9 @@ static int prd_write_test_mode(struct siw_hal_prd_data *prd, u8 type)
 	case U3_M2_RAWDATA_TEST:
 		testmode = (disp_mode << 8) + type;
 		break;
+	case U3_BLU_JITTER_TEST:
+		testmode = ((disp_mode << 8) + type) | LINE_FILTER_OPTION;
+		break;
 	case U0_M1_RAWDATA_TEST:
 		type = 0x6;
 		testmode = type;
@@ -1135,9 +1138,6 @@ static int prd_write_test_mode(struct siw_hal_prd_data *prd, u8 type)
 	case U0_M2_RAWDATA_TEST:
 		type = 0x5;
 		testmode = type;
-		break;
-	case U3_BLU_JITTER_TEST:
-		testmode = ((disp_mode << 8) + type) | LINE_FILTER_OPTION;
 		break;
 	}
 
@@ -1254,6 +1254,7 @@ out:
 }
 
 static int prd_get_limit(struct siw_hal_prd_data *prd,
+		int row, int col,
 		char *breakpoint, int16_t (*buf)[PRD_COL_SIZE])
 {
 	struct device *dev = prd->dev;
@@ -1263,6 +1264,7 @@ static int prd_get_limit(struct siw_hal_prd_data *prd,
 	int q_limit;
 	int cipher = 1;
 	char *found;
+	int row_col = row * col;
 	int boot_mode = 0;
 	int tx_num = 0;
 	int rx_num = 0;
@@ -1297,7 +1299,7 @@ static int prd_get_limit(struct siw_hal_prd_data *prd,
 	found = strnstr(prd->line, breakpoint, sizeof(prd->line));
 	if (found == NULL) {
 		t_prd_err(prd,
-			"failed to find breakpoint. The panel spec file is wrong");
+			"failed to find breakpoint. The panel spec file is wrong\n");
 		ret = -EFAULT;
 		goto out;
 	}
@@ -1308,22 +1310,28 @@ static int prd_get_limit(struct siw_hal_prd_data *prd,
 	q_limit = ARRAY_SIZE(prd->line);
 	while (q < q_limit) {
 		if (prd->line[q] == ',') {
+			buf[tx_num][rx_num] = 0;
+
 			cipher = 1;
 			for (p = 1; (prd->line[q - p] >= '0') &&
 					(prd->line[q - p] <= '9'); p++) {
 				buf[tx_num][rx_num] += ((prd->line[q - p] - '0') * cipher);
 				cipher *= 10;
 			}
+		#if 0
+			t_prd_info(prd, "buf[%d][%d] = %d\n",
+				tx_num, rx_num, (int)buf[tx_num][rx_num]);
+		#endif
 			r++;
-			if (r % (int)PRD_COL_SIZE == 0) {
+			if (r % col) {
+				rx_num++;
+			} else {
 				rx_num = 0;
 				tx_num++;
-			} else {
-				rx_num++;
 			}
 		}
 		q++;
-		if (r == (int)PRD_ROW_SIZE * (int)PRD_COL_SIZE) {
+		if (r == row_col) {
 			break;
 		}
 	}
@@ -1714,6 +1722,7 @@ static int prd_compare_tool(struct siw_hal_prd_data *prd,
 	int col_add = (opt)? PRD_COL_ADD : 0;
 	int size = 0;
 	int curr_raw;
+	int curr_lower, curr_upper;
 	int	result = 0;
 
 	if (!test_cnt) {
@@ -1739,14 +1748,16 @@ static int prd_compare_tool(struct siw_hal_prd_data *prd,
 			for (j = 0 ; j < col ; j++) {
 				curr_raw = *raw_curr++;
 
+				curr_lower = prd->image_lower[i][j];
+				curr_upper = prd->image_upper[i][j];
+
 			#if 0	//for test
-				t_prd_info(prd, "%d %d\n",
-					curr_raw,
-					prd->image_upper[i][j]);
+				t_prd_info(prd, "c %d, l %d, u %d\n",
+					curr_raw, curr_lower, curr_upper);
 			#endif
 
-				if ((curr_raw < prd->image_lower[i][j]) ||
-					(curr_raw > prd->image_upper[i][j]))
+				if ((curr_raw < curr_lower) ||
+					(curr_raw > curr_upper))
 				{
 					if ((type != U0_M1_RAWDATA_TEST) &&
 						((i <= 1) && (j <= 4)))
@@ -1755,15 +1766,17 @@ static int prd_compare_tool(struct siw_hal_prd_data *prd,
 							result = 1;
 							size += siw_prd_buf_snprintf(prd->buf_write,
 										size,
-										"F [%d][%d] = %d\n",
-										i, j, curr_raw);
+										"F [%d][%d] = %d (%d, %d)\n",
+										i, j, curr_raw,
+										curr_lower, curr_upper);
 						}
 					} else {
 						result = 1;
 						size += siw_prd_buf_snprintf(prd->buf_write,
 									size,
-									"F [%d][%d] = %d\n",
-									i, j, curr_raw);
+									"F [%d][%d] = %d (%d, %d)\n",
+									i, j, curr_raw,
+									curr_lower, curr_upper);
 					}
 				}
 			}
@@ -1831,8 +1844,10 @@ static int prd_compare_rawdata(struct siw_hal_prd_data *prd, int type)
 		break;
 	}
 
-	prd_get_limit(prd, lower_str, prd->image_lower);
-	prd_get_limit(prd, upper_str, prd->image_upper);
+	prd_get_limit(prd, row_size, col_size,
+			lower_str, prd->image_lower);
+	prd_get_limit(prd, row_size, col_size,
+			upper_str, prd->image_upper);
 
 	result = prd_compare_tool(prd, test_cnt,
 				rawdata_buf, row_size, col_size, type, opt);
@@ -2061,7 +2076,8 @@ static void prd_tune_display(struct siw_hal_prd_data *prd, char *tc_tune_code,
 			int offset, int type, int result_on)
 {
 //	struct device *dev = prd->dev;
-	char log_buf[TC_TUNE_CODE_SIZE] = {0,};
+	char *log_buf = prd->log_buf;
+//	char log_buf[TC_TUNE_CODE_SIZE] = {0,};
 	char temp[TC_TUNE_CODE_SIZE] = {0,};
 	int size = 0;
 	int i = 0;
@@ -2301,22 +2317,23 @@ static int prd_do_rawdata_test(struct siw_hal_prd_data *prd,
 			sprt_str = "[U3_M2_RAWDATA_TEST]";
 		}
 		break;
-	case U0_M1_RAWDATA_TEST:
-		info_str = "========U0_M1_RAWDATA_TEST========";
+	case U3_BLU_JITTER_TEST:
+		info_str = "========U3_BLU_JITTER_TEST========";
 		if (result_on) {
-			sprt_str = "[U0_M1_RAWDATA_TEST]";
+			sprt_str= "[U3_BLU_JITTER_TEST]";
 		}
 		break;
+
 	case U0_M2_RAWDATA_TEST:
 		info_str = "========U0_M2_RAWDATA_TEST========";
 		if (result_on) {
 			sprt_str = "[U0_M2_RAWDATA_TEST]";
 		}
 		break;
-	case U3_BLU_JITTER_TEST:
-		info_str = "========U3_BLU_JITTER_TEST========";
+	case U0_M1_RAWDATA_TEST:
+		info_str = "========U0_M1_RAWDATA_TEST========";
 		if (result_on) {
-			sprt_str= "[U3_BLU_JITTER_TEST]";
+			sprt_str = "[U0_M1_RAWDATA_TEST]";
 		}
 		break;
 
@@ -3289,11 +3306,11 @@ static int prd_show_do_lpwg_sd(struct siw_hal_prd_data *prd, char *buf)
 
 	if (!m1_rawdata_ret && !m2_rawdata_ret) {
 		size += siw_snprintf(buf, size,
-					"LPWG RawData : %s\n", "Pass");
+					"LPWG RawData : Pass\n");
 	} else {
 		size += siw_snprintf(buf, size,
-					"LPWG RawData : %s (%d/%d)\n", "Fail",
-					m1_rawdata_ret ? 0 : 1, m2_rawdata_ret ? 0 : 1);
+					"LPWG RawData : Fail (m1 %d, m2 %d)\n",
+					m1_rawdata_ret, m2_rawdata_ret);
 	}
 
 	prd_write_file(prd, buf, TIME_INFO_SKIP);
