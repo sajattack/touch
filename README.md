@@ -55,7 +55,7 @@ CONFIG_TOUCHSCREEN_SIW_SW1828=n
 
 $ git clone https://github.com/siw-touch/touch.git .
 
-[push]
+[push (id/pw required)]
 
 $ git push origin master
 
