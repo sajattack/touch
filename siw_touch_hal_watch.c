@@ -2107,7 +2107,7 @@ static int ext_watch_fontdata_attr_init(struct device *dev)
 	int ret = 0;
 
 	watch->font_written_size = 0;
-	buf = kzalloc(size, GFP_KERNEL);
+	buf = touch_kzalloc(dev, size, GFP_KERNEL);
 	if (!buf) {
 		t_watch_err(dev, "failed to allocate font buffer[%Xh]\n", size);
 		ret = -ENOMEM;
@@ -2137,7 +2137,7 @@ static int ext_watch_fontdata_attr_init(struct device *dev)
 	return 0;
 
 out_bin:
-	kfree(buf);
+	touch_kfree(dev, buf);
 
 out:
 
@@ -2158,8 +2158,10 @@ static void ext_watch_fontdata_attr_free(struct device *dev)
 
 	t_dev_dbg_base(dev, "font buffer[%Xh] released\n", size);
 
-	kfree(watch->ext_wdata.font_data);
-	watch->ext_wdata.font_data = NULL;
+	if (watch->ext_wdata.font_data) {
+		touch_kfree(dev, watch->ext_wdata.font_data);
+		watch->ext_wdata.font_data = NULL;
+	}
 	watch->font_written_size = 0;
 }
 
@@ -2281,7 +2283,7 @@ static int ext_watch_create_sysfs(struct device *dev)
 	char *name = NULL;
 	int ret = 0;
 
-	watch = kzalloc(sizeof(*watch), GFP_KERNEL);
+	watch = touch_kzalloc(dev, sizeof(*watch), GFP_KERNEL);
 	if (!watch) {
 		t_dev_err(dev, "failed to allocate memory for watch data\n");
 		ret = -ENOMEM;
@@ -2334,7 +2336,7 @@ out_sys:
 	kobject_del(kobj);
 
 out_kobj:
-	kfree(watch);
+	touch_kfree(dev, watch);
 	chip->watch = NULL;
 
 out:
@@ -2358,8 +2360,10 @@ static void ext_watch_remove_sysfs(struct device *dev)
 
 	kobject_del(kobj);
 
-	kfree(chip->watch);
-	chip->watch = NULL;
+	if (chip->watch) {
+		touch_kfree(dev, chip->watch);
+		chip->watch = NULL;
+	}
 
 	t_dev_dbg_base(dev, "%s watch sysfs unregistered\n",
 			touch_chip_name(ts));

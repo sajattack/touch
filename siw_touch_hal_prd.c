@@ -3533,7 +3533,7 @@ static struct siw_hal_prd_data *siw_hal_prd_alloc(struct device *dev)
 	struct siw_ts *ts = chip->ts;
 	struct siw_hal_prd_data *prd;
 
-	prd = devm_kzalloc(dev, sizeof(*prd), GFP_KERNEL);
+	prd = touch_kzalloc(dev, sizeof(*prd), GFP_KERNEL);
 	if (!prd) {
 		t_dev_err(dev,
 				"failed to allocate memory for prd\n");
@@ -3563,7 +3563,7 @@ static void siw_hal_prd_free(struct device *dev)
 		t_dev_dbg_base(dev, "free prd[%s]\n", prd->name);
 
 		ts->prd = NULL;
-		devm_kfree(dev, prd);
+		touch_kfree(dev, prd);
 	}
 }
 

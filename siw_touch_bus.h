@@ -89,7 +89,10 @@ extern int siw_touch_bus_pin_get(struct siw_ts *ts);
 extern int siw_touch_bus_pin_put(struct siw_ts *ts);
 
 extern void *siw_touch_bus_create_bus_drv(int bus_type);
+extern void siw_touch_bus_free_bus_drv(void *bus_drv);
+
 extern void *siw_touch_bus_create_bus_pdata(int bus_type);
+extern void siw_touch_bus_free_bus_pdata(void *pdata);
 
 extern int siw_touch_bus_alloc_buffer(struct siw_ts *ts);
 extern int siw_touch_bus_free_buffer(struct siw_ts *ts);

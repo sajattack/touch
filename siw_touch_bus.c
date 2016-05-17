@@ -166,6 +166,11 @@ void *siw_touch_bus_create_bus_drv(int bus_type)
 	return bus_drv;
 }
 
+void siw_touch_bus_free_bus_drv(void *bus_drv)
+{
+	kfree(bus_drv);
+}
+
 void *siw_touch_bus_create_bus_pdata(int bus_type)
 {
 	struct siw_touch_pdata *pdata;
@@ -175,6 +180,11 @@ void *siw_touch_bus_create_bus_pdata(int bus_type)
 		t_pr_err("faied to allocate pdata(%d)\n", bus_type);
 	}
 	return pdata;
+}
+
+void siw_touch_bus_free_bus_pdata(void *pdata)
+{
+	kfree(pdata);
 }
 
 static void *__buffer_alloc(struct device *dev, size_t size,

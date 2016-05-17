@@ -280,7 +280,7 @@ int siw_touch_init_input(struct siw_ts *ts)
 		return -EINVAL;
 	}
 
-	phys_name = kzalloc(SIW_TOUCH_PHYS_NAME_SIZE, GFP_KERNEL);
+	phys_name = touch_kzalloc(dev, SIW_TOUCH_PHYS_NAME_SIZE, GFP_KERNEL);
 	if (!phys_name) {
 		t_dev_err(dev, "failed to allocate memory for phys_name\n");
 		ret = -ENOMEM;
@@ -365,7 +365,7 @@ out_slot:
 	input_free_device(input);
 
 out_input:
-	kfree(phys_name);
+	touch_kfree(dev, phys_name);
 
 out_phys:
 
@@ -374,6 +374,7 @@ out_phys:
 
 void siw_touch_free_input(struct siw_ts *ts)
 {
+	struct device *dev = ts->dev;
 	struct input_dev *input = ts->input;
 
 	if (input) {
@@ -388,7 +389,7 @@ void siw_touch_free_input(struct siw_ts *ts)
 		input_mt_destroy_slots(input);
 		input_free_device(input);
 
-		kfree(phys_name);
+		touch_kfree(dev, phys_name);
 	}
 }
 

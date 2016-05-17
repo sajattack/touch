@@ -38,7 +38,7 @@
 #include "siw_touch_dbg.h"
 
 
-#define SIW_DRV_VERSION		"v2.07"
+#define SIW_DRV_VERSION		"v2.08b"
 
 
 enum {
@@ -1222,6 +1222,17 @@ static inline void touch_msleep(unsigned int msecs)
 	else
 		usleep_range(msecs * 1000, msecs * 1000);
 }
+
+static inline void *touch_kzalloc(struct device *dev, size_t size, gfp_t gfp)
+{
+	return devm_kzalloc(dev, size, gfp);
+}
+
+static inline void touch_kfree(struct device *dev, void *p)
+{
+	return devm_kfree(dev, p);
+}
+
 
 struct siw_op_dbg {
 	char		*name;

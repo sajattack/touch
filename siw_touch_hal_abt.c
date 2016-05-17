@@ -2279,14 +2279,14 @@ static struct siw_hal_abt_data *siw_hal_abt_alloc(struct device *dev)
 	struct siw_abt_send_data *data_send = NULL;
 	struct siw_abt_comm_packet *send_packet = NULL;
 
-	abt = kzalloc(sizeof(*abt), GFP_KERNEL);
+	abt = touch_kzalloc(dev, sizeof(*abt), GFP_KERNEL);
 	if (!abt) {
 		t_dev_err(dev,
 				"failed to allocate memory for abt\n");
 		goto out;
 	}
 
-	data_send = kzalloc(sizeof(struct siw_abt_send_data), GFP_KERNEL);
+	data_send = touch_kzalloc(dev, sizeof(struct siw_abt_send_data), GFP_KERNEL);
 	if (!data_send) {
 		t_dev_err(dev,
 				"failed to allocate data_send\n");
@@ -2294,7 +2294,7 @@ static struct siw_hal_abt_data *siw_hal_abt_alloc(struct device *dev)
 	}
 	abt->abt_comm.data_send = data_send;
 
-	send_packet = kzalloc(sizeof(struct siw_abt_comm_packet), GFP_KERNEL);
+	send_packet = touch_kzalloc(dev, sizeof(struct siw_abt_comm_packet), GFP_KERNEL);
 	if (!send_packet) {
 		t_dev_err(dev,
 				"failed to allocate send_packet\n");
@@ -2326,10 +2326,10 @@ static struct siw_hal_abt_data *siw_hal_abt_alloc(struct device *dev)
 	return abt;
 
 out_send_packet:
-	kfree(send_packet);
+	touch_kfree(dev, send_packet);
 
 out_data_send:
-	kfree(abt);
+	touch_kfree(dev, abt);
 
 out:
 	return NULL;
@@ -2350,9 +2350,9 @@ static void siw_hal_abt_free(struct device *dev)
 		mutex_destroy(&abt->abt_socket_lock);
 		ts->abt = NULL;
 
-		kfree(abt->abt_comm.send_packet);
-		kfree(abt->abt_comm.data_send);
-		kfree(abt);
+		touch_kfree(dev, abt->abt_comm.send_packet);
+		touch_kfree(dev, abt->abt_comm.data_send);
+		touch_kfree(dev, abt);
 	}
 }
 

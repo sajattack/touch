@@ -4119,7 +4119,7 @@ static int siw_hal_probe(struct device *dev)
 	struct siw_touch_chip *chip = NULL;
 	int ret = 0;
 
-	chip = devm_kzalloc(dev, sizeof(*chip), GFP_KERNEL);
+	chip = touch_kzalloc(dev, sizeof(*chip), GFP_KERNEL);
 	if (!chip) {
 		t_dev_err(dev, "failed to allocate %s data\n",
 				touch_chip_name(ts));
@@ -4189,7 +4189,7 @@ static int siw_hal_remove(struct device *dev)
 
 	touch_set_dev_data(ts, NULL);
 
-	devm_kfree(dev, chip);
+	touch_kfree(dev, chip);
 
 	t_dev_dbg_base(dev, "%s remove done\n",
 				touch_chip_name(ts));

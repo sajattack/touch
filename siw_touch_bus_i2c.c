@@ -176,7 +176,7 @@ static struct siw_ts *siw_touch_i2c_alloc(
 	struct siw_touch_pdata *pdata = NULL;
 	int ret;
 
-	ts = devm_kzalloc(dev, sizeof(*ts), GFP_KERNEL);
+	ts = touch_kzalloc(dev, sizeof(*ts), GFP_KERNEL);
 	if (ts == NULL) {
 		t_dev_err(dev,
 				"i2c alloc: failed to allocate memory for touch data\n");
@@ -213,7 +213,7 @@ static struct siw_ts *siw_touch_i2c_alloc(
 out_tr:
 
 out_pdata:
-	devm_kfree(dev, ts);
+	touch_kfree(dev, ts);
 
 out:
 	return NULL;
@@ -228,7 +228,7 @@ static void siw_touch_i2c_free(struct i2c_client *i2c)
 
 	siw_touch_bus_tr_data_free(ts);
 
-	devm_kfree(dev, ts);
+	touch_kfree(dev, ts);
 }
 
 static int siw_touch_i2c_probe(struct i2c_client *i2c,
@@ -398,10 +398,10 @@ int siw_touch_i2c_add_driver(void *data)
 	return 0;
 
 out_client:
-	kfree(pdata);
+	siw_touch_bus_free_bus_pdata(pdata);
 
 out_pdata:
-	kfree(bus_drv);
+	siw_touch_bus_free_bus_drv(bus_drv);
 
 out_drv:
 
@@ -424,10 +424,10 @@ int siw_touch_i2c_del_driver(void *data)
 		i2c_del_driver(&((struct siw_touch_bus_drv *)bus_drv)->bus.i2c_drv);
 
 		if (bus_drv->pdata) {
-			kfree(bus_drv->pdata);
+			siw_touch_bus_free_bus_pdata(bus_drv->pdata);
 		}
 
-		kfree(bus_drv);
+		siw_touch_bus_free_bus_drv(bus_drv);
 		chip_data->bus_drv = NULL;
 	}
 
