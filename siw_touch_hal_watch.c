@@ -34,8 +34,8 @@ enum {
 };
 
 enum {
-	EXT_WATCH_LUT_MAX	= 7,
 	EXT_WATCH_LUT_NUM	= 7,
+	EXT_WATCH_LUT_MAX	= EXT_WATCH_LUT_NUM,
 };
 
 enum {
@@ -134,7 +134,7 @@ struct ext_watch_config_font_lut {
 struct ext_watch_config_font_prop {
 	u32	len;
 	u32	max_num;		/* The number of LUT */
-	struct ext_watch_config_font_lut lut[EXT_WATCH_LUT_MAX];
+	struct ext_watch_config_font_lut lut[EXT_WATCH_LUT_NUM];
 };
 
 struct ext_watch_config_font_pos {
@@ -1862,7 +1862,7 @@ static ssize_t show_ext_watch_query_font_color(struct device *dev, char *buf)
 	struct ext_watch_query_font_color query;
 	ssize_t size = sizeof(struct ext_watch_query_font_color);
 
-	query.max_num = EXT_WATCH_LUT_MAX;
+	query.max_num = EXT_WATCH_LUT_NUM;
 	query.lut_supported = SUPPORT;
 	query.alpha_supported = SUPPORT;
 	query.gradation_supported = SUPPORT;
