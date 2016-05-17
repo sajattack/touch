@@ -1332,13 +1332,13 @@ out:
 	return ret;
 }
 
-static int prd_os_result_get(struct siw_hal_prd_data *prd, u32 *buf)
+static int prd_os_result_get(struct siw_hal_prd_data *prd, u32 *buf, int type)
 {
 	struct device *dev = prd->dev;
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_hal_reg *reg = chip->reg;
 	u32 os_result_offset;
-	u32 offset;
+	u32 offset = 0;
 	int ret = 0;
 
 	ret = siw_hal_read_value(dev,
@@ -1348,7 +1348,16 @@ static int prd_os_result_get(struct siw_hal_prd_data *prd, u32 *buf)
 		goto out;
 	}
 
-	offset = os_result_offset & 0xFFFF;
+	switch (type) {
+	case OPEN_NODE_TEST:
+		offset = os_result_offset & 0xFFFF;
+		t_prd_info(prd, "Open Node Data Offset = %x \n", offset);
+		break;
+	case SHORT_NODE_TEST:
+		offset = (os_result_offset >> 16) & 0xFFFF;
+		t_prd_info(prd, "Short Node Data Offset = %x \n", offset);
+		break;
+	}
 
 	ret = siw_hal_write_value(dev,
 				reg->tc_tsp_test_data_offset,
@@ -1387,14 +1396,13 @@ static int prd_os_xline_result_read(struct siw_hal_prd_data *prd,
 		break;
 	}
 
-	ret = prd_os_result_get(prd, buffer);
+	ret = prd_os_result_get(prd, buffer, type);
 
 	if (ret == 0) {
 		for (i = 0; i < PRD_ROW_SIZE; i++) {
 			for (j = 0; j < PRD_COL_SIZE; j++) {
 				if ((buffer[i] & (0x1 << j)) != 0)
-					buf[i][j] =
-						(buf[i][j] | w_val);
+					buf[i][j] = (buf[i][j] | w_val);
 			}
 		}
 	}
@@ -1424,7 +1432,7 @@ static int prd_open_short_test(struct siw_hal_prd_data *prd)
 		return ret;
 	}
 
-	memset(&buf, 0x0, sizeof(buf));
+	memset((void *)buf, 0x0, sizeof(buf));
 
 	/* 1. open_test */
 	type = OPEN_NODE_TEST;
@@ -1491,7 +1499,7 @@ static int prd_open_short_test(struct siw_hal_prd_data *prd)
 			for (j = 0; j < PRD_COL_SIZE; j++) {
 				size += siw_prd_buf_snprintf(prd->buf_write,
 							size, "%5s ",
-							((buf[i][j] & 0x3) == 0x3) ?  "O,S" :
+							((buf[i][j] & 0x3) == 0x3) ?  "O, S" :
 							((buf[i][j] & 0x1) == 0x1) ?  "O" :
 							((buf[i][j] & 0x2) == 0x2) ?  "S" : "-");
 			}

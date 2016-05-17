@@ -163,7 +163,7 @@
 #define PRD_TC_TEST_MODE_CTL		(0xC6E)
 #define PRD_M1_M2_RAW_OFFSET		(0x287)
 #define PRD_TUNE_RESULT_OFFSET		(0x289)	//See 'chip_reg_quirks' in touch_lg4895.c
-#define PRD_OPEN3_SHORT_OFFSET		(0x2FE)
+#define PRD_OPEN3_SHORT_OFFSET		(0x288)
 /* __SIW_SUPPORT_PRD */
 
 struct siw_hal_reg {

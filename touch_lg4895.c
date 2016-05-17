@@ -165,6 +165,7 @@ static const struct reset_area chip_watch_win_range = {
 static const struct siw_hal_reg_quirk chip_reg_quirks[] = {
 	{ .old_addr = PRD_M1_M2_RAW_OFFSET, .new_addr = 0x2D6 },
 	{ .old_addr = PRD_TUNE_RESULT_OFFSET, .new_addr = 0x2D9 },
+	{ .old_addr = PRD_OPEN3_SHORT_OFFSET, .new_addr = 0x2D8 },
 	{ .old_addr = ~0, .new_addr = ~0 },		// End signal
 };
 
