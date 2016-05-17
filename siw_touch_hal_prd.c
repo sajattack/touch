@@ -222,8 +222,8 @@ struct siw_hal_prd_data {
 	int16_t	m1_buf_even_rawdata[PRD_M1_ROW_COL_SIZE];
 	int16_t m1_buf_tmp[PRD_M1_ROW_COL_SIZE];
 	/* */
-	int16_t image_lower;
-	int16_t image_upper;
+	int image_lower;
+	int image_upper;
 	/* */
 	int16_t	buf_delta[PRD_DELTA_SIZE];
 	u8	buf_label_tmp[PRD_LABEL_TMP_SIZE];
@@ -1255,7 +1255,7 @@ out:
 
 static int prd_get_limit(struct siw_hal_prd_data *prd,
 		int row, int col,
-		char *breakpoint, int16_t *limit)
+		char *breakpoint, int *limit)
 {
 	struct device *dev = prd->dev;
 	int p = 0;
@@ -1266,6 +1266,9 @@ static int prd_get_limit(struct siw_hal_prd_data *prd,
 	int boot_mode = 0;
 	int value = ~0;
 	int ret = 0;
+
+	if (limit)
+		*limit = ~0;
 
 	if (breakpoint == NULL) {
 		ret = -EINVAL;
@@ -1801,7 +1804,7 @@ static int prd_compare_rawdata(struct siw_hal_prd_data *prd, int type)
 	int row_size = PRD_ROW_SIZE;
 	int test_cnt = 0;
 	int opt = 1;
-	int result = 0;
+	int ret = 0;
 
 	if ((type >= UX_INVALID) && !prd_cmp_tool_str[type]) {
 		t_prd_err(prd, "invalid type, %d\n", type);
@@ -1830,15 +1833,23 @@ static int prd_compare_rawdata(struct siw_hal_prd_data *prd, int type)
 		break;
 	}
 
-	prd_get_limit(prd, row_size, col_size,
-			lower_str, &prd->image_lower);
-	prd_get_limit(prd, row_size, col_size,
-			upper_str, &prd->image_upper);
+	ret = prd_get_limit(prd, row_size, col_size,
+				lower_str, &prd->image_lower);
+	if (ret < 0) {
+		goto out;
+	}
 
-	result = prd_compare_tool(prd, test_cnt,
+	ret = prd_get_limit(prd, row_size, col_size,
+				upper_str, &prd->image_upper);
+	if (ret < 0) {
+		goto out;
+	}
+
+	ret = prd_compare_tool(prd, test_cnt,
 				rawdata_buf, row_size, col_size, type, opt);
 
-	return result;
+out:
+	return ret;
 }
 
 #define IC_AIT_START_REG				(0xC6C) //AIT Algorithm Engine HandShake Reg
