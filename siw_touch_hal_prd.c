@@ -171,7 +171,7 @@ enum {
 enum {
 	PRD_DATA_NAME_SZ	= 128,
 	/* */
-	PRD_LINE_NUM		= 50000,
+	PRD_LINE_NUM		= (1<<10),
 //	PRD_PATH_SIZE		= (1<<6),		//64
 //	PRD_BURST_SIZE		= (1<<9),		//512
 	/* */
@@ -222,8 +222,8 @@ struct siw_hal_prd_data {
 	int16_t	m1_buf_even_rawdata[PRD_M1_ROW_COL_SIZE];
 	int16_t m1_buf_tmp[PRD_M1_ROW_COL_SIZE];
 	/* */
-	int16_t image_lower[PRD_ROW_SIZE][PRD_COL_SIZE];
-	int16_t image_upper[PRD_ROW_SIZE][PRD_COL_SIZE];
+	int16_t image_lower;
+	int16_t image_upper;
 	/* */
 	int16_t	buf_delta[PRD_DELTA_SIZE];
 	u8	buf_label_tmp[PRD_LABEL_TMP_SIZE];
@@ -1255,19 +1255,16 @@ out:
 
 static int prd_get_limit(struct siw_hal_prd_data *prd,
 		int row, int col,
-		char *breakpoint, int16_t (*buf)[PRD_COL_SIZE])
+		char *breakpoint, int16_t *limit)
 {
 	struct device *dev = prd->dev;
 	int p = 0;
 	int q = 0;
-	int r = 0;
 	int q_limit;
 	int cipher = 1;
 	char *found;
-	int row_col = row * col;
 	int boot_mode = 0;
-	int tx_num = 0;
-	int rx_num = 0;
+	int value = ~0;
 	int ret = 0;
 
 	if (breakpoint == NULL) {
@@ -1289,54 +1286,39 @@ static int prd_get_limit(struct siw_hal_prd_data *prd,
 			goto out;
 	}
 
-#if 0
-	if (prd->line == NULL) {
-		ret = -EFAULT;
-		goto out;
-	}
-#endif
-
 	found = strnstr(prd->line, breakpoint, sizeof(prd->line));
 	if (found == NULL) {
 		t_prd_err(prd,
-			"failed to find breakpoint. The panel spec file is wrong\n");
+			"failed to find %s. The panel spec file is wrong\n",
+			breakpoint);
 		ret = -EFAULT;
 		goto out;
 	}
 	q = found - prd->line;
 
-	memset(buf, 0, (PRD_ROW_SIZE * PRD_COL_SIZE)<<1);
-
 	q_limit = ARRAY_SIZE(prd->line);
 	while (q < q_limit) {
 		if (prd->line[q] == ',') {
-			buf[tx_num][rx_num] = 0;
+			value = 0;
 
 			cipher = 1;
 			for (p = 1; (prd->line[q - p] >= '0') &&
 					(prd->line[q - p] <= '9'); p++) {
-				buf[tx_num][rx_num] += ((prd->line[q - p] - '0') * cipher);
+				value += ((prd->line[q - p] - '0') * cipher);
 				cipher *= 10;
 			}
-		#if 0
-			t_prd_info(prd, "buf[%d][%d] = %d\n",
-				tx_num, rx_num, (int)buf[tx_num][rx_num]);
-		#endif
-			r++;
-			if (r % col) {
-				rx_num++;
-			} else {
-				rx_num = 0;
-				tx_num++;
-			}
-		}
-		q++;
-		if (r == row_col) {
+			t_prd_info(prd, "%s = %d\n", breakpoint, value);
+
+			if (limit)
+				*limit = value;
+
 			break;
 		}
+		q++;
 	}
 
-	if (!r) {
+	if (value == ~0) {
+		t_prd_err(prd, "%s found, but getting num failed\n", breakpoint);
 		ret = -EFAULT;
 		goto out;
 	}
@@ -1734,6 +1716,16 @@ static int prd_compare_tool(struct siw_hal_prd_data *prd,
 		goto out;
 	}
 
+	curr_lower = prd->image_lower;
+	curr_upper = prd->image_upper;
+
+	t_prd_info(prd, "lower %d, upper %d\n",
+		curr_lower, curr_upper);
+	size += siw_prd_buf_snprintf(prd->buf_write,
+				size,
+				"lower %d, upper %d\n",
+				curr_lower, curr_upper);
+
 	for (k = 0; k < test_cnt; k++) {
 		size += siw_prd_buf_snprintf(prd->buf_write,
 					size,
@@ -1748,12 +1740,8 @@ static int prd_compare_tool(struct siw_hal_prd_data *prd,
 			for (j = 0 ; j < col ; j++) {
 				curr_raw = *raw_curr++;
 
-				curr_lower = prd->image_lower[i][j];
-				curr_upper = prd->image_upper[i][j];
-
-			#if 0	//for test
-				t_prd_info(prd, "c %d, l %d, u %d\n",
-					curr_raw, curr_lower, curr_upper);
+			#if 0
+				t_prd_info(prd, "curr_raw %d\n", curr_raw);
 			#endif
 
 				if ((curr_raw < curr_lower) ||
@@ -1766,17 +1754,15 @@ static int prd_compare_tool(struct siw_hal_prd_data *prd,
 							result = 1;
 							size += siw_prd_buf_snprintf(prd->buf_write,
 										size,
-										"F [%d][%d] = %d (%d, %d)\n",
-										i, j, curr_raw,
-										curr_lower, curr_upper);
+										"F [%d][%d] = %d\n",
+										i, j, curr_raw);
 						}
 					} else {
 						result = 1;
 						size += siw_prd_buf_snprintf(prd->buf_write,
 									size,
-									"F [%d][%d] = %d (%d, %d)\n",
-									i, j, curr_raw,
-									curr_lower, curr_upper);
+									"F [%d][%d] = %d\n",
+									i, j, curr_raw);
 					}
 				}
 			}
@@ -1845,9 +1831,9 @@ static int prd_compare_rawdata(struct siw_hal_prd_data *prd, int type)
 	}
 
 	prd_get_limit(prd, row_size, col_size,
-			lower_str, prd->image_lower);
+			lower_str, &prd->image_lower);
 	prd_get_limit(prd, row_size, col_size,
-			upper_str, prd->image_upper);
+			upper_str, &prd->image_upper);
 
 	result = prd_compare_tool(prd, test_cnt,
 				rawdata_buf, row_size, col_size, type, opt);
