@@ -49,3 +49,13 @@ CONFIG_TOUCHSCREEN_SIW_LG4946=n
 CONFIG_TOUCHSCREEN_SIW_SW1828=n
 
 
+# git
+
+[clone]
+
+$ git clone https://github.com/siw-touch/touch.git .
+
+[push]
+
+$ git push origin master
+
