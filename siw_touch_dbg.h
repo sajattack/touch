@@ -147,9 +147,6 @@ extern u32 t_dev_dbg_mask;
 #define t_dev_dbg_lpwg(_dev, fmt, args...)	\
 		t_dev_dbg(DBG_LPWG, _dev, fmt, ##args)
 
-#define t_dev_dbg_lpwg(_dev, fmt, args...)	\
-		t_dev_dbg(DBG_LPWG, _dev, fmt, ##args)
-
 #define t_dev_dbg_lpwg_coor(_dev, fmt, args...)	\
 		t_dev_dbg(DBG_LPWG_COOR, _dev, fmt, ##args)
 
