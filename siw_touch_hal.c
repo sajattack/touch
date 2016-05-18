@@ -2343,7 +2343,7 @@ static int siw_hal_tci_area_set(struct device *dev, int cover_status)
 	const char *msg;
 
 	if (touch_mode_not_allowed(ts, LCD_MODE_U3_QUICKCOVER)) {
-		return -EPERM;
+		return 0;
 	}
 
 	qcover = (cover_status == QUICKCOVER_CLOSE)?
@@ -2512,6 +2512,8 @@ static int siw_hal_clock(struct device *dev, bool onoff)
 	default:
 		atomic_set(&ts->state.sleep,
 			(onoff)? IC_NORMAL : IC_DEEP_SLEEP);
+		t_dev_info(dev, "sleep state -> %s\n",
+			(onoff) ? "IC_NORMAL" : "IC_DEEP_SLEEP");
 		break;
 	}
 
@@ -2826,6 +2828,8 @@ static int siw_hal_tc_driving(struct device *dev, int mode)
 
 static void siw_hal_deep_sleep(struct device *dev)
 {
+	t_dev_info(dev, "deel sleep\n");
+
 	siw_hal_tc_driving(dev, LCD_MODE_STOP);
 	siw_hal_clock(dev, 0);
 }
@@ -3002,9 +3006,6 @@ static int siw_hal_lpwg_mode_suspend(struct device *dev)
 			ts->lpwg.mode, ts->lpwg.screen);
 
 	if (ts->lpwg.mode == LPWG_NONE) {
-		/* deep sleep */
-	//	t_dev_dbg_lpwg(dev, "suspend sensor == PROX_NEAR\n");
-
 		if (ts->lpwg.screen) {
 			siw_hal_clock(dev, 1);
 		} else {
@@ -3014,11 +3015,11 @@ static int siw_hal_lpwg_mode_suspend(struct device *dev)
 	}
 
 	if (ts->lpwg.screen) {
+		t_dev_info(dev, "skip lpwg_mode\n");
+
 		if (atomic_read(&ts->state.sleep) == IC_DEEP_SLEEP) {
 			siw_hal_clock(dev, 1);
 		}
-
-		t_dev_dbg_lpwg(dev, "skip lpwg_mode\n");
 
 		siw_hal_debug_tci(dev);
 		siw_hal_debug_swipe(dev);
