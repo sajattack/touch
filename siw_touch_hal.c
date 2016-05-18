@@ -3526,7 +3526,6 @@ static int siw_hal_irq_abs_data(struct device *dev)
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
 	struct siw_hal_touch_data *data = chip->info.data;
-	struct siw_hal_touch_data *data_curr;
 	struct touch_data *tdata;
 	u32 touch_count = 0;
 	u8 finger_index = 0;
@@ -3537,11 +3536,11 @@ static int siw_hal_irq_abs_data(struct device *dev)
 	ts->new_mask = 0;
 
 	/* check if palm detected */
-	if (data[0].track_id == PALM_ID) {
-		if (data[0].event == TOUCHSTS_DOWN) {
+	if (data->track_id == PALM_ID) {
+		if (data->event == TOUCHSTS_DOWN) {
 			ts->is_palm = 1;
 			t_dev_info(dev, "Palm Detected\n");
-		} else if (data[0].event == TOUCHSTS_UP) {
+		} else if (data->event == TOUCHSTS_UP) {
 			ts->is_palm = 0;
 			t_dev_info(dev, "Palm Released\n");
 		}
@@ -3550,29 +3549,30 @@ static int siw_hal_irq_abs_data(struct device *dev)
 		return ret;
 	}
 
-	for (i = 0; i < touch_count; i++) {
-		if (data[i].track_id >= MAX_FINGER)
+	data = chip->info.data;
+	for (i = 0; i < touch_count; i++, data++) {
+		if (data->track_id >= MAX_FINGER) {
 			continue;
+		}
 
-		data_curr = &data[i];
-		if ((data_curr->event == TOUCHSTS_DOWN) ||
-			(data_curr->event == TOUCHSTS_MOVE)) {
-			ts->new_mask |= (1 << data_curr->track_id);
-			tdata = ts->tdata + data_curr->track_id;
+		if ((data->event == TOUCHSTS_DOWN) ||
+			(data->event == TOUCHSTS_MOVE)) {
+			ts->new_mask |= (1 << data->track_id);
+			tdata = ts->tdata + data->track_id;
 
-			tdata->id = data_curr->track_id;
-			tdata->type = data_curr->tool_type;
-			tdata->event = data_curr->event;
-			tdata->x = data_curr->x;
-			tdata->y = data_curr->y;
-			tdata->pressure = data_curr->pressure;
-			tdata->width_major = data_curr->width_major;
-			tdata->width_minor = data_curr->width_minor;
+			tdata->id = data->track_id;
+			tdata->type = data->tool_type;
+			tdata->event = data->event;
+			tdata->x = data->x;
+			tdata->y = data->y;
+			tdata->pressure = data->pressure;
+			tdata->width_major = data->width_major;
+			tdata->width_minor = data->width_minor;
 
-			if (data_curr->width_major == data_curr->width_minor)
+			if (data->width_major == data->width_minor)
 				tdata->orientation = 1;
 			else
-				tdata->orientation = data_curr->angle;
+				tdata->orientation = data->angle;
 
 			finger_index++;
 
@@ -3668,49 +3668,122 @@ static int siw_hal_get_swipe_data(struct device *dev)
 	return 0;
 }
 
+static int siw_hal_irq_lpwg_knock_1(struct siw_ts *ts)
+{
+	struct device *dev = ts->dev;
+
+	if (ts->lpwg.mode == LPWG_NONE) {
+		goto out;
+	}
+
+	t_dev_info(dev, "LPWG: TOUCH_IRQ_KNOCK\n");
+	siw_hal_get_tci_data(dev,
+		ts->tci.info[TCI_1].tap_count);
+	ts->intr_status = TOUCH_IRQ_KNOCK;
+
+out:
+	return 0;
+}
+
+static int siw_hal_irq_lpwg_knock_2(struct siw_ts *ts)
+{
+	struct device *dev = ts->dev;
+
+	if (ts->lpwg.mode != LPWG_PASSWORD) {
+		goto out;
+	}
+
+	t_dev_info(dev, "LPWG: TOUCH_IRQ_PASSWD\n");
+	siw_hal_get_tci_data(dev,
+		ts->tci.info[TCI_2].tap_count);
+	ts->intr_status = TOUCH_IRQ_PASSWD;
+
+out:
+	return 0;
+}
+
+static int siw_hal_irq_lpwg_swipe_right(struct siw_ts *ts)
+{
+	struct device *dev = ts->dev;
+
+	t_dev_info(dev, "LPWG: SWIPE_LEFT\n");
+	siw_hal_get_swipe_data(dev);
+	ts->intr_status = TOUCH_IRQ_SWIPE_LEFT;
+
+	return 0;
+}
+
+static int siw_hal_irq_lpwg_swipe_left(struct siw_ts *ts)
+{
+	struct device *dev = ts->dev;
+
+	t_dev_info(dev, "LPWG: SWIPE_RIGHT\n");
+	siw_hal_get_swipe_data(dev);
+	ts->intr_status = TOUCH_IRQ_SWIPE_RIGHT;
+
+	return 0;
+}
+
+static int siw_hal_irq_lpwg_custom_debug(struct siw_ts *ts)
+{
+	struct device *dev = ts->dev;
+
+	t_dev_info(dev, "LPWG: CUSTOM_DEBUG\n");
+	siw_hal_debug_tci(dev);
+	siw_hal_debug_swipe(dev);
+
+	return 0;
+}
+
+static int siw_hal_irq_lpwg_knock_overtap(struct siw_ts *ts)
+{
+	struct device *dev = ts->dev;
+
+	t_dev_info(dev, "LPWG: overtap\n");
+//	siw_hal_get_tci_data(dev, 1);
+	siw_hal_get_tci_data(dev, ts->tci.info[TCI_2].tap_count + 1);
+	ts->intr_status = TOUCH_IRQ_PASSWD;
+
+	return 0;
+}
+
+static int (*__siw_hal_irq_lpwg_func_grp1[])(struct siw_ts *ts) = {
+	[KNOCK_1] 		= siw_hal_irq_lpwg_knock_1,
+	[KNOCK_2]		= siw_hal_irq_lpwg_knock_2,
+	[SWIPE_RIGHT]	= siw_hal_irq_lpwg_swipe_right,
+	[SWIPE_LEFT]	= siw_hal_irq_lpwg_swipe_left,
+};
+
+static int (*__siw_hal_irq_lpwg_func_grp2[])(struct siw_ts *ts) = {
+	[0] = siw_hal_irq_lpwg_custom_debug,
+	[KNOCK_OVERTAP - CUSTOM_DEBUG]	= siw_hal_irq_lpwg_knock_overtap,
+};
+
 static int siw_hal_irq_lpwg(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
+	u32 type = chip->info.wakeup_type;
 	int ret = 0;
 
-	if (chip->info.wakeup_type == KNOCK_1) {
-		if (ts->lpwg.mode != LPWG_NONE) {
-			siw_hal_get_tci_data(dev,
-				ts->tci.info[TCI_1].tap_count);
-			ts->intr_status = TOUCH_IRQ_KNOCK;
-			t_dev_info(dev, "TOUCH_IRQ_KNOCK\n");
-		}
-	} else if (chip->info.wakeup_type == KNOCK_2) {
-		if (ts->lpwg.mode == LPWG_PASSWORD) {
-			siw_hal_get_tci_data(dev,
-				ts->tci.info[TCI_2].tap_count);
-			ts->intr_status = TOUCH_IRQ_PASSWD;
-			t_dev_info(dev, "TOUCH_IRQ_PASSWD\n");
-		}
-	} else if (chip->info.wakeup_type == SWIPE_LEFT) {
-		t_dev_info(dev, "SWIPE_LEFT\n");
-		siw_hal_get_swipe_data(dev);
-		ts->intr_status = TOUCH_IRQ_SWIPE_LEFT;
-	} else if (chip->info.wakeup_type == SWIPE_RIGHT) {
-		t_dev_info(dev, "SWIPE_RIGHT\n");
-		siw_hal_get_swipe_data(dev);
-		ts->intr_status = TOUCH_IRQ_SWIPE_RIGHT;
-	} else if (chip->info.wakeup_type == KNOCK_OVERTAP) {
-		t_dev_info(dev, "LPWG wakeup_type is Overtap\n");
-	//	siw_hal_get_tci_data(dev, 1);
-		siw_hal_get_tci_data(dev, ts->tci.info[TCI_2].tap_count + 1);
-		ts->intr_status = TOUCH_IRQ_PASSWD;
-	} else if (chip->info.wakeup_type == CUSTOM_DEBUG) {
-		t_dev_info(dev, "LPWG wakeup_type is CUSTOM_DEBUG\n");
-		siw_hal_debug_tci(dev);
-		siw_hal_debug_swipe(dev);
-	} else {
-		t_dev_info(dev, "LPWG wakeup_type is not support type![%d]\n",
-			chip->info.wakeup_type);
+	if (!type || (type > KNOCK_OVERTAP)) {
+		goto out;
 	}
 
-	return ret;
+	if (type <= SWIPE_LEFT) {
+		ret = (*__siw_hal_irq_lpwg_func_grp1[type])(ts);
+		return ret;
+	}
+
+	if (type >= CUSTOM_DEBUG) {
+		ret = (*__siw_hal_irq_lpwg_func_grp2[type - CUSTOM_DEBUG])(ts);
+		return ret;
+	}
+
+out:
+	t_dev_err(dev, "LPWG: unknown type, %d\n", type);
+
+	return -EINVAL;
 }
 
 static int siw_hal_irq_handler(struct device *dev)
