@@ -2985,14 +2985,35 @@ out:
 	return ret;
 }
 
+static int siw_hal_lpwg_ctrl_skip(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+
+	t_dev_info(dev, "skip lpwg_mode\n");
+
+	if (atomic_read(&ts->state.sleep) == IC_DEEP_SLEEP) {
+		siw_hal_clock(dev, 1);
+	}
+
+	siw_hal_debug_tci(dev);
+	siw_hal_debug_swipe(dev);
+
+	return 0;
+}
+
 static int siw_hal_lpwg_mode_suspend(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
 	struct lpwg_mode_ctrl ctrl;
+	int changed = 0;
 	int ret = 0;
 
 	siw_hal_lpwg_ctrl_init(&ctrl);
+
+	t_dev_info(dev, "lpwg suspend: mode %d, screen %d\n",
+			ts->lpwg.mode, ts->lpwg.screen);
 
 	if (ts->role.mfts_lpwg) {
 		t_dev_info(dev, "lpwg suspend: mfts_lpwg\n");
@@ -3001,9 +3022,6 @@ static int siw_hal_lpwg_mode_suspend(struct device *dev)
 		ctrl.lcd = chip->lcd_mode;
 		goto out_con;
 	}
-
-	t_dev_info(dev, "lpwg suspend: mode %d, screen %d\n",
-			ts->lpwg.mode, ts->lpwg.screen);
 
 	if (ts->lpwg.mode == LPWG_NONE) {
 		if (ts->lpwg.screen) {
@@ -3015,14 +3033,7 @@ static int siw_hal_lpwg_mode_suspend(struct device *dev)
 	}
 
 	if (ts->lpwg.screen) {
-		t_dev_info(dev, "skip lpwg_mode\n");
-
-		if (atomic_read(&ts->state.sleep) == IC_DEEP_SLEEP) {
-			siw_hal_clock(dev, 1);
-		}
-
-		siw_hal_debug_tci(dev);
-		siw_hal_debug_swipe(dev);
+		siw_hal_lpwg_ctrl_skip(dev);
 		goto out;
 	}
 
@@ -3043,9 +3054,11 @@ static int siw_hal_lpwg_mode_suspend(struct device *dev)
 
 out_con:
 	ret = siw_hal_lpwg_ctrl(dev, &ctrl);
+	changed = 1;
 
 out:
-	t_dev_info(dev, "lpwg suspend: lcd_mode %d, driving_mode %d\n",
+	t_dev_info(dev, "lpwg suspend(%d, %d): lcd_mode %d, driving_mode %d\n",
+			changed, ret,
 			chip->lcd_mode, chip->driving_mode);
 
 	return ret;
@@ -3056,11 +3069,12 @@ static int siw_hal_lpwg_mode_resume(struct device *dev)
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
 	struct lpwg_mode_ctrl ctrl;
+	int changed = 0;
 	int ret = 0;
 
 	siw_hal_lpwg_ctrl_init(&ctrl);
 
-	t_dev_dbg_lpwg(dev, "lpwg resume: mode %d, screen %d\n",
+	t_dev_info(dev, "lpwg resume: mode %d, screen %d\n",
 			ts->lpwg.mode, ts->lpwg.screen);
 
 	siw_touch_report_all_event(ts);		//clear (?)
@@ -3068,13 +3082,13 @@ static int siw_hal_lpwg_mode_resume(struct device *dev)
 	if (ts->lpwg.screen) {
 		int mode = chip->lcd_mode;
 
+		/* normal */
+		t_dev_info(dev, "lpwg resume: screen\n");
+
 		if (touch_mode_allowed(ts, LCD_MODE_U3_QUICKCOVER)) {
 			mode = (ts->lpwg.qcover == HOLE_NEAR)?
 					LCD_MODE_U3_QUICKCOVER : mode;
 		}
-
-		/* normal */
-		t_dev_info(dev, "lpwg resume: screen\n");
 
 		ctrl.lpwg = LPWG_NONE;
 		ctrl.lcd = mode;
@@ -3083,7 +3097,7 @@ static int siw_hal_lpwg_mode_resume(struct device *dev)
 
 	if (ts->lpwg.mode == LPWG_NONE) {
 		/* wake up */
-		t_dev_info(dev, "resume (ts->lpwg.mode == LPWG_NONE)\n");
+		t_dev_info(dev, "lpwg resume: (ts->lpwg.mode == LPWG_NONE)\n");
 
 	//	ctrl.lpwg = LPWG_NONE;
 		ctrl.lcd = LCD_MODE_STOP;
@@ -3094,7 +3108,7 @@ static int siw_hal_lpwg_mode_resume(struct device *dev)
 		goto out;
 	}
 
-	t_dev_info(dev, "resume partial\n");
+	t_dev_info(dev, "lpwg resume: partial\n");
 
 	if (touch_mode_allowed(ts, LCD_MODE_U3_QUICKCOVER)) {
 		ctrl.qcover = (ts->lpwg.qcover == HOLE_NEAR)?
@@ -3110,9 +3124,11 @@ static int siw_hal_lpwg_mode_resume(struct device *dev)
 
 out_con:
 	ret = siw_hal_lpwg_ctrl(dev, &ctrl);
+	changed = 1;
 
 out:
-	t_dev_info(dev, "lpwg resume: lcd_mode %d, driving_mode %d\n",
+	t_dev_info(dev, "lpwg resume(%d, %d): lcd_mode %d, driving_mode %d\n",
+			changed, ret,
 			chip->lcd_mode, chip->driving_mode);
 
 	return ret;
@@ -3158,7 +3174,7 @@ static int siw_hal_lpwg(struct device *dev, u32 code, void *param)
 		area->x2 = value[1];
 		area->y1 = value[2];
 		area->y2 = value[3];
-		t_dev_dbg_lpwg(dev, "LPWG_ACTIVE_AREA: x1[%d], y1[%d], x2[%d], y2[%d]\n",
+		t_dev_info(dev, "LPWG_ACTIVE_AREA: x1[%d], y1[%d], x2[%d], y2[%d]\n",
 				area->x1, area->y1, area->x2, area->y2);
 		break;
 
@@ -3176,7 +3192,7 @@ static int siw_hal_lpwg(struct device *dev, u32 code, void *param)
 		lpwg->sensor = value[2];
 		lpwg->qcover = value[3];
 
-		t_dev_dbg_lpwg(dev,
+		t_dev_info(dev,
 				"LPWG_UPDATE_ALL: mode[%d], screen[%s], sensor[%s], qcover[%s]\n",
 				lpwg->mode,
 				lpwg->screen ? "ON" : "OFF",
