@@ -483,7 +483,6 @@ struct siw_touch_operations {
 	int (*mon_handler)(struct device *dev);
 	int mon_interval;
 	/* */
-	int (*abt_init)(struct device *dev);
 	int (*abt_sysfs)(struct device *dev, int on_off);
 	int (*prd_sysfs)(struct device *dev, int on_off);
 	int (*watch_sysfs)(struct device *dev, int on_off);
@@ -1206,7 +1205,6 @@ static inline void siw_ops_restore_irq_handler(struct siw_ts *ts)
 #define siw_ops_sysfs(_ts, args...)			siw_ops_xxx(sysfs, 0, _ts, ##args)
 #define siw_ops_mon_handler(_ts, args...)	siw_ops_xxx(mon_handler, -ESRCH, _ts, ##args)
 
-#define siw_ops_abt_init(_ts, args...)		siw_ops_xxx(abt_init, 0, _ts, ##args)
 #define siw_ops_abt_sysfs(_ts, args...)		siw_ops_xxx(abt_sysfs, 0, _ts, ##args)
 #define siw_ops_prd_sysfs(_ts, args...)		siw_ops_xxx(prd_sysfs, 0, _ts, ##args)
 #define siw_ops_watch_sysfs(_ts, args...)	siw_ops_xxx(watch_sysfs, 0, _ts, ##args)

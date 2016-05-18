@@ -1363,7 +1363,7 @@ static int siw_hal_init(struct device *dev)
 	t_dev_dbg_base(dev, "charger_state = 0x%02X\n", chip->charger);
 
 	if (atomic_read(&ts->state.debug_tool) == DEBUG_TOOL_ENABLE) {
-		siw_ops_abt_init(ts);
+		siw_hal_abt_init(dev);
 	}
 
 	for (i=0 ; i<2 ; i++) {
@@ -4556,7 +4556,6 @@ static const struct siw_touch_operations siw_touch_default_ops = {
 	.mon_handler		= siw_hal_mon_handler,
 	.mon_interval		= HAL_MON_INTERVAL_DEFAULT,
 	/* */
-	.abt_init			= siw_hal_abt_init,
 	.abt_sysfs			= siw_hal_abt_sysfs,
 	.prd_sysfs			= siw_hal_prd_sysfs,
 	.watch_sysfs		= siw_hal_watch_sysfs,
