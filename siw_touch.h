@@ -508,6 +508,11 @@ struct siw_touch_buf {
 	int size;
 };
 
+struct siw_touch_second_screen {
+	int bound_i;
+	int bound_j;
+};
+
 struct siw_touch_fquirks {	//function quirks
 	int (*parse_dts)(void *data);
 	/* */
@@ -571,6 +576,8 @@ struct siw_touch_pdata {
 	void *reg_quirks;
 
 	struct siw_touch_fquirks fquirks;
+
+	void *second_screen;
 };
 
 struct siw_touch_chip_data {
@@ -723,6 +730,12 @@ static inline struct siw_touch_fquirks *pdata_fquirks(
 							struct siw_touch_pdata *pdata)
 {
 	return &pdata->fquirks;
+}
+
+static inline struct siw_touch_second_screen *pdata_second_screen(
+								struct siw_touch_pdata *pdata)
+{
+	return pdata->second_screen;
 }
 
 enum {
@@ -1085,6 +1098,12 @@ static inline int touch_xfer_allowed(struct siw_ts *ts)
 static inline struct siw_touch_fquirks *touch_fquirks(struct siw_ts *ts)
 {
 	return pdata_fquirks(ts->pdata);
+}
+
+static inline struct siw_touch_second_screen *touch_second_screen(
+								struct siw_ts *ts)
+{
+	return pdata_second_screen(ts->pdata);
 }
 
 

@@ -1710,6 +1710,7 @@ static int prd_compare_tool(struct siw_hal_prd_data *prd,
 {
 	struct device *dev = prd->dev;
 	struct siw_ts *ts = to_touch_core(dev);
+	struct siw_touch_second_screen *second_screen = NULL;
 	int16_t *raw_buf;
 	int16_t *raw_curr;
 	int i, j ,k;
@@ -1718,8 +1719,6 @@ static int prd_compare_tool(struct siw_hal_prd_data *prd,
 	int size = 0;
 	int curr_raw;
 	int curr_lower, curr_upper;
-	int second_screen = 0;
-	int bound_i, bound_j;
 	int raw_err;
 	int	result = 0;
 
@@ -1743,11 +1742,7 @@ static int prd_compare_tool(struct siw_hal_prd_data *prd,
 				curr_lower, curr_upper);
 
 	if (type != U0_M1_RAWDATA_TEST) {
-		second_screen = !!(touch_chip_type(ts) == CHIP_LG4895);
-		second_screen |= !!(touch_chip_type(ts) == CHIP_LG4946);
-		/* not fixed value */
-		bound_i = 1;
-		bound_j = 4;
+		second_screen = touch_second_screen(ts);
 	}
 
 	for (k = 0; k < test_cnt; k++) {
@@ -1767,23 +1762,21 @@ static int prd_compare_tool(struct siw_hal_prd_data *prd,
 			for (j = 0 ; j < col ; j++) {
 				curr_raw = *raw_curr++;
 
-			#if 0
-				t_prd_info(prd, "curr_raw %d\n", curr_raw);
-			#endif
-
 				if ((curr_raw >= curr_lower) &&
 					(curr_raw <= curr_upper)) {
+				#if 0
+					t_prd_info(prd,
+						"G [%d][%d] = %d\n",
+						i, j, curr_raw);
+				#endif
 					continue;
 				}
 
-				raw_err = 0;
-				if (!second_screen) {
-					raw_err = 1;
-				} else {
-					/* if it's 2nd area */
-					if ((i <= bound_i) && (j <= bound_j)) {
-						raw_err = !!(curr_raw)<<1;	/* 2 or 0 */
-					}
+				raw_err = 1;
+				if ((second_screen != NULL) &&
+					(i <= second_screen->bound_i) &&
+					(j <= second_screen->bound_j)) {
+					raw_err = !!(curr_raw)<<1;	/* 2 or 0 */
 				}
 
 				if (raw_err) {
@@ -1795,6 +1788,12 @@ static int prd_compare_tool(struct siw_hal_prd_data *prd,
 								size,
 								"F [%d][%d] = %d(%d)\n",
 								i, j, curr_raw, raw_err);
+				} else {
+				#if 0
+					t_prd_info(prd,
+						"G [%d][%d] = %d\n",
+						i, j, curr_raw);
+				#endif
 				}
 			}
 			col_i += (col + col_add);
@@ -1869,10 +1868,12 @@ static int prd_compare_rawdata(struct siw_hal_prd_data *prd, int type)
 		goto out;
 	}
 
-	ret = prd_get_limit(prd, row_size, col_size,
-				upper_str, &prd->image_upper);
-	if (ret < 0) {
-		goto out;
+	if (test_cnt > 1) {
+		ret = prd_get_limit(prd, row_size, col_size,
+					upper_str, &prd->image_upper);
+		if (ret < 0) {
+			goto out;
+		}
 	}
 
 	ret = prd_compare_tool(prd, test_cnt,
