@@ -143,6 +143,7 @@ struct ext_watch_config_font_pos {
 	u32	watendx;	/* watch end positon. watendx <= 720 */
 	u32	watstarty;
 	u32	watendy;	/* watch end positon. watendy <= 80 */
+	/* relative position in watch area */
 	u32	h1x_pos;	/* 1 ~ 9hour position */
 	u32	h10x_pos;	/* 10, 20 hour position */
 	u32	m1x_pos;	/* 1 ~ 9min position */
@@ -218,6 +219,7 @@ enum {
 	POS_MAX_CLX		= (1<<9),
 };
 
+/* relative position in watch area */
 __packed struct ext_watch_cfg_position {	/* 0xC11 */
 	u32 h10x_pos:9;
 	u32 h1x_pos:9;
@@ -1380,11 +1382,39 @@ out:
 }
 
 static const struct reset_area watch_win_default = {
-	.x1	= 320,
+	.x1	= 200,
 	.y1 = 0,
 	.x2 = 720,
 	.y2 = 80,
 };
+
+#define __WATCH_GOOD_BLINK_CASE
+
+enum {
+	DEFAULT_WSX = 522,
+	DEFAULT_WEX = 630,
+	DEFAULT_WSY = 9,
+	DEFAULT_WEY = 59,
+};
+#if defined(__WATCH_GOOD_BLINK_CASE)
+enum {
+	DEFAULT_BLINK_TYPE = 3,
+	DEFAULT_H10X = 0,
+	DEFAULT_H1X = 16,
+	DEFAULT_CLX = 32+4,
+	DEFAULT_M10X = 48,
+	DEFAULT_M1X = 64,
+};
+#else
+enum {
+	DEFAULT_BLINK_TYPE = 0,
+	DEFAULT_H10X = 0,
+	DEFAULT_H1X = 24,
+	DEFAULT_CLX = 48,
+	DEFAULT_M10X = 60,
+	DEFAULT_M1X = 84,
+};
+#endif
 
 static ssize_t store_ext_watch_config_font_effect(struct device *dev,
 		 			const char *buf, size_t count)
@@ -1405,23 +1435,15 @@ static ssize_t store_ext_watch_config_font_effect(struct device *dev,
 	}
 
 	if (buf[0] == EXT_WATCH_CFG_DEFAULT) {	//for the case of using echo command
-		struct reset_area *watch_win = pdata_watch_win(ts->pdata);
-		u32 winx;
-
-		if (!watch_win) {
-			watch_win = (struct reset_area *)&watch_win_default;
-		}
-		winx = watch_win->x1;
-
 		memset((char *)&cfg, 0, sizeof(cfg));
 
 	//	cfg.h24_en = 0;
 	//	cfg.zero_disp = 0;
 	//	cfg.clock_disp_type = 0;
-	//	cfg.midnight_hour_zero_en = 0;
-		cfg.blink.blink_type = 3;
-		cfg.blink.bstartx = winx + (2<<4);
-		cfg.blink.bendx = cfg.blink.bstartx + 16;
+		cfg.midnight_hour_zero_en = 1;
+		cfg.blink.blink_type = DEFAULT_BLINK_TYPE;
+		cfg.blink.bstartx = DEFAULT_CLX;
+		cfg.blink.bendx = cfg.blink.bstartx + 8;
 		cfg.watchon = 1;
 	} else {
 		memcpy((char *)&cfg, buf, sizeof(cfg));
@@ -1488,86 +1510,12 @@ static ssize_t store_ext_watch_config_font_effect(struct device *dev,
 	return count;
 }
 
-static int __ext_watch_chk_font_pos_range(struct device *dev,
-				u32 sx, u32 ex, u32 tx, u32 tx_max, char *name)
-{
-	if (tx >= tx_max) {
-		t_watch_err(dev, "invalid %s, %d >= %d(max)", name, tx, tx_max);
-		return -EINVAL;
-	}
-	if (tx < sx) {
-		t_watch_err(dev, "invalid %s, %d < %d(sx)", name, tx, sx);
-		return -EINVAL;
-	}
-	if (tx >= ex) {
-		t_watch_err(dev, "invalid %s, %d >= %d(ex)", name, tx, ex);
-		return -EINVAL;
-	}
-	return 0;
-}
-
 static int __ext_watch_chk_font_pos(struct device *dev,
 				struct ext_watch_config_font_pos *cfg)
 {
-	int ret = 0;
-
-	ret = __ext_watch_chk_font_pos_range(dev,
-				cfg->watstartx, cfg->watendx,
-				cfg->h10x_pos, POS_MAX_H10X,
-				"h10x_pos");
-	if (ret < 0) {
-		goto out;
-	}
-
-	ret = __ext_watch_chk_font_pos_range(dev,
-					cfg->watstartx, cfg->watendx,
-					cfg->h1x_pos, POS_MAX_H1X,
-					"h1x_pos");
-	if (ret < 0) {
-		goto out;
-	}
-
-	ret = __ext_watch_chk_font_pos_range(dev,
-					cfg->watstartx, cfg->watendx,
-					cfg->m10x_pos, POS_MAX_M10X,
-					"m10x_pos");
-	if (ret < 0) {
-		goto out;
-	}
-
-	ret = __ext_watch_chk_font_pos_range(dev,
-					cfg->watstartx, cfg->watendx,
-					cfg->m1x_pos, POS_MAX_M1X,
-					"m1x_pos");
-	if (ret < 0) {
-		goto out;
-	}
-
-	ret = __ext_watch_chk_font_pos_range(dev,
-					cfg->watstartx, cfg->watendx,
-					cfg->clx_pos, POS_MAX_CLX,
-					"clx_pos");
-	if (ret < 0) {
-		goto out;
-	}
+	/* */
 
 	return 0;
-
-out:
-	t_watch_err(dev,
-			"  set area: sx %d, ex %d, sy %d, ey %d\n",
-			cfg->watstartx,
-			cfg->watendx,
-			cfg->watstarty,
-			cfg->watendy);
-	t_watch_err(dev,
-			"  set position: h10x %d, h1x %d, m10x %d, m1x %d, c1x %d\n",
-			cfg->h10x_pos,
-			cfg->h1x_pos,
-			cfg->m10x_pos,
-			cfg->m1x_pos,
-			cfg->clx_pos);
-	return -EINVAL;;
 }
 
 static ssize_t store_ext_watch_config_font_position(struct device *dev,
@@ -1592,20 +1540,18 @@ static ssize_t store_ext_watch_config_font_position(struct device *dev,
 	}
 
 	if (buf[0] == EXT_WATCH_CFG_DEFAULT) {	//for the case of using echo command
-		u32 winx = watch_win->x1;
-
 		memset((char *)&cfg, 0, sizeof(cfg));
 
-		cfg.watstartx = watch_win->x1;
-		cfg.watendx = watch_win->x2;
-		cfg.watstarty = watch_win->y1;
-		cfg.watendy = watch_win->y2;
+		cfg.watstartx = DEFAULT_WSX;
+		cfg.watendx = DEFAULT_WEX;
+		cfg.watstarty = DEFAULT_WSY;
+		cfg.watendy = DEFAULT_WEY;
 
-		cfg.h10x_pos =  winx + (0<<4);
-		cfg.h1x_pos =  winx + (1<<4);
-		cfg.clx_pos =  winx + (2<<4) + 4;
-		cfg.m10x_pos =  winx + (3<<4);
-		cfg.m1x_pos =  winx + (4<<4);
+		cfg.h10x_pos = DEFAULT_H10X;
+		cfg.h1x_pos = DEFAULT_H1X;
+		cfg.clx_pos = DEFAULT_CLX;
+		cfg.m10x_pos = DEFAULT_M10X;
+		cfg.m1x_pos = DEFAULT_M1X;
 	} else {
 		memcpy((char *)&cfg, buf, sizeof(cfg));
 	}
@@ -1626,11 +1572,13 @@ static ssize_t store_ext_watch_config_font_position(struct device *dev,
 	position->m1x_pos = cfg.m1x_pos;
 	position->clx_pos = cfg.clx_pos;
 
+#if 1
 	if ((cfg.watstartx < watch_win->x1) || (cfg.watendx > watch_win->x2) ||
 		(cfg.watstarty <  watch_win->y1) || (cfg.watendy > watch_win->y2)) {
 		t_watch_err(dev, "check the position. (invalid range)\n");
 		ret = -EINVAL;
 	}
+#endif
 
 	t_watch_info(dev,
 			"watch area: sx %d, ex %d, sy %d, ey %d\n",

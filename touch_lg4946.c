@@ -157,14 +157,6 @@ static const struct siw_hal_swipe_ctrl chip_swipe_info = {
 	},
 };
 
-static const struct reset_area chip_watch_win_range = {
-	.x1	= 320,
-	.y1 = 0,
-	.x2 = 720,
-	.y2 = 80,
-};
-
-
 /*
  * of_device_is_compatible(dev->of_node, CHIP_COMPATIBLE_NAME)
  */
@@ -262,7 +254,7 @@ static const struct siw_touch_pdata chip_pdata = {
 	//See 'siw_hal_get_swipe_info' [siw_touch_hal.c]
 	.swipe_ctrl			= (void *)&chip_swipe_info,
 	//See 'store_ext_watch_config_font_position' [siw_touch_hal_watch.c]
-	.watch_win			= (void *)&chip_watch_win_range,
+	.watch_win			= NULL,
 	//See 'siw_setup_operations'
 	.reg_quirks			= NULL,
 };
