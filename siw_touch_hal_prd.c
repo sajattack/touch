@@ -1292,7 +1292,7 @@ static int prd_get_limit(struct siw_hal_prd_data *prd,
 	found = strnstr(prd->line, breakpoint, sizeof(prd->line));
 	if (found == NULL) {
 		t_prd_err(prd,
-			"failed to find %s. The panel spec file is wrong\n",
+			"failed to find %s, spec file is wrong\n",
 			breakpoint);
 		ret = -EFAULT;
 		goto out;
@@ -1310,10 +1310,12 @@ static int prd_get_limit(struct siw_hal_prd_data *prd,
 				value += ((prd->line[q - p] - '0') * cipher);
 				cipher *= 10;
 			}
-			t_prd_info(prd, "%s = %d\n", breakpoint, value);
 
 			if (limit)
 				*limit = value;
+
+			t_prd_info(prd, "scanning spec file done, %s = %d\n",
+					breakpoint, value);
 
 			break;
 		}
@@ -1325,8 +1327,6 @@ static int prd_get_limit(struct siw_hal_prd_data *prd,
 		ret = -EFAULT;
 		goto out;
 	}
-
-	t_prd_info(prd, "Scanning panel spec file done\n");
 
 out:
 	return ret;
@@ -1708,6 +1708,8 @@ static int prd_compare_tool(struct siw_hal_prd_data *prd,
 				int test_cnt, int16_t **buf,
 				int row, int col, int type, int opt)
 {
+	struct device *dev = prd->dev;
+	struct siw_ts *ts = to_touch_core(dev);
 	int16_t *raw_buf;
 	int16_t *raw_curr;
 	int i, j ,k;
@@ -1716,6 +1718,9 @@ static int prd_compare_tool(struct siw_hal_prd_data *prd,
 	int size = 0;
 	int curr_raw;
 	int curr_lower, curr_upper;
+	int second_screen = 0;
+	int bound_i, bound_j;
+	int raw_err;
 	int	result = 0;
 
 	if (!test_cnt) {
@@ -1737,7 +1742,18 @@ static int prd_compare_tool(struct siw_hal_prd_data *prd,
 				"lower %d, upper %d\n",
 				curr_lower, curr_upper);
 
+	if (type != U0_M1_RAWDATA_TEST) {
+		second_screen = !!(touch_chip_type(ts) == CHIP_LG4895);
+		second_screen |= !!(touch_chip_type(ts) == CHIP_LG4946);
+		/* not fixed value */
+		bound_i = 1;
+		bound_j = 4;
+	}
+
 	for (k = 0; k < test_cnt; k++) {
+		t_prd_info(prd,
+			"-------- Compare[%d/%d] --------\n",
+			k, test_cnt);
 		size += siw_prd_buf_snprintf(prd->buf_write,
 					size,
 					"-------- Compare[%d/%d] --------\n",
@@ -1755,39 +1771,45 @@ static int prd_compare_tool(struct siw_hal_prd_data *prd,
 				t_prd_info(prd, "curr_raw %d\n", curr_raw);
 			#endif
 
-				if ((curr_raw < curr_lower) ||
-					(curr_raw > curr_upper))
-				{
-					if ((type != U0_M1_RAWDATA_TEST) &&
-						((i <= 1) && (j <= 4)))
-					{
-						if (curr_raw) {
-							result = 1;
-							size += siw_prd_buf_snprintf(prd->buf_write,
-										size,
-										"F [%d][%d] = %d\n",
-										i, j, curr_raw);
-						}
-					} else {
-						result = 1;
-						size += siw_prd_buf_snprintf(prd->buf_write,
-									size,
-									"F [%d][%d] = %d\n",
-									i, j, curr_raw);
+				if ((curr_raw >= curr_lower) &&
+					(curr_raw <= curr_upper)) {
+					continue;
+				}
+
+				raw_err = 0;
+				if (!second_screen) {
+					raw_err = 1;
+				} else {
+					/* if it's 2nd area */
+					if ((i <= bound_i) && (j <= bound_j)) {
+						raw_err = !!(curr_raw)<<1;	/* 2 or 0 */
 					}
+				}
+
+				if (raw_err) {
+					result = 1;
+					t_prd_info(prd,
+						"F [%d][%d] = %d(%d)\n",
+						i, j, curr_raw, raw_err);
+					size += siw_prd_buf_snprintf(prd->buf_write,
+								size,
+								"F [%d][%d] = %d(%d)\n",
+								i, j, curr_raw, raw_err);
 				}
 			}
 			col_i += (col + col_add);
 		}
 
 		if (!result) {
+			t_prd_info(prd,
+				"(none)\n");
 			size += siw_prd_buf_snprintf(prd->buf_write,
 						size,
 						"(none)\n");
 		}
 	}
 
-	t_prd_info(prd, "type %d, result %d\n", type, result);
+//	t_prd_info(prd, "type %d, result %d\n", type, result);
 
 out:
 	return result;
