@@ -192,7 +192,7 @@ static int siw_touch_parse_dts_prd(struct siw_ts *ts)
 	return 0;
 }
 
-static int siw_touch_parse_dts(struct siw_ts *ts)
+static int siw_touch_do_parse_dts(struct siw_ts *ts)
 {
 	struct device *dev = ts->dev;
 	struct device_node *np = dev->of_node;
@@ -304,6 +304,25 @@ static int siw_touch_parse_dts(struct siw_ts *ts)
 
 	return 0;
 }
+
+static int siw_touch_parse_dts(struct siw_ts *ts)
+{
+	struct siw_touch_fquirks *fquirks = touch_fquirks(ts);
+	int ret = 0;
+
+	if (fquirks->parse_dts) {
+		ret = fquirks->parse_dts(ts);
+		if (ret != -EAGAIN) {
+			goto out;
+		}
+	}
+
+	ret = siw_touch_do_parse_dts(ts);
+
+out:
+	return ret;
+}
+
 
 #else	/* __SIW_CONFIG_OF */
 

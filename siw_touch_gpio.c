@@ -42,7 +42,7 @@
 #include "siw_touch_sys.h"
 
 #if 1
-int siw_touch_gpio_init(struct device *dev,
+static int siw_touch_gpio_do_init(struct device *dev,
 							int pin, const char *name)
 {
 	int ret = 0;
@@ -59,14 +59,14 @@ int siw_touch_gpio_init(struct device *dev,
 	return ret;
 }
 
-void siw_touch_gpio_free(struct device *dev, int pin)
+static void siw_touch_gpio_do_free(struct device *dev, int pin)
 {
 	if (gpio_is_valid(pin)) {
 		gpio_free(pin);
 	}
 }
 
-void siw_touch_gpio_direction_input(struct device *dev, int pin)
+static void siw_touch_gpio_do_dir_input(struct device *dev, int pin)
 {
 	if (gpio_is_valid(pin)) {
 		t_dev_dbg_gpio(dev, "set pin(%d) input mode", pin);
@@ -74,7 +74,7 @@ void siw_touch_gpio_direction_input(struct device *dev, int pin)
 	}
 }
 
-void siw_touch_gpio_direction_output(struct device *dev, int pin, int value)
+static void siw_touch_gpio_do_dir_output(struct device *dev, int pin, int value)
 {
 	if (gpio_is_valid(pin)) {
 		t_dev_dbg_gpio(dev, "set pin(%d) output mode(%d)", pin, value);
@@ -83,9 +83,9 @@ void siw_touch_gpio_direction_output(struct device *dev, int pin, int value)
 }
 #else
 /* just test */
-int siw_touch_gpio_init(struct device *dev,	int pin, const char *name){ return 0; }
-void siw_touch_gpio_free(struct device *dev, int pin){ }
-void siw_touch_gpio_direction_input(struct device *dev, int pin)
+static int siw_touch_gpio_init(struct device *dev,	int pin, const char *name){ return 0; }
+static void siw_touch_gpio_do_free(struct device *dev, int pin){ }
+static void siw_touch_gpio_do_dir_input(struct device *dev, int pin)
 {
 	if (gpio_is_valid(pin)) {
 		gpio_request(pin, NULL);
@@ -95,7 +95,7 @@ void siw_touch_gpio_direction_input(struct device *dev, int pin)
 	}
 }
 
-void siw_touch_gpio_direction_output(struct device *dev, int pin, int value)
+static void siw_touch_gpio_do_dir_output(struct device *dev, int pin, int value)
 {
 	if (gpio_is_valid(pin)) {
 		gpio_request(pin, NULL);
@@ -107,19 +107,101 @@ void siw_touch_gpio_direction_output(struct device *dev, int pin, int value)
 
 #endif
 
-void siw_touch_gpio_set_pull(struct device *dev, int pin, int value)
+static void siw_touch_gpio_do_set_pull(struct device *dev, int pin, int value)
 {
 	if (gpio_is_valid(pin)) {
 		t_dev_dbg_gpio(dev, "set pin(%d) pull(%d)", pin, value);
 
 		siw_touch_sys_gpio_set_pull(pin, value);
 	}
+}
 
-	return;
+int siw_touch_gpio_init(struct device *dev,
+							int pin, const char *name)
+{
+	struct siw_ts *ts = to_touch_core(dev);
+	struct siw_touch_fquirks *fquirks = touch_fquirks(ts);
+	int ret = 0;
+
+	if (fquirks->gpio_init) {
+		ret = fquirks->gpio_init(dev, pin, name);
+		if (ret != -EAGAIN) {
+			goto out;
+		}
+	}
+
+	ret = siw_touch_gpio_do_init(dev, pin, name);
+
+out:
+	return ret;
+}
+
+void siw_touch_gpio_free(struct device *dev, int pin)
+{
+	struct siw_ts *ts = to_touch_core(dev);
+	struct siw_touch_fquirks *fquirks = touch_fquirks(ts);
+	int ret;
+
+	if (fquirks->gpio_free) {
+		ret = fquirks->gpio_free(dev, pin);
+		if (ret != -EAGAIN) {
+			return;
+		}
+	}
+
+	siw_touch_gpio_do_free(dev, pin);
+}
+
+void siw_touch_gpio_direction_input(struct device *dev, int pin)
+{
+	struct siw_ts *ts = to_touch_core(dev);
+	struct siw_touch_fquirks *fquirks = touch_fquirks(ts);
+	int ret;
+
+	if (fquirks->gpio_dir_input) {
+		ret = fquirks->gpio_dir_input(dev, pin);
+		if (ret != -EAGAIN) {
+			return;
+		}
+	}
+
+	siw_touch_gpio_do_dir_input(dev, pin);
+}
+
+void siw_touch_gpio_direction_output(struct device *dev, int pin, int value)
+{
+	struct siw_ts *ts = to_touch_core(dev);
+	struct siw_touch_fquirks *fquirks = touch_fquirks(ts);
+	int ret;
+
+	if (fquirks->gpio_dir_output) {
+		ret = fquirks->gpio_dir_output(dev, pin, value);
+		if (ret != -EAGAIN) {
+			return;
+		}
+	}
+
+	siw_touch_gpio_do_dir_output(dev, pin, value);
+}
+
+void siw_touch_gpio_set_pull(struct device *dev, int pin, int value)
+{
+	struct siw_ts *ts = to_touch_core(dev);
+	struct siw_touch_fquirks *fquirks = touch_fquirks(ts);
+	int ret;
+
+	if (fquirks->gpio_set_pull) {
+		ret = fquirks->gpio_set_pull(dev, pin, value);
+		if (ret != -EAGAIN) {
+			return;
+		}
+	}
+
+	siw_touch_gpio_do_set_pull(dev, pin, value);
 }
 
 #if defined(__SIW_SUPPORT_PWRCTRL)
-int siw_touch_power_init(struct device *dev)
+static int siw_touch_power_do_init(struct device *dev)
 {
 	struct siw_ts *ts = to_touch_core(dev);
 	int vdd_pin = touch_vdd_pin(ts);
@@ -153,7 +235,7 @@ int siw_touch_power_init(struct device *dev)
 	return 0;
 }
 
-void siw_touch_power_vdd(struct device *dev, int value)
+static void siw_touch_power_do_vdd(struct device *dev, int value)
 {
 	struct siw_ts *ts = to_touch_core(dev);
 	int vdd_pin = touch_vdd_pin(ts);
@@ -178,7 +260,7 @@ void siw_touch_power_vdd(struct device *dev, int value)
 		t_dev_err(dev, "vdd - %s, %d", op, ret);
 }
 
-void siw_touch_power_vio(struct device *dev, int value)
+static void siw_touch_power_do_vio(struct device *dev, int value)
 {
 	struct siw_ts *ts = to_touch_core(dev);
 	int vio_pin = touch_vio_pin(ts);
@@ -203,23 +285,74 @@ void siw_touch_power_vio(struct device *dev, int value)
 		t_dev_err(dev, "vio - %s, %d", op, ret);
 }
 #else	/* __SIW_SUPPORT_PWRCTRL */
-int siw_touch_power_init(struct device *dev)
+static int siw_touch_power_do_init(struct device *dev)
 {
 	t_dev_dbg_gpio(dev, "power init, nop ...\n");
 
 	return 0;
 }
 
-void siw_touch_power_vdd(struct device *dev, int value)
+static void siw_touch_power_do_vdd(struct device *dev, int value)
 {
 
 }
 
-void siw_touch_power_vio(struct device *dev, int value)
+static void siw_touch_power_do_vio(struct device *dev, int value)
 {
 
 }
 #endif	/* __SIW_SUPPORT_PWRCTRL */
+
+int siw_touch_power_init(struct device *dev)
+{
+	struct siw_ts *ts = to_touch_core(dev);
+	struct siw_touch_fquirks *fquirks = touch_fquirks(ts);
+	int ret = 0;
+
+	if (fquirks->power_init) {
+		ret = fquirks->power_init(dev);
+		if (ret != -EAGAIN) {
+			goto out;
+		}
+	}
+
+	ret = siw_touch_power_do_init(dev);
+
+out:
+	return ret;
+}
+
+void siw_touch_power_vdd(struct device *dev, int value)
+{
+	struct siw_ts *ts = to_touch_core(dev);
+	struct siw_touch_fquirks *fquirks = touch_fquirks(ts);
+	int ret = 0;
+
+	if (fquirks->power_vdd) {
+		ret = fquirks->power_vdd(dev, value);
+		if (ret != -EAGAIN) {
+			return;
+		}
+	}
+
+	siw_touch_power_do_vdd(dev, value);
+}
+
+void siw_touch_power_vio(struct device *dev, int value)
+{
+	struct siw_ts *ts = to_touch_core(dev);
+	struct siw_touch_fquirks *fquirks = touch_fquirks(ts);
+	int ret = 0;
+
+	if (fquirks->power_vio) {
+		ret = fquirks->power_vio(dev, value);
+		if (ret != -EAGAIN) {
+			return;
+		}
+	}
+
+	siw_touch_power_do_vio(dev, value);
+}
 
 
 

@@ -508,6 +508,20 @@ struct siw_touch_buf {
 	int size;
 };
 
+struct siw_touch_fquirks {	//function quirks
+	int (*parse_dts)(void *data);
+	/* */
+	int (*gpio_init)(struct device *dev, int pin, const char *name);
+	int (*gpio_free)(struct device *dev, int pin);
+	int (*gpio_dir_input)(struct device *dev, int pin);
+	int (*gpio_dir_output)(struct device *dev, int pin, int value);
+	int (*gpio_set_pull)(struct device *dev, int pin, int value);
+	/* */
+	int (*power_init)(struct device *dev);
+	int (*power_vdd)(struct device *dev, int value);
+	int (*power_vio)(struct device *dev, int value);
+};
+
 struct siw_touch_pdata {
 	/* Config. */
 	char *chip_id;		//chip id(fixed)
@@ -555,6 +569,8 @@ struct siw_touch_pdata {
 	void *watch_win;
 
 	void *reg_quirks;
+
+	struct siw_touch_fquirks fquirks;
 };
 
 struct siw_touch_chip_data {
@@ -703,6 +719,11 @@ static inline int pdata_xfer_allowed(struct siw_touch_pdata *pdata)
 static inline int pdata_xfer_allowed(struct siw_touch_pdata *pdata){ return 0; }
 #endif	/* __SIW_SUPPORT_XFER */
 
+static inline struct siw_touch_fquirks *pdata_fquirks(
+							struct siw_touch_pdata *pdata)
+{
+	return &pdata->fquirks;
+}
 
 enum {
 	TS_THREAD_OFF = 0,
@@ -1060,6 +1081,12 @@ static inline int touch_xfer_allowed(struct siw_ts *ts)
 {
 	return pdata_xfer_allowed(ts->pdata);
 }
+
+static inline struct siw_touch_fquirks *touch_fquirks(struct siw_ts *ts)
+{
+	return pdata_fquirks(ts->pdata);
+}
+
 
 static inline u32 touch_get_act_buf_size(struct siw_ts *ts)
 {
