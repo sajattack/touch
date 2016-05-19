@@ -431,7 +431,7 @@ static void __store_log_buf(struct device *dev, char *buf,
 static int ext_watch_get_mode(struct device *dev, char *buf, int *len)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
-//	struct siw_ts *ts = chip->ts;
+	struct siw_ts *ts = chip->ts;
 	struct siw_hal_reg *reg = chip->reg;
 	struct watch_data *watch = (struct watch_data *)chip->watch;
 	struct ext_watch_cfg_mode *mode = &watch->ext_wdata.mode;
@@ -510,24 +510,31 @@ static int ext_watch_get_mode(struct device *dev, char *buf, int *len)
 
 	__store_log_buf(dev, buf, log, &buflen, loglen);
 
-	lut = mode->lut;
-	for (i=0 ; i<EXT_WATCH_LUT_NUM ; i++) {
-		ret = siw_hal_read_value(dev, reg->ext_watch_lut + i, &val);
-		if (ret < 0) {
-			goto out;
+	switch (touch_chip_type(ts)) {
+	case CHIP_LG4895:
+		/* SKIP : reg->ext_watch_lut not available */
+		break;
+	default:
+		lut = mode->lut;
+		for (i=0 ; i<EXT_WATCH_LUT_NUM ; i++) {
+			ret = siw_hal_read_value(dev, reg->ext_watch_lut + i, &val);
+			if (ret < 0) {
+				goto out;
+			}
+			ptr = (u8 *)lut;
+			ptr[0] = val & 0xFF;
+			ptr[1] = (val>>8) & 0xFF;
+			ptr[2] = (val>>16) & 0xFF;
+			loglen = siw_watch_snprintf(log, FONT_TEMP_LOG_SZ, 0,
+						"LUT[%d][%04Xh] b %d, g %d, r %d\n",
+						i, reg->ext_watch_blink_area + i,
+						lut->b, lut->g, lut->r);
+
+			__store_log_buf(dev, buf, log, &buflen, loglen);
+
+			lut++;
 		}
-		ptr = (u8 *)lut;
-		ptr[0] = val & 0xFF;
-		ptr[1] = (val>>8) & 0xFF;
-		ptr[2] = (val>>16) & 0xFF;
-		loglen = siw_watch_snprintf(log, FONT_TEMP_LOG_SZ, 0,
-					"LUT[%d][%04Xh] b %d, g %d, r %d\n",
-					i, reg->ext_watch_blink_area + i,
-					lut->b, lut->g, lut->r);
-
-		__store_log_buf(dev, buf, log, &buflen, loglen);
-
-		lut++;
+		break;
 	}
 
 	if (len)
@@ -743,7 +750,7 @@ out:
 static int ext_watch_set_mode(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
-//	struct siw_ts *ts = chip->ts;
+	struct siw_ts *ts = chip->ts;
 	struct siw_hal_reg *reg = chip->reg;
 	struct watch_data *watch = (struct watch_data *)chip->watch;
 	struct ext_watch_cfg_mode *mode = &watch->ext_wdata.mode;
@@ -782,12 +789,19 @@ static int ext_watch_set_mode(struct device *dev)
 		goto out;
 	}
 
-	ret = siw_hal_reg_write(dev,
+	switch (touch_chip_type(ts)) {
+	case CHIP_LG4895:
+		/* SKIP : reg->ext_watch_lut not available */
+		break;
+	default:
+		ret = siw_hal_reg_write(dev,
 				reg->ext_watch_lut,
 				(void *)mode->lut,
 				sizeof(u32) * EXT_WATCH_LUT_NUM);
-	if (ret < 0) {
-		goto out;
+		if (ret < 0) {
+			goto out;
+		}
+		break;
 	}
 
 	t_watch_info(dev, "set mode: done\n");

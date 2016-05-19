@@ -158,7 +158,16 @@ static int __show_reg_list(struct device *dev, char *buf, int size)
 		size += _reg_snprintf(buf, size, reg, ext_watch_area_x);
 		size += _reg_snprintf(buf, size, reg, ext_watch_area_y);
 		size += _reg_snprintf(buf, size, reg, ext_watch_blink_area);
-		size += _reg_snprintf(buf, size, reg, ext_watch_lut);
+
+		switch (touch_chip_type(ts)) {
+		case CHIP_LG4895:
+			/* SKIP : reg->ext_watch_lut not available */
+			break;
+		default:
+			size += _reg_snprintf(buf, size, reg, ext_watch_lut);
+			break;
+		}
+
 		size += _reg_snprintf(buf, size, reg, ext_watch_display_on);
 		size += _reg_snprintf(buf, size, reg, ext_watch_display_status);
 		size += _reg_snprintf(buf, size, reg, ext_watch_rtc_sct);

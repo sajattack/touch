@@ -1114,6 +1114,7 @@ static int prd_write_test_mode(struct siw_hal_prd_data *prd, u8 type)
 	int retry = 20;
 	u32 rdata = 0x01;
 	int waiting_time = 400;
+	int addr = reg->tc_tsp_test_ctl;
 	int ret = 0;
 
 	switch (type) {
@@ -1142,26 +1143,25 @@ static int prd_write_test_mode(struct siw_hal_prd_data *prd, u8 type)
 	}
 
 	/* TestType Set */
-	ret = siw_hal_write_value(dev,
-				reg->tc_tsp_test_ctl,
-				testmode);
+	ret = siw_hal_write_value(dev, addr, testmode);
 	if (ret < 0) {
 		return ret;
 	}
-	t_prd_info(prd, "write testmode = %x\n", testmode);
+	t_prd_info(prd, "write testmode[%04Xh] = %x\n",
+		addr, testmode);
 	touch_msleep(waiting_time);
 
 	/* Check Test Result - wait until 0 is written */
+	addr = reg->tc_tsp_test_status;
 	do {
 		touch_msleep(100);
-		ret = siw_hal_read_value(dev,
-					reg->tc_tsp_test_status,
-					&rdata);
+		ret = siw_hal_read_value(dev, addr, &rdata);
 		if (ret < 0) {
 			return ret;
 		}
 		if (ret >= 0) {
-			t_prd_dbg_base(prd, "rdata = 0x%x\n", rdata);
+			t_prd_dbg_base(prd, "rdata[%04Xh] = 0x%x\n",
+				addr, rdata);
 		}
 	} while ((rdata != 0xAA) && retry--);
 
@@ -1975,10 +1975,11 @@ static int prd_set_blu(struct device *dev)
 	return 0;
 }
 
-static int prd_read_rawdata(struct siw_hal_prd_data *prd, u8 type)
+static int prd_read_rawdata(struct siw_hal_prd_data *prd, int type)
 {
 	struct device *dev = prd->dev;
 	struct siw_touch_chip *chip = to_touch_chip(dev);
+//	struct siw_ts *ts = chip->ts;
 	struct siw_hal_reg *reg = chip->reg;
 	int __m1_frame_size = PRD_M1_FRAME_SIZE;
 	int __m2_frame_size = PRD_M2_FRAME_SIZE;
@@ -1990,6 +1991,7 @@ static int prd_read_rawdata(struct siw_hal_prd_data *prd, u8 type)
 	};
 	int16_t *tmp_buf = prd->m1_buf_tmp;
 	int16_t *raw_buf;
+	int addr = reg->prd_m1_m2_raw_offset;
 	int i, j = 0;
 	int ret = 0;
 
@@ -1998,17 +2000,16 @@ static int prd_read_rawdata(struct siw_hal_prd_data *prd, u8 type)
 	if (__m2_frame_size & 0x3)
 		__m2_frame_size = (((__m2_frame_size >> 2) + 1) << 2);
 
-	/* Odd/Even Frame Offeset Read */
 	ret = siw_hal_read_value(dev,
-				reg->prd_m1_m2_raw_offset,
+				addr,
 				&raw_offset_info);
 	if (ret < 0) {
 		goto out;
 	}
 	raw_data_offset[0] = raw_offset_info & 0xFFFF;
 	raw_data_offset[1] = (raw_offset_info >> 16) & 0xFFFF;
-	t_prd_info(prd, "test type %d, odd Offset %04Xh, even offset %04Xh\n",
-		type, raw_data_offset[0], raw_data_offset[1]);
+	t_prd_info(prd, "test[%04Xh] type %d, odd offset %04Xh, even offset %04Xh\n",
+		addr, type, raw_data_offset[0], raw_data_offset[1]);
 
 	switch (type) {
 	case U3_BLU_JITTER_TEST:
@@ -2362,7 +2363,6 @@ static int prd_do_rawdata_test(struct siw_hal_prd_data *prd,
 		return ret;
 	}
 	if (!ret) {
-		t_prd_err(prd, "production test couldn't be done\n");
 		return 1;
 	}
 
@@ -2524,27 +2524,28 @@ static int prd_write_test_control(struct siw_hal_prd_data *prd, u32 mode)
 	u32 test_mode_enter_cmt = mode;
 	u32 test_mode_enter_check = -1;
 	unsigned int delay_ms = 30;
+	int addr = reg->prd_tc_test_mode_ctl;
 	int ret = 0;
 
 	ret = siw_hal_write_value(dev,
-				reg->prd_tc_test_mode_ctl,
+				addr,
 				test_mode_enter_cmt);
 	if (ret < 0) {
 		goto out;
 	}
-	t_prd_info(prd, "wr prd_tc_test_mode_ctl = %d\n",
-		test_mode_enter_cmt);
+	t_prd_info(prd, "wr prd_tc_test_mode_ctl[%04Xh] = %d\n",
+		addr, test_mode_enter_cmt);
 
 	touch_msleep(delay_ms);
 
 	ret = siw_hal_read_value(dev,
-				reg->prd_tc_test_mode_ctl,
+				addr,
 				&test_mode_enter_check);
 	if (ret < 0) {
 		goto out;
 	}
-	t_prd_info(prd, "rd prd_tc_test_mode_ctl = %d\n",
-		test_mode_enter_check);
+	t_prd_info(prd, "rd prd_tc_test_mode_ctl[%04Xh] = %d\n",
+		addr, test_mode_enter_check);
 
 out:
 	return ret;
