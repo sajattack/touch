@@ -1135,12 +1135,14 @@ static int siw_hal_ic_info(struct device *dev)
 
 	fw->wfr &= WAFER_TYPE_MASK;
 
-	t_dev_info(dev, "[T] chip id    : %s\n", chip->fw.chip_id);
-	t_dev_info(dev, "[T] version    : v%u.%02u (0x%08X, 0x%02X)\n",
+	t_dev_info(dev,
+			"[T] chip id %s, version v%u.%02u (0x%08X, 0x%02X)\n",
+			chip->fw.chip_id,
 			(u32)(fw->version[0]), (u32)(fw->version[1]),
 			version, fw->revision);
-	t_dev_info(dev, "[T] product id : %s\n", fw->product_id);
-	t_dev_info(dev, "[T] flash boot : %s(%s), crc : %s (0x%08X)\n",
+	t_dev_info(dev,
+			"[T] product id %s, flash boot %s(%s), crc %s (0x%08X)\n",
+			fw->product_id,
 			(bootmode >> 1 & 0x1) ? "BUSY" : "idle",
 			(bootmode >> 2 & 0x1) ? "done" : "booting",
 			(bootmode >> 3 & 0x1) ? "ERROR" : "ok",
@@ -1148,11 +1150,11 @@ static int siw_hal_ic_info(struct device *dev)
 
 	switch (touch_chip_type(ts)) {
 	case CHIP_LG4946:
-		t_dev_info(dev, "[T] lot        : %d\n", fw->lot);
-		t_dev_info(dev, "[T] sn         : %Xh\n", fw->sn);
-		t_dev_info(dev, "[T] date       : %04d.%02d.%02d\n",
-			fw->date & 0xFFFF, ((fw->date>>16) & 0xFF), ((fw->date>>24) & 0xFF));
-		t_dev_info(dev, "[T] time       : %02d:%02d:%02d Site%d\n",
+		t_dev_info(dev,
+			"[T] lot %d, sn %Xh, "
+			"date %04d.%02d.%02d, time %02d:%02d:%02d site%d\n",
+			fw->lot, fw->sn,
+			fw->date & 0xFFFF, ((fw->date>>16) & 0xFF), ((fw->date>>24) & 0xFF),
 			fw->time & 0xFF, ((fw->time>>8) & 0xFF), ((fw->time>>16) & 0xFF),
 			((fw->time>>24) & 0xFF));
 		break;
