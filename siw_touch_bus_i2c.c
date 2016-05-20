@@ -292,7 +292,7 @@ static int siw_touch_i2c_pm_suspend(struct device *dev)
 
 	atomic_set(&ts->state.pm, DEV_PM_SUSPEND);
 
-	t_dev_dbg_pm(dev, "dev pm suspend\n");
+	t_dev_info(dev, "dev pm suspend\n");
 
 	return 0;
 }
@@ -309,7 +309,7 @@ static int siw_touch_i2c_pm_resume(struct device *dev)
 
 	atomic_set(&ts->state.pm, DEV_PM_RESUME);
 
-	t_dev_dbg_pm(dev, "dev pm resume\n");
+	t_dev_info(dev, "dev pm resume\n");
 
 	return 0;
 }
