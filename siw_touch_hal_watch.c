@@ -446,6 +446,15 @@ static int ext_watch_get_mode(struct device *dev, char *buf, int *len)
 	int i;
 	int ret = 0;
 
+	switch (touch_chip_type(ts)) {
+	case CHIP_LG4895:
+		/* SKIP : all handled by MIPI, no effect */
+		return 0;
+	//	break;
+	default:
+		break;
+	}
+
 	if (len)
 		buflen = *len;
 
@@ -760,6 +769,15 @@ static int ext_watch_set_mode(struct device *dev)
 	u8 *ptr = NULL;
 	u32 val;
 	int ret;
+
+	switch (touch_chip_type(ts)) {
+	case CHIP_LG4895:
+		/* SKIP : all handled by MIPI, no effect */
+		return 0;
+	//	break;
+	default:
+		break;
+	}
 
 	mode->watch_ctrl.alpha = !!position->bhprd;	/* bypass foreground */
 
@@ -1442,8 +1460,14 @@ static ssize_t store_ext_watch_config_font_effect(struct device *dev,
 	//	cfg.clock_disp_type = 0;
 		cfg.midnight_hour_zero_en = 1;
 		cfg.blink.blink_type = DEFAULT_BLINK_TYPE;
+
+		/*
+		 * for CHIP_LG4895
+		 * blink position is handled by MIPI, no effect.
+		 */
 		cfg.blink.bstartx = DEFAULT_CLX;
 		cfg.blink.bendx = cfg.blink.bstartx + 8;
+
 		cfg.watchon = 1;
 	} else {
 		memcpy((char *)&cfg, buf, sizeof(cfg));
@@ -1609,7 +1633,7 @@ static ssize_t store_ext_watch_config_font_property(struct device *dev,
  					const char *buf, size_t count)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
-//	struct siw_ts *ts = chip->ts;
+	struct siw_ts *ts = chip->ts;
 	struct watch_data *watch = (struct watch_data *)chip->watch;
 	struct ext_watch_cfg_mode *mode = &watch->ext_wdata.mode;
 	struct ext_watch_bits_lut *lut;
@@ -1623,6 +1647,15 @@ static ssize_t store_ext_watch_config_font_property(struct device *dev,
 	if (atomic_read(&chip->block_watch_cfg) == BLOCKED) {
 		t_watch_err(dev, "store font property blocked\n");
 		return __ret_val_blocked(count);
+	}
+
+	switch (touch_chip_type(ts)) {
+	case CHIP_LG4895:
+		/* SKIP : lut setup is handled by MIPI, no effect */
+		goto out;
+	//	break;
+	default:
+		break;
 	}
 
 	if (buf[0] == EXT_WATCH_CFG_DEFAULT) {	//for the case of using echo command
@@ -1658,6 +1691,7 @@ static ssize_t store_ext_watch_config_font_property(struct device *dev,
 
 	siw_touch_blocking_notifier_call(LCD_EVENT_TOUCH_WATCH_LUT_UPDATE, (void*)(&cfg));
 
+out:
 	return count;
 }
 
