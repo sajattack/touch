@@ -86,6 +86,7 @@ extern int siw_hal_watch_is_rtc_run(struct device *dev);
 extern void siw_hal_watch_set_rtc_run(struct device *dev);
 extern void siw_hal_watch_set_rtc_clear(struct device *dev);
 extern void siw_hal_watch_set_font_empty(struct device *dev);
+extern void siw_hal_watch_set_cfg_blocked(struct device *dev);
 #else	/* __SIW_SUPPORT_WATCH */
 static int __used siw_hal_watch_sysfs(struct device *dev, int on_off){ return 0; }
 static int __used siw_hal_watch_init(struct device *dev){ return 0; }
@@ -97,6 +98,7 @@ static int __used siw_hal_watch_is_rtc_run(struct device *dev){ return 0; }
 extern void __used siw_hal_watch_set_rtc_run(struct device *dev){ }
 extern void __used siw_hal_watch_set_rtc_clear(struct device *dev){ }
 extern void __used siw_hal_watch_set_font_empty(struct device *dev){ }
+extern void __used siw_hal_watch_set_cfg_blocked(struct device *dev){ }
 #endif	/* __SIW_SUPPORT_WATCH */
 
 
@@ -3795,6 +3797,11 @@ static int siw_hal_irq_handler(struct device *dev)
 	struct siw_hal_reg *reg = chip->reg;
 	int ret = 0;
 
+	if (atomic_read(&chip->init) == IC_INIT_NEED) {
+		t_dev_warn(dev, "Not Ready, Need IC init\n");
+		return 0;
+	}
+
 	pm_qos_update_request(&chip->pm_qos_req, 10);
 	ret = siw_hal_reg_read(dev,
 				reg->tc_ic_status,
@@ -3995,10 +4002,14 @@ static int siw_hal_notify(struct device *dev, ulong event, void *data)
 
 	switch (event) {
 	case NOTIFY_TOUCH_RESET:
-		ret = !!(atomic_read(&ts->state.debug_option_mask) & DEBUG_OPTION_1);
+	//	ret = !!(atomic_read(&ts->state.debug_option_mask) & DEBUG_OPTION_1);
 		t_dev_info(dev, "notify: reset, %d\n", ret);
-	//	atomic_set(&chip->watch.state.font_status, FONT_EMPTY);
-	//	atomic_set(&chip->block_watch_cfg, BLOCKED);
+
+		atomic_set(&chip->init, IC_INIT_NEED);
+
+		siw_hal_watch_set_rtc_clear(dev);
+		siw_hal_watch_set_font_empty(dev);
+		siw_hal_watch_set_cfg_blocked(dev);
 
 		noti_str = "TOUCH_RESET";
 		break;

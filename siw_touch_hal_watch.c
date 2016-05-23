@@ -2490,6 +2490,13 @@ void siw_hal_watch_set_font_empty(struct device *dev)
 		atomic_set(&watch->state.font_status, FONT_EMPTY);
 }
 
+void siw_hal_watch_set_cfg_blocked(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+
+	atomic_set(&chip->block_watch_cfg, BLOCKED);
+}
+
 #endif	/* __SIW_SUPPORT_WATCH */
 
 

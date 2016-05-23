@@ -2204,6 +2204,11 @@ static int siw_hal_abt_irq_handler(struct device *dev)
 	int report_mode = abt_is_set_func(abt);
 	int ret = 0;
 
+	if (atomic_read(&chip->init) == IC_INIT_NEED) {
+		t_dev_warn(dev, "Not Ready, Need IC init\n");
+		return 0;
+	}
+
 	pm_qos_update_request(&chip->pm_qos_req, 10);
 	ret = siw_hal_reg_read(dev,
 				reg->tc_ic_status,
