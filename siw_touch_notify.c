@@ -134,7 +134,14 @@ static int _siw_touch_do_notify(struct siw_ts *ts,
 {
 //	struct siw_touch_pdata *pdata = ts->pdata;
 	struct device *dev = ts->dev;
+	char *noti_str = "(unknown)";
+	int call_hal_notify = 1;
+	u32 value = 0;
 	int ret = 0;
+
+	if (data) {
+		value = *((int *)data);
+	}
 
 	if (siw_ops_is_null(ts, notify)) {
 		return 0;
@@ -149,8 +156,8 @@ static int _siw_touch_do_notify(struct siw_ts *ts,
 		break;
 
 	case NOTIFY_CONNECTION:
-		if (atomic_read(&ts->state.connect) != *(int *)data) {
-			atomic_set(&ts->state.connect, *(int *)data);
+		if (atomic_read(&ts->state.connect) != value) {
+			atomic_set(&ts->state.connect, value);
 			ret = siw_ops_notify(ts, event, data);
 
 		#if defined(__SIW_SUPPORT_ASC)
@@ -162,7 +169,7 @@ static int _siw_touch_do_notify(struct siw_ts *ts,
 		break;
 
 	case NOTIFY_WIRELEES:
-		atomic_set(&ts->state.wireless, *(int *)data);
+		atomic_set(&ts->state.wireless, value);
 		ret = siw_ops_notify(ts, event, data);
 
 	#if defined(__SIW_SUPPORT_ASC)
@@ -174,12 +181,15 @@ static int _siw_touch_do_notify(struct siw_ts *ts,
 		break;
 
 	case NOTIFY_FB:
-		atomic_set(&ts->state.fb, *(int *)data);
+		atomic_set(&ts->state.fb, value);
 		siw_touch_qd_fb_work_now(ts);
+
+		call_hal_notify = 0;
+		noti_str = "FB";
 		break;
 
 	case NOTIFY_EARJACK:
-		atomic_set(&ts->state.earjack, *(int *)data);
+		atomic_set(&ts->state.earjack, value);
 		ret = siw_ops_notify(ts, event, data);
 		break;
 
@@ -190,6 +200,10 @@ static int _siw_touch_do_notify(struct siw_ts *ts,
 	default:
 		ret = siw_ops_notify(ts, event, data);
 		break;
+	}
+
+	if (!call_hal_notify) {
+		siwmon_submit_evt(dev, "NOTIFY", 0, noti_str, event, value, ret);
 	}
 
 	return ret;

@@ -3983,7 +3983,13 @@ static int siw_hal_notify(struct device *dev, ulong event, void *data)
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
 	struct siw_hal_reg *reg = chip->reg;
+	char *noti_str = "(unknown)";
+	u32 value = 0;
 	int ret = 0;
+
+	if (data) {
+		value = *((u32 *)data);
+	}
 
 	t_dev_dbg_noti(dev, "notify event(%d)\n", (u32)event);
 
@@ -3993,6 +3999,8 @@ static int siw_hal_notify(struct device *dev, ulong event, void *data)
 		t_dev_info(dev, "notify: reset, %d\n", ret);
 	//	atomic_set(&chip->watch.state.font_status, FONT_EMPTY);
 	//	atomic_set(&chip->block_watch_cfg, BLOCKED);
+
+		noti_str = "TOUCH_RESET";
 		break;
 	case LCD_EVENT_TOUCH_RESET_START:
 		atomic_set(&ts->state.hw_reset, event);
@@ -4000,6 +4008,8 @@ static int siw_hal_notify(struct device *dev, ulong event, void *data)
 		t_dev_info(dev, "notify: lcd_event: touch reset start\n");
 		siw_touch_irq_control(ts->dev, INTERRUPT_DISABLE);
 		siw_hal_set_gpio_reset(dev, GPIO_OUT_ZERO);
+
+		noti_str = "TOUCH_RESET_START";
 		break;
 	case LCD_EVENT_TOUCH_RESET_END:
 		atomic_set(&ts->state.hw_reset, event);
@@ -4008,6 +4018,8 @@ static int siw_hal_notify(struct device *dev, ulong event, void *data)
 		siw_hal_set_gpio_reset(dev, GPIO_OUT_ONE);
 
 		siw_touch_qd_init_work_hw(ts);
+
+		noti_str = "TOUCH_RESET_END";
 		break;
 	case LCD_EVENT_LCD_MODE:
 		t_dev_info(dev, "notify: lcd_event: lcd mode\n");
@@ -4020,44 +4032,60 @@ static int siw_hal_notify(struct device *dev, ulong event, void *data)
 			queue_delayed_work(ts->wq, &chip->fb_notify_work, 0);
 		}
 		ret = 0;
+
+		noti_str = "LCD_MODE";
 		break;
 
 	case LCD_EVENT_READ_REG:
 		t_dev_info(dev, "notify: lcd event: read reg\n");
 		siw_hal_lcd_event_read_reg(dev);
+
+		noti_str = "READ_REG";
 		break;
 
 	case NOTIFY_CONNECTION:
 		t_dev_info(dev, "notify: connection\n");
-		ret = siw_hal_usb_status(dev, *(u32 *)data);
+		ret = siw_hal_usb_status(dev, value);
+
+		noti_str = "CONNECTION";
 		break;
 	case NOTIFY_WIRELEES:
 		t_dev_info(dev, "notify: wireless\n");
-		ret = siw_hal_wireless_status(dev, *(u32 *)data);
+		ret = siw_hal_wireless_status(dev, value);
+
+		noti_str = "WIRELESS";
 		break;
 	case NOTIFY_EARJACK:
 		t_dev_info(dev, "notify: earjack\n");
-		ret = siw_hal_earjack_status(dev, *(u32 *)data);
+		ret = siw_hal_earjack_status(dev, value);
+
+		noti_str = "EARJACK";
 		break;
 	case NOTIFY_IME_STATE:
 #if 0
 		t_dev_info(dev, "notify: ime state\n");
-		ret = siw_hal_reg_write(dev,
+		ret = siw_hal_write_value(dev,
 					reg->ime_state,
-					(void *)data, sizeof(data));
+					value);
 #else
 		t_dev_info(dev, "notify: do nothing for ime\n");
 #endif
+
+		noti_str = "IME_STATE";
 		break;
 	case NOTIFY_DEBUG_TOOL:
-		ret = siw_hal_debug_tool(dev, *(u32 *)data);
+		ret = siw_hal_debug_tool(dev, value);
 		t_dev_info(dev, "notify: debug tool\n");
+
+		noti_str = "DEBUG_TOOL";
 		break;
 	case NOTIFY_CALL_STATE:
 		t_dev_info(dev, "notify: call state\n");
-		ret = siw_hal_reg_write(dev,
+		ret = siw_hal_write_value(dev,
 					reg->call_state,
-					(void *)data, sizeof(data));
+					value);
+
+		noti_str = "CALL_STATE";
 		break;
 	case LCD_EVENT_TOUCH_DRIVER_REGISTERED:
 	case LCD_EVENT_TOUCH_DRIVER_UNREGISTERED:
@@ -4067,17 +4095,21 @@ static int siw_hal_notify(struct device *dev, ulong event, void *data)
 					(event == LCD_EVENT_TOUCH_DRIVER_REGISTERED)?
 					"registered" : "unregistered");
 		}
+		noti_str = "DRV";
 		break;
 	case LCD_EVENT_TOUCH_WATCH_LUT_UPDATE:
 	case LCD_EVENT_TOUCH_WATCH_POS_UPDATE:
 	case LCD_EVENT_TOUCH_PROXY_STATUS:
 	case LCD_EVENT_TOUCH_ESD_DETECTED:
 		t_dev_info(dev, "notify: %lu called\n", event);
+		noti_str = "ETC";
 		break;
 	default:
 		t_dev_err(dev, "notify: %lu is not supported\n", event);
 		break;
 	}
+
+	siwmon_submit_evt(dev, "NOTIFY", 0, noti_str, event, value, ret);
 
 	return ret;
 }
