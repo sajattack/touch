@@ -200,7 +200,9 @@ static int siw_touch_do_parse_dts(struct siw_ts *ts)
 	struct touch_device_caps *caps = &ts->caps;
 	struct touch_operation_role *role = &ts->role;
 	int tmp;
+	u32 p_flags = 0;
 	int chip_flags = 0;
+	int irq_flags = 0;
 	enum of_gpio_flags pin_flags;
 	int pin_val;
 
@@ -230,11 +232,37 @@ static int siw_touch_do_parse_dts(struct siw_ts *ts)
 	pins->vdd_pin = siw_touch_of_gpio(dev, np, "vdd-gpio", NULL);
 	pins->vio_pin = siw_touch_of_gpio(dev, np, "vio-gpio", NULL);
 
-	ts->irqflags = siw_touch_of_u32(dev, np, "irqflags");
+	irq_flags = siw_touch_of_u32(dev, np, "irqflags");
+	p_flags = pdata_irqflags(ts->pdata);
+	if ((p_flags & TOUCH_IGNORE_DT_FLAGS) || (irq_flags < 0)) {
+		ts->irqflags = p_flags;
+	} else {
+		ts->irqflags = irq_flags & 0xFFFF;
+		ts->irqflags |= p_flags & (0xFFFFUL<<16);
+	}
+	if (irq_flags >= 0) {
+		t_dev_info(dev, "irqflags(of) = 0x%08X (0x%08X, 0x%08X)",
+			(u32)ts->irqflags, p_flags, irq_flags);
+	} else {
+		t_dev_info(dev, "irqflags(of) = 0x%08X (0x%08X, %d)",
+			(u32)ts->irqflags, p_flags, irq_flags);
+	}
 
 	chip_flags = siw_touch_of_int(dev, np, "chip_flags");
-	ts->flags = (chip_flags >= 0)? chip_flags : ts->pdata->flags;
-	t_dev_info(dev, "flags(of) = 0x%08X", ts->flags);
+	p_flags = pdata_flags(ts->pdata);
+	if ((p_flags & TOUCH_IGNORE_DT_FLAGS) || (chip_flags < 0)) {
+		ts->flags = p_flags;
+	} else {
+		ts->flags = chip_flags & 0xFFFF;
+		ts->flags |= p_flags & (0xFFFFUL<<16);
+	}
+	if (chip_flags >= 0) {
+		t_dev_info(dev, "flags(of) = 0x%08X (0x%08X, 0x%08X)",
+			ts->flags, p_flags, chip_flags);
+	} else {
+		t_dev_info(dev, "flags(of) = 0x%08X (0x%08X, %d)",
+			ts->flags, p_flags, chip_flags);
+	}
 
 	/* Caps */
 	caps->max_x = siw_touch_of_u32(dev, np, "max_x");
@@ -330,9 +358,9 @@ static int siw_touch_parse_dts(struct siw_ts *ts)
 {
 	struct device *dev = ts->dev;
 
-	ts->irqflags = ts->pdata->irqflags;
+	ts->irqflags = pdata_irqflags(ts->pdata);
 
-	ts->flags = ts->pdata->flags;
+	ts->flags = pdata_flags(ts->pdata);
 	t_dev_info(dev, "flags = 0x%08X", ts->flags);
 
 	touch_set_pins(ts, &ts->pdata->pins);

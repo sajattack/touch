@@ -2274,6 +2274,7 @@ static int ext_watch_create_sysfs(struct device *dev)
 	struct device *idev = &ts->input->dev;
 	//Caution : not ts->kobj
 	struct kobject *kobj = &chip->kobj;
+	struct kobject *parent;
 	struct watch_data *watch;
 	char *name = NULL;
 	int ret = 0;
@@ -2289,8 +2290,19 @@ static int ext_watch_create_sysfs(struct device *dev)
 
 	name = touch_ext_watch_name(ts);
 
+	if (touch_flags(ts) & TOUCH_USE_VIRT_DIR_WATCH) {
+		/*
+		 * /sys/devices/virtual/
+		 */
+		parent = idev->kobj.parent->parent;
+	} else {
+		/*
+		 * /sys/devices/virtual/input/
+		 */
+		parent = idev->kobj.parent;
+	}
 	ret = kobject_init_and_add(kobj, &ext_watch_kobj_type,
-			idev->kobj.parent, "%s", name);
+			parent, "%s", name);
 	if (ret < 0) {
 		t_watch_err(dev, "failed to create sysfs kobj\n");
 		goto out_kobj;

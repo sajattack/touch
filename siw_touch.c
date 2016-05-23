@@ -845,7 +845,7 @@ static int __used siw_touch_init_thread(struct siw_ts *ts)
 	struct task_struct *thread;
 	int ret = 0;
 
-	if (ts->flags & TOUCH_USE_MON_THREAD) {
+	if (touch_flags(ts) & TOUCH_USE_MON_THREAD) {
 		ts_thread = &ts->mon_thread;
 
 		if (siw_ops_is_null(ts, mon_handler)) {
@@ -889,7 +889,7 @@ static void __used siw_touch_free_thread(struct siw_ts *ts)
 	struct device *dev = ts->dev;
 	struct siw_ts_thread *ts_thread = NULL;
 
-	if (ts->flags & TOUCH_USE_MON_THREAD) {
+	if (touch_flags(ts) & TOUCH_USE_MON_THREAD) {
 		ts_thread = &ts->mon_thread;
 
 		if (ts_thread->thread) {
@@ -1236,7 +1236,7 @@ static int siw_touch_do_probe_normal(void *data)
 	ret = siw_touch_request_irq(ts,
 						siw_touch_irq_handler,
 						siw_touch_irq_thread,
-						ts->irqflags,
+						touch_irqflags(ts),
 						irq_name);
 	if (ret) {
 		t_dev_err(dev, "failed to request thread irq(%d), %d\n",

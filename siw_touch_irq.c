@@ -45,7 +45,7 @@ void siw_touch_enable_irq_wake(struct device *dev,
 {
 	struct siw_ts *ts = to_touch_core(dev);
 
-	if (ts->flags & IRQ_USE_WAKE) {
+	if (touch_flags(ts) & IRQ_USE_WAKE) {
 		enable_irq_wake(irq);
 		t_dev_dbg_irq(dev, "irq(%d) wake enabled\n", irq);
 	}
@@ -56,7 +56,7 @@ void siw_touch_disable_irq_wake(struct device *dev,
 {
 	struct siw_ts *ts = to_touch_core(dev);
 
-	if (ts->flags & IRQ_USE_WAKE) {
+	if (touch_flags(ts) & IRQ_USE_WAKE) {
 		disable_irq_wake(irq);
 		t_dev_dbg_irq(dev, "irq(%d) wake disabled\n", irq);
 	}
@@ -209,7 +209,7 @@ static int siw_touch_request_irq_queue_work(struct siw_ts *ts,
      */
 	ts->irq = irq_of_parse_and_map(node, 0);
 	ret = request_irq(ts->irq, siw_touch_work_irq_handler,
-					ts->irqflags, name, (void *)ts);
+					touch_irqflags(ts), name, (void *)ts);
 	if (ret) {
 		t_dev_err(dev, "request_irq IRQ LINE NOT AVAILABLE!, %d\n", ret);
 		goto out;
@@ -228,6 +228,7 @@ int siw_touch_request_irq(struct siw_ts *ts,
 							    const char *name)
 {
 	struct device *dev = ts->dev;
+	u32 irq_use_scheule_work = touch_flags(ts) & IRQ_USE_SCHEDULE_WORK;
 	int ret = 0;
 
 	if (!ts->irq) {
@@ -236,7 +237,7 @@ int siw_touch_request_irq(struct siw_ts *ts,
 		goto out;
 	}
 
-	if (ts->flags & IRQ_USE_SCHEDULE_WORK) {
+	if (irq_use_scheule_work) {
 		ret = siw_touch_request_irq_queue_work(ts,
 									handler, thread_fn,
 									flags, name);
@@ -250,7 +251,7 @@ int siw_touch_request_irq(struct siw_ts *ts,
 	}
 
 	t_dev_info(dev, "%s irq request done(%d, %s, 0x%X)\n",
-			(ts->flags & IRQ_USE_SCHEDULE_WORK)?	\
+			(irq_use_scheule_work)?	\
 			"queue work" : "threaded",
 			ts->irq, name, (u32)flags);
 

@@ -605,15 +605,18 @@ struct siw_touch_chip_data {
 	void *bus_drv;
 };
 
-#define CHIP_QUIRK_NOT_SUPPORT_XFER				_CHIP_QUIRK_NOT_SUPPORT_XFER
+enum {
+	CHIP_QUIRK_NOT_SUPPORT_XFER			= _CHIP_QUIRK_NOT_SUPPORT_XFER,
+	/* */
+	CHIP_QUIRK_NOT_SUPPORT_PROBE_INIT	= _CHIP_QUIRK_NOT_SUPPORT_PROBE_INIT,
+	/* */
+	CHIP_QUIRK_NOT_SUPPORT_ASC			= _CHIP_QUIRK_NOT_SUPPORT_ASC,
+	CHIP_QUIRK_NOT_SUPPORT_LPWG			= _CHIP_QUIRK_NOT_SUPPORT_LPWG,
+	CHIP_QUIRK_NOT_SUPPORT_WATCH		= _CHIP_QUIRK_NOT_SUPPORT_WATCH,
+	/* */
+	CHIP_QUIRK_NOT_SUPPORT_IME			= _CHIP_QUIRK_NOT_SUPPORT_IME,
+};
 
-#define CHIP_QUIRK_NOT_SUPPORT_PROBE_INIT		_CHIP_QUIRK_NOT_SUPPORT_PROBE_INIT
-
-#define CHIP_QUIRK_NOT_SUPPORT_ASC				_CHIP_QUIRK_NOT_SUPPORT_ASC
-#define CHIP_QUIRK_NOT_SUPPORT_LPWG				_CHIP_QUIRK_NOT_SUPPORT_LPWG
-#define CHIP_QUIRK_NOT_SUPPORT_WATCH			_CHIP_QUIRK_NOT_SUPPORT_WATCH
-
-#define CHIP_QUIRK_NOT_SUPPORT_IME				_CHIP_QUIRK_NOT_SUPPORT_IME
 
 static inline unsigned long pdata_get_quirks(struct siw_touch_pdata *pdata)
 {
@@ -664,6 +667,16 @@ static inline u32 pdata_mode_allowed(struct siw_touch_pdata *pdata, u32 mode)
 static inline u32 pdata_fw_size(struct siw_touch_pdata *pdata)
 {
 	return pdata->fw_size;
+}
+
+static inline u32 pdata_flags(struct siw_touch_pdata *pdata)
+{
+	return pdata->flags;
+}
+
+static inline unsigned long pdata_irqflags(struct siw_touch_pdata *pdata)
+{
+	return pdata->irqflags;
 }
 
 static inline u32 pdata_bus_type(struct siw_touch_pdata *pdata)
@@ -897,10 +910,14 @@ struct siw_ts {
 	void *prd;
 
 	u32 flags;
-#define _IRQ_USE_WAKE				(1U << 0)
-#define _IRQ_USE_SCHEDULE_WORK		(1U << 1)
+#define _IRQ_USE_WAKE				(1UL<<0)
+#define _IRQ_USE_SCHEDULE_WORK		(1UL<<1)
 
-#define _TOUCH_USE_MON_THREAD		(1U << 8)
+#define _TOUCH_USE_MON_THREAD		(1UL<<8)
+
+#define _TOUCH_USE_VIRT_DIR_WATCH	(1UL<<16)
+
+#define _TOUCH_IGNORE_DT_FLAGS		(1UL<<31)
 
 	/* Input Device ID */
 	struct input_id i_id;
@@ -927,10 +944,16 @@ struct siw_ts {
 	int (*init_late)(void *data);
 };
 
-#define IRQ_USE_WAKE				_IRQ_USE_WAKE
-#define	IRQ_USE_SCHEDULE_WORK		_IRQ_USE_SCHEDULE_WORK
-
-#define TOUCH_USE_MON_THREAD		_TOUCH_USE_MON_THREAD
+enum {
+	IRQ_USE_WAKE				= _IRQ_USE_WAKE,
+	IRQ_USE_SCHEDULE_WORK		= _IRQ_USE_SCHEDULE_WORK,
+	/* */
+	TOUCH_USE_MON_THREAD		= _TOUCH_USE_MON_THREAD,
+	/* */
+	TOUCH_USE_VIRT_DIR_WATCH	= _TOUCH_USE_VIRT_DIR_WATCH,
+	/* */
+	TOUCH_IGNORE_DT_FLAGS		= _TOUCH_IGNORE_DT_FLAGS,
+};
 
 
 /* goes to siw_touch_init_work_func */
@@ -1096,6 +1119,16 @@ static inline u32 touch_mode_not_allowed(struct siw_ts *ts, u32 mode)
 static inline u32 touch_fw_size(struct siw_ts *ts)
 {
 	return pdata_fw_size(ts->pdata);
+}
+
+static inline u32 touch_flags(struct siw_ts *ts)
+{
+	return ts->flags;
+}
+
+static inline unsigned long touch_irqflags(struct siw_ts *ts)
+{
+	return ts->irqflags;
 }
 
 static inline u32 touch_bus_type(struct siw_ts *ts)
