@@ -69,8 +69,9 @@ static void siw_touch_report_palm_event(struct siw_ts *ts)
 	input_sync(ts->input);
 }
 
-void siw_touch_report_event(struct siw_ts *ts)
+void siw_touch_report_event(void *ts_data)
 {
+	struct siw_ts *ts = ts_data;
 	struct device *idev = &ts->input->dev;
 	u16 old_mask = ts->old_mask;
 	u16 new_mask = ts->new_mask;
@@ -143,8 +144,9 @@ void siw_touch_report_event(struct siw_ts *ts)
 	input_sync(ts->input);
 }
 
-void siw_touch_report_all_event(struct siw_ts *ts)
+void siw_touch_report_all_event(void *ts_data)
 {
+	struct siw_ts *ts = ts_data;
 	ts->is_palm = 1;
 	if (ts->old_mask) {
 		ts->new_mask = 0;
@@ -174,11 +176,14 @@ static const struct device siw_device_uevent_touch = {
 };
 */
 
-static char *siw_uevent_str[][2] = {
-	{"TOUCH_GESTURE_WAKEUP=WAKEUP", NULL},
-	{"TOUCH_GESTURE_WAKEUP=PASSWORD", NULL},
-	{"TOUCH_GESTURE_WAKEUP=SWIPE_RIGHT", NULL},
-	{"TOUCH_GESTURE_WAKEUP=SWIPE_LEFT", NULL},
+static struct siw_touch_uevent_ctrl siw_uevent_ctrl_default = {
+	.str = {
+		[TOUCH_UEVENT_KNOCK] = {"TOUCH_GESTURE_WAKEUP=WAKEUP", NULL},
+		[TOUCH_UEVENT_PASSWD] = {"TOUCH_GESTURE_WAKEUP=PASSWORD", NULL},
+		[TOUCH_UEVENT_SWIPE_RIGHT] = {"TOUCH_GESTURE_WAKEUP=SWIPE_RIGHT", NULL},
+		[TOUCH_UEVENT_SWIPE_LEFT] = {"TOUCH_GESTURE_WAKEUP=SWIPE_LEFT", NULL},
+	},
+	.flags = 0,
 };
 
 #define siw_kobject_uevent_env(_idev, _type, _kobj, _action, _envp_ext)	\
@@ -187,15 +192,26 @@ static char *siw_uevent_str[][2] = {
 		siwmon_submit_evt(&_idev->dev, "@UEVENT", _type, #_action, _action, 0, 0);	\
 	} while(0)
 
-void siw_touch_send_uevent(struct siw_ts *ts,
-								int type)
+void siw_touch_send_uevent(void *ts_data, int type)
 {
+	struct siw_ts *ts = ts_data;
+	struct siw_touch_uevent_ctrl *uevent_ctrl = touch_uevent_ctrl(ts);
 	struct device *idev = &ts->input->dev;
+
+	if (uevent_ctrl == NULL) {
+		uevent_ctrl = &siw_uevent_ctrl_default;
+	}
 
 	t_dev_dbg_event(idev, "send uevent (%d)\n", type);
 
 	if (type >= TOUCH_UEVENT_MAX) {
-		t_dev_err(idev, "Invalid event type : %d\n", type);
+		t_dev_err(idev, "Invalid event type, %d\n", type);
+		return;
+	}
+
+	if ((uevent_ctrl->str[type] == NULL) ||
+		(uevent_ctrl->str[type][0] == NULL)) {
+		t_dev_err(idev, "empty event str, %d\n", type);
 		return;
 	}
 
@@ -206,9 +222,9 @@ void siw_touch_send_uevent(struct siw_ts *ts,
 		atomic_set(&ts->state.uevent, UEVENT_BUSY);
 
 		siw_kobject_uevent_env(ts->input, type, &ts->udev.kobj,
-						KOBJ_CHANGE, siw_uevent_str[type]);
+						KOBJ_CHANGE, uevent_ctrl->str[type]);
 
-		t_dev_dbg_event(idev, "%s\n", siw_uevent_str[type][0]);
+		t_dev_dbg_event(idev, "%s\n", uevent_ctrl->str[type][0]);
 		siw_touch_report_all_event(ts);
 
 		/*
@@ -218,8 +234,9 @@ void siw_touch_send_uevent(struct siw_ts *ts,
 	}
 }
 
-int siw_touch_init_uevent(struct siw_ts *ts)
+int siw_touch_init_uevent(void *ts_data)
 {
+	struct siw_ts *ts = ts_data;
 	char *drv_name = touch_drv_name(ts);
 	int ret = 0;
 
@@ -257,8 +274,10 @@ out_subsys:
 	return ret;
 }
 
-void siw_touch_free_uevent(struct siw_ts *ts)
+void siw_touch_free_uevent(void *ts_data)
 {
+	struct siw_ts *ts = ts_data;
+
 	device_unregister(&ts->udev);
 
 	bus_unregister(&ts->ubus);
@@ -266,8 +285,9 @@ void siw_touch_free_uevent(struct siw_ts *ts)
 
 #define SIW_TOUCH_PHYS_NAME_SIZE	128
 
-int siw_touch_init_input(struct siw_ts *ts)
+int siw_touch_init_input(void *ts_data)
 {
+	struct siw_ts *ts = ts_data;
 	struct device *dev = ts->dev;
 	struct touch_device_caps *caps = &ts->caps;
 	struct input_dev *input = NULL;
@@ -372,8 +392,9 @@ out_phys:
 	return ret;
 }
 
-void siw_touch_free_input(struct siw_ts *ts)
+void siw_touch_free_input(void *ts_data)
 {
+	struct siw_ts *ts = ts_data;
 	struct device *dev = ts->dev;
 	struct input_dev *input = ts->input;
 

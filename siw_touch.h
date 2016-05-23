@@ -38,7 +38,7 @@
 #include "siw_touch_dbg.h"
 
 
-#define SIW_DRV_VERSION		"v2.08r"
+#define SIW_DRV_VERSION		"v2.09b"
 
 
 enum {
@@ -527,6 +527,23 @@ struct siw_touch_fquirks {	//function quirks
 	int (*power_vio)(struct device *dev, int value);
 };
 
+enum _SIW_TOUCH_UEVENT {
+	TOUCH_UEVENT_KNOCK = 0,
+	TOUCH_UEVENT_PASSWD,
+	TOUCH_UEVENT_SWIPE_RIGHT,
+	TOUCH_UEVENT_SWIPE_LEFT,
+	TOUCH_UEVENT_RSVD4,
+	TOUCH_UEVENT_RSVD5,
+	TOUCH_UEVENT_RSVD6,
+	TOUCH_UEVENT_RSVD7,
+	TOUCH_UEVENT_MAX = 8,
+};
+
+struct siw_touch_uevent_ctrl {
+	char *str[TOUCH_UEVENT_MAX][2];
+	u32 flags;
+};
+
 struct siw_touch_pdata {
 	/* Config. */
 	char *chip_id;		//chip id(fixed)
@@ -578,6 +595,8 @@ struct siw_touch_pdata {
 	struct siw_touch_fquirks fquirks;
 
 	void *second_screen;
+
+	void *uevent_ctrl;
 };
 
 struct siw_touch_chip_data {
@@ -736,6 +755,12 @@ static inline struct siw_touch_second_screen *pdata_second_screen(
 								struct siw_touch_pdata *pdata)
 {
 	return pdata->second_screen;
+}
+
+static inline struct siw_touch_uevent_ctrl *pdata_uevent_ctrl(
+								struct siw_touch_pdata *pdata)
+{
+	return pdata->uevent_ctrl;
 }
 
 enum {
@@ -1104,6 +1129,12 @@ static inline struct siw_touch_second_screen *touch_second_screen(
 								struct siw_ts *ts)
 {
 	return pdata_second_screen(ts->pdata);
+}
+
+static inline struct siw_touch_uevent_ctrl *touch_uevent_ctrl(
+								struct siw_ts *ts)
+{
+	return pdata_uevent_ctrl(ts->pdata);
 }
 
 
