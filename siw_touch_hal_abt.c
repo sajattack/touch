@@ -1873,7 +1873,10 @@ enum {
 	SHOW_ABT_TOOL_RET_SIZE	= (SHOW_ABT_TOOL_MODE_SIZE + SHOW_ABT_TOOL_IP_SIZE),
 };
 
-static ssize_t abt_show_tool(struct device *dev, char *buf)
+/*
+ * binary
+ */
+static ssize_t abt_show_tool_b(struct device *dev, char *buf)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
@@ -1900,6 +1903,37 @@ out:
 
 	return (ssize_t)size;
 }
+
+/*
+ * text (echo)
+ */
+static ssize_t abt_show_tool_t(struct device *dev, char *buf)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	struct siw_hal_abt_data *abt = (struct siw_hal_abt_data *)ts->abt;
+	struct siw_hal_abt_comm *abt_comm = &abt->abt_comm;
+	int mode = abt->abt_report_mode_onoff;
+	int size = 0;
+
+	if (atomic_read(&abt_comm->running) == ABT_RUNNING_OFF) {
+		size += siw_snprintf(buf, size,
+						"mode:%d, ip:%s\n",
+						mode, NONE_IP);
+		goto out;
+	}
+
+	size += siw_snprintf(buf, size,
+						"mode:%d, ip:%s\n",
+						mode, abt_comm->send_ip);
+
+out:
+	t_abt_info(abt, "read raw report mode - mode:%d ip:%s\n",
+		mode, abt_comm->send_ip);
+
+	return (ssize_t)size;
+}
+
 
 #define STORE_ABT_TOOL_MODE_MAX		'0'
 
@@ -2002,14 +2036,15 @@ static int abt_store_tool_exit(struct siw_hal_abt_data *abt, char *ip)
 	return 0;
 }
 
-static ssize_t abt_store_tool(struct device *dev,
-				const char *buf, size_t count)
+static ssize_t __abt_store_tool(struct device *dev,
+				const char *buf, size_t count, int opt)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
 	struct siw_hal_abt_data *abt = (struct siw_hal_abt_data *)ts->abt;
-	int mode = buf[0];
-	char ip[ABT_SEND_IP_SIZE+1] = { '0', };
+	int mode = 0;
+	char __ip[ABT_SEND_IP_SIZE+1] = { '0', };
+	char *ip = NULL;
 	bool setFlag = false;
 	int ret;
 
@@ -2018,9 +2053,18 @@ static ssize_t abt_store_tool(struct device *dev,
 		return count;
 	}
 
-	if (sscanf(buf, "%d %s", &mode, ip) <= 0) {
-		siw_abt_sysfs_err_invalid_param(abt);
-		return count;
+	if (opt) {
+		ip = __ip;
+		if (sscanf(buf, "%d %s", &mode, ip) <= 0) {
+			siw_abt_sysfs_err_invalid_param(abt);
+			return count;
+		}
+	} else {
+		mode = buf[0];
+		if (mode >= '0') {
+			mode -= '0';
+		}
+		ip = (char *)&buf[1];
 	}
 
 	if (mode && mode < STORE_ABT_MODE_MAX) {
@@ -2055,7 +2099,26 @@ static ssize_t abt_store_tool(struct device *dev,
 	}
 
 //	return (ssize_t)mode;
+
 	return count;
+}
+
+/*
+ * binary
+ */
+static ssize_t abt_store_tool_b(struct device *dev,
+				const char *buf, size_t count)
+{
+	return __abt_store_tool(dev, buf, count, 0);
+}
+
+/*
+ * text (echo)
+ */
+static ssize_t abt_store_tool_t(struct device *dev,
+				const char *buf, size_t count)
+{
+	return __abt_store_tool(dev, buf, count, 1);
 }
 
 static void __used siw_hal_abt_report_mode(struct device *dev, u8 *all_data)
@@ -2264,11 +2327,13 @@ void siw_hal_switch_to_abt_irq_handler(struct siw_ts *ts)
 		touch_attr_##_name
 
 static SIW_TOUCH_HAL_ABT_ATTR(monitor, abt_show_app, abt_store_app);
-static SIW_TOUCH_HAL_ABT_ATTR(raw_report, abt_show_tool, abt_store_tool);
+static SIW_TOUCH_HAL_ABT_ATTR(raw_report, abt_show_tool_b, abt_store_tool_b);
+static SIW_TOUCH_HAL_ABT_ATTR(raw_report_t, abt_show_tool_t, abt_store_tool_t);
 
 static struct attribute *siw_hal_abt_attribute_list[] = {
 	&_SIW_TOUCH_HAL_ABT_T(monitor).attr,
 	&_SIW_TOUCH_HAL_ABT_T(raw_report).attr,
+	&_SIW_TOUCH_HAL_ABT_T(raw_report_t).attr,
 	NULL,
 };
 
