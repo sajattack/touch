@@ -194,12 +194,17 @@ module_param_string(dname, chip_drv_name, sizeof(chip_drv_name), 0);
 static char chip_idrv_name[32] = SIW_TOUCH_INPUT;
 module_param_string(iname, chip_idrv_name, sizeof(chip_idrv_name), 0);
 
+/* use eg. ename=arc1 to change ext watch name */
+static char chip_ext_watch_name[32] = SIW_TOUCH_EXT_WATCH;
+module_param_string(ename, chip_ext_watch_name, sizeof(chip_ext_watch_name), 0);
+
 static const struct siw_touch_pdata chip_pdata = {
 	/* Configuration */
 	.chip_id			= CHIP_ID,
 	.chip_name			= chip_name,
 	.drv_name			= chip_drv_name,
 	.idrv_name			= chip_idrv_name,
+	.ext_watch_name		= chip_ext_watch_name,
 	.owner				= THIS_MODULE,
 	.of_match_table		= of_match_ptr(chip_match_ids),
 	.chip_type			= CHIP_TYPE,

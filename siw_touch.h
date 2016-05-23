@@ -546,10 +546,11 @@ struct siw_touch_uevent_ctrl {
 
 struct siw_touch_pdata {
 	/* Config. */
-	char *chip_id;		//chip id(fixed)
-	char *chip_name;	//chip name
-	char *drv_name;		//driver name
-	char *idrv_name;	//input driver name
+	char *chip_id;			//chip id(fixed)
+	char *chip_name;		//chip name
+	char *drv_name;			//driver name
+	char *idrv_name;		//input driver name
+	char *ext_watch_name;	//ext_watch name
 	struct module *owner;
 	const struct of_device_id *of_match_table;
 	u32 chip_type;
@@ -625,6 +626,11 @@ static inline unsigned long pdata_test_quirks(struct siw_touch_pdata *pdata,
 	return (pdata_get_quirks(pdata) & quirk_bit);
 }
 
+static inline char *pdata_chip_id(struct siw_touch_pdata *pdata)
+{
+	return pdata->chip_id;
+}
+
 static inline char *pdata_chip_name(struct siw_touch_pdata *pdata)
 {
 	return pdata->chip_name;
@@ -638,6 +644,11 @@ static inline char *pdata_drv_name(struct siw_touch_pdata *pdata)
 static inline char *pdata_idrv_name(struct siw_touch_pdata *pdata)
 {
 	return pdata->idrv_name;
+}
+
+static inline char *pdata_ext_watch_name(struct siw_touch_pdata *pdata)
+{
+	return pdata->ext_watch_name;
 }
 
 static inline u32 pdata_chip_type(struct siw_touch_pdata *pdata)
@@ -782,6 +793,13 @@ struct siw_ts {
 //	struct platform_device *pdev;
 
 	u32	addr;
+
+	char *chip_id;
+	char *chip_name;		//chip name
+	char *drv_name; 		//driver name
+	char *idrv_name;		//input driver name
+	char *ext_watch_name;	//ext_watch name
+	int chip_type;
 
 	int irq;
 	unsigned long irqflags;
@@ -1028,24 +1046,34 @@ static inline unsigned long touch_test_quirks(struct siw_ts *ts,
 	return pdata_test_quirks(ts->pdata, quirk_bit);
 }
 
+static inline char *touch_chip_id(struct siw_ts *ts)
+{
+	return ts->chip_id;
+}
+
 static inline char *touch_chip_name(struct siw_ts *ts)
 {
-	return pdata_chip_name(ts->pdata);
+	return ts->chip_name;
 }
 
 static inline char *touch_drv_name(struct siw_ts *ts)
 {
-	return pdata_drv_name(ts->pdata);
+	return ts->drv_name;
 }
 
 static inline char *touch_idrv_name(struct siw_ts *ts)
 {
-	return pdata_idrv_name(ts->pdata);
+	return ts->idrv_name;
+}
+
+static inline char *touch_ext_watch_name(struct siw_ts *ts)
+{
+	return ts->ext_watch_name;
 }
 
 static inline u32 touch_chip_type(struct siw_ts *ts)
 {
-	return pdata_chip_type(ts->pdata);
+	return ts->chip_type;
 }
 
 static inline u32 touch_mode_allowed(struct siw_ts *ts, u32 mode)
@@ -1350,6 +1378,8 @@ static inline int __siw_touch_op_dbg(struct siw_op_dbg *op,
 #define siw_snprintf(_buf, _size, _fmt, _args...) \
 		__siw_snprintf(_buf, PAGE_SIZE, _size, _fmt, ##_args)
 
+
+extern int siw_setup_names(struct siw_ts *ts, struct siw_touch_pdata *pdata);
 
 extern void *siw_setup_operations(struct siw_ts *ts, struct siw_touch_operations *ops_ext);
 

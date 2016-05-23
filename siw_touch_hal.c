@@ -1162,7 +1162,7 @@ static int siw_hal_ic_info(struct device *dev)
 		break;
 	}
 
-	if (strcmp(fw->chip_id, ts->pdata->chip_id)) {
+	if (strcmp(fw->chip_id, touch_chip_id(ts))) {
 		t_dev_err(dev, "Invalid chip id, shall be %s\n", ts->pdata->chip_id);
 		return -EINVAL;
 	}

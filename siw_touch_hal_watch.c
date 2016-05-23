@@ -25,7 +25,6 @@
 
 #if defined(__SIW_SUPPORT_WATCH)	//See siw_touch_cfg.h
 
-#define SIW_EXT_WATCH_NAME			"siw_ext_watch"
 #define SIW_MAX_FONT_SIZE			(6<<10)	//6KB used
 #define SIW_FONT_MAGIC_CODE_SIZE	(4)
 
@@ -2288,8 +2287,7 @@ static int ext_watch_create_sysfs(struct device *dev)
 	chip->watch = watch;
 	t_dev_dbg_base(dev, "watch_data allocated\n");
 
-//	name = touch_chip_name(ts);
-	name = SIW_EXT_WATCH_NAME;
+	name = touch_ext_watch_name(ts);
 
 	ret = kobject_init_and_add(kobj, &ext_watch_kobj_type,
 			idev->kobj.parent, "%s", name);

@@ -105,6 +105,56 @@ module_param_named(lpwg_screen, t_lpwg_screen, uint, S_IRUGO|S_IWUSR|S_IWGRP);
 module_param_named(lpwg_sensor, t_lpwg_sensor, uint, S_IRUGO|S_IWUSR|S_IWGRP);
 
 
+int siw_setup_names(struct siw_ts *ts, struct siw_touch_pdata *pdata)
+{
+	int type;
+	char *name;
+
+	/*
+	 * Mandatory
+	 */
+	type = pdata_chip_type(pdata);
+	if (!type) {
+		return -EFAULT;
+	}
+	ts->chip_type = type;
+
+	name = pdata_chip_id(pdata);
+	if (name == NULL) {
+		return -EFAULT;
+	}
+	ts->chip_id = name;
+
+	name = pdata_chip_name(pdata);
+	if (name == NULL) {
+		return -EFAULT;
+	}
+	ts->chip_name = name;
+
+	/*
+	 * Optional
+	 */
+	name = pdata_drv_name(pdata);
+	if (name == NULL) {
+		name = SIW_TOUCH_NAME;
+	}
+	ts->drv_name = name;
+
+	name = pdata_idrv_name(pdata);
+	if (name == NULL) {
+		name = SIW_TOUCH_INPUT;
+	}
+	ts->idrv_name = name;
+
+	name = pdata_ext_watch_name(pdata);
+	if (name == NULL) {
+		name = SIW_TOUCH_EXT_WATCH;
+	}
+	ts->ext_watch_name = name;
+
+	return 0;
+}
+
 /*
  * SiW Operations
  */

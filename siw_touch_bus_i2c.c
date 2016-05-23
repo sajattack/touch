@@ -192,6 +192,12 @@ static struct siw_ts *siw_touch_i2c_alloc(
 		t_dev_err(dev, "i2c alloc: NULL pdata\n");
 		goto out_pdata;
 	}
+
+	ret = siw_setup_names(ts, pdata);
+	if (ret < 0 ) {
+		goto out_name;
+	}
+
 	ts->pdata = pdata;
 
 	siw_setup_operations(ts, bus_drv->pdata->ops);
@@ -211,6 +217,8 @@ static struct siw_ts *siw_touch_i2c_alloc(
 	return ts;
 
 out_tr:
+
+out_name:
 
 out_pdata:
 	touch_kfree(dev, ts);

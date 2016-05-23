@@ -36,12 +36,16 @@
 #define SIW_TOUCH_NAME				"siw_touch"
 #define SIW_TOUCH_CORE				"siw_touch_core"
 #define SIW_TOUCH_INPUT				"siw_touch_input"
+#define SIW_TOUCH_EXT_WATCH			"siw_ext_watch"
+
 #define MAX_FINGER					10
 #define MAX_LPWG_CODE				128
 
 enum _SIW_CHIP_TYPE {
-	CHIP_LG4894 = 0,
-	CHIP_LG4895 = 1,
+	CHIP_NONE = 0,
+	//
+	CHIP_LG4894 = 1,
+	CHIP_LG4895 = 2,
 	//
 	CHIP_LG4946 = 0x10,
 	//
