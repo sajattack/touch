@@ -2767,13 +2767,14 @@ static int siw_hal_tc_driving(struct device *dev, int mode)
 	ret = siw_hal_read_value(dev,
 				reg->spr_subdisp_status,
 				&rdata);
-	t_dev_info(dev, "DDI Display Mode = 0x%08X\n", rdata);
+	t_dev_info(dev, "DDI Display Mode[%04Xh] = 0x%08X\n",
+			reg->spr_subdisp_status, rdata);
 
 	ret = siw_hal_write_value(dev,
 				reg->tc_drive_ctl,
 				ctrl);
-	t_dev_dbg_base(dev, "write 0x%X on tc_drive_ctl[%04Xh]\n",
-			ctrl, reg->tc_drive_ctl);
+	t_dev_info(dev, "TC Driving[%04Xh] wr 0x%08X\n",
+			reg->tc_drive_ctl, ctrl);
 
 	touch_msleep(HAL_TC_DRIVING_DELAY);
 

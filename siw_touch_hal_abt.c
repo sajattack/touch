@@ -600,6 +600,46 @@ static int __used abt_sock_create_stream(struct siw_hal_abt_data *abt,
 	return ret;
 }
 
+static char *__abt_sock_connect_err_str(int ret)
+{
+	char *str;
+
+	switch (ret) {
+	case -EPFNOSUPPORT:
+		str = "protocol family not supported";
+		break;
+	case -EAFNOSUPPORT:
+		str = "address family not supported";
+		break;
+	case -EADDRINUSE:
+		str = "address already in use";
+		break;
+	case -EADDRNOTAVAIL:
+		str = "can't assign requested address";
+		break;
+	case -ENETDOWN:
+		str = "network is down";
+		break;
+	case -ENETUNREACH:
+		str = "network is unreachable";
+		break;
+	case -ENETRESET:
+		str = "network dropped connection because of reset";
+		break;
+	case -ECONNABORTED:
+		str = "sw caused connection abort";
+		break;
+	case -ECONNRESET:
+		str = "connection reset by peer";
+		break;
+	default:
+		str = " ";
+		break;
+	}
+
+	return str;
+}
+
 static inline int __abt_sock_ret_is_err(int ret)
 {
 	return (ret < 0);
@@ -612,12 +652,14 @@ static int __used abt_sock_listen(struct siw_hal_abt_data *abt,
 {
 	int ret = kernel_listen(sock, backlog);
 	if (__abt_sock_ret_is_err(ret)) {
-		t_abt_err(abt, "kernel_listen[" ABT_IP_FORMAT ":%d, %d](%d) failed, %d\n",
+		char *str = __abt_sock_connect_err_str(ret);
+
+		t_abt_err(abt, "kernel_listen[" ABT_IP_FORMAT ":%d, %d](%d) failed, %d(%s)\n",
 				ABT_IP_PRT_PARAM(__be32_to_cpu(addr_in->sin_addr.s_addr)),
 				__be16_to_cpu(addr_in->sin_port),
 				addr_in->sin_family,
 				backlog,
-				ret);
+				ret, str);
 	} else {
 		t_abt_dbg_base(abt, "kernel_listen[" ABT_IP_FORMAT ":%d, %d](%d) done\n",
 				ABT_IP_PRT_PARAM(__be32_to_cpu(addr_in->sin_addr.s_addr)),
@@ -635,11 +677,13 @@ static int __used abt_sock_bind(struct siw_hal_abt_data *abt,
 {
 	int ret = kernel_bind(sock, (struct sockaddr *)addr_in, addrlen);
 	if (__abt_sock_ret_is_err(ret)) {
-		t_abt_err(abt, "kernel_bind[" ABT_IP_FORMAT ":%d, %d] failed, %d\n",
+		char *str = __abt_sock_connect_err_str(ret);
+
+		t_abt_err(abt, "kernel_bind[" ABT_IP_FORMAT ":%d, %d] failed, %d(%s)\n",
 				ABT_IP_PRT_PARAM(__be32_to_cpu(addr_in->sin_addr.s_addr)),
 				__be16_to_cpu(addr_in->sin_port),
 				addr_in->sin_family,
-				ret);
+				ret, str);
 	} else {
 		t_abt_dbg_base(abt, "kernel_bind[" ABT_IP_FORMAT ":%d, %d] done\n",
 				ABT_IP_PRT_PARAM(__be32_to_cpu(addr_in->sin_addr.s_addr)),
@@ -657,12 +701,13 @@ static int __used abt_sock_connect(struct siw_hal_abt_data *abt,
 {
 	int ret = kernel_connect(sock, (struct sockaddr *)addr_in, addrlen, flags);
 	if (__abt_sock_ret_is_err(ret)) {
-		t_abt_err(abt, "kernel_connect[" ABT_IP_FORMAT ":%d, %d] failed, %d%s\n",
+		char *str = __abt_sock_connect_err_str(ret);
+
+		t_abt_err(abt, "kernel_connect[" ABT_IP_FORMAT ":%d, %d] failed, %d(%s)\n",
 				ABT_IP_PRT_PARAM(__be32_to_cpu(addr_in->sin_addr.s_addr)),
 				__be16_to_cpu(addr_in->sin_port),
 				addr_in->sin_family,
-				ret,
-				(ret == -ECONNRESET)? "(reset by peer)" : " ");
+				ret, str);
 	} else {
 		t_abt_dbg_base(abt, "kernel_connect[" ABT_IP_FORMAT ":%d, %d] done\n",
 				ABT_IP_PRT_PARAM(__be32_to_cpu(addr_in->sin_addr.s_addr)),
