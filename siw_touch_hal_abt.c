@@ -2143,7 +2143,11 @@ static ssize_t __abt_store_tool(struct device *dev,
 		mutex_unlock(&abt->abt_comm_lock);
 	}
 
-//	return (ssize_t)mode;
+	if (!opt) {
+		if (touch_test_abt_quirks(ts, ABT_QUIRK_RAW_RETURN_MODE_VAL)) {
+			return (ssize_t)mode;
+		}
+	}
 
 	return count;
 }

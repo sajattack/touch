@@ -571,6 +571,11 @@ struct siw_touch_pdata {
 
 #define _CHIP_QUIRK_NOT_SUPPORT_IME			(1L<<28)
 
+	unsigned long abt_quirks;
+#define _ABT_QUIRK_RAW_RETURN_MODE_VAL		(1L<<0)
+
+	unsigned long prd_quirks;
+
 	struct siw_touch_bus_info bus_info;
 
 #if !defined(__SIW_CONFIG_OF)
@@ -617,16 +622,41 @@ enum {
 	CHIP_QUIRK_NOT_SUPPORT_IME			= _CHIP_QUIRK_NOT_SUPPORT_IME,
 };
 
+enum {
+	ABT_QUIRK_RAW_RETURN_MODE_VAL		= _ABT_QUIRK_RAW_RETURN_MODE_VAL,
+};
 
 static inline unsigned long pdata_get_quirks(struct siw_touch_pdata *pdata)
 {
 	return pdata->quirks;
 }
 
+static inline unsigned long pdata_get_abt_quirks(struct siw_touch_pdata *pdata)
+{
+	return pdata->abt_quirks;
+}
+
+static inline unsigned long pdata_get_prd_quirks(struct siw_touch_pdata *pdata)
+{
+	return pdata->prd_quirks;
+}
+
 static inline unsigned long pdata_test_quirks(struct siw_touch_pdata *pdata,
 			unsigned long quirk_bit)
 {
 	return (pdata_get_quirks(pdata) & quirk_bit);
+}
+
+static inline unsigned long pdata_test_abt_quirks(struct siw_touch_pdata *pdata,
+			unsigned long quirk_bit)
+{
+	return (pdata_get_abt_quirks(pdata) & quirk_bit);
+}
+
+static inline unsigned long pdata_test_prd_quirks(struct siw_touch_pdata *pdata,
+			unsigned long quirk_bit)
+{
+	return (pdata_get_prd_quirks(pdata) & quirk_bit);
 }
 
 static inline char *pdata_chip_id(struct siw_touch_pdata *pdata)
@@ -1067,6 +1097,18 @@ static inline unsigned long touch_test_quirks(struct siw_ts *ts,
 			unsigned long quirk_bit)
 {
 	return pdata_test_quirks(ts->pdata, quirk_bit);
+}
+
+static inline unsigned long touch_test_abt_quirks(struct siw_ts *ts,
+			unsigned long quirk_bit)
+{
+	return pdata_test_abt_quirks(ts->pdata, quirk_bit);
+}
+
+static inline unsigned long touch_test_prd_quirks(struct siw_ts *ts,
+			unsigned long quirk_bit)
+{
+	return pdata_test_prd_quirks(ts->pdata, quirk_bit);
 }
 
 static inline char *touch_chip_id(struct siw_ts *ts)
