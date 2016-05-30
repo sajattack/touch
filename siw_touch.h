@@ -1566,6 +1566,7 @@ static inline void siwmon_submit_ops(struct device *dev, char *ops, u32 *data, i
 #define siw_chip_module_init(_name, _data, _desc, _author)	\
 		static int __init chip_##_name##_driver_init(void)\
 		{	\
+			touch_msleep(200);	\
 			t_pr_info("%s driver init - %s\n", _name, SIW_DRV_VERSION);	\
 			return siw_touch_bus_add_driver(&_data);	\
 		}	\
