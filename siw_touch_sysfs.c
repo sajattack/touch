@@ -1039,10 +1039,17 @@ int siw_touch_init_sysfs(struct siw_ts *ts)
 	struct device *dev = ts->dev;
 	struct device *idev = &ts->input->dev;
 	struct kobject *kobj = &ts->kobj;
+	char *name = NULL;
 	int ret = 0;
 
+	name = (touch_flags(ts) & TOUCH_USE_DRV_NAME_SYSFS)?
+			touch_drv_name(ts) : touch_idrv_name(ts);
+	if (!name) {
+		name = SIW_TOUCH_INPUT;
+	}
+
 	ret = kobject_init_and_add(kobj, &siw_touch_kobj_type,
-			idev->kobj.parent, "%s", touch_idrv_name(ts));
+			idev->kobj.parent, "%s", name);
 	if (ret < 0) {
 		t_dev_err(dev, "failed to create sysfs entry\n");
 		goto out;
