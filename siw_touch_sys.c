@@ -41,7 +41,9 @@
 #include "siw_touch.h"
 #include "siw_touch_gpio.h"
 #include "siw_touch_sys.h"
-
+#if defined(CONFIG_TOUCHSCREEN_SIW_LG4895_F650)
+#include <soc/qcom/lge/board_lge.h>
+#endif
 
 /*
  * depends on AP bus
@@ -70,10 +72,16 @@ int siw_touch_sys_bus_use_dma(struct device *dev)
 int siw_touch_get_boot_mode(void)
 {
 #if defined(CONFIG_SIW_GET_BOOT_MODE)
-	return (sys_get_boot_mode() == BOOT_MODE_CHARGERLOGO)
-#else
-	return 0;
+	if (sys_get_boot_mode() == BOOT_MODE_CHARGERLOGO) {
+		return SIW_TOUCH_CHARGER_MODE;
+	}
+#elif defined(CONFIG_TOUCHSCREEN_SIW_LG4895_F650)
+	if (lge_get_boot_mode() == LGE_BOOT_MODE_CHARGERLOGO) {
+		return SIW_TOUCH_CHARGER_MODE;
+	}
 #endif
+
+	return 0;
 }
 
 int siw_touch_boot_mode_check(struct device *dev)
@@ -106,6 +114,22 @@ int siw_touch_boot_mode_check(struct device *dev)
 	}
 
 	return ret;
+}
+
+int siw_touch_boot_mode_tc_check(struct device *dev)
+{
+#if defined(CONFIG_SIW_GET_BOOT_MODE)
+	if (sys_get_boot_mode() == BOOT_MODE_CHARGERLOGO) {
+		return 1;
+	}
+#elif defined(CONFIG_TOUCHSCREEN_SIW_LG4895_F650)
+	if ((lge_get_boot_mode() == LGE_BOOT_MODE_QEM_910K) ||
+		(lge_get_boot_mode() == LGE_BOOT_MODE_PIF_910K)) {
+		return 1;
+	}
+#endif
+
+	return 0;
 }
 
 int siw_touch_sys_gpio_set_pull(int pin, int value)

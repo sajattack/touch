@@ -2780,6 +2780,11 @@ static int siw_hal_tc_driving(struct device *dev, int mode)
 
 	t_dev_dbg_base(dev, "waiting %d msecs\n", HAL_TC_DRIVING_DELAY);
 
+	if (siw_touch_boot_mode_tc_check(dev)) {
+		atomic_set(&ts->recur_chk, 0);
+		return 0;
+	}
+
 	if (mode == LCD_MODE_U3_PARTIAL) {
 		atomic_set(&ts->recur_chk, 0);
 		return 0;
