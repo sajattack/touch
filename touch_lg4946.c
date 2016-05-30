@@ -53,6 +53,7 @@
 									LCD_MODE_BIT_U2 |	\
 									LCD_MODE_BIT_U3 |	\
 									LCD_MODE_BIT_U3_PARTIAL |	\
+									LCD_MODE_BIT_U3_QUICKCOVER |	\
 									LCD_MODE_BIT_STOP |	\
 									0)
 
