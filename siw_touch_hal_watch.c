@@ -949,7 +949,7 @@ static int __ext_watch_display_onoff(struct device *dev, u32 data, int log)
 	if (log) {
 		t_watch_info(dev, "display[%04Xh] : %s\n",
 			reg->ext_watch_display_on,
-			time->disp_waton? "on" : "off");
+			data? "on" : "off");
 	}
 	return 0;
 
