@@ -53,17 +53,21 @@ struct siw_touch_event {
 		void *data;
 };
 
-int siw_touch_blocking_notifier_register(struct notifier_block *nb);
-int siw_touch_blocking_notifier_unregister(struct notifier_block *nb);
-int siw_touch_blocking_notifier_call(unsigned long val, void *v);
+extern int siw_touch_blocking_notifier_register(struct notifier_block *nb);
+extern int siw_touch_blocking_notifier_unregister(struct notifier_block *nb);
+extern int siw_touch_blocking_notifier_call(unsigned long val, void *v);
 
-int siw_touch_atomic_notifier_register(struct notifier_block *nb);
-int siw_touch_atomic_notifier_unregister(struct notifier_block *nb);
-int siw_touch_atomic_notifier_call(unsigned long val, void *v);
+extern int siw_touch_atomic_notifier_register(struct notifier_block *nb);
+extern int siw_touch_atomic_notifier_unregister(struct notifier_block *nb);
+extern int siw_touch_atomic_notifier_call(unsigned long val, void *v);
 
-int siw_touch_register_client(struct notifier_block *nb);
-int siw_touch_unregister_client(struct notifier_block *nb);
-int siw_touch_notifier_call_chain(unsigned long val, void *v);
+extern int siw_touch_register_client(struct notifier_block *nb);
+extern int siw_touch_unregister_client(struct notifier_block *nb);
+extern int siw_touch_notifier_call_chain(unsigned long val, void *v);
+
+extern void siw_touch_notify_connect(u32 type);
+extern void siw_touch_notify_wireless(u32 type);
+extern void siw_touch_notify_earjack(u32 type);
 
 #endif	/* __SIW_TOUCH_NOTIFIER_H */
 
