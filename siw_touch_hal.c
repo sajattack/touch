@@ -4115,11 +4115,20 @@ static int siw_hal_notify(struct device *dev, ulong event, void *data)
 		noti_str = "DRV";
 		break;
 	case LCD_EVENT_TOUCH_WATCH_LUT_UPDATE:
+		t_dev_info(dev, "notify: WATCH_LUT_UPDATE(%lu)\n", event);
+		noti_str = "WATCH_LUT";
+		break;
 	case LCD_EVENT_TOUCH_WATCH_POS_UPDATE:
+		t_dev_info(dev, "notify: WATCH_POS_UPDATE(%lu)\n", event);
+		noti_str = "WATCH_POS";
+		break;
 	case LCD_EVENT_TOUCH_PROXY_STATUS:
+		t_dev_info(dev, "notify: PROXY_STATUS(%lu)\n", event);
+		noti_str = "PROXY";
+		break;
 	case LCD_EVENT_TOUCH_ESD_DETECTED:
-		t_dev_info(dev, "notify: %lu called\n", event);
-		noti_str = "ETC";
+		t_dev_info(dev, "notify: ESD_DETECTED(%lu)\n", event);
+		noti_str = "ESD";
 		break;
 	default:
 		t_dev_err(dev, "notify: %lu is not supported\n", event);
