@@ -372,7 +372,7 @@ static int siw_touch_parse_dts(struct siw_ts *ts)
 	ts->role.use_lpwg = !touch_test_quirks(ts, CHIP_QUIRK_NOT_SUPPORT_LPWG);
 
 	ts->role.use_firmware = 0;
-	role->use_fw_upgrade = 0;
+	ts->role.use_fw_upgrade = 0;
 	ts->def_fwcnt = 0;
 	memset(ts->def_fwpath, 0, sizeof(ts->def_fwpath));
 	ts->panel_spec = NULL;
