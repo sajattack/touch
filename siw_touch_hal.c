@@ -4008,14 +4008,18 @@ static int siw_hal_notify(struct device *dev, ulong event, void *data)
 
 	switch (event) {
 	case NOTIFY_TOUCH_RESET:
-	//	ret = !!(atomic_read(&ts->state.debug_option_mask) & DEBUG_OPTION_1);
+	#if 0
+		ret = !!(atomic_read(&ts->state.debug_option_mask) & DEBUG_OPTION_1);
 		t_dev_info(dev, "notify: reset, %d\n", ret);
+	#else
+		t_dev_info(dev, "notify: reset\n");
+	#endif
 
 		atomic_set(&chip->init, IC_INIT_NEED);
 
 		siw_hal_watch_set_rtc_clear(dev);
 		siw_hal_watch_set_font_empty(dev);
-		siw_hal_watch_set_cfg_blocked(dev);
+	//	siw_hal_watch_set_cfg_blocked(dev);
 
 		noti_str = "TOUCH_RESET";
 		break;
