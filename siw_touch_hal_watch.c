@@ -1451,7 +1451,8 @@ static ssize_t store_ext_watch_config_font_effect(struct device *dev,
 		return __ret_val_blocked(count);
 	}
 
-	if (buf[0] == EXT_WATCH_CFG_DEFAULT) {	//for the case of using echo command
+	//for the case of using echo command
+	if ((count == 2) && (buf[0] == EXT_WATCH_CFG_DEFAULT)) {
 		memset((char *)&cfg, 0, sizeof(cfg));
 
 	//	cfg.h24_en = 0;
@@ -1562,7 +1563,8 @@ static ssize_t store_ext_watch_config_font_position(struct device *dev,
 		watch_win = (struct reset_area *)&watch_win_default;
 	}
 
-	if (buf[0] == EXT_WATCH_CFG_DEFAULT) {	//for the case of using echo command
+	//for the case of using echo command
+	if ((count == 2) && (buf[0] == EXT_WATCH_CFG_DEFAULT)) {
 		memset((char *)&cfg, 0, sizeof(cfg));
 
 		cfg.watstartx = DEFAULT_WSX;
@@ -1648,21 +1650,23 @@ static ssize_t store_ext_watch_config_font_property(struct device *dev,
 		return __ret_val_blocked(count);
 	}
 
-	switch (touch_chip_type(ts)) {
-	case CHIP_LG4895:
-		/* SKIP : lut setup is handled by MIPI, no effect */
-		goto out;
-	//	break;
-	default:
-		break;
-	}
-
-	if (buf[0] == EXT_WATCH_CFG_DEFAULT) {	//for the case of using echo command
+	//for the case of using echo command
+	if ((count == 2) && (buf[0] == EXT_WATCH_CFG_DEFAULT)) {
 		memset((char *)&cfg, 0, sizeof(cfg));
 
 		cfg.max_num = EXT_WATCH_LUT_NUM;
 	} else {
 		memcpy((char *)&cfg, buf, sizeof(cfg));
+	}
+
+	switch (touch_chip_type(ts)) {
+	case CHIP_LG4895:
+		/* SKIP : lut setup is handled by MIPI, no effect */
+		t_watch_info(dev, "skip font property\n");
+		goto out;
+	//	break;
+	default:
+		break;
 	}
 
 	loglen += siw_watch_snprintf(log, FONT_TEMP_LOG_SZ, loglen,
@@ -1688,9 +1692,9 @@ static ssize_t store_ext_watch_config_font_property(struct device *dev,
 
 	t_watch_info(dev, "%s\n", log);
 
+out:
 	siw_touch_blocking_notifier_call(LCD_EVENT_TOUCH_WATCH_LUT_UPDATE, (void*)(&cfg));
 
-out:
 	return count;
 }
 
@@ -1714,7 +1718,8 @@ static ssize_t store_ext_watch_config_time_sync(struct device *dev,
 
 	t_watch_dbg(dev, "store config type sync\n");
 
-	if (buf[0] == EXT_WATCH_CFG_DEFAULT) {	//for the case of using echo command
+	//for the case of using echo command
+	if ((count == 2) && (buf[0] == EXT_WATCH_CFG_DEFAULT)) {
 		struct timespec my_time;
 		struct tm my_date;
 
