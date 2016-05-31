@@ -241,7 +241,7 @@ static ssize_t _store_lpwg_data(struct device *dev,
 		return count;
 	}
 
-	t_dev_info(dev, "reply %d\n", reply);
+	t_dev_info(dev, "uevent reply %d\n", reply);
 
 	atomic_set(&ts->state.uevent, UEVENT_IDLE);
 	wake_unlock(&ts->lpwg_wake_lock);
