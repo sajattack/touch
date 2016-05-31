@@ -4018,8 +4018,11 @@ static int siw_hal_notify(struct device *dev, ulong event, void *data)
 		atomic_set(&chip->init, IC_INIT_NEED);
 
 		siw_hal_watch_set_rtc_clear(dev);
+
+	#if 0
 		siw_hal_watch_set_font_empty(dev);
-	//	siw_hal_watch_set_cfg_blocked(dev);
+		siw_hal_watch_set_cfg_blocked(dev);
+	#endif
 
 		noti_str = "TOUCH_RESET";
 		break;

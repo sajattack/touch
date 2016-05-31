@@ -905,11 +905,13 @@ static int ext_watch_set_position(struct device *dev, char log)
 //	u8 *ptr = (u8 *)position;
 	int ret = 0;
 
+#if 0
 	if (chip->lcd_mode != LCD_MODE_U3) {
 		t_watch_info(dev, "lcd mode is %s, skip\n",
 			siw_lcd_driving_mode_str(chip->lcd_mode));
 		return 0;
 	}
+#endif
 
 	ret = siw_hal_reg_write(dev,
 				reg->ext_watch_position,
@@ -2266,6 +2268,8 @@ static int ext_watch_init(struct device *dev)
 		t_watch_err(dev, "failed to set watch display control, %d\n", ret);
 		goto out;
 	}
+
+	t_watch_info(dev, "init\n");
 
 out:
 	 return ret;
