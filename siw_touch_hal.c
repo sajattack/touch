@@ -3716,9 +3716,9 @@ static int siw_hal_irq_lpwg_swipe_right(struct siw_ts *ts)
 {
 	struct device *dev = ts->dev;
 
-	t_dev_info(dev, "LPWG: SWIPE_LEFT\n");
+	t_dev_info(dev, "LPWG: SWIPE_RIGHT\n");
 	siw_hal_get_swipe_data(dev);
-	ts->intr_status = TOUCH_IRQ_SWIPE_LEFT;
+	ts->intr_status = TOUCH_IRQ_SWIPE_RIGHT;
 
 	return 0;
 }
@@ -3727,9 +3727,9 @@ static int siw_hal_irq_lpwg_swipe_left(struct siw_ts *ts)
 {
 	struct device *dev = ts->dev;
 
-	t_dev_info(dev, "LPWG: SWIPE_RIGHT\n");
+	t_dev_info(dev, "LPWG: SWIPE_LEFT\n");
 	siw_hal_get_swipe_data(dev);
-	ts->intr_status = TOUCH_IRQ_SWIPE_RIGHT;
+	ts->intr_status = TOUCH_IRQ_SWIPE_LEFT;
 
 	return 0;
 }
