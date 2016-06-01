@@ -2754,12 +2754,10 @@ static int siw_hal_tc_driving(struct device *dev, int mode)
 		t_dev_warn(dev, "swipe mode err, %d", ret);
 	}
 
-#if 0
-	if ((chip->fw.wfr == REV1) &&
-		((mode == LCD_MODE_U0) || (mode == LCD_MODE_U2))) {
+	if ((mode == LCD_MODE_U0) ||
+		(mode == LCD_MODE_U2)) {
 		touch_msleep(200);
 	}
-#endif
 
 	t_dev_info(dev, "current driving mode is %s\n",
 			siw_lcd_driving_mode_str(mode));
