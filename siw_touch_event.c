@@ -224,7 +224,7 @@ void siw_touch_send_uevent(void *ts_data, int type)
 		siw_kobject_uevent_env(ts->input, type, &ts->udev.kobj,
 						KOBJ_CHANGE, uevent_ctrl->str[type]);
 
-		t_dev_info(idev, "%s\n", uevent_ctrl->str[type][0]);
+		t_dev_info(ts->dev, "%s\n", uevent_ctrl->str[type][0]);
 		siw_touch_report_all_event(ts);
 
 		/*
