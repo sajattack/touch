@@ -3324,7 +3324,7 @@ static int siw_hal_asc(struct device *dev, u32 code, u32 value)
 
 enum {
 	INT_RESET_CLR_BIT	= ((1<<10)|(1<<9)|(1<<5)),	// 0x620
-#if defined(CHECK_IRQ_STS_BIT)
+#if 0
 	INT_LOGGING_CLR_BIT	= ((1<<22)|(1<<20)|(1<<15)|(1<<13)|(1<<7)|(1<<6)),	//0x50A0C0
 	INT_NORMAL_MASK		= ((1<<22)|(1<<20)|(1<<15)|(1<<7)|(1<<6)|(1<<5)),	//0x5080E0
 #else
@@ -3404,7 +3404,7 @@ static int siw_hal_check_status_type_1(struct device *dev,
 		len += siw_chk_sts_snprintf(dev, log, log_max, len,
 					"[b13] display mode mismatch ");
 	}
-#if defined(CHECK_IRQ_STS_BIT)
+#if 0
 	if (!(status & (1<<15))) {
 		log_flag = 1;
 		len += siw_chk_sts_snprintf(dev, log, log_max, len,
@@ -3490,11 +3490,12 @@ static int siw_hal_check_status(struct device *dev)
 	struct siw_ts *ts = chip->ts;
 	u32 status = chip->info.device_status;
 	u32 ic_status = chip->info.ic_status;
+	u32 reset_clr_bit = INT_RESET_CLR_BIT;
+	u32 logging_clr_bit = INT_LOGGING_CLR_BIT;
+	u32 int_norm_mask = INT_NORMAL_MASK;
 	u32 status_mask = 0;
 	int ret_pre = 0;
 	int ret = 0;
-
-	status_mask = status ^ INT_NORMAL_MASK;
 
 	/*
 	 * (normal state)
@@ -3506,15 +3507,25 @@ static int siw_hal_check_status(struct device *dev)
 	 * INT_RESET_CLR_BIT   = 0x0000_0620 = 0000 0000 0000 0000 0000 0110 0010 0000
 	 * INT_LOGGING_CLR_BIT = 0x0050_A0C0 = 0000 0000 0101 0000 1010 0000 1100 0000
 	 */
+
+#if 0
+	{
+		logging_clr_bit |= (1<<15);
+		int_norm_mask |= (1<<15);
+	}
+#endif
+
+	status_mask = status ^ int_norm_mask;
+
 	t_dev_dbg_trace(dev, "h/w:%Xh, f/w:%Xh(%Xh)\n", ic_status, status, status_mask);
 
-	if (status_mask & INT_RESET_CLR_BIT) {
+	if (status_mask & reset_clr_bit) {
 		t_dev_err(dev, "need reset : status %08Xh, ic_status %08Xh, chk %08Xh (%08Xh)\n",
-			status, ic_status, status_mask & INT_RESET_CLR_BIT, INT_RESET_CLR_BIT);
+			status, ic_status, status_mask & reset_clr_bit, reset_clr_bit);
 		ret_pre = -ERESTART;
-	} else if (status_mask & INT_LOGGING_CLR_BIT) {
+	} else if (status_mask & logging_clr_bit) {
 		t_dev_err(dev, "need logging : status %08Xh, ic_status %08Xh, chk %08Xh (%08Xh)\n",
-			status, ic_status, status_mask & INT_LOGGING_CLR_BIT, INT_LOGGING_CLR_BIT);
+			status, ic_status, status_mask & logging_clr_bit, logging_clr_bit);
 		ret_pre = -ERANGE;
 	}
 
