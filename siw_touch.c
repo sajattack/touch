@@ -304,6 +304,7 @@ static void siw_touch_resume(struct device *dev)
 
 	mutex_lock(&ts->lock);
 	atomic_set(&ts->state.fb, FB_RESUME);
+	atomic_set(&ts->state.pm, DEV_PM_AWAKE);
 	/* if need skip, return value is not 0 in pre_resume */
 	ret = siw_ops_resume(ts);
 	mutex_unlock(&ts->lock);
@@ -987,6 +988,9 @@ static int _siw_touch_do_irq_thread(struct siw_ts *ts)
 		t_dev_dbg_irq(ts->dev, "Err in irq_handler of %s, %d",
 				touch_chip_name(ts), ret);
 		if (ret == -ERESTART) {
+			if (atomic_read(&ts->state.pm) == DEV_PM_RESUME) {
+				wake_lock_timeout(&ts->lpwg_wake_lock, msecs_to_jiffies(1000));
+			}
 			siw_touch_qd_sys_reset_work_now(ts);
 			siw_ops_reset(ts, HW_RESET_ASYNC);
 		}

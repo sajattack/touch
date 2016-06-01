@@ -312,11 +312,14 @@ static int siw_touch_i2c_pm_resume(struct device *dev)
 	siw_touch_resume_call(dev);
 
 	if (atomic_read(&ts->state.pm) == DEV_PM_SUSPEND_IRQ) {
+		atomic_set(&ts->state.pm, DEV_PM_RESUME);
 		siw_touch_resume_irq(dev);
+		goto out;
 	}
 
 	atomic_set(&ts->state.pm, DEV_PM_RESUME);
 
+out:
 	t_dev_info(dev, "dev pm resume\n");
 
 	return 0;
