@@ -3326,8 +3326,13 @@ static int siw_hal_asc(struct device *dev, u32 code, u32 value)
 
 enum {
 	INT_RESET_CLR_BIT	= ((1<<10)|(1<<9)|(1<<5)),	// 0x620
+#if defined(CHECK_IRQ_STS_BIT)
 	INT_LOGGING_CLR_BIT	= ((1<<22)|(1<<20)|(1<<15)|(1<<13)|(1<<7)|(1<<6)),	//0x50A0C0
 	INT_NORMAL_MASK		= ((1<<22)|(1<<20)|(1<<15)|(1<<7)|(1<<6)|(1<<5)),	//0x5080E0
+#else
+	INT_LOGGING_CLR_BIT	= ((1<<22)|(1<<20)|(1<<13)|(1<<7)|(1<<6)),			//0x5020C0
+	INT_NORMAL_MASK		= ((1<<22)|(1<<20)|(1<<7)|(1<<6)|(1<<5)),			//0x5000E0
+#endif
 	//
 	IC_DEBUG_SIZE		= 16,	// byte
 	//
@@ -3345,11 +3350,10 @@ enum {
 			_n_size;	\
 		})
 
-static int siw_hal_check_status_type_1(struct device *dev)
+static int siw_hal_check_status_type_1(struct device *dev,
+				u32 status, u32 ic_status)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
-	u32 status = chip->info.device_status;
-	u32 ic_status = chip->info.ic_status;
 	u32 dbg_mask = 0;
 	int log_flag = 0;
 	int log_max = IC_CHK_LOG_MAX;
@@ -3402,11 +3406,13 @@ static int siw_hal_check_status_type_1(struct device *dev)
 		len += siw_chk_sts_snprintf(dev, log, log_max, len,
 					"[b13] display mode mismatch ");
 	}
+#if defined(CHECK_IRQ_STS_BIT)
 	if (!(status & (1<<15))) {
 		log_flag = 1;
 		len += siw_chk_sts_snprintf(dev, log, log_max, len,
 					"[b15] irq pin invalid ");
 	}
+#endif
 	if (!(status & (1<<20))) {
 		log_flag = 1;
 		len += siw_chk_sts_snprintf(dev, log, log_max, len,
@@ -3458,11 +3464,10 @@ static int siw_hal_check_status_type_1(struct device *dev)
 	return ret;
 }
 
-static int siw_hal_check_status_default(struct device *dev)
+static int siw_hal_check_status_default(struct device *dev,
+				u32 status, u32 ic_status)
 {
-	struct siw_touch_chip *chip = to_touch_chip(dev);
-	u32 status = chip->info.device_status;
-	u32 ic_status = chip->info.ic_status;
+//	struct siw_touch_chip *chip = to_touch_chip(dev);
 	int ret = 0;
 
 	if (!(status & (1<<5))) {
@@ -3488,6 +3493,7 @@ static int siw_hal_check_status(struct device *dev)
 	u32 status = chip->info.device_status;
 	u32 ic_status = chip->info.ic_status;
 	u32 status_mask = 0;
+	int ret_pre = 0;
 	int ret = 0;
 
 	status_mask = status ^ INT_NORMAL_MASK;
@@ -3505,29 +3511,30 @@ static int siw_hal_check_status(struct device *dev)
 	t_dev_dbg_trace(dev, "h/w:%Xh, f/w:%Xh(%Xh)\n", ic_status, status, status_mask);
 
 	if (status_mask & INT_RESET_CLR_BIT) {
-		t_dev_err(dev, "need reset : status %08Xh, ic_status %08Xh, chk %08Xh\n",
-			status, ic_status, status_mask & INT_RESET_CLR_BIT);
-		ret = -ERESTART;
+		t_dev_err(dev, "need reset : status %08Xh, ic_status %08Xh, chk %08Xh (%08Xh)\n",
+			status, ic_status, status_mask & INT_RESET_CLR_BIT, INT_RESET_CLR_BIT);
+		ret_pre = -ERESTART;
 	} else if (status_mask & INT_LOGGING_CLR_BIT) {
-		t_dev_err(dev, "need logging : status %08Xh, ic_status %08Xh, chk %08Xh\n",
-			status, ic_status, status_mask & INT_LOGGING_CLR_BIT);
-		ret = -ERANGE;
-	}
-	if (ret < 0) {
-		goto out;
+		t_dev_err(dev, "need logging : status %08Xh, ic_status %08Xh, chk %08Xh (%08Xh)\n",
+			status, ic_status, status_mask & INT_LOGGING_CLR_BIT, INT_LOGGING_CLR_BIT);
+		ret_pre = -ERANGE;
 	}
 
 	switch(touch_chip_type(ts)) {
 	case CHIP_LG4895:
 	case CHIP_LG4946:
-		ret = siw_hal_check_status_type_1(dev);
+		ret = siw_hal_check_status_type_1(dev, status, ic_status);
 		break;
 	default:
-		ret = siw_hal_check_status_default(dev);
+		ret = siw_hal_check_status_default(dev, status, ic_status);
 		break;
 	}
+	if (ret_pre) {
+		if (ret != -ERESTART) {
+			ret = ret_pre;
+		}
+	}
 
-out:
 	return ret;
 }
 
