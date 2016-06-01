@@ -91,6 +91,8 @@ int siw_touch_boot_mode_check(struct device *dev)
 
 #if defined(CONFIG_SIW_GET_FACTORY_MODE)
 	ret = sys_get_factory_boot();
+#elif defined(CONFIG_TOUCHSCREEN_SIW_LG4895_F650)
+	ret = lge_get_factory_boot();
 #endif
 
 	if (ret != NORMAL_BOOT) {
