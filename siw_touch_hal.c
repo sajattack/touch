@@ -2234,6 +2234,9 @@ static void siw_hal_set_debug_reason(struct device *dev, int type)
 	u32 wdata[2] = {0, };
 //	int ret = 0;
 
+	if (!chip->tci_debug_type)
+		return;
+
 	wdata[0] = (u32)type;
 	wdata[0] |= (chip->tci_debug_type == 1) ? 0x01 << 2 : 0x01 << 3;
 	wdata[1] = TCI_DEBUG_ALL;
@@ -2260,8 +2263,7 @@ static int siw_hal_tci_knock(struct device *dev)
 	u32 lpwg_data[7];
 	int ret = 0;
 
-	if (chip->tci_debug_type != 0)
-		siw_hal_set_debug_reason(dev, TCI_1);
+	siw_hal_set_debug_reason(dev, TCI_1);
 
 	lpwg_data[0] = ts->tci.mode;
 	lpwg_data[1] = info1->tap_count | (info2->tap_count << 16);
@@ -2294,10 +2296,9 @@ static int siw_hal_tci_knock(struct device *dev)
 
 static int siw_hal_tci_password(struct device *dev)
 {
-	struct siw_touch_chip *chip = to_touch_chip(dev);
+//	struct siw_touch_chip *chip = to_touch_chip(dev);
 
-	if (chip->tci_debug_type != 0)
-		siw_hal_set_debug_reason(dev, TCI_2);
+	siw_hal_set_debug_reason(dev, TCI_2);
 
 	return siw_hal_tci_knock(dev);
 }
@@ -2890,11 +2891,12 @@ static void siw_hal_debug_tci(struct device *dev)
 		t_dev_info(dev, "TCI count[%d] = %d\n", i, count[i]);
 		for (j = 0; j < count[i]; j++) {
 			buf = debug_reason_buf[i][j];
-			t_dev_info(dev, "TCI_%d - DBG[%d/%d]: %s\n",
+			t_dev_info(dev, "TCI_%d - DBG[%d/%d]: %s(%d)\n",
 						i + 1, j + 1, count[i],
 						(buf > 0 && buf < TCI_FAIL_NUM) ?
 						siw_hal_tci_debug_str[buf] :
-						siw_hal_tci_debug_str[0]);
+						siw_hal_tci_debug_str[0],
+						buf);
 		}
 	}
 }
