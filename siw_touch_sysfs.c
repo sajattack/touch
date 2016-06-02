@@ -478,9 +478,8 @@ static ssize_t _store_mfts_lpwg(struct device *dev,
 	}
 
 	ts->role.mfts_lpwg = value;
+	t_mfts_lpwg = value;
 	t_dev_info(dev, "MFTS LPWG : %d\n", ts->role.mfts_lpwg);
-
-	siw_touch_sys_mfts_lpwg(dev, value);
 
 	return count;
 }

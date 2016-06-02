@@ -75,10 +75,11 @@ module_param_named(pr_dbg_mask, t_pr_dbg_mask, uint, S_IRUGO|S_IWUSR|S_IWGRP);
  */
 module_param_named(dev_dbg_mask, t_dev_dbg_mask, uint, S_IRUGO|S_IWUSR|S_IWGRP);
 
-static u32 t_mfts_lpwg = 0;
-static u32 t_lpwg_mode = LPWG_NONE;
-static u32 t_lpwg_screen = 1;
-static u32 t_lpwg_sensor = PROX_FAR;
+u32 t_mfts_lpwg = 0;
+u32 t_lpwg_mode = LPWG_NONE;
+u32 t_lpwg_screen = 1;
+u32 t_lpwg_sensor = PROX_FAR;
+u32 t_lpwg_qcover = 0;
 
 /* usage
  * (1) echo <value> > /sys/module/{Siw Touch Module Name}/parameters/mfts_lpwg_mode
@@ -103,6 +104,12 @@ module_param_named(lpwg_screen, t_lpwg_screen, uint, S_IRUGO|S_IWUSR|S_IWGRP);
  * (2) insmod {Siw Touch Module Name}.ko lpwg_sensor=<value>
  */
 module_param_named(lpwg_sensor, t_lpwg_sensor, uint, S_IRUGO|S_IWUSR|S_IWGRP);
+
+/* usage
+ * (1) echo <value> > /sys/module/{Siw Touch Module Name}/parameters/lpwg_qcover
+ * (2) insmod {Siw Touch Module Name}.ko lpwg_qcover=<value>
+ */
+module_param_named(lpwg_qcover, t_lpwg_qcover, uint, S_IRUGO|S_IWUSR|S_IWGRP);
 
 
 int siw_setup_names(struct siw_ts *ts, struct siw_touch_pdata *pdata)
@@ -1215,6 +1222,7 @@ static int siw_touch_do_probe_normal(void *data)
 	ts->lpwg.mode = t_lpwg_mode;
 	ts->lpwg.screen = t_lpwg_screen;
 	ts->lpwg.sensor = t_lpwg_sensor;
+	ts->lpwg.qcover = t_lpwg_qcover;
 
 	siw_ops_power(ts, POWER_OFF);
 	siw_ops_power(ts, POWER_ON);

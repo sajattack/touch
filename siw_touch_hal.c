@@ -3205,6 +3205,11 @@ static int siw_hal_lpwg(struct device *dev, u32 code, void *param)
 		lpwg->sensor = value[2];
 		lpwg->qcover = value[3];
 
+		t_lpwg_mode = lpwg->mode;
+		t_lpwg_screen = lpwg->screen;
+		t_lpwg_sensor = lpwg->sensor;
+		t_lpwg_qcover = lpwg->qcover;
+
 		t_dev_info(dev,
 				"LPWG_UPDATE_ALL: mode[%d], screen[%s], sensor[%s], qcover[%s]\n",
 				lpwg->mode,

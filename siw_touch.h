@@ -38,7 +38,7 @@
 #include "siw_touch_dbg.h"
 
 
-#define SIW_DRV_VERSION		"v2.10r"
+#define SIW_DRV_VERSION		"v2.11b"
 
 
 enum {
@@ -1460,6 +1460,12 @@ static inline int __siw_touch_op_dbg(struct siw_op_dbg *op,
 #define siw_snprintf(_buf, _size, _fmt, _args...) \
 		__siw_snprintf(_buf, PAGE_SIZE, _size, _fmt, ##_args)
 
+
+extern u32 t_mfts_lpwg;
+extern u32 t_lpwg_mode;
+extern u32 t_lpwg_screen;
+extern u32 t_lpwg_sensor;
+extern u32 t_lpwg_qcover;
 
 extern int siw_setup_names(struct siw_ts *ts, struct siw_touch_pdata *pdata);
 
