@@ -2511,7 +2511,7 @@ static int siw_hal_clock(struct device *dev, bool onoff)
 	siw_touch_sys_osc(dev, onoff);
 
 	switch(touch_chip_type(ts)) {
-//	case CHIP_LG4895:
+	case CHIP_LG4895:
 	case CHIP_LG4946:
 		ret = siw_hal_clock_type_1(dev, onoff);
 		break;
