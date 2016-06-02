@@ -180,4 +180,17 @@ int siw_touch_sys_osc(struct device *dev, int onoff)
 	return 0;
 }
 
+#if defined(CONFIG_TOUCHSCREEN_SIW_LG4895_F650)
+int mfts_lpwg = 0;
+#endif
+
+int siw_touch_sys_mfts_lpwg(struct device *dev, int lpwg)
+{
+#if defined(CONFIG_TOUCHSCREEN_SIW_LG4895_F650)
+	mfts_lpwg = lpwg;
+#endif
+
+	return 0;
+}
+
 
