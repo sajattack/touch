@@ -2353,11 +2353,13 @@ static int siw_hal_tci_area_set(struct device *dev, int cover_status)
 	qcover = (cover_status == QUICKCOVER_CLOSE)?
 			&ts->tci.qcover_close : &ts->tci.qcover_open;
 	msg = (cover_status == QUICKCOVER_CLOSE)?
-			"qcover close" : "normal";
+			"close" : "open";
 
 	if (qcover->x1 != ~0) {
-		siw_hal_tci_active_area(dev, 179, 144, 1261, 662);
-		t_dev_info(dev, "lpwg active area - %s\n", msg);
+		siw_hal_tci_active_area(dev,
+				qcover->x1, qcover->y1,
+				qcover->x2, qcover->y2);
+		t_dev_info(dev, "lpwg active area - qcover %s\n", msg);
 	}
 
 	return 0;
