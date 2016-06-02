@@ -142,8 +142,13 @@ static int siw_touch_parse_dts_watch(struct siw_ts *ts)
 	struct device_node *np = dev->of_node;
 	int ret = 0;
 
+	if (touch_test_quirks(ts, CHIP_QUIRK_NOT_SUPPORT_WATCH)) {
+		goto out;
+	}
+
 	ret = siw_touch_of_string(dev, np, "font_image", &ts->watch_font_image);
 
+out:
 	return 0;
 }
 
@@ -241,10 +246,10 @@ static int siw_touch_do_parse_dts(struct siw_ts *ts)
 		ts->irqflags |= p_flags & (0xFFFFUL<<16);
 	}
 	if (irq_flags >= 0) {
-		t_dev_info(dev, "irqflags(of) = 0x%08X (0x%08X, 0x%08X)",
+		t_dev_info(dev, "irqflags(of) = 0x%08X (0x%08X, 0x%08X)\n",
 			(u32)ts->irqflags, p_flags, irq_flags);
 	} else {
-		t_dev_info(dev, "irqflags(of) = 0x%08X (0x%08X, %d)",
+		t_dev_info(dev, "irqflags(of) = 0x%08X (0x%08X, %d)\n",
 			(u32)ts->irqflags, p_flags, irq_flags);
 	}
 
@@ -257,10 +262,10 @@ static int siw_touch_do_parse_dts(struct siw_ts *ts)
 		ts->flags |= p_flags & (0xFFFFUL<<16);
 	}
 	if (chip_flags >= 0) {
-		t_dev_info(dev, "flags(of) = 0x%08X (0x%08X, 0x%08X)",
+		t_dev_info(dev, "flags(of) = 0x%08X (0x%08X, 0x%08X)\n",
 			ts->flags, p_flags, chip_flags);
 	} else {
-		t_dev_info(dev, "flags(of) = 0x%08X (0x%08X, %d)",
+		t_dev_info(dev, "flags(of) = 0x%08X (0x%08X, %d)\n",
 			ts->flags, p_flags, chip_flags);
 	}
 
