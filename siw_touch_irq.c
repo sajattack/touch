@@ -45,10 +45,11 @@ void siw_touch_enable_irq_wake(struct device *dev,
 {
 	struct siw_ts *ts = to_touch_core(dev);
 
-	if (touch_flags(ts) & IRQ_USE_WAKE) {
-		enable_irq_wake(irq);
-		t_dev_dbg_irq(dev, "irq(%d) wake enabled\n", irq);
-	}
+	if (!ts->role.use_lpwg)
+		return;
+
+	enable_irq_wake(irq);
+	t_dev_info(dev, "irq(%d) wake enabled\n", irq);
 }
 
 void siw_touch_disable_irq_wake(struct device *dev,
@@ -56,10 +57,11 @@ void siw_touch_disable_irq_wake(struct device *dev,
 {
 	struct siw_ts *ts = to_touch_core(dev);
 
-	if (touch_flags(ts) & IRQ_USE_WAKE) {
-		disable_irq_wake(irq);
-		t_dev_dbg_irq(dev, "irq(%d) wake disabled\n", irq);
-	}
+	if (!ts->role.use_lpwg)
+		return;
+
+	disable_irq_wake(irq);
+	t_dev_info(dev, "irq(%d) wake disabled\n", irq);
 }
 
 void siw_touch_enable_irq(struct device *dev, unsigned int irq)
@@ -75,13 +77,13 @@ void siw_touch_enable_irq(struct device *dev, unsigned int irq)
 		raw_spin_unlock(&desc->lock);
 	}
 	enable_irq(irq);
-	t_dev_dbg_irq(dev, "irq(%d) enabled\n", irq);
+	t_dev_info(dev, "irq(%d) enabled\n", irq);
 }
 
 void siw_touch_disable_irq(struct device *dev, unsigned int irq)
 {
 	disable_irq_nosync(irq);	/* No waiting */
-	t_dev_dbg_irq(dev, "irq(%d) disabled\n", irq);
+	t_dev_info(dev, "irq(%d) disabled\n", irq);
 }
 
 #if 1
@@ -150,8 +152,7 @@ void siw_touch_irq_control(struct device *dev, int on_off)
 
 		siw_touch_enable_irq(dev, ts->irq);
 
-		if (ts->role.use_lpwg)
-			siw_touch_enable_irq_wake(dev, ts->irq);
+		siw_touch_enable_irq_wake(dev, ts->irq);
 
 		return;
 	}
@@ -161,8 +162,7 @@ void siw_touch_irq_control(struct device *dev, int on_off)
 		return;
 	}
 
-	if (ts->role.use_lpwg)
-		siw_touch_disable_irq_wake(dev, ts->irq);
+	siw_touch_disable_irq_wake(dev, ts->irq);
 
 	siw_touch_disable_irq(dev, ts->irq);
 }

@@ -3329,7 +3329,7 @@ static int siw_hal_asc(struct device *dev, u32 code, u32 value)
 
 enum {
 	INT_RESET_CLR_BIT	= ((1<<10)|(1<<9)|(1<<5)),	// 0x620
-#if 0
+#if 1
 	INT_LOGGING_CLR_BIT	= ((1<<22)|(1<<20)|(1<<15)|(1<<13)|(1<<7)|(1<<6)),	//0x50A0C0
 	INT_NORMAL_MASK		= ((1<<22)|(1<<20)|(1<<15)|(1<<7)|(1<<6)|(1<<5)),	//0x5080E0
 #else
@@ -3409,7 +3409,7 @@ static int siw_hal_check_status_type_1(struct device *dev,
 		len += siw_chk_sts_snprintf(dev, log, log_max, len,
 					"[b13] display mode mismatch ");
 	}
-#if 0
+#if 1
 	if (!(status & (1<<15))) {
 		log_flag = 1;
 		len += siw_chk_sts_snprintf(dev, log, log_max, len,
