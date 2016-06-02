@@ -71,9 +71,9 @@ void siw_touch_enable_irq(struct device *dev, unsigned int irq)
 	if (desc) {
 		raw_spin_lock(&desc->lock);
 		if (desc->istate & IRQS_PENDING) {
-			t_dev_dbg_base(dev, "remove pending irq(%d)\n", irq);
+			desc->istate &= ~IRQS_PENDING;
+			t_dev_info(dev, "remove pending irq(%d)\n", irq);
 		}
-		desc->istate &= ~IRQS_PENDING;
 		raw_spin_unlock(&desc->lock);
 	}
 	enable_irq(irq);
@@ -109,7 +109,7 @@ void siw_touch_resume_irq(struct device *dev)
 
 	t_dev_info(dev, "resume irq\n");
 
-#if defined(CONFIG_TOUCHSCREEN_SIW_LG4895_F650)
+#if 0	//defined(CONFIG_TOUCHSCREEN_SIW_LG4895_F650)
 	{
 		struct irq_desc *desc = irq_to_desc(ts->irq);
 		if (desc) {
@@ -122,10 +122,6 @@ void siw_touch_resume_irq(struct device *dev)
 
 	disable_irq(ts->irq);
 	siw_touch_set_irq_pending(dev, ts->irq);	//to resend
-	/*
-	 * Actually, enable_irq is not enough to generate irq and
-	 * additional methodology is required.
-	 */
 	enable_irq(ts->irq);
 
 //	mutex_unlock(&ts->lock);
