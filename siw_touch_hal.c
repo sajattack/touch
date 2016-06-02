@@ -2610,7 +2610,7 @@ static int siw_hal_swipe_control(struct device *dev, int type)
 	return ret;
 }
 
-static int siw_hal_swipe_mode(struct device *dev, u8 lcd_mode)
+static int siw_hal_swipe_mode(struct device *dev, int mode)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 //	struct siw_ts *ts = chip->ts;
@@ -2620,10 +2620,11 @@ static int siw_hal_swipe_mode(struct device *dev, u8 lcd_mode)
 	u32 swipe_data[11] = {0x0, };
 	int ret = 0;
 
-	if (!chip->swipe.mode)
-		return ret;
+	if (!chip->swipe.mode) {
+		goto out;
+	}
 
-	if (lcd_mode != LCD_MODE_U2) {
+	if (mode != LCD_MODE_U2) {
 		ret = siw_hal_swipe_control(dev, SWIPE_DISABLE_CTRL);
 		t_dev_dbg_base(dev, "swipe disabled\n");
 		goto out;
