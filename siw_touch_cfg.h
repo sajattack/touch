@@ -12,8 +12,8 @@
 #ifndef __SIW_TOUCH_CFG_H
 #define __SIW_TOUCH_CFG_H
 
-//#define __SIW_SUPPORT_PINCTRL
-//#define __SIW_SUPPORT_PWRCTRL
+#define __SIW_SUPPORT_PINCTRL
+#define __SIW_SUPPORT_PWRCTRL
 
 //#define __SIW_SUPPORT_ASC
 

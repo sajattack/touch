@@ -204,9 +204,16 @@ void siw_touch_gpio_set_pull(struct device *dev, int pin, int value)
 static int siw_touch_power_do_init(struct device *dev)
 {
 	struct siw_ts *ts = to_touch_core(dev);
-	int vdd_pin = touch_vdd_pin(ts);
-	int vio_pin = touch_vio_pin(ts);
+	int vdd_pin = -1;
+	int vio_pin = -1;
 	void *vdd, *vio;
+
+	if (!(touch_flags(ts) & TOUCH_USE_PWRCTRL)) {
+		goto out;
+	}
+
+	vdd_pin = touch_vdd_pin(ts);
+	vio_pin = touch_vio_pin(ts);
 
 	t_dev_dbg_gpio(dev, "power init\n");
 
@@ -232,16 +239,24 @@ static int siw_touch_power_do_init(struct device *dev)
 		}
 	}
 
+out:
 	return 0;
 }
 
 static void siw_touch_power_do_vdd(struct device *dev, int value)
 {
 	struct siw_ts *ts = to_touch_core(dev);
-	int vdd_pin = touch_vdd_pin(ts);
-	void *vdd = touch_get_vdd(ts);
+	int vdd_pin = -1;
+	void *vdd = NULL;
 	char *op;
 	int ret = 0;
+
+	if (!(touch_flags(ts) & TOUCH_USE_PWRCTRL)) {
+		return;
+	}
+
+	vdd_pin = touch_vdd_pin(ts);
+	vdd = touch_get_vdd(ts);
 
 	if (gpio_is_valid(vdd_pin)) {
 		op = "gpio out control";
@@ -263,10 +278,17 @@ static void siw_touch_power_do_vdd(struct device *dev, int value)
 static void siw_touch_power_do_vio(struct device *dev, int value)
 {
 	struct siw_ts *ts = to_touch_core(dev);
-	int vio_pin = touch_vio_pin(ts);
-	void *vio = touch_get_vio(ts);
+	int vio_pin = -1;
+	void *vio = NULL;
 	char *op;
 	int ret = 0;
+
+	if (!(touch_flags(ts) & TOUCH_USE_PWRCTRL)) {
+		return;
+	}
+
+	vio_pin = touch_vio_pin(ts);
+	vio = touch_get_vio(ts);
 
 	if (gpio_is_valid(vio_pin)) {
 		op = "gpio out control";

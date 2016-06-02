@@ -80,7 +80,11 @@ int siw_touch_bus_pin_get(struct siw_ts *ts)
 	struct pinctrl_state *pin_suspend = NULL;
 	int ret = 0;
 
-	t_dev_dbg_base(dev, "get pinctrl\n");
+	if (!(touch_flags(ts) & TOUCH_USE_PINCTRL)) {
+		goto out;
+	}
+
+	t_dev_info(dev, "get pinctrl\n");
 
 	pin_ctrl = devm_pinctrl_get(dev);
 	if (IS_ERR_OR_NULL(pin_ctrl)) {
@@ -128,13 +132,18 @@ int siw_touch_bus_pin_put(struct siw_ts *ts)
 	struct device *dev = ts->dev;
 	struct touch_pinctrl *pinctrl = &ts->pinctrl;
 
-	t_dev_dbg_base(dev, "put pinctrl\n");
+	if (!(touch_flags(ts) & TOUCH_USE_PINCTRL)) {
+		goto out;
+	}
+
+	t_dev_info(dev, "put pinctrl\n");
 
 	if (pinctrl->ctrl && !IS_ERR_OR_NULL(pinctrl->ctrl)) {
 		devm_pinctrl_put(ts->pinctrl.ctrl);
 		memset((void *)pinctrl, 0, sizeof(struct touch_pinctrl));
 	}
 
+out:
 	return 0;
 }
 #else	/* __SIW_SUPPORT_PINCTRL */
@@ -142,7 +151,7 @@ int siw_touch_bus_pin_get(struct siw_ts *ts)
 {
 	struct device *dev = ts->dev;
 
-	t_dev_dbg_base(dev, "get pinctrl, nop ...\n");
+	t_dev_info(dev, "get pinctrl, nop ...\n");
 	return 0;
 }
 
@@ -150,7 +159,7 @@ int siw_touch_bus_pin_put(struct siw_ts *ts)
 {
 	struct device *dev = ts->dev;
 
-	t_dev_dbg_base(dev, "put pinctrl, nop ...\n");
+	t_dev_info(dev, "put pinctrl, nop ...\n");
 	return 0;
 }
 #endif	/* __SIW_SUPPORT_PINCTRL */
