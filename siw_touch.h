@@ -1580,13 +1580,15 @@ static inline void siwmon_submit_ops(struct device *dev, char *ops, u32 *data, i
 		static int __init chip_##_name##_driver_init(void)\
 		{	\
 			touch_msleep(200);	\
-			t_pr_info("%s driver init - %s\n", _name, SIW_DRV_VERSION);	\
+			t_pr_info("%s: %s driver init - %s\n",	\
+				_data.pdata->drv_name, _name, SIW_DRV_VERSION);	\
 			return siw_touch_bus_add_driver(&_data);	\
 		}	\
 		static void __exit chip_##_name##_driver_exit(void)	\
 		{	\
 			(void)siw_touch_bus_del_driver(&_data);\
-			t_pr_info("%s driver exit - %s\n", _name, SIW_DRV_VERSION);	\
+			t_pr_info("%s: %s driver exit - %s\n",	\
+				_data.pdata->drv_name, _name, SIW_DRV_VERSION);	\
 		}	\
 		module_init(chip_##_name##_driver_init);	\
 		module_exit(chip_##_name##_driver_exit);	\
