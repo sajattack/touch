@@ -984,7 +984,7 @@ static int prd_log_file_size_check(struct siw_hal_prd_data *prd)
 
 	ret = prd_vfs_file_chk(prd, fname, O_RDONLY, 0666, &file_size);
 	if (ret < 0) {
-		return ret;
+		goto out;
 	}
 
 	if (file_size <= MAX_LOG_FILE_SIZE) {
