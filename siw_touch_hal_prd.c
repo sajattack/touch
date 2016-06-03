@@ -961,6 +961,12 @@ static int prd_log_file_size_check(struct siw_hal_prd_data *prd)
 	int boot_mode = 0;
 	int ret = 0;
 
+	boot_mode = siw_touch_boot_mode_check(dev);
+
+	if (__prd_boot_mode_is_err(dev, boot_mode)) {
+		return -EINVAL;
+	}
+
 	buf1 = touch_getname();
 	if (buf1 == NULL) {
 		t_prd_err(prd, "failed to allocate name buffer 1\n");
@@ -972,12 +978,6 @@ static int prd_log_file_size_check(struct siw_hal_prd_data *prd)
 		t_prd_err(prd, "failed to allocate name buffer 2\n");
 		touch_putname(buf1);
 		return -ENOMEM;
-	}
-
-	boot_mode = siw_touch_boot_mode_check(dev);
-
-	if (__prd_boot_mode_is_err(dev, boot_mode)) {
-		return -EINVAL;
 	}
 
 	fname = (char *)prd_out_fname[boot_mode];
