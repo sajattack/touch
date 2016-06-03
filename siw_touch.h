@@ -830,7 +830,7 @@ struct siw_ts_thread {
 };
 
 enum {
-	DEFAULT_NAME_SZ = 256,
+	DEFAULT_NAME_SZ = PATH_MAX,
 };
 
 struct siw_ts {
@@ -1416,6 +1416,22 @@ static inline void *touch_kzalloc(struct device *dev, size_t size, gfp_t gfp)
 static inline void touch_kfree(struct device *dev, void *p)
 {
 	return devm_kfree(dev, p);
+}
+
+static inline void *touch_getname(void)
+{
+	void *name = __getname();
+	if (name != NULL) {
+		memset(name, 0, PATH_MAX);
+	}
+	return name;
+}
+
+static inline void touch_putname(void *name)
+{
+	if (name != NULL) {
+		__putname(name);
+	}
 }
 
 

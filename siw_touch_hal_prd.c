@@ -354,7 +354,7 @@ enum {
 
 enum {
 	PRD_TIME_STR_SZ = 64,
-	PRD_TMP_FILE_NAME_SZ = 256,
+	PRD_TMP_FILE_NAME_SZ = PATH_MAX,
 };
 
 enum {
@@ -956,10 +956,23 @@ static int prd_log_file_size_check(struct siw_hal_prd_data *prd)
 	char *fname = NULL;
 	loff_t file_size = 0;
 	int i = 0;
-	char buf1[PRD_TMP_FILE_NAME_SZ] = {0, };
-	char buf2[PRD_TMP_FILE_NAME_SZ] = {0, };
+	char *buf1 = NULL;
+	char *buf2 = NULL;
 	int boot_mode = 0;
 	int ret = 0;
+
+	buf1 = touch_getname();
+	if (buf1 == NULL) {
+		t_prd_err(prd, "failed to allocate name buffer 1\n");
+		return -ENOMEM;
+	}
+
+	buf2 = touch_getname();
+	if (buf2 == NULL) {
+		t_prd_err(prd, "failed to allocate name buffer 2\n");
+		touch_putname(buf1);
+		return -ENOMEM;
+	}
 
 	boot_mode = siw_touch_boot_mode_check(dev);
 
@@ -983,9 +996,9 @@ static int prd_log_file_size_check(struct siw_hal_prd_data *prd)
 
 	for (i = MAX_LOG_FILE_COUNT - 1; i >= 0; i--) {
 		if (i == 0) {
-			snprintf(buf1, sizeof(buf1), "%s", fname);
+			snprintf(buf1, PATH_MAX, "%s", fname);
 		} else {
-			snprintf(buf1, sizeof(buf1), "%s.%d", fname, i);
+			snprintf(buf1, PATH_MAX, "%s.%d", fname, i);
 		}
 
 		if (i == (MAX_LOG_FILE_COUNT - 1)) {
@@ -995,7 +1008,7 @@ static int prd_log_file_size_check(struct siw_hal_prd_data *prd)
 			}
 			t_prd_info(prd, "file removed : %s\n", buf1);
 		} else {
-			snprintf(buf2, sizeof(buf2), "%s.%d", fname, (i + 1));
+			snprintf(buf2, PATH_MAX, "%s.%d", fname, (i + 1));
 
 			ret = prd_vfs_file_rename(prd, buf1, buf2);
 			if (ret < 0) {
@@ -1005,6 +1018,9 @@ static int prd_log_file_size_check(struct siw_hal_prd_data *prd)
 	}
 
 out:
+	touch_putname(buf2);
+	touch_putname(buf1);
+
 	return ret;
 }
 
@@ -3427,9 +3443,15 @@ static ssize_t prd_store_file_test(struct device *dev,
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
 	struct siw_hal_prd_data *prd = (struct siw_hal_prd_data *)ts->prd;
-	char fname[PRD_TMP_FILE_NAME_SZ] = {0, };
+	char *fname = NULL;
 	int value = 0;
 	int ret = 0;
+
+	fname = touch_getname();
+	if (fname == NULL) {
+		t_prd_err(prd, "failed to allocate fname\n");
+		return -ENOMEM;
+	}
 
 	if (sscanf(buf, "%d %s", &value, fname) <= 0) {
 		siw_prd_sysfs_err_invalid_param(prd);
@@ -3459,30 +3481,52 @@ static ssize_t prd_store_file_test(struct device *dev,
 
 	if (!ret) {
 		if (value == PRD_FILE_TEST_OPTION_2) {	/* Rename */
-			char buf1[PRD_TMP_FILE_NAME_SZ] = {0, };
-			char buf2[PRD_TMP_FILE_NAME_SZ] = {0, };
+			char *buf1 = NULL;
+			char *buf2 = NULL;
 			int i;
+
+			buf1 = touch_getname();
+			if (buf1 == NULL) {
+				t_prd_err(prd, "failed to allocate name buf1\n");
+				ret = -ENOMEM;
+				goto out;
+			}
+
+			buf2 = touch_getname();
+			if (buf2 == NULL) {
+				t_prd_err(prd, "failed to allocate name buf2\n");
+				ret = -ENOMEM;
+				touch_putname(buf1);
+				goto out;
+			}
 
 			for (i = MAX_LOG_FILE_COUNT - 1; i >= 0; i--) {
 				if (i == 0) {
-					snprintf(buf1, sizeof(buf1), "%s", fname);
+					snprintf(buf1, PATH_MAX, "%s", fname);
 				} else {
-					snprintf(buf1, sizeof(buf1), "%s.%d", fname, i);
+					snprintf(buf1, PATH_MAX, "%s.%d", fname, i);
 				}
 
 				if (i == (MAX_LOG_FILE_COUNT - 1)) {
 					ret = prd_vfs_file_remove(prd, buf1);
 					if (ret < 0) {
-						goto out;
+						break;
 					}
 				} else {
-					snprintf(buf2, sizeof(buf2), "%s.%d", fname, (i + 1));
+					snprintf(buf2, PATH_MAX, "%s.%d", fname, (i + 1));
 
 					ret = prd_vfs_file_rename(prd, buf1, buf2);
 					if (ret < 0) {
-						goto out;
+						break;
 					}
 				}
+			}
+
+			touch_putname(buf2);
+			touch_putname(buf1);
+
+			if (ret < 0) {
+				goto out;
 			}
 		} else {	/* Remove */
 			ret = prd_vfs_file_remove(prd, fname);
@@ -3498,6 +3542,8 @@ static ssize_t prd_store_file_test(struct device *dev,
 	}
 
 out:
+	touch_putname(fname);
+
 	return (ssize_t)count;
 }
 #else	/* __PRD_FILE_RW_TEST */

@@ -2167,10 +2167,16 @@ static int siw_hal_upgrade(struct device *dev)
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
 	const struct firmware *fw = NULL;
-	char fwpath[DEFAULT_NAME_SZ] = {0, };
+	char *fwpath = NULL;
 	int ret = 0;
 	int ret_val = 0;
 	int i = 0;
+
+	fwpath = touch_getname();
+	if (fwpath == NULL) {
+		t_dev_err(dev, "failed to allocate name buffer - fwpath\n");
+		return -ENOMEM;
+	}
 
 	if (atomic_read(&ts->state.fb) >= FB_SUSPEND) {
 		t_dev_warn(dev, "state.fb is not FB_RESUME\n");
@@ -2179,11 +2185,11 @@ static int siw_hal_upgrade(struct device *dev)
 	}
 
 	if (ts->test_fwpath[0]) {
-		memcpy(fwpath, &ts->test_fwpath[0], sizeof(fwpath));
+		strncpy(fwpath, ts->test_fwpath, strlen(ts->test_fwpath));
 		t_dev_info(dev, "get fwpath from test_fwpath:%s\n",
 				&ts->test_fwpath[0]);
 	} else if (ts->def_fwcnt) {
-		memcpy(fwpath, ts->def_fwpath[0], sizeof(fwpath));
+		strncpy(fwpath, ts->def_fwpath[0], strlen(ts->def_fwpath[0]));
 		t_dev_info(dev, "get fwpath from def_fwpath : %s\n", fwpath);
 	} else {
 		t_dev_err(dev, "no firmware file\n");
@@ -2223,6 +2229,9 @@ out:
 		siwmon_submit_ops_step_chip_wh_name(dev, "%s - FW upgrade done",
 				touch_chip_name(ts), ret);
 	}
+
+	touch_putname(fwpath);
+
 	return ret;
 }
 
