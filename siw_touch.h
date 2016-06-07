@@ -28,7 +28,9 @@
 #endif
 #include <linux/notifier.h>
 #include <linux/atomic.h>
+#if defined(CONFIG_ANDROID)
 #include <linux/wakelock.h>
+#endif
 #include <linux/input.h>
 #include <linux/input/mt.h>
 
@@ -862,8 +864,9 @@ struct siw_ts {
 	struct siw_touch_pdata *pdata;
 
 	struct kobject kobj;
+#if defined(CONFIG_ANDROID)
 	struct wake_lock lpwg_wake_lock;
-
+#endif
 	struct state_info state;
 
 	struct touch_pins pins;

@@ -216,8 +216,10 @@ void siw_touch_send_uevent(void *ts_data, int type)
 	}
 
 	if (atomic_read(&ts->state.uevent) == UEVENT_IDLE) {
+	#if defined(CONFIG_ANDROID)
 		wake_lock_timeout(&ts->lpwg_wake_lock,
 						msecs_to_jiffies(3000));
+	#endif
 
 		atomic_set(&ts->state.uevent, UEVENT_BUSY);
 
