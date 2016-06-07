@@ -1062,7 +1062,7 @@ static void abt_onchip_debug_on_mode(struct siw_hal_abt_data *abt, u8 *data)
 					((i<<1)%MAX_RW_SIZE)>>2);
 			}
 			memcpy(abt->abt_report_p, data, (sizeof(u8) * 34)<<2);
-			memcpy(&abt->abt_report_p[34 * 4], &data[34<<2],
+			memcpy(&abt->abt_report_p[34<<2], &data[34<<2],
 				sizeof(u8) * 112);
 			ret = siw_hal_reg_write(dev,
 						reg->tc_interrupt_status,
@@ -1890,26 +1890,122 @@ static int abt_ksocket_init(struct siw_hal_abt_data *abt,
 
 static ssize_t abt_show_app(struct device *dev, char *buf)
 {
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	struct siw_hal_abt_data *abt = (struct siw_hal_abt_data *)ts->abt;
+	int abt_head_flag = abt->abt_head_flag;
+	int abt_show_mode = abt->abt_show_mode;
+	char *abt_head = abt->abt_head;
+	int i;
 	int size = 0;
 
-	/* Reserved */
+	if (abt_head_flag) {
+		if (abt_show_mode == REPORT_SEG1) {
+			abt_head[14] = DATA_TYPE_SEG1;
+		} else if (abt_show_mode == REPORT_SEG2) {
+			abt_head[14] = DATA_TYPE_SEG2;
+		} else if (abt_show_mode == REPORT_RAW) {
+			abt_head[14] = DATA_TYPE_RAW;
+		} else if (abt_show_mode == REPORT_BASELINE) {
+			abt_head[14] = DATA_TYPE_BASELINE;
+		} else if (abt_show_mode == REPORT_RNORG) {
+			abt_head[14] = DATA_TYPE_RN_ORG;
+		}
+
+		size = sizeof(abt_head);
+		memcpy((void *)&buf[0], (void *)abt_head, size);
+		abt_head_flag = 0;
+		return size;
+	}
+
+	switch (abt_show_mode) {
+	case REPORT_RNORG:
+	case REPORT_RAW:
+	case REPORT_BASELINE:
+	case REPORT_SEG1:
+	case REPORT_SEG2:
+		i = (ACTIVE_SCREEN_CNT_X * ACTIVE_SCREEN_CNT_Y)<<1;
+		memcpy((void *)&buf[0], (u8 *)&abt->abt_ocd[abt->abt_ocd_read^1][0], i);
+		memcpy((void *)&buf[i], (u8 *)&abt->abt_report_p, sizeof(abt->abt_report_p));
+		i += sizeof(abt->abt_report_p);
+		size = i;
+		break;
+	case REPORT_DEBUG_ONLY:
+		memcpy((void *)&buf[0], (u8 *)&abt->abt_report_p, sizeof(abt->abt_report_p));
+		i = sizeof(abt->abt_report_p);
+		size = i;
+		break;
+	default:
+		abt->abt_show_mode = 0;
+		size = 0;
+		break;
+	}
 
 	return (ssize_t)size;
 }
+
+static const char *abt_show_mode_str[] = {
+	[REPORT_RNORG-REPORT_RNORG]			= "RNORG",
+	[REPORT_RAW-REPORT_RNORG]			= "RAW",
+	[REPORT_BASELINE-REPORT_RNORG]		= "BASELINE",
+	[REPORT_SEG1-REPORT_RNORG]			= "SEG1",
+	[REPORT_SEG2-REPORT_RNORG]			= "SEG2",
+	[REPORT_GLASS-REPORT_RNORG]			= "GLASS",		/* not used */
+	[REPORT_DEBUG_ONLY-REPORT_RNORG]	= "DEBUG_ONLY",
+};
 
 static ssize_t abt_store_app(struct device *dev,
 				const char *buf, size_t count)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
+	struct siw_hal_abt_data *abt = (struct siw_hal_abt_data *)ts->abt;
+	u32 mode = 0;
 
 	if (atomic_read(&ts->state.debug_tool) != DEBUG_TOOL_ENABLE){
 		return count;
 	}
 
-	/* Reserved */
+	/*
+	 * up to APP I/F
+	 */
+	mode = buf[0];
+//	mode = count;
 
-	return (ssize_t)count;
+	if (mode == HEAD_LOAD) {
+		abt->abt_head_flag = 1;
+		abt->abt_ocd_on = 1;
+		t_abt_info(abt, "abt_head load\n");
+		return abt->abt_head_flag;
+	}
+
+	abt->abt_show_mode = mode;
+	abt->abt_head_flag = 0;
+
+	switch (abt->abt_show_mode) {
+	case REPORT_RNORG:
+		/* fall through */
+	case REPORT_RAW:
+		/* fall through */
+	case REPORT_BASELINE:
+		/* fall through */
+	case REPORT_SEG1:
+		/* fall through */
+	case REPORT_SEG2:
+		/* fall through */
+	case REPORT_DEBUG_ONLY:
+		t_abt_info(abt, "show mode : %s\n",
+			abt_show_mode_str[abt->abt_show_mode - REPORT_RNORG]);
+		break;
+	case REPORT_OFF:
+		t_abt_info(abt, "show mode : OFF\n");
+		break;
+	default:
+		t_abt_info(abt, "show mode : unknown, %d\n", mode);
+		break;
+	}
+
+	return (ssize_t)abt->abt_show_mode;
 }
 
 enum {
@@ -2375,12 +2471,12 @@ void siw_hal_switch_to_abt_irq_handler(struct siw_ts *ts)
 #define _SIW_TOUCH_HAL_ABT_T(_name)	\
 		touch_attr_##_name
 
-static SIW_TOUCH_HAL_ABT_ATTR(monitor, abt_show_app, abt_store_app);
+static SIW_TOUCH_HAL_ABT_ATTR(abt_monitor, abt_show_app, abt_store_app);
 static SIW_TOUCH_HAL_ABT_ATTR(raw_report, abt_show_tool_b, abt_store_tool_b);
 static SIW_TOUCH_HAL_ABT_ATTR(raw_report_t, abt_show_tool_t, abt_store_tool_t);
 
 static struct attribute *siw_hal_abt_attribute_list[] = {
-	&_SIW_TOUCH_HAL_ABT_T(monitor).attr,
+	&_SIW_TOUCH_HAL_ABT_T(abt_monitor).attr,
 	&_SIW_TOUCH_HAL_ABT_T(raw_report).attr,
 	&_SIW_TOUCH_HAL_ABT_T(raw_report_t).attr,
 	NULL,
