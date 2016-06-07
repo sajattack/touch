@@ -678,7 +678,7 @@ void siw_hal_xfer_add_rx_seq(void *xfer_data, u32 reg, u32 *data, int cnt)
 	struct touch_xfer_msg *xfer = xfer_data;
 	int i;
 
-	for (i=0 ; i<cnt ; i++) {
+	for (i = 0; i < cnt; i++) {
 		siw_hal_xfer_add_rx(xfer,
 				reg + i,
 				(void *)&(data[i]), sizeof(u32));
@@ -712,7 +712,7 @@ void siw_hal_xfer_add_tx_seq(void *xfer_data, u32 reg, u32 *data, int cnt)
 	struct touch_xfer_msg *xfer = xfer_data;
 	int i;
 
-	for (i=0 ; i<cnt ; i++) {
+	for (i = 0; i < cnt; i++) {
 		siw_hal_xfer_add_tx(xfer,
 				reg + i,
 				(void *)&(data[i]), sizeof(u32));
@@ -1370,7 +1370,7 @@ static int siw_hal_init(struct device *dev)
 		siw_hal_abt_init(dev);
 	}
 
-	for (i=0 ; i<2 ; i++) {
+	for (i = 0; i < 2; i++) {
 		ret = siw_hal_ic_info(dev);
 		if (ret >= 0) {
 			break;
@@ -1638,7 +1638,7 @@ static int siw_hal_fw_compare(struct device *dev, const struct firmware *fw)
 		update = !!(bin_minor > dev_minor);
 	}
 
-	if(!dev_major && !dev_minor){
+	if (!dev_major && !dev_minor){
 		t_dev_err(dev, "fw can not be 0.0!! Check your panel connection!!\n");
 		update = 0;
 	}
@@ -1784,7 +1784,7 @@ static int __siw_hal_fw_up_verify(struct device *dev, u8 *chk_buf, int chk_size)
 	r_data = fw_rd_data;
 	w_data = chk_buf;
 	fw_size = chk_size;
-	for (i=0 ; i<fw_size ; i++) {
+	for (i = 0; i < fw_size; i++) {
 		if ((*r_data) != (*w_data)) {
 			t_dev_err(dev, "* Err [%06X] rd(%02X) != wr(%02X)\n",
 				i, (*r_data), (*w_data));

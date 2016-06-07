@@ -113,7 +113,7 @@ static void siw_touch_of_array(struct device *dev, void *np,
 
 	(*cnt) = ret;
 	t_dev_dbg_of(dev, "of count : %s, %d\n", (char *)string, (*cnt));
-	for (i=0 ; i<(*cnt) ; i++) {
+	for (i = 0; i < (*cnt); i++) {
 		ret = of_property_read_string_index(np, string, i, (const char **)&name[i]);
 		if (!ret) {
 			t_dev_info(dev, "of string[%d/%d] : %s\n", i+1, (*cnt), name[i]);

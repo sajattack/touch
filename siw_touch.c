@@ -187,7 +187,7 @@ static void siw_setup_reg_quirks(struct siw_ts *ts)
 
 			copy_reg = (u32 *)reg_org;
 			curr_reg = (u32 *)siw_ops_reg(ts);
-			for (i=0 ; i<cnt ; i++) {
+			for (i = 0; i < cnt; i++) {
 				if ((*copy_reg) == reg_quirks->old_addr) {
 					(*curr_reg) = reg_quirks->new_addr;
 					t_dev_info(ts->dev, "%s reg quirks: %Xh -> %Xh\n",
@@ -703,10 +703,10 @@ static void siw_touch_fb_work_func(struct work_struct *work)
 			container_of(to_delayed_work(work),
 				struct siw_ts, fb_work);
 
-	if(atomic_read(&ts->state.fb) == FB_SUSPEND) {
+	if (atomic_read(&ts->state.fb) == FB_SUSPEND) {
 		siw_touch_suspend(ts->dev);
 		siwmon_submit_ops_step_core(ts->dev, "FB suspend", 0);
-	} else if(atomic_read(&ts->state.fb) == FB_RESUME) {
+	} else if (atomic_read(&ts->state.fb) == FB_RESUME) {
 		siw_touch_resume(ts->dev);
 		siwmon_submit_ops_step_core(ts->dev, "FB Resume", 0);
 	}

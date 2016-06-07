@@ -1772,10 +1772,10 @@ static int prd_compare_tool(struct siw_hal_prd_data *prd,
 		raw_buf = buf[k];
 		col_i = 0;
 
-		for (i = 0 ; i < row ; i++) {
+		for (i = 0; i < row; i++) {
 			raw_curr = &raw_buf[col_i];
 
-			for (j = 0 ; j < col ; j++) {
+			for (j = 0; j < col; j++) {
 				curr_raw = *raw_curr++;
 
 				if ((curr_raw >= curr_lower) &&
@@ -1946,7 +1946,7 @@ static int prd_stop_firmware(struct siw_hal_prd_data *prd, u32 wdata)
 		t_prd_info(prd, "Read RS_IMAGE = [%x] , OK RS_IMAGE = [%x]\n",
 			read_val, (u32)RS_IMAGE);
 		touch_msleep(10);
-	} while(read_val != (u32)RS_IMAGE);
+	} while (read_val != (u32)RS_IMAGE);
 
 out:
 	return ret;
@@ -2057,7 +2057,7 @@ static int prd_read_rawdata(struct siw_hal_prd_data *prd, int type)
 	case U3_M2_RAWDATA_TEST:
 		/* fall through */
 	case U0_M2_RAWDATA_TEST:
-		for (i=0 ; i<M2_RAWDATA_TEST_CNT; i++) {
+		for (i = 0; i < M2_RAWDATA_TEST_CNT; i++) {
 			/* raw data offset write */
 			ret = siw_hal_write_value(dev,
 						reg->tc_tsp_test_data_offset,
@@ -2104,7 +2104,7 @@ static int prd_read_rawdata(struct siw_hal_prd_data *prd, int type)
 				goto out;
 			}
 
-			for (j = 0; j < PRD_ROW_SIZE; j++ ) {
+			for (j = 0; j < PRD_ROW_SIZE; j++) {
 				raw_buf[j<<1]   = tmp_buf[j];
 				raw_buf[(j<<1)+1] = tmp_buf[PRD_ROW_SIZE+j];
 			}
@@ -2322,7 +2322,7 @@ static int prd_conrtol_rawdata_result(struct siw_hal_prd_data *prd, int type, in
 	}
 
 	/* print Raw Data */
-	for (i=0 ; i<test_cnt ; i++) {
+	for (i = 0; i < test_cnt; i++) {
 		size += prd_print_rawdata(prd, prd->buf_write, print_type[i], size, opt);
 	}
 	if (size)
@@ -2814,7 +2814,7 @@ static int prd_show_prd_get_data_raw_tcm(struct device *dev)
 	 * tc_mem_sel(0x0457) "RAW" or "BASE1" or "BASE2" or "BASE3"
 	 */
 	ret = siw_hal_write_value(dev, reg->prd_tc_mem_sel, TCM_MEM_RAW);
-	if(ret < 0 ){
+	if (ret < 0){
 		goto out;
 	}
 
@@ -2824,7 +2824,7 @@ static int prd_show_prd_get_data_raw_tcm(struct device *dev)
 				reg->prd_tcm_base_addr,
 				(void *)prd->m2_buf_odd_rawdata,
 				__m2_frame_size);
-	if(ret < 0 ){
+	if (ret < 0){
 		goto out;
 	}
 
@@ -2997,7 +2997,7 @@ static int prd_show_prd_get_data_filtered_deltadata(struct device *dev)
 		goto out;
 	}
 
-	for(i = 0; i < PRD_M2_ROW_COL_SIZE; i++){
+	for (i = 0; i < PRD_M2_ROW_COL_SIZE; i++){
 		row = i / PRD_COL_SIZE;
 		col = i % PRD_COL_SIZE;
 		prd->m2_buf_odd_rawdata[i] = prd->buf_delta[(row + 1)*(PRD_COL_SIZE + 2) + (col + 1)];
@@ -3049,7 +3049,7 @@ static int prd_show_prd_get_data_deltadata(struct device *dev)
 		goto out;
 	}
 
-	for(i = 0; i < PRD_M2_ROW_COL_SIZE; i++){
+	for (i = 0; i < PRD_M2_ROW_COL_SIZE; i++){
 		row = i / PRD_COL_SIZE;
 		col = i % PRD_COL_SIZE;
 		prd->m2_buf_odd_rawdata[i] = prd->buf_delta[(row + 1)*(PRD_COL_SIZE + 2) + (col + 1)];
@@ -3102,7 +3102,7 @@ static int prd_show_prd_get_data_labeldata(struct device *dev)
 		goto out;
 	}
 
-	for(i = 0; i < PRD_M2_ROW_COL_SIZE; i++){
+	for (i = 0; i < PRD_M2_ROW_COL_SIZE; i++){
 		row = i / PRD_COL_SIZE;
 		col = i % PRD_COL_SIZE;
 		prd->buf_label[i] = prd->buf_label_tmp[(row + 1)*(PRD_COL_SIZE + 2) + (col + 1)];

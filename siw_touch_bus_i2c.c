@@ -58,7 +58,7 @@ static void siw_touch_i2c_err_dump(struct i2c_client *client,
 	int i;
 
 	t_dev_err(&client->dev, "i2c transfer err : ");
-	for (i=0 ; i<num ; i++) {
+	for (i = 0; i < num; i++) {
 		t_dev_err(&client->dev,
 				" - msgs[%d] : addr 0x%04X, flags 0x%04X, len %d\n",
 				i, msg->addr, msg->flags, msg->len);
@@ -194,7 +194,7 @@ static struct siw_ts *siw_touch_i2c_alloc(
 	}
 
 	ret = siw_setup_names(ts, pdata);
-	if (ret < 0 ) {
+	if (ret < 0) {
 		goto out_name;
 	}
 

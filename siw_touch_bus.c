@@ -258,7 +258,7 @@ static void siw_touch_buf_free(struct siw_ts *ts, int _tx)
 	t_buf = (_tx)? ts->tx_buf : ts->rx_buf;
 	title = (_tx)? "tx_buf" : "rx_buf";
 
-	for (i=0 ; i<SIW_TOUCH_MAX_BUF_IDX ; i++) {
+	for (i = 0; i < SIW_TOUCH_MAX_BUF_IDX; i++) {
 		sprintf(name, "%s%d", title, i);
 		__buffer_free(dev, t_buf->size,
 				t_buf->buf, t_buf->dma, name);
@@ -284,7 +284,7 @@ static int siw_touch_buf_alloc(struct siw_ts *ts, int _tx)
 
 	memset(t_buf, 0, sizeof(*t_buf) * SIW_TOUCH_MAX_BUF_IDX);
 
-	for (i=0 ; i<SIW_TOUCH_MAX_BUF_IDX ; i++) {
+	for (i = 0; i < SIW_TOUCH_MAX_BUF_IDX; i++) {
 		sprintf(name, "%s%d", title, i);
 		buf = __buffer_alloc(dev, buf_size, &dma,
 					GFP_KERNEL | GFP_DMA, name);
@@ -446,11 +446,11 @@ void siw_touch_bus_err_dump_data(struct device *dev,
 	total = cnt;
 
 	prt_idx = 0;
-	for (i=0 ; i<cnt ; i++) {
+	for (i = 0; i < cnt; i++) {
 		prt_len = min(len, SIW_BUS_ERR_PRT_BOUNDARY);
 		prt_buf = __prt_buf;
 		prt_pos = 0;
-		for (k=0 ; k<prt_len ; k++) {
+		for (k = 0; k < prt_len; k++) {
 			prt_pos += snprintf(prt_buf + prt_pos,
 							SIW_BUS_ERR_PRT_BUF_SZ - prt_pos,
 							"%02X ",

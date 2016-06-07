@@ -526,7 +526,7 @@ static int ext_watch_get_mode(struct device *dev, char *buf, int *len)
 		break;
 	default:
 		lut = mode->lut;
-		for (i=0 ; i<EXT_WATCH_LUT_NUM ; i++) {
+		for (i = 0; i < EXT_WATCH_LUT_NUM; i++) {
 			ret = siw_hal_read_value(dev, reg->ext_watch_lut + i, &val);
 			if (ret < 0) {
 				goto out;
@@ -1391,7 +1391,7 @@ static ssize_t store_ext_watch_font_onoff(struct device *dev,
 		goto out;
 	}
 
-	t_watch_info(dev, "Power %s\n", (value)? "ON" : "OFF" );
+	t_watch_info(dev, "Power %s\n", (value)? "ON" : "OFF");
 
 	ret = count;
 

@@ -73,7 +73,7 @@ static void siw_touch_spi_err_dump(struct spi_device *spi,
 	int i;
 
 	t_dev_err(&spi->dev, "spi transfer err :\n");
-	for (i=0 ; i<num ; i++) {
+	for (i = 0; i < num; i++) {
 		t_dev_err(&spi->dev,
 				" x[%d] - len %d, cs %d, bpw %d\n",
 				i,
@@ -377,7 +377,7 @@ static struct siw_ts *siw_touch_spi_alloc(
 	}
 
 	ret = siw_setup_names(ts, pdata);
-	if (ret < 0 ) {
+	if (ret < 0) {
 		goto out_name;
 	}
 
