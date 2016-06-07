@@ -40,6 +40,41 @@
 #include "siw_touch.h"
 #include "siw_touch_irq.h"
 
+
+static void siw_touch_irq_pending_onoff(struct device *dev,
+					unsigned int irq, int onoff)
+{
+	struct irq_desc *desc = irq_to_desc(irq);
+	unsigned long flags;
+
+	if (!desc) {
+		return;
+	}
+
+	raw_spin_lock_irqsave(&desc->lock, flags);
+	if (onoff) {
+		desc->istate |= IRQS_PENDING;
+		t_dev_info(dev, "set IRQS_PENDING(%d)\n", irq);
+	} else {
+		if (desc->istate & IRQS_PENDING) {
+			t_dev_info(dev, "clr IRQS_PENDING(%d)\n", irq);
+		}
+		desc->istate &= ~IRQS_PENDING;
+	}
+	raw_spin_unlock_irqrestore(&desc->lock, flags);
+}
+
+static void siw_touch_set_irq_pending(struct device *dev, unsigned int irq)
+{
+	siw_touch_irq_pending_onoff(dev, irq, 1);
+}
+
+static void siw_touch_clr_irq_pending(struct device *dev, unsigned int irq)
+{
+	siw_touch_irq_pending_onoff(dev, irq, 0);
+}
+
+
 void siw_touch_enable_irq_wake(struct device *dev,
 									unsigned int irq)
 {
@@ -66,16 +101,7 @@ void siw_touch_disable_irq_wake(struct device *dev,
 
 void siw_touch_enable_irq(struct device *dev, unsigned int irq)
 {
-	struct irq_desc *desc = irq_to_desc(irq);
-
-	if (desc) {
-		raw_spin_lock(&desc->lock);
-		if (desc->istate & IRQS_PENDING) {
-			desc->istate &= ~IRQS_PENDING;
-			t_dev_info(dev, "remove pending irq(%d)\n", irq);
-		}
-		raw_spin_unlock(&desc->lock);
-	}
+	siw_touch_clr_irq_pending(dev, irq);
 	enable_irq(irq);
 	t_dev_info(dev, "irq(%d) enabled\n", irq);
 }
@@ -87,44 +113,29 @@ void siw_touch_disable_irq(struct device *dev, unsigned int irq)
 }
 
 #if 1
-static void siw_touch_set_irq_pending(struct device *dev, unsigned int irq)
-{
-	struct irq_desc *desc = irq_to_desc(irq);
-	unsigned long flags;
-
-	if (!desc) {
-		return;
-	}
-
-	t_dev_info(dev, "set IRQS_PENDING\n");
-
-	raw_spin_lock_irqsave(&desc->lock, flags);
-	desc->istate |= IRQS_PENDING;
-	raw_spin_unlock_irqrestore(&desc->lock, flags);
-}
-
 void siw_touch_resume_irq(struct device *dev)
 {
 	struct siw_ts *ts = to_touch_core(dev);
+	int irq = ts->irq;
 
-	t_dev_info(dev, "resume irq\n");
+	t_dev_info(dev, "resume irq(%d)\n", irq);
 
-#if 0	//defined(CONFIG_TOUCHSCREEN_SIW_LG4895_F650)
-	{
-		struct irq_desc *desc = irq_to_desc(ts->irq);
-		if (desc) {
-			siw_touch_set_irq_pending(dev, ts->irq);
-			check_irq_resend(desc, ts->irq);
-		}
-	}
-#else
+#if 1
 //	mutex_lock(&ts->lock);
 
-	disable_irq(ts->irq);
-	siw_touch_set_irq_pending(dev, ts->irq);	//to resend
-	enable_irq(ts->irq);
+	disable_irq(irq);
+	siw_touch_set_irq_pending(dev, irq);
+	enable_irq(irq);
 
 //	mutex_unlock(&ts->lock);
+#else
+	{
+		struct irq_desc *desc = irq_to_desc(irq);
+		if (desc) {
+			siw_touch_set_irq_pending(dev, rq);
+			check_irq_resend(desc, irq);
+		}
+	}
 #endif
 }
 #else
