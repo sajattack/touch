@@ -280,19 +280,19 @@ static const struct siw_mon_buf_cache_operations __siw_mon_buf_cache_ops = { NUL
 
 static int __used siw_mon_create_buf_cache(void)
 {
-	return (__siw_mon_buf_cache_ops.create)?	\
+	return (__siw_mon_buf_cache_ops.create) ?	\
 			(__siw_mon_buf_cache_ops.create)() : 0;
 }
 
 static void __used siw_mon_destroy_buf_cache(void)
 {
-	return (__siw_mon_buf_cache_ops.destroy)?	\
+	return (__siw_mon_buf_cache_ops.destroy) ?	\
 			(__siw_mon_buf_cache_ops.destroy)() : 0;
 }
 
 void __used *siw_mon_get_buf_cache(unsigned char *src, int len)
 {
-	return (__siw_mon_buf_cache_ops.get)?	\
+	return (__siw_mon_buf_cache_ops.get) ?	\
 			(__siw_mon_buf_cache_ops.get)(src, len) : src;
 }
 
@@ -480,8 +480,8 @@ static void siw_mon_submit_bus_slice(struct siw_mon_data *smdata, void *data)
 //	rx_s_only = (!tx_size && (rx_size < prt_max);
 
 	// 2. total limit : up to buffer limit
-	tx_len = (buf_max)? min(tx_size, buf_max) : tx_size;
-	rx_len = (buf_max)? min(rx_size, buf_max) : rx_size;
+	tx_len = (buf_max) ? min(tx_size, buf_max) : tx_size;
+	rx_len = (buf_max) ? min(rx_size, buf_max) : rx_size;
 
 	// 3. line count : 1 line has 16 hex numbers
 	tx_cnt = (tx_len + prt_max - 1)/prt_max;
@@ -492,7 +492,7 @@ static void siw_mon_submit_bus_slice(struct siw_mon_data *smdata, void *data)
 	bus->rx_buf = NULL;
 	bus->rx_size = 0;
 	buf_org = msg->tx_buf;
-	for (i=0 ; i<tx_cnt ; i++) {
+	for (i = 0; i < tx_cnt; i++) {
 		cur = min(tx_len, prt_max);
 
 		bus->tx_buf = buf_org;
@@ -503,7 +503,7 @@ static void siw_mon_submit_bus_slice(struct siw_mon_data *smdata, void *data)
 	#if 1
 		bus->priv = siw_mon_set_priv_sub(bus->priv, i, bus_cnt);
 	#else
-		bus->priv = (tx_s_only)?	\
+		bus->priv = (tx_s_only) ?	\
 					0 : siw_mon_set_priv_sub(bus->priv, i, bus_cnt);
 	#endif
 
@@ -515,7 +515,7 @@ static void siw_mon_submit_bus_slice(struct siw_mon_data *smdata, void *data)
 	bus->tx_buf = NULL;
 	bus->tx_size = 0;
 	buf_org = msg->rx_buf;
-	for (i=0 ; i<rx_cnt ; i++) {
+	for (i = 0; i < rx_cnt; i++) {
 		cur = min(rx_len, prt_max);
 
 		bus->rx_buf = buf_org;
@@ -526,7 +526,7 @@ static void siw_mon_submit_bus_slice(struct siw_mon_data *smdata, void *data)
 	#if 1
 		bus->priv = siw_mon_set_priv_sub(bus->priv, i+tx_cnt, bus_cnt);
 	#else
-		bus->priv = (rx_s_only)?	\
+		bus->priv = (rx_s_only) ?	\
 					0 : siw_mon_set_priv_sub(bus->priv, i+tx_cnt, bus_cnt);
 	#endif
 
@@ -616,14 +616,14 @@ static int siw_mon_submit_ops_sock(struct siw_mon_data *smdata, int ret)
 
 	buf_org = (unsigned char *)ops->data[0];
 	buf_len = ops->data[1];
-	buf_len = (ret >= 0)? min(buf_len, ret) : buf_len;
+	buf_len = (ret >= 0) ? min(buf_len, ret) : buf_len;
 
 	if (!buf_org ||
 		(!prt_max || (buf_len <= prt_max))) {
 		if (buf_org && buf_len) {
 			buf = buf_org;
 		}
-		ops->data[0] = (buf_len)? ((u32)buf) : 0;
+		ops->data[0] = (buf_len) ? ((u32)buf) : 0;
 		ops->data[1] = buf_len;
 		ops->priv = 0;
 
@@ -632,15 +632,15 @@ static int siw_mon_submit_ops_sock(struct siw_mon_data *smdata, int ret)
 	}
 
 	tot = buf_len;
-	buf_len = (buf_max)? min(buf_len, buf_max) : buf_len;
+	buf_len = (buf_max) ? min(buf_len, buf_max) : buf_len;
 	ops_cnt = (buf_len + prt_max - 1)/prt_max;
 
-	for (i=0 ; i<ops_cnt; i++) {
+	for (i = 0; i < ops_cnt; i++) {
 		cur = min(buf_len, prt_max);
 
 		buf = buf_org;
 
-		ops->data[0] = (cur)? ((u32)buf) : 0;
+		ops->data[0] = (cur) ? ((u32)buf) : 0;
 		ops->data[1] = siw_mon_set_buf_size(cur, tot);
 		buf_len -= cur;
 		buf_org += cur;
@@ -669,7 +669,7 @@ static void siw_mon_submit_ops(struct device *dev,
 		},
 	};
 	struct siw_mon_data_ops *ops = &smdata.d.ops;
-	int len = (data != NULL)? min(OPS_DATA_SZ, size) : 0;
+	int len = (data != NULL) ? min(OPS_DATA_SZ, size) : 0;
 
 	snprintf(ops->ops, OPS_NAME_SZ, "%s", ops_str);
 	if (len && data) {

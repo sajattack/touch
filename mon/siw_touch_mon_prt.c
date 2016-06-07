@@ -197,7 +197,7 @@ static int __used siw_mon_prt_add_file_list(struct siw_mon_debugfs_ctrl *ctrl,
 	if (!f)
 		goto out;
 
-	for (i=0 ; i<NO_OF_DEBUF_FILES ; i++) {
+	for (i = 0; i < NO_OF_DEBUF_FILES; i++) {
 		if (!test_bit(i, &ctrl->fbit)) {
 			ctrl->file[i] = f;
 			set_bit(i, &ctrl->fbit);
@@ -217,7 +217,7 @@ static int __used siw_mon_prt_del_file_list(struct siw_mon_debugfs_ctrl *ctrl,
 	if (!f)
 		goto out;
 
-	for (i=0 ; i<NO_OF_DEBUF_FILES ; i++) {
+	for (i = 0; i < NO_OF_DEBUF_FILES; i++) {
 		if (ctrl->file[i] == f) {
 			ctrl->file[i] = NULL;
 			clear_bit(i, &ctrl->fbit);
@@ -478,7 +478,7 @@ static int __siw_mon_txt_read_get_len(int size, int *total)
 	int len;
 
 	len = siw_mon_buf_size_tot(size);	//original total size
-	tot = (len)? len : size;
+	tot = (len) ? len : size;
 
 	if (total)
 		*total = tot;
@@ -540,7 +540,7 @@ static int __siw_mon_txt_read_prt_buf(struct siw_mon_txt_ptr *p,
 	if (dir)
 		p->cnt += siw_mon_prt_snprintf(p, " %s(%3d)", dir, total);
 
-	for (i=0 ; i<size ; i++) {
+	for (i = 0; i < size; i++) {
 		p->cnt += siw_mon_prt_snprintf(p, " %02X", buf[i]);
 	}
 
@@ -613,7 +613,7 @@ static int __siw_mon_txt_read_ops_sock(struct siw_mon_reader_txt *rp,
 	if (idx < 0)
 		return idx;
 
-	title = (idx == SIW_MON_SOCK_S)? "SOCK_S" : "SOCK_R";
+	title = (idx == SIW_MON_SOCK_S) ? "SOCK_S" : "SOCK_R";
 	p->cnt += siw_mon_prt_snprintf(p, "%s", title);
 
 	buf = (unsigned char *)ops->data[0];
@@ -649,7 +649,7 @@ static void __siw_mon_txt_read_ops(struct siw_mon_reader_txt *rp,
 	if (!len)
 		return;
 
-	for (i=0 ; i<len ; i++) {
+	for (i = 0; i < len; i++) {
 		p->cnt += siw_mon_prt_snprintf(p, " %08X", ops->data[i]);
 	}
 }
