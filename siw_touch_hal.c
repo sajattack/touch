@@ -296,8 +296,8 @@ static void *__siw_hal_get_curr_buf(struct siw_ts *ts, dma_addr_t *dma, int tx)
 	int *idx;
 	void *buf = NULL;
 
-	idx = (tx)? &ts->tx_buf_idx : &ts->rx_buf_idx;
-	t_buf = (tx)? &ts->tx_buf[(*idx)] : &ts->rx_buf[(*idx)];
+	idx = (tx) ? &ts->tx_buf_idx : &ts->rx_buf_idx;
+	t_buf = (tx) ? &ts->tx_buf[(*idx)] : &ts->rx_buf[(*idx)];
 
 	buf = t_buf->buf;
 	if (dma)
@@ -408,7 +408,7 @@ static int __used __siw_hal_do_reg_write(struct device *dev, u32 addr, void *dat
 
 	tx_buf = __siw_hal_get_curr_buf(ts, &tx_dma, 1);
 
-	tx_buf[0] = (touch_bus_type(ts) == BUS_IF_SPI)? 0x60 :
+	tx_buf[0] = (touch_bus_type(ts) == BUS_IF_SPI) ? 0x60 :	\
 					((size > 4) ? 0x60 : 0x40);
 	tx_buf[0] |= ((addr >> 8) & 0x0f);
 	tx_buf[1] = (addr  & 0xff);
@@ -821,7 +821,7 @@ static void siw_hal_fb_notify_work_func(struct work_struct *fb_notify_work)
 				struct siw_touch_chip, fb_notify_work);
 	int type = 0;
 
-	type = (chip->lcd_mode == LCD_MODE_U3)? FB_RESUME : FB_SUSPEND;
+	type = (chip->lcd_mode == LCD_MODE_U3) ? FB_RESUME : FB_SUSPEND;
 
 	siw_touch_notifier_call_chain(NOTIFY_FB, &type);
 }
@@ -1545,7 +1545,7 @@ static int siw_hal_hw_reset(struct device *dev, int ctrl)
 	struct siw_ts *ts = chip->ts;
 
 	t_dev_info(dev, "HW Reset(%s)\n",
-		(ctrl == HW_RESET_ASYNC)? "Async" : "Sync");
+		(ctrl == HW_RESET_ASYNC) ? "Async" : "Sync");
 
 	if (ctrl == HW_RESET_ASYNC) {
 		siw_hal_reinit(dev, 0, 0, 0, NULL);
@@ -2139,7 +2139,7 @@ static int siw_hal_fw_upgrade(struct device *dev,
 
 	include_conf = !!(fw_size == (fw_size_max + FLASH_CONF_SIZE));
 	t_dev_info(dev, "FW upgrade:%s include conf data\n",
-			(include_conf)?"":" not");
+			(include_conf) ? "" : " not");
 
 	t_dev_dbg_base(dev, "FW upgrade: fw size %08Xh, fw_size_max %08Xh\n",
 			fw_size, fw_size_max);
@@ -2360,9 +2360,9 @@ static int siw_hal_tci_area_set(struct device *dev, int cover_status)
 		return 0;
 	}
 
-	qcover = (cover_status == QUICKCOVER_CLOSE)?
+	qcover = (cover_status == QUICKCOVER_CLOSE) ?
 			&ts->tci.qcover_close : &ts->tci.qcover_open;
-	msg = (cover_status == QUICKCOVER_CLOSE)?
+	msg = (cover_status == QUICKCOVER_CLOSE) ?
 			"close" : "open";
 
 	if (qcover->x1 != ~0) {
@@ -2527,7 +2527,7 @@ static int siw_hal_clock(struct device *dev, bool onoff)
 		break;
 	default:
 		atomic_set(&ts->state.sleep,
-			(onoff)? IC_NORMAL : IC_DEEP_SLEEP);
+			(onoff) ? IC_NORMAL : IC_DEEP_SLEEP);
 		t_dev_info(dev, "sleep state -> %s\n",
 			(onoff) ? "IC_NORMAL" : "IC_DEEP_SLEEP");
 		break;
@@ -2579,7 +2579,7 @@ static int siw_hal_swipe_control(struct device *dev, int type)
 	case SWIPE_ENABLE_CTRL:
 	case SWIPE_DISABLE_CTRL:
 		reg_w = reg->swipe_enable_w;
-		data = (type == SWIPE_ENABLE_CTRL)?
+		data = (type == SWIPE_ENABLE_CTRL) ?
 					chip->swipe.mode : 0;
 	case SWIPE_DIST_CTRL:
 		reg_w = reg->swipe_dist_w;
@@ -3108,7 +3108,7 @@ static int siw_hal_lpwg_mode_resume(struct device *dev)
 		t_dev_info(dev, "lpwg resume: screen\n");
 
 		if (touch_mode_allowed(ts, LCD_MODE_U3_QUICKCOVER)) {
-			mode = (ts->lpwg.qcover == HOLE_NEAR)?
+			mode = (ts->lpwg.qcover == HOLE_NEAR) ?
 					LCD_MODE_U3_QUICKCOVER : mode;
 		}
 
@@ -3133,14 +3133,14 @@ static int siw_hal_lpwg_mode_resume(struct device *dev)
 	t_dev_info(dev, "lpwg resume: partial\n");
 
 	if (touch_mode_allowed(ts, LCD_MODE_U3_QUICKCOVER)) {
-		ctrl.qcover = (ts->lpwg.qcover == HOLE_NEAR)?
+		ctrl.qcover = (ts->lpwg.qcover == HOLE_NEAR) ?
 						QUICKCOVER_CLOSE : QUICKCOVER_OPEN;
 		ctrl.lpwg = ts->lpwg.mode;
 		ctrl.lcd = LCD_MODE_U3_PARTIAL;
 		goto out_con;
 	}
 
-	ctrl.lpwg = (ts->lpwg.qcover == HOLE_NEAR)?
+	ctrl.lpwg = (ts->lpwg.qcover == HOLE_NEAR) ?
 					LPWG_NONE : ts->lpwg.mode;
 	ctrl.lcd = LCD_MODE_U3_PARTIAL;
 
@@ -3917,7 +3917,7 @@ static void siw_hal_connect(struct device *dev)
 #endif
 
 	/* wireless */
-	chip->charger |= (wireless_state)? CONNECT_WIRELESS : 0;
+	chip->charger |= (wireless_state) ? CONNECT_WIRELESS : 0;
 
 	t_dev_info(dev, "write charger_state = 0x%02X\n", chip->charger);
 	if (atomic_read(&ts->state.pm) > DEV_PM_RESUME) {
@@ -4151,7 +4151,7 @@ static int siw_hal_notify(struct device *dev, ulong event, void *data)
 		if (0) {
 			/* from siw_touch_probe */
 			t_dev_info(dev, "notify: driver %s\n",
-					(event == LCD_EVENT_TOUCH_DRIVER_REGISTERED)?
+					(event == LCD_EVENT_TOUCH_DRIVER_REGISTERED) ?
 					"registered" : "unregistered");
 		}
 		noti_str = "DRV";

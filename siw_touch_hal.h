@@ -124,7 +124,7 @@ static const char *__siw_lcd_driving_mode_strs[] = {
 
 static inline const char *siw_lcd_driving_mode_str(int mode)
 {
-	return (mode < LCD_MODE_MAX)?
+	return (mode < LCD_MODE_MAX) ?
 			__siw_lcd_driving_mode_strs[mode] : "(invalid)";
 }
 

@@ -441,7 +441,7 @@ static int __used siw_touch_free_pm(struct siw_ts *ts)
 #pragma message("[SiW - Warning] No core pm operation")
 static int __used __siw_touch_init_pm_none(struct siw_ts *ts, int init)
 {
-	t_dev_dbg_pm(ts->dev, "pm %s none\n", (init)? "free" : "init");
+	t_dev_dbg_pm(ts->dev, "pm %s none\n", (init) ? "free" : "init");
 	return 0;
 }
 #define siw_touch_init_pm(_ts)		__siw_touch_init_pm_none(_ts, 0)
@@ -1244,7 +1244,7 @@ static int siw_touch_do_probe_normal(void *data)
 	ts->irq = 0;
 #else	/* __SIW_TEST_IRQ_OFF */
 	irq_name = (const char *)touch_drv_name(ts);
-	irq_name = (irq_name)? irq_name : SIW_TOUCH_NAME;
+	irq_name = (irq_name) ? irq_name : SIW_TOUCH_NAME;
 	ret = siw_touch_request_irq(ts,
 						siw_touch_irq_handler,
 						siw_touch_irq_thread,

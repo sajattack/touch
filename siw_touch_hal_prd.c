@@ -600,7 +600,7 @@ static inline char *prd_find_name_pos(char *pathname)
 	char *pos, *tpos;
 
 	pos = strrchr(pathname, '/');
-	tpos = (pos)? pos + 1 : pathname;
+	tpos = (pos) ? pos + 1 : pathname;
 
 	return tpos;
 }
@@ -1594,7 +1594,7 @@ static int prd_print_xxx(struct siw_hal_prd_data *prd, char *buf,
 	int curr_raw;
 	int i, j;
 	int col_i = 0;
-	int col_add = (opt)? PRD_COL_ADD : 0;
+	int col_add = (opt) ? PRD_COL_ADD : 0;
 	int log_size = 0;
 	int min = 9999;
 	int max = 0;
@@ -1731,7 +1731,7 @@ static int prd_compare_tool(struct siw_hal_prd_data *prd,
 	int16_t *raw_curr;
 	int i, j ,k;
 	int col_i;
-	int col_add = (opt)? PRD_COL_ADD : 0;
+	int col_add = (opt) ? PRD_COL_ADD : 0;
 	int size = 0;
 	int curr_raw;
 	int curr_lower, curr_upper;
@@ -3230,7 +3230,7 @@ static ssize_t prd_show_get_data_common(struct device *dev, char *buf, int type)
 	size += siw_snprintf(buf, size, "Get Data[%s] result:\n",
 				prd_get_data_cmd_name[type]);
 	size += siw_snprintf(buf, size, "%s\n",
-				(ret < 0)? "Fail" : "Pass");
+				(ret < 0) ? "Fail" : "Pass");
 	return (ssize_t)size;
 }
 

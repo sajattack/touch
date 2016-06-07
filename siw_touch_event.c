@@ -42,7 +42,7 @@
 	do {	\
 		input_report_abs(_idev, _code, _value);	\
 		siwmon_submit_evt(&_idev->dev, "EV_ABS", EV_ABS, #_code, _code, _value, 0);	\
-	} while(0)
+	} while (0)
 
 static void siw_touch_report_palm_event(struct siw_ts *ts)
 {
@@ -190,7 +190,7 @@ static struct siw_touch_uevent_ctrl siw_uevent_ctrl_default = {
 	do {	\
 		kobject_uevent_env(_kobj, _action, _envp_ext);	\
 		siwmon_submit_evt(&_idev->dev, "@UEVENT", _type, #_action, _action, 0, 0);	\
-	} while(0)
+	} while (0)
 
 void siw_touch_send_uevent(void *ts_data, int type)
 {
@@ -315,7 +315,7 @@ int siw_touch_init_input(void *ts_data)
 	}
 
 	input_name = touch_idrv_name(ts);
-	input_name = (input_name)? input_name : SIW_TOUCH_INPUT;
+	input_name = (input_name) ? input_name : SIW_TOUCH_INPUT;
 
 	snprintf(phys_name, SIW_TOUCH_PHYS_NAME_SIZE,
 			"%s/%s - %s",

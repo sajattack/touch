@@ -1365,7 +1365,7 @@ static inline void siw_ops_restore_irq_handler(struct siw_ts *ts)
 					break;	\
 				}	\
 				_r = _ts->ops->_ops(_ts->dev, ##args);	\
-			} while(0);	\
+			} while (0);	\
 			_r;	\
 		})
 
@@ -1553,7 +1553,7 @@ static inline void siwmon_submit_ops(struct device *dev, char *ops, u32 *data, i
 			char _mstr[64];	\
 			snprintf(_mstr, sizeof(_mstr), _fmt, _name);	\
 			siwmon_submit_ops(_dev, _mstr, _val, _size, _ret);	\
-		} while(0)
+		} while (0)
 
 #define siwmon_submit_ops_step(_dev, _ops)	\
 		siwmon_submit_ops(_dev, _ops, NULL, 0, 0)
@@ -1569,7 +1569,7 @@ static inline void siwmon_submit_ops(struct device *dev, char *ops, u32 *data, i
 			char _mstr[64];	\
 			snprintf(_mstr, sizeof(_mstr), "(c) " _fmt, _name);	\
 			siwmon_submit_ops(_dev, _mstr, NULL, 0, _ret);	\
-		} while(0)
+		} while (0)
 
 #if !defined(MODULE)
 #define __siw_setup_u32(_name, _fn, _var)	\

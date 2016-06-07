@@ -74,7 +74,7 @@ extern u32 t_dev_dbg_mask;
 		} while (0)
 
 
-#define __t_dev_none()		do{ }while(0)
+#define __t_dev_none()		do{ } while (0)
 
 #define __t_dev_info(_dev, fmt, args...)	dev_info(_dev, fmt,	##args)
 #define __t_dev_warn(_dev, fmt, args...)	dev_warn(_dev, fmt, ##args)

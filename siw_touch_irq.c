@@ -276,7 +276,7 @@ int siw_touch_request_irq(struct siw_ts *ts,
 	}
 
 	t_dev_info(dev, "%s irq request done(%d, %s, 0x%X)\n",
-			(irq_use_scheule_work)?	\
+			(irq_use_scheule_work) ?	\
 			"queue work" : "threaded",
 			ts->irq, name, (u32)flags);
 

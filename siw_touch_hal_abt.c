@@ -431,7 +431,7 @@ static const char *abt_conn_name_str[] = {
 
 static inline const char *abt_conn_name(int idx)
 {
-	return (idx < ABT_CONN_MAX)? abt_conn_name_str[idx] : "(invalid)";
+	return (idx < ABT_CONN_MAX) ? abt_conn_name_str[idx] : "(invalid)";
 }
 
 #define t_abt_info(_abt, fmt, args...)	\
@@ -482,7 +482,7 @@ static void __used siwmon_submit_ops_abt_sock(
 {
 	u32 data[2] = { (u32)buf, len };
 	siwmon_submit_ops(abt->dev,
-			(recv)? ABT_MON_SOCK_RSTR : ABT_MON_SOCK_SSTR,
+			(recv) ? ABT_MON_SOCK_RSTR : ABT_MON_SOCK_SSTR,
 			data,
 			2,
 			ret);
@@ -582,7 +582,7 @@ static int abt_sock_sendmsg(struct siw_hal_abt_data *abt,
 			} else {	\
 				t_abt_dbg_base(_abt, "%s socket created\n", _name);	\
 			}	\
-		} while(0)
+		} while (0)
 
 static int __used abt_sock_create_data(struct siw_hal_abt_data *abt,
 				struct socket **res)
@@ -841,7 +841,7 @@ static int abt_read_memory(struct siw_hal_abt_data *abt,
 	}
 #endif
 
-	curr_read = (rest_read > MAX_RW_SIZE)? MAX_RW_SIZE : rest_read;
+	curr_read = (rest_read > MAX_RW_SIZE) ? MAX_RW_SIZE : rest_read;
 
 	while (curr_read > 0) {
 		ret = siw_hal_reg_write(dev, waddr, (void *)&wdata, wsize);
@@ -862,7 +862,7 @@ static int abt_read_memory(struct siw_hal_abt_data *abt,
 		}
 		wdata += curr_read>>2;
 
-		curr_read = (rest_read > MAX_RW_SIZE)? MAX_RW_SIZE : rest_read;
+		curr_read = (rest_read > MAX_RW_SIZE) ? MAX_RW_SIZE : rest_read;
 	}
 
 	return rsize;
@@ -1284,9 +1284,9 @@ static void abt_ksocket_exit_disconn(struct siw_hal_abt_data *abt)
 
 	atomic_set(&abt_comm->running, ABT_RUNNING_EXIT);
 
-	sock = (abt->abt_conn_tool != ABT_CONN_TOUCH)?
+	sock = (abt->abt_conn_tool != ABT_CONN_TOUCH) ?
 			abt_comm->sock : abt_comm->ts_sock;
-	addr_in = (abt->abt_conn_tool != ABT_CONN_TOUCH)?
+	addr_in = (abt->abt_conn_tool != ABT_CONN_TOUCH) ?
 			&abt_comm->addr : &abt_comm->ts_addr;
 
 	if (!sock) {
@@ -1344,7 +1344,7 @@ static void abt_ksocket_exit_kill(struct siw_hal_abt_data *abt)
 					"running = %d\n",
 					running);
 				touch_msleep(10);
-			} while(1);
+			} while (1);
 			t_abt_dbg_base(abt, "succesfully killed kernel thread!\n");
 		}
 		abt_comm->thread = NULL;

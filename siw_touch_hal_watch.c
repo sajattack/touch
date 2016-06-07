@@ -380,7 +380,7 @@ static int ext_watch_rtc_start(struct device *dev, u8 start)
 	u32 rtc_ctrl;
 	int ret = 0;
 
-	rtc_ctrl = (start == EXT_WATCH_RTC_START)?
+	rtc_ctrl = (start == EXT_WATCH_RTC_START) ?
 				EXT_WATCH_RTC_START :
 				EXT_WATCH_RTC_STOP;
 
@@ -393,7 +393,7 @@ static int ext_watch_rtc_start(struct device *dev, u8 start)
 	}
 
 	t_watch_info(dev, "rtc %s\n",
-		(rtc_ctrl == EXT_WATCH_RTC_START)? "on" : "off");
+		(rtc_ctrl == EXT_WATCH_RTC_START) ? "on" : "off");
 
 out:
 	return ret;
@@ -414,7 +414,7 @@ static int ext_watch_mem_ctrl(struct device *dev, int on_off, const char *msg)
 		return ret;
 	}
 	t_watch_info(dev, "%s, watch memory clk %s\n",
-		msg, (on_off)? "on" : "off");
+		msg, (on_off) ? "on" : "off");
 	return 0;
 }
 
@@ -1348,7 +1348,7 @@ static ssize_t store_ext_watch_block_cfg(struct device *dev,
 
 	atomic_set(&chip->block_watch_cfg, value);
 
-	t_watch_info(dev, "%s\n", (value)? "BLOCKED" : "UNBLOCKED");
+	t_watch_info(dev, "%s\n", (value) ? "BLOCKED" : "UNBLOCKED");
 
 out:
 	return count;
@@ -1391,7 +1391,7 @@ static ssize_t store_ext_watch_font_onoff(struct device *dev,
 		goto out;
 	}
 
-	t_watch_info(dev, "Power %s\n", (value)? "ON" : "OFF");
+	t_watch_info(dev, "Power %s\n", (value) ? "ON" : "OFF");
 
 	ret = count;
 
@@ -1531,7 +1531,7 @@ static ssize_t store_ext_watch_config_font_effect(struct device *dev,
 	t_watch_info(dev,
 		"blink area [%d , %d] period %s, watch display %s\n",
 		cfg.blink.bstartx, cfg.blink.bendx, period,
-		(time->disp_waton)? "on" : "off");
+		(time->disp_waton) ? "on" : "off");
 
 	return count;
 }
@@ -2209,7 +2209,7 @@ static int ext_watch_fontdata_preload(struct device *dev)
 		t_watch_warn(dev, "font_preload: failed to read[%d], %d\n",
 			(int)size, (int)rd_size);
 		memset(watch->ext_wdata.font_data, 0, SIW_MAX_FONT_SIZE);
-		ret = (rd_size < 0)? rd_size : -EFAULT;
+		ret = (rd_size < 0) ? rd_size : -EFAULT;
 		goto out;
 	}
 
@@ -2469,7 +2469,7 @@ int siw_hal_watch_is_disp_waton(struct device *dev)
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct watch_data *watch = (struct watch_data *)chip->watch;
 
-	return (!watch)? 0 :
+	return (!watch) ? 0 :
 		watch->ext_wdata.time.disp_waton;
 }
 
@@ -2478,7 +2478,7 @@ int siw_hal_watch_is_rtc_run(struct device *dev)
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct watch_data *watch = (struct watch_data *)chip->watch;
 
-	return (!watch)? 0 :
+	return (!watch) ? 0 :
 		(atomic_read(&watch->state.rtc_status) == RTC_RUN);
 }
 

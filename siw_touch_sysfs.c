@@ -509,11 +509,11 @@ static ssize_t _store_sp_link_touch_off(struct device *dev,
 	mutex_lock(&ts->lock);
 
 	siw_touch_irq_control(ts->dev,
-			(value == SP_CONNECT)?
+			(value == SP_CONNECT) ?
 			INTERRUPT_DISABLE : INTERRUPT_ENABLE);
 
 	t_dev_info(dev, "SP Mirroring %s\n",
-		(value == SP_CONNECT)? "Connected" : "Disconnected");
+		(value == SP_CONNECT) ? "Connected" : "Disconnected");
 
 	atomic_set(&ts->state.sp_link, value);
 
@@ -531,7 +531,7 @@ static ssize_t _show_irq_state(struct device *dev, char *buf)
 
 	size = siw_snprintf(buf, size,
 				"Irq State : %s\n",
-				(irq_status)? "Enabled" : "Disabled");
+				(irq_status) ? "Enabled" : "Disabled");
 
 	return size;
 }
@@ -551,7 +551,7 @@ static ssize_t _store_irq_state(struct device *dev,
 	mutex_lock(&ts->lock);
 
 	siw_touch_irq_control(ts->dev,
-			(value)? INTERRUPT_ENABLE : INTERRUPT_DISABLE);
+			(value) ? INTERRUPT_ENABLE : INTERRUPT_DISABLE);
 
 	mutex_unlock(&ts->lock);
 
@@ -1043,7 +1043,7 @@ int siw_touch_init_sysfs(struct siw_ts *ts)
 	char *name = NULL;
 	int ret = 0;
 
-	name = (touch_flags(ts) & TOUCH_USE_DRV_NAME_SYSFS)?
+	name = (touch_flags(ts) & TOUCH_USE_DRV_NAME_SYSFS) ?
 			touch_drv_name(ts) : touch_idrv_name(ts);
 	if (!name) {
 		name = SIW_TOUCH_INPUT;

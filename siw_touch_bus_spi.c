@@ -293,7 +293,7 @@ static int siw_touch_spi_do_xfer(struct spi_device *spi, struct touch_xfer_msg *
 		if (x->len > SIW_TOUCH_MAX_BUF_SIZE) {
 			t_dev_err(&spi->dev, "spi xfer[%d, %d]: buffer overflow - %s %Xh\n",
 				i, cnt,
-				(rx->size)? "rd" : "wr", x->len);
+				(rx->size) ? "rd" : "wr", x->len);
 			break;
 		}
 

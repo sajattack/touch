@@ -255,8 +255,8 @@ static void siw_touch_buf_free(struct siw_ts *ts, int _tx)
 	char name[16];
 	int i;
 
-	t_buf = (_tx)? ts->tx_buf : ts->rx_buf;
-	title = (_tx)? "tx_buf" : "rx_buf";
+	t_buf = (_tx) ? ts->tx_buf : ts->rx_buf;
+	title = (_tx) ? "tx_buf" : "rx_buf";
 
 	for (i = 0; i < SIW_TOUCH_MAX_BUF_IDX; i++) {
 		sprintf(name, "%s%d", title, i);
@@ -279,8 +279,8 @@ static int siw_touch_buf_alloc(struct siw_ts *ts, int _tx)
 	dma_addr_t dma;
 	int i;
 
-	t_buf = (_tx)? ts->tx_buf : ts->rx_buf;
-	title = (_tx)? "tx_buf" : "rx_buf";
+	t_buf = (_tx) ? ts->tx_buf : ts->rx_buf;
+	title = (_tx) ? "tx_buf" : "rx_buf";
 
 	memset(t_buf, 0, sizeof(*t_buf) * SIW_TOUCH_MAX_BUF_IDX);
 
@@ -484,7 +484,7 @@ static const struct siw_op_dbg siw_bus_init_ops[2][2] = {
 	},
 };
 
-#define SIW_BUS_MAX		sizeof(siw_bus_init_ops) / sizeof(siw_bus_init_ops[0])
+#define SIW_BUS_MAX		(sizeof(siw_bus_init_ops) / sizeof(siw_bus_init_ops[0]))
 
 static int __siw_touch_bus_add_chk(struct siw_touch_chip_data *chip_data)
 {

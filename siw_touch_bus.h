@@ -79,7 +79,7 @@ struct siw_touch_bus_drv {
 				dev_name(_dev->parent->parent),		\
 				dev_name(_dev->parent),		\
 				dev_name(_dev));	\
-	} while(0)
+	} while (0)
 
 
 extern int siw_touch_bus_tr_data_init(struct siw_ts *ts);
