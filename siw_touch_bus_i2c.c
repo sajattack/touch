@@ -294,37 +294,21 @@ static int siw_touch_i2c_remove(struct i2c_client *i2c)
 
 static int siw_touch_i2c_pm_suspend(struct device *dev)
 {
-	struct siw_ts *ts = to_touch_core(dev);
+	int ret = 0;
 
-	siw_touch_suspend_call(dev);
+	ret = siw_touch_bus_pm_suspend(dev);
 
-	atomic_set(&ts->state.pm, DEV_PM_SUSPEND);
-
-	t_dev_info(dev, "dev pm suspend\n");
-
-	return 0;
+	return ret;
 }
 
 static int siw_touch_i2c_pm_resume(struct device *dev)
 {
-	struct siw_ts *ts = to_touch_core(dev);
+	int ret = 0;
 
-	siw_touch_resume_call(dev);
+	ret = siw_touch_bus_pm_resume(dev);
 
-	if (atomic_read(&ts->state.pm) == DEV_PM_SUSPEND_IRQ) {
-		atomic_set(&ts->state.pm, DEV_PM_RESUME);
-		siw_touch_resume_irq(dev);
-		goto out;
-	}
-
-	atomic_set(&ts->state.pm, DEV_PM_RESUME);
-
-out:
-	t_dev_info(dev, "dev pm resume\n");
-
-	return 0;
+	return ret;
 }
-
 
 static const struct dev_pm_ops siw_touch_i2c_pm_ops = {
 	.suspend = siw_touch_i2c_pm_suspend,

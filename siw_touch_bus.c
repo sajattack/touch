@@ -43,6 +43,7 @@
 
 #include "siw_touch.h"
 #include "siw_touch_hal.h"
+#include "siw_touch_irq.h"
 #include "siw_touch_bus.h"
 #include "siw_touch_bus_i2c.h"
 #include "siw_touch_bus_spi.h"
@@ -545,6 +546,41 @@ int siw_touch_bus_add_driver(struct siw_touch_chip_data *chip_data)
 int siw_touch_bus_del_driver(struct siw_touch_chip_data *chip_data)
 {
 	return __siw_touch_bus_add_driver(chip_data, DRIVER_FREE);
+}
+
+int siw_touch_bus_pm_suspend(struct device *dev)
+{
+	struct siw_ts *ts = to_touch_core(dev);
+
+	siw_touch_suspend_call(dev);
+
+	atomic_set(&ts->state.pm, DEV_PM_SUSPEND);
+
+	t_dev_info(dev, "touch bus pm suspend done\n");
+
+	return 0;
+}
+
+int siw_touch_bus_pm_resume(struct device *dev)
+{
+	struct siw_ts *ts = to_touch_core(dev);
+	int resume_irq = 0;
+
+	if (atomic_read(&ts->state.pm) == DEV_PM_SUSPEND_IRQ) {
+		resume_irq = 1;
+	}
+
+	siw_touch_resume_call(dev);
+
+	atomic_set(&ts->state.pm, DEV_PM_RESUME);
+
+	if (resume_irq) {
+		siw_touch_resume_irq(dev);
+	}
+
+	t_dev_info(dev, "touch bus pm resume done\n");
+
+	return 0;
 }
 
 

@@ -278,7 +278,7 @@ static void siw_touch_suspend(struct device *dev)
 	struct siw_ts *ts = to_touch_core(dev);
 	int ret = 0;
 
-	t_dev_info(dev, "Suspend start\n");
+	t_dev_info(dev, "touch core pm suspend start\n");
 
 	cancel_delayed_work_sync(&ts->init_work);
 	cancel_delayed_work_sync(&ts->upgrade_work);
@@ -291,10 +291,11 @@ static void siw_touch_suspend(struct device *dev)
 	ret = siw_ops_suspend(ts);
 	mutex_unlock(&ts->lock);
 
-	t_dev_info(dev, "Suspend end\n");
+	t_dev_info(dev, "touch core pm suspend end(%d)\n", ret);
 
-	if (ret == 1)
+	if (ret == 1) {
 		mod_delayed_work(ts->wq, &ts->init_work, 0);
+	}
 }
 
 /**
@@ -307,7 +308,7 @@ static void siw_touch_resume(struct device *dev)
 	struct siw_ts *ts = to_touch_core(dev);
 	int ret = 0;
 
-	t_dev_info(dev, "Resume start\n");
+	t_dev_info(dev, "touch core pm resume start\n");
 
 	mutex_lock(&ts->lock);
 	atomic_set(&ts->state.fb, FB_RESUME);
@@ -316,10 +317,11 @@ static void siw_touch_resume(struct device *dev)
 	ret = siw_ops_resume(ts);
 	mutex_unlock(&ts->lock);
 
-	t_dev_info(dev, "Resume end\n");
+	t_dev_info(dev, "touch core pm resume end(%d)\n", ret);
 
-	if (ret == 0)
+	if (ret == 0) {
 		mod_delayed_work(ts->wq, &ts->init_work, 0);
+	}
 }
 
 /**
