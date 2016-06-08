@@ -19,7 +19,10 @@
 
 #define __SIW_SUPPORT_ABT
 #define __SIW_SUPPORT_PRD
+
+#if defined(CONFIG_TOUCHSCREEN_SIW_LG4895) || defined(CONFIG_TOUCHSCREEN_SIW_LG4946)
 #define __SIW_SUPPORT_WATCH
+#endif
 
 #define __SIW_SUPPORT_XFER
 

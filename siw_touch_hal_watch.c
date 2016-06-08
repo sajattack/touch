@@ -9,6 +9,10 @@
  * version 2 as published by the Free Software Foundation.
  */
 
+#include "siw_touch_cfg.h"
+
+#if defined(__SIW_SUPPORT_WATCH)	//See siw_touch_cfg.h
+
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/atomic.h>
@@ -22,8 +26,6 @@
 #include "siw_touch_gpio.h"
 #include "siw_touch_irq.h"
 #include "siw_touch_sys.h"
-
-#if defined(__SIW_SUPPORT_WATCH)	//See siw_touch_cfg.h
 
 #define SIW_MAX_FONT_SIZE			(6<<10)	//6KB used
 #define SIW_FONT_MAGIC_CODE_SIZE	(4)

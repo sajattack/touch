@@ -9,6 +9,10 @@
  * version 2 as published by the Free Software Foundation.
  */
 
+#include "siw_touch_cfg.h"
+
+#if defined(__SIW_SUPPORT_ABT)	//See siw_touch_cfg.h
+
 #include <linux/init.h>
 #include <linux/kernel.h>
 #include <linux/types.h>
@@ -57,8 +61,6 @@
  *    {IP} : the IP of your PC
  *
  */
-
-#if defined(__SIW_SUPPORT_ABT)	//See siw_touch_cfg.h
 
 #define DEFAULT_IP		"127.0.0.1"
 #define NONE_IP			"0.0.0.0"
@@ -1888,6 +1890,16 @@ static int abt_ksocket_init(struct siw_hal_abt_data *abt,
 	return 0;
 }
 
+static const char *abt_show_mode_str[] = {
+	[REPORT_RNORG-REPORT_RNORG]			= "RNORG",
+	[REPORT_RAW-REPORT_RNORG]			= "RAW",
+	[REPORT_BASELINE-REPORT_RNORG]		= "BASELINE",
+	[REPORT_SEG1-REPORT_RNORG]			= "SEG1",
+	[REPORT_SEG2-REPORT_RNORG]			= "SEG2",
+	[REPORT_GLASS-REPORT_RNORG]			= "GLASS",		/* not used */
+	[REPORT_DEBUG_ONLY-REPORT_RNORG]	= "DEBUG_ONLY",
+};
+
 static ssize_t abt_show_app(struct device *dev, char *buf)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
@@ -1898,6 +1910,14 @@ static ssize_t abt_show_app(struct device *dev, char *buf)
 	char *abt_head = abt->abt_head;
 	int i;
 	int size = 0;
+
+	t_abt_info(abt, "flag %d, mode %d\n",
+		abt_head_flag, abt_show_mode);
+
+	if (!abt_show_mode) {
+		abt_head_flag = 0;
+		abt_show_mode = REPORT_RAW;
+	}
 
 	if (abt_head_flag) {
 		if (abt_show_mode == REPORT_SEG1) {
@@ -1929,11 +1949,17 @@ static ssize_t abt_show_app(struct device *dev, char *buf)
 		memcpy((void *)&buf[i], (u8 *)&abt->abt_report_p, sizeof(abt->abt_report_p));
 		i += sizeof(abt->abt_report_p);
 		size = i;
+
+		t_abt_info(abt, "show mode: %s(%d)\n",
+			abt_show_mode_str[abt_show_mode - REPORT_RNORG], size);
 		break;
 	case REPORT_DEBUG_ONLY:
 		memcpy((void *)&buf[0], (u8 *)&abt->abt_report_p, sizeof(abt->abt_report_p));
 		i = sizeof(abt->abt_report_p);
 		size = i;
+
+		t_abt_info(abt, "show mode: %s(%d)\n",
+			abt_show_mode_str[abt_show_mode - REPORT_RNORG], size);
 		break;
 	default:
 		abt->abt_show_mode = 0;
@@ -1943,16 +1969,6 @@ static ssize_t abt_show_app(struct device *dev, char *buf)
 
 	return (ssize_t)size;
 }
-
-static const char *abt_show_mode_str[] = {
-	[REPORT_RNORG-REPORT_RNORG]			= "RNORG",
-	[REPORT_RAW-REPORT_RNORG]			= "RAW",
-	[REPORT_BASELINE-REPORT_RNORG]		= "BASELINE",
-	[REPORT_SEG1-REPORT_RNORG]			= "SEG1",
-	[REPORT_SEG2-REPORT_RNORG]			= "SEG2",
-	[REPORT_GLASS-REPORT_RNORG]			= "GLASS",		/* not used */
-	[REPORT_DEBUG_ONLY-REPORT_RNORG]	= "DEBUG_ONLY",
-};
 
 static ssize_t abt_store_app(struct device *dev,
 				const char *buf, size_t count)

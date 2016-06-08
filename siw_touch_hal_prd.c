@@ -10,6 +10,10 @@
  * version 2 as published by the Free Software Foundation.
  */
 
+#include "siw_touch_cfg.h"
+
+#if defined(__SIW_SUPPORT_PRD)	//See siw_touch_cfg.h
+
 #include <linux/version.h>
 #include <linux/init.h>
 #include <linux/kernel.h>
@@ -46,9 +50,6 @@
  * 4. Verify the result
  *
  */
-
-
-#if defined(__SIW_SUPPORT_PRD)	//See siw_touch_cfg.h
 
 struct siw_hal_prd_test_off {
 	u16 offset0;
