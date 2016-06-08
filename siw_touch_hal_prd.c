@@ -246,8 +246,7 @@ enum {
 	CMD_RAWDATA_PRD = 1,
 	CMD_RAWDATA_TCM,
 	CMD_RAWDATA_AIT,
-	CMD_AIT_BASEDATA_EVEN,
-	CMD_AIT_BASEDATA_ODD,
+	CMD_AIT_BASEDATA,
 	CMD_FILTERED_DELTADATA,
 	CMD_DELTADATA,
 	CMD_LABELDATA,
@@ -262,8 +261,7 @@ static const char *prd_get_data_cmd_name[] = {
 	__PRD_GET_DATA_CMD_SET(CMD_RAWDATA_PRD),
 	__PRD_GET_DATA_CMD_SET(CMD_RAWDATA_TCM),
 	__PRD_GET_DATA_CMD_SET(CMD_RAWDATA_AIT),
-	__PRD_GET_DATA_CMD_SET(CMD_AIT_BASEDATA_EVEN),
-	__PRD_GET_DATA_CMD_SET(CMD_AIT_BASEDATA_ODD),
+	__PRD_GET_DATA_CMD_SET(CMD_AIT_BASEDATA),
 	__PRD_GET_DATA_CMD_SET(CMD_FILTERED_DELTADATA),
 	__PRD_GET_DATA_CMD_SET(CMD_DELTADATA),
 	__PRD_GET_DATA_CMD_SET(CMD_LABELDATA),
@@ -334,7 +332,7 @@ enum {
 enum {
 	IT_IMAGE_NONE = 0,
 	IT_IMAGE_RAW,
-	IT_IMAGE_BASELINE,
+	IT_IMAGE_BASELINE_EVEN,
 	IT_IMAGE_BASELINE_ODD,
 	IT_IMAGE_DELTA,
 	IT_IMAGE_LABEL,
@@ -1884,12 +1882,10 @@ static int prd_compare_rawdata(struct siw_hal_prd_data *prd, int type)
 		goto out;
 	}
 
-	if (test_cnt > 1) {
-		ret = prd_get_limit(prd, row_size, col_size,
-					upper_str, &prd->image_upper);
-		if (ret < 0) {
-			goto out;
-		}
+	ret = prd_get_limit(prd, row_size, col_size,
+				upper_str, &prd->image_upper);
+	if (ret < 0) {
+		goto out;
 	}
 
 	ret = prd_compare_tool(prd, test_cnt,
@@ -2877,85 +2873,55 @@ out:
 	return ret;
 }
 
-static int prd_show_prd_get_data_ait_basedata_even(struct device *dev)
+static int prd_show_prd_get_data_ait_basedata(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
 	struct siw_hal_reg *reg = chip->reg;
 	struct siw_hal_prd_data *prd = (struct siw_hal_prd_data *)ts->prd;
+	u32 ait_cmd[MAX_TEST_CNT] = {IT_IMAGE_BASELINE_ODD, \
+								IT_IMAGE_BASELINE_EVEN};
+	u32 ait_offset[MAX_TEST_CNT] = {AIT_BASE_DATA_ODD_OFFSET, \
+									AIT_BASE_DATA_EVEN_OFFSET};
+	u32 buf_type[MAX_TEST_CNT] = {M2_ODD_DATA, \
+									M2_EVEN_DATA};
+	int16_t *buf_rawdata[MAX_TEST_CNT] = { \
+		[0] = prd->m2_buf_odd_rawdata, \
+		[1] = prd->m2_buf_even_rawdata, \
+	};
+	int i = 0;
 	int ret = 0;
 
-	t_prd_info(prd, "======== CMD_AIT_BASEDATA_EVEN ========\n");
+	t_prd_info(prd, "======== CMD_AIT_BASEDATA ========\n");
 
-	ret = prd_stop_firmware(prd, IT_IMAGE_BASELINE);
-	if (ret < 0) {
-		goto out;
-	}
+	for (i = 0; i < M2_RAWDATA_TEST_CNT; i++) {
+		ret = prd_stop_firmware(prd, ait_cmd[i]);
+		if (ret < 0) {
+			goto out;
+		}
 
-	ret = siw_hal_write_value(dev,
-				reg->tc_tsp_test_data_offset,
-				AIT_BASE_DATA_EVEN_OFFSET);
-	if (ret < 0) {
-		goto out;
-	}
+		ret = siw_hal_write_value(dev,
+					reg->tc_tsp_test_data_offset,
+					ait_offset[i]);
+		if (ret < 0) {
+			goto out;
+		}
 
-	memset(prd->m2_buf_even_rawdata, 0, sizeof(prd->m2_buf_even_rawdata));
+		memset(buf_rawdata[i], 0, sizeof(buf_rawdata[i]));
 
-	ret = siw_hal_reg_read(dev, reg->tc_tsp_data_access_addr,
-				(void *)prd->m2_buf_even_rawdata,
-				sizeof(int16_t)*(PRD_ROW_SIZE)*(PRD_COL_SIZE));
-	if (ret < 0) {
-		goto out;
-	}
+		ret = siw_hal_reg_read(dev, reg->tc_tsp_data_access_addr,
+					(void *)buf_rawdata[i],
+					sizeof(int16_t)*(PRD_ROW_SIZE)*(PRD_COL_SIZE));
+		if (ret < 0) {
+			goto out;
+		}
 
-	prd_print_rawdata(prd, prd->buf_write, M2_EVEN_DATA, 0, 0);
+		prd_print_rawdata(prd, prd->buf_write, buf_type[i], 0, 0);
 
-	ret = prd_start_firmware(prd);
-	if (ret < 0) {
-		goto out;
-	}
-
-out:
-	return ret;
-}
-
-static int prd_show_prd_get_data_ait_basedata_odd(struct device *dev)
-{
-	struct siw_touch_chip *chip = to_touch_chip(dev);
-	struct siw_ts *ts = chip->ts;
-	struct siw_hal_reg *reg = chip->reg;
-	struct siw_hal_prd_data *prd = (struct siw_hal_prd_data *)ts->prd;
-	int ret = 0;
-
-	t_prd_info(prd, "======== CMD_AIT_BASEDATA_ODD ========\n");
-
-	ret = prd_stop_firmware(prd, IT_IMAGE_BASELINE_ODD);
-	if (ret < 0) {
-		goto out;
-	}
-
-	ret = siw_hal_write_value(dev,
-				reg->tc_tsp_test_data_offset,
-				AIT_BASE_DATA_ODD_OFFSET);
-	if (ret < 0) {
-		goto out;
-	}
-
-	memset(prd->m2_buf_odd_rawdata, 0, sizeof(prd->m2_buf_odd_rawdata));
-
-	ret = siw_hal_reg_read(dev,
-				reg->tc_tsp_data_access_addr,
-				(void *)prd->m2_buf_odd_rawdata,
-				sizeof(int16_t)*(PRD_ROW_SIZE)*(PRD_COL_SIZE));
-	if (ret < 0) {
-		goto out;
-	}
-
-	prd_print_rawdata(prd, prd->buf_write, M2_ODD_DATA, 0, 0);
-
-	ret = prd_start_firmware(prd);
-	if (ret < 0) {
-		goto out;
+		ret = prd_start_firmware(prd);
+		if (ret < 0) {
+			goto out;
+		}
 	}
 
 out:
@@ -3183,11 +3149,8 @@ static ssize_t prd_show_prd_get_data(struct device *dev, int type)
 	case CMD_RAWDATA_AIT:
 		ret = prd_show_prd_get_data_raw_ait(dev);
 		break;
-	case CMD_AIT_BASEDATA_EVEN:
-		ret = prd_show_prd_get_data_ait_basedata_even(dev);
-		break;
-	case CMD_AIT_BASEDATA_ODD:
-		ret = prd_show_prd_get_data_ait_basedata_odd(dev);
+	case CMD_AIT_BASEDATA:
+		ret = prd_show_prd_get_data_ait_basedata(dev);
 		break;
 	case CMD_FILTERED_DELTADATA:
 		ret = prd_show_prd_get_data_filtered_deltadata(dev);
@@ -3279,7 +3242,7 @@ static ssize_t prd_show_rawdata_ait(struct device *dev, char *buf)
 	return (ssize_t)prd_show_get_data_common(dev, buf, CMD_RAWDATA_AIT);
 }
 
-static ssize_t prd_show_basedata_even(struct device *dev, char *buf)
+static ssize_t prd_show_basedata(struct device *dev, char *buf)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	int size = 0;
@@ -3292,23 +3255,7 @@ static ssize_t prd_show_basedata_even(struct device *dev, char *buf)
 		return size;
 	}
 
-	return (ssize_t)prd_show_get_data_common(dev, buf, CMD_AIT_BASEDATA_EVEN);
-}
-
-static ssize_t prd_show_basedata_odd(struct device *dev, char *buf)
-{
-	struct siw_touch_chip *chip = to_touch_chip(dev);
-	int size = 0;
-
-	/* LCD mode check */
-	if (chip->lcd_mode != LCD_MODE_U3) {
-		size += siw_snprintf(buf, size,
-					"Current LCD mode(%d) is not U3, halted\n",
-					chip->lcd_mode);
-		return size;
-	}
-
-	return (ssize_t)prd_show_get_data_common(dev, buf, CMD_AIT_BASEDATA_ODD);
+	return (ssize_t)prd_show_get_data_common(dev, buf, CMD_AIT_BASEDATA);
 }
 
 static int prd_show_do_lpwg_sd(struct siw_hal_prd_data *prd, char *buf)
@@ -3574,8 +3521,7 @@ static SIW_TOUCH_HAL_PRD_ATTR(label, prd_show_label, NULL);
 static SIW_TOUCH_HAL_PRD_ATTR(rawdata_prd, prd_show_rawdata_prd, NULL);
 static SIW_TOUCH_HAL_PRD_ATTR(rawdata_tcm, prd_show_rawdata_tcm, NULL);
 static SIW_TOUCH_HAL_PRD_ATTR(rawdata_ait, prd_show_rawdata_ait, NULL);
-static SIW_TOUCH_HAL_PRD_ATTR(base_odd, prd_show_basedata_odd, NULL);
-static SIW_TOUCH_HAL_PRD_ATTR(base_even, prd_show_basedata_even, NULL);
+static SIW_TOUCH_HAL_PRD_ATTR(base, prd_show_basedata, NULL);
 static SIW_TOUCH_HAL_PRD_ATTR(lpwg_sd, prd_show_lpwg_sd, NULL);
 static SIW_TOUCH_HAL_PRD_ATTR(file_test, prd_show_file_test, prd_store_file_test);
 
@@ -3586,8 +3532,7 @@ static struct attribute *siw_hal_prd_attribute_list[] = {
 	&_SIW_TOUCH_HAL_PRD_T(rawdata_prd).attr,
 	&_SIW_TOUCH_HAL_PRD_T(rawdata_tcm).attr,
 	&_SIW_TOUCH_HAL_PRD_T(rawdata_ait).attr,
-	&_SIW_TOUCH_HAL_PRD_T(base_odd).attr,
-	&_SIW_TOUCH_HAL_PRD_T(base_even).attr,
+	&_SIW_TOUCH_HAL_PRD_T(base).attr,
 	&_SIW_TOUCH_HAL_PRD_T(lpwg_sd).attr,
 	&_SIW_TOUCH_HAL_PRD_T(file_test).attr,
 	NULL,
