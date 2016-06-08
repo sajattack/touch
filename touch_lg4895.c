@@ -59,6 +59,9 @@
 
 #define CHIP_FW_SIZE				(72<<10)
 
+#define CHIP_IRQFLAGS				(IRQF_TRIGGER_FALLING | IRQF_ONESHOT)
+
+
 #define CHIP_INPUT_ID_BUSTYPE		BUS_SPI
 #define CHIP_INPUT_ID_VENDOR		0xABCD
 #define CHIP_INPUT_ID_PRODUCT		0x9876
@@ -217,7 +220,7 @@ static const struct siw_touch_pdata chip_pdata = {
 	.mode_allowed		= CHIP_MODE_ALLOWED,
 	.fw_size			= CHIP_FW_SIZE,
 	.flags				= 0,	/* Caution : MSB(bit31) unavailable */
-	.irqflags			= 0,
+	.irqflags			= CHIP_IRQFLAGS,
 	.quirks				= CHIP_QUIRKS,
 	/* */
 	.bus_info			= {
