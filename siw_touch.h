@@ -583,7 +583,7 @@ struct siw_touch_pdata {
 
 #if !defined(__SIW_CONFIG_OF)
 	struct touch_pins pins;
-	struct touch_device_cpas caps;
+	struct touch_device_caps caps;
 #endif
 
 	/* Input Device ID */
