@@ -1890,14 +1890,24 @@ static int abt_ksocket_init(struct siw_hal_abt_data *abt,
 	return 0;
 }
 
+enum {
+	MODE_STR_IDX_RNORG		= (REPORT_RNORG - REPORT_RNORG),
+	MODE_STR_IDX_RAW		= (REPORT_RAW - REPORT_RNORG),
+	MODE_STR_IDX_BASELINE	= (REPORT_BASELINE - REPORT_RNORG),
+	MODE_STR_IDX_SEG1		= (REPORT_SEG1 - REPORT_RNORG),
+	MODE_STR_IDX_SEG2		= (REPORT_SEG2 - REPORT_RNORG),
+	MODE_STR_IDX_GLASS		= (REPORT_GLASS - REPORT_RNORG),
+	MODE_STR_IDX_DBG_ONLY	= (REPORT_DEBUG_ONLY - REPORT_RNORG),
+};
+
 static const char *abt_show_mode_str[] = {
-	[REPORT_RNORG-REPORT_RNORG]			= "RNORG",
-	[REPORT_RAW-REPORT_RNORG]			= "RAW",
-	[REPORT_BASELINE-REPORT_RNORG]		= "BASELINE",
-	[REPORT_SEG1-REPORT_RNORG]			= "SEG1",
-	[REPORT_SEG2-REPORT_RNORG]			= "SEG2",
-	[REPORT_GLASS-REPORT_RNORG]			= "GLASS",		/* not used */
-	[REPORT_DEBUG_ONLY-REPORT_RNORG]	= "DEBUG_ONLY",
+	[MODE_STR_IDX_RNORG]		= "RNORG",
+	[MODE_STR_IDX_RAW]			= "RAW",
+	[MODE_STR_IDX_BASELINE]		= "BASELINE",
+	[MODE_STR_IDX_SEG1]			= "SEG1",
+	[MODE_STR_IDX_SEG2]			= "SEG2",
+	[MODE_STR_IDX_GLASS]		= "GLASS",		/* not used */
+	[MODE_STR_IDX_DBG_ONLY]		= "DEBUG_ONLY",
 };
 
 static ssize_t abt_show_app(struct device *dev, char *buf)
@@ -1911,12 +1921,14 @@ static ssize_t abt_show_app(struct device *dev, char *buf)
 	int i;
 	int size = 0;
 
-	t_abt_info(abt, "flag %d, mode %d\n",
-		abt_head_flag, abt_show_mode);
+	t_abt_dbg_base(abt, "flag %d, mode %d\n", abt_head_flag, abt_show_mode);
 
 	if (!abt_show_mode) {
 		abt_head_flag = 0;
 		abt_show_mode = REPORT_RAW;
+		abt->abt_show_mode = abt_show_mode;
+		t_abt_dbg_base(abt, "set default abt_show_mode: %s\n",
+			abt_show_mode_str[MODE_STR_IDX_RAW]);
 	}
 
 	if (abt_head_flag) {
@@ -1950,7 +1962,7 @@ static ssize_t abt_show_app(struct device *dev, char *buf)
 		i += sizeof(abt->abt_report_p);
 		size = i;
 
-		t_abt_info(abt, "show mode: %s(%d)\n",
+		t_abt_dbg_base(abt, "show mode: %s(%d)\n",
 			abt_show_mode_str[abt_show_mode - REPORT_RNORG], size);
 		break;
 	case REPORT_DEBUG_ONLY:
@@ -1958,13 +1970,17 @@ static ssize_t abt_show_app(struct device *dev, char *buf)
 		i = sizeof(abt->abt_report_p);
 		size = i;
 
-		t_abt_info(abt, "show mode: %s(%d)\n",
+		t_abt_dbg_base(abt, "show mode: %s(%d)\n",
 			abt_show_mode_str[abt_show_mode - REPORT_RNORG], size);
 		break;
 	default:
 		abt->abt_show_mode = 0;
 		size = 0;
 		break;
+	}
+
+	if (touch_test_abt_quirks(ts, ABT_QUIRK_RAW_RETURN_MODE_VAL)) {
+		return (ssize_t)abt->abt_show_mode;
 	}
 
 	return (ssize_t)size;
