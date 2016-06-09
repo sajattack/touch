@@ -1588,13 +1588,13 @@ enum {
 	BIN_PID_OFFSET_POS = 0xF0,
 };
 
-static int siw_hal_fw_compare(struct device *dev, const struct firmware *fw)
+static int siw_hal_fw_compare(struct device *dev, u8 *fw_buf)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
 	int fw_max_size = touch_fw_size(ts);
-	u32 bin_ver_offset = *((u32 *)&fw->data[BIN_VER_OFFSET_POS]);
-	u32 bin_pid_offset = *((u32 *)&fw->data[BIN_PID_OFFSET_POS]);
+	u32 bin_ver_offset = *((u32 *)&fw_buf[BIN_VER_OFFSET_POS]);
+	u32 bin_pid_offset = *((u32 *)&fw_buf[BIN_PID_OFFSET_POS]);
 	u8 dev_major = chip->fw.version[0];
 	u8 dev_minor = chip->fw.version[1];
 	char pid[12] = {0, };
@@ -1612,9 +1612,9 @@ static int siw_hal_fw_compare(struct device *dev, const struct firmware *fw)
 		return -EINVAL;
 	}
 
-	bin_major = fw->data[bin_ver_offset];
-	bin_minor = fw->data[bin_ver_offset + 1];
-	memcpy(pid, &fw->data[bin_pid_offset], 8);
+	bin_major = fw_buf[bin_ver_offset];
+	bin_minor = fw_buf[bin_ver_offset + 1];
+	memcpy(pid, &fw_buf[bin_pid_offset], 8);
 
 	t_dev_dbg_base(dev, "dev_major %02Xh, dev_minor %02Xh\n",
 			dev_major, dev_minor);
@@ -1939,7 +1939,7 @@ out:
 }
 
 static int siw_hal_fw_upgrade_fw(struct device *dev,
-				const struct firmware *fw)
+				u8 *fw_buf, int fw_size)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
@@ -1962,7 +1962,7 @@ static int siw_hal_fw_upgrade_fw(struct device *dev,
 	 * The size for F/W upgrade is fw_size_max, not fw->size
 	 * because the fw file can have config area.
 	 */
-	fw_data = (u8 *)fw->data;
+	fw_data = fw_buf;
 	ret = siw_hal_fw_up_do_fw_dn(dev, fw_data, fw_size_max);
 	if (ret < 0) {
 		goto out;
@@ -2064,17 +2064,16 @@ out:
 }
 
 static int siw_hal_fw_upgrade_conf(struct device *dev,
-			     const struct firmware *fw)
+			     u8 *fw_buf, int fw_size)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
 	u8 *fw_data;
-	int fw_size, fw_size_max;
+	int fw_size_max;
 	u32 conf_dn_addr;
 	u32 data;
 	int ret;
 
-	fw_size = (int)fw->size;
 	fw_size_max = touch_fw_size(ts);
 
 	/*
@@ -2094,7 +2093,7 @@ static int siw_hal_fw_upgrade_conf(struct device *dev,
 		goto out;
 	}
 
-	fw_data = (u8 *)fw->data;
+	fw_data = (u8 *)fw_buf;
 	ret = siw_hal_fw_up_do_conf_dn(dev, conf_dn_addr,
 				(u8 *)&fw_data[fw_size_max], FLASH_CONF_SIZE);
 	if (ret < 0) {
@@ -2114,17 +2113,16 @@ out:
 }
 
 static int siw_hal_fw_upgrade(struct device *dev,
-			     const struct firmware *fw, int retry)
+				u8 *fw_buf, int fw_size, int retry)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
-	int fw_size, fw_size_max;
+	int fw_size_max;
 	u32 include_conf;
 	int ret = 0;
 
 	t_dev_info(dev, "===== FW upgrade: start (%d) =====\n", retry);
 
-	fw_size = (int)fw->size;
 	fw_size_max = touch_fw_size(ts);
 	if ((fw_size != fw_size_max) &&
 		(fw_size != (fw_size_max + FLASH_CONF_SIZE)))
@@ -2144,13 +2142,13 @@ static int siw_hal_fw_upgrade(struct device *dev,
 	t_dev_dbg_base(dev, "FW upgrade: fw size %08Xh, fw_size_max %08Xh\n",
 			fw_size, fw_size_max);
 
-	ret = siw_hal_fw_upgrade_fw(dev, fw);
+	ret = siw_hal_fw_upgrade_fw(dev, fw_buf, fw_size);
 	if (ret < 0) {
 		goto out;
 	}
 
 	if (include_conf) {
-		ret = siw_hal_fw_upgrade_conf(dev, fw);
+		ret = siw_hal_fw_upgrade_conf(dev, fw_buf, fw_size);
 		if (ret < 0) {
 			goto out;
 		}
@@ -2162,21 +2160,13 @@ out:
 	return ret;
 }
 
-static int siw_hal_upgrade(struct device *dev)
+static int siw_hal_fw_get_from_kernel(struct device *dev, char *fwpath,
+			const struct firmware **fw_p)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
 	const struct firmware *fw = NULL;
-	char *fwpath = NULL;
 	int ret = 0;
-	int ret_val = 0;
-	int i = 0;
-
-	fwpath = touch_getname();
-	if (fwpath == NULL) {
-		t_dev_err(dev, "failed to allocate name buffer - fwpath\n");
-		return -ENOMEM;
-	}
 
 	if (atomic_read(&ts->state.fb) >= FB_SUSPEND) {
 		t_dev_warn(dev, "state.fb is not FB_RESUME\n");
@@ -2206,20 +2196,74 @@ static int siw_hal_upgrade(struct device *dev)
 		goto out;
 	}
 
-	t_dev_info(dev, "fw size:%zu\n", fw->size);
+	if (fw_p) {
+		*fw_p = fw;
+	}
+
+out:
+	return ret;
+}
+
+static int siw_hal_upgrade(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	struct siw_touch_fw_bin *fw_bin = NULL;
+	const struct firmware *fw = NULL;
+	char *fwpath = NULL;
+	u8 *fw_buf = NULL;
+	int fw_size = 0;
+	int ret = 0;
+	int ret_val = 0;
+	int i = 0;
+
+	fwpath = touch_getname();
+	if (fwpath == NULL) {
+		t_dev_err(dev, "failed to allocate name buffer - fwpath\n");
+		return -ENOMEM;
+	}
+
+	if (touch_flags(ts) & TOUCH_USE_FW_BINARY) {
+		t_dev_info(dev, "getting fw from binary header data\n");
+		fw_bin = touch_fw_bin(ts);
+		if (fw_bin != NULL) {
+			fw_buf = fw_bin->fw_data;
+			fw_size = fw_bin->fw_size;
+		} else {
+			t_dev_warn(dev, "empty fw info\n");
+		}
+	} else {
+		t_dev_info(dev, "getting fw from request_firmware\n");
+		ret = siw_hal_fw_get_from_kernel(dev, fwpath, &fw);
+		if (ret < 0) {
+			goto out;
+		}
+		fw_buf = (u8 *)fw->data;
+		fw_size = (int)fw->size;
+	}
+
 //	ret = -EINVAL;
 	ret = -EPERM;
-	ret_val = siw_hal_fw_compare(dev, fw);
+
+	if ((fw_buf == NULL) || !fw_size) {
+		t_dev_err(dev, "invalid fw info\n");
+		goto out;
+	}
+
+	t_dev_info(dev, "fw size:%zu\n", fw_size);
+	ret_val = siw_hal_fw_compare(dev, fw_buf);
 	if (ret_val < 0) {
 		ret = ret_val;
 	} else if (ret_val) {
 		touch_msleep(200);
 		for (i = 0; i < 2 && ret; i++) {
-			ret = siw_hal_fw_upgrade(dev, fw, i);
+			ret = siw_hal_fw_upgrade(dev, fw_buf, fw_size, i);
 		}
 	}
 
-	release_firmware(fw);
+	if (fw) {
+		release_firmware(fw);
+	}
 
 out:
 	if (ret) {
