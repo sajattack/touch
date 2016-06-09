@@ -379,7 +379,7 @@ static int __used siw_touch_init_pm(struct siw_ts *ts)
 {
 	struct device *dev = ts->dev;
 
-	t_dev_dbg_pm(ts->dev, "init pm\n");
+	t_dev_dbg_pm(dev, "init pm\n");
 
 	ts->early_suspend.level = EARLY_SUSPEND_LEVEL_DISABLE_FB + 1;
 	ts->early_suspend.suspend = siw_touch_early_suspend;
@@ -392,7 +392,7 @@ static int __used siw_touch_free_pm(struct siw_ts *ts)
 {
 	struct device *dev = ts->dev;
 
-	t_dev_dbg_pm(ts->dev, "free pm\n");
+	t_dev_dbg_pm(dev, "free pm\n");
 
 	unregister_early_suspend(&ts->early_suspend);
 
