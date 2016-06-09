@@ -547,6 +547,11 @@ struct siw_touch_uevent_ctrl {
 	u32 flags;
 };
 
+struct siw_touch_fw_bin {
+	u8 *fw_data;
+	int fw_size;
+};
+
 struct siw_touch_pdata {
 	/* Config. */
 	char *chip_id;			//chip id(fixed)
@@ -606,6 +611,8 @@ struct siw_touch_pdata {
 	void *second_screen;
 
 	void *uevent_ctrl;
+
+	void *fw_bin;
 };
 
 struct siw_touch_chip_data {
@@ -820,6 +827,13 @@ static inline struct siw_touch_uevent_ctrl *pdata_uevent_ctrl(
 	return pdata->uevent_ctrl;
 }
 
+static inline struct siw_touch_fw_bin *pdata_fw_bin(
+								struct siw_touch_pdata *pdata)
+{
+	return pdata->fw_bin;
+}
+
+
 enum {
 	TS_THREAD_OFF = 0,
 	TS_THREAD_ON,
@@ -953,6 +967,7 @@ struct siw_ts {
 
 #define _TOUCH_USE_VIRT_DIR_WATCH	(1UL<<16)
 #define _TOUCH_USE_DRV_NAME_SYSFS	(1UL<<17)
+#define _TOUCH_USE_FW_BINARY		(1UL<<18)
 
 #define _TOUCH_IGNORE_DT_FLAGS		(1UL<<31)
 
@@ -991,6 +1006,7 @@ enum {
 	/* */
 	TOUCH_USE_VIRT_DIR_WATCH	= _TOUCH_USE_VIRT_DIR_WATCH,
 	TOUCH_USE_DRV_NAME_SYSFS	= _TOUCH_USE_DRV_NAME_SYSFS,
+	TOUCH_USE_FW_BINARY			= _TOUCH_USE_FW_BINARY,
 	/* */
 	TOUCH_IGNORE_DT_FLAGS		= _TOUCH_IGNORE_DT_FLAGS,
 };
@@ -1248,6 +1264,12 @@ static inline struct siw_touch_uevent_ctrl *touch_uevent_ctrl(
 								struct siw_ts *ts)
 {
 	return pdata_uevent_ctrl(ts->pdata);
+}
+
+static inline struct siw_touch_fw_bin *touch_fw_bin(
+								struct siw_ts *ts)
+{
+	return pdata_fw_bin(ts->pdata);
 }
 
 
