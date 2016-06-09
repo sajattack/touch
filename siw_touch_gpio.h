@@ -12,6 +12,18 @@
 #ifndef __SIW_TOUCH_GPIO_H
 #define __SIW_TOUCH_GPIO_H
 
+#if 1
+enum {
+	GPIO_PULL_DOWN  = 0,
+	GPIO_PULL_UP,
+	GPIO_NO_PULL,
+};
+
+enum {
+	GPIO_OUT_ZERO = 0,
+	GPIO_OUT_ONE,
+};
+#else
 /******************************************************************************
 * Enumeration for GPIO pin
 ******************************************************************************/
@@ -119,6 +131,7 @@ typedef enum {
 
 	GPIO_IN_MAX,
 } GPIO_IN;
+#endif
 
 extern int siw_touch_gpio_init(struct device *dev, int pin, const char *name);
 extern void siw_touch_gpio_free(struct device *dev, int pin);
