@@ -9,6 +9,8 @@
  * version 2 as published by the Free Software Foundation.
  */
 
+#include <linux/version.h>
+
 #ifndef __SIW_TOUCH_CFG_H
 #define __SIW_TOUCH_CFG_H
 
@@ -59,6 +61,9 @@ enum _SIW_CHIP_TYPE {
 
 //#define __SIW_TEST_IRQ_OFF
 
+#if (LINUX_VERSION_CODE <= KERNEL_VERSION(3, 6, 0))
+#define mod_delayed_work	queue_delayed_work
+#endif
 
 #endif	/* __SIW_TOUCH_CFG_H */
 
