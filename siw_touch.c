@@ -75,6 +75,15 @@ module_param_named(pr_dbg_mask, t_pr_dbg_mask, uint, S_IRUGO|S_IWUSR|S_IWGRP);
  */
 module_param_named(dev_dbg_mask, t_dev_dbg_mask, uint, S_IRUGO|S_IWUSR|S_IWGRP);
 
+
+u32 t_dbg_flag = 0;
+/* usage
+ * (1) echo <value> > /sys/module/{Siw Touch Module Name}/parameters/dbg_flag
+ * (2) insmod {Siw Touch Module Name}.ko dbg_flag=<value>
+ */
+module_param_named(dbg_flag, t_dbg_flag, uint, S_IRUGO|S_IWUSR|S_IWGRP);
+
+
 u32 t_mfts_lpwg = 0;
 u32 t_lpwg_mode = LPWG_NONE;
 u32 t_lpwg_screen = 1;
@@ -1048,10 +1057,15 @@ static irqreturn_t __used siw_touch_irq_thread(int irq, void *dev_id)
 
 	t_dev_dbg_irq(dev, "irq_thread\n");
 
+	if (t_dbg_flag & DBG_FLAG_SKIP_IRQ) {
+		goto out;
+	}
+
 	mutex_lock(&ts->lock);
 	ret = _siw_touch_do_irq_thread(ts);
 	mutex_unlock(&ts->lock);
 
+out:
 	return IRQ_HANDLED;
 }
 

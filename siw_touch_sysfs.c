@@ -865,6 +865,38 @@ static ssize_t _store_dbg_mask(struct device *dev,
 	return count;
 }
 
+static ssize_t _show_dbg_flag(struct device *dev, char *buf)
+{
+//	struct siw_ts *ts = to_touch_core(dev);
+	int size = 0;
+
+	size += siw_snprintf(buf, size,
+				"t_dbg_flag %08Xh\n\n",
+				t_dbg_flag);
+
+	return (ssize_t)size;
+}
+
+static ssize_t _store_dbg_flag(struct device *dev,
+				const char *buf, size_t count)
+{
+//	struct siw_ts *ts = to_touch_core(dev);
+	u32 flag = 0;
+	u32 old_value, new_value = 0;
+
+	if (sscanf(buf, "%d", &flag) <= 0) {
+		siw_sysfs_err_invalid_param(dev);
+		return count;
+	}
+
+	old_value = t_dbg_flag;
+	t_dbg_flag = new_value;
+	t_dev_info(dev, "t_dbg_flag changed : %08Xh -> %08xh\n",
+		old_value, new_value);
+
+	return count;
+}
+
 static ssize_t _store_init_late(struct device *dev,
 				const char *buf, size_t count)
 {
@@ -955,6 +987,8 @@ static SIW_TOUCH_ATTR(module_info,
 						_show_module_info, NULL);
 static SIW_TOUCH_ATTR(dbg_mask,
 						_show_dbg_mask, _store_dbg_mask);
+static SIW_TOUCH_ATTR(dbg_flag,
+						_show_dbg_flag, _store_dbg_flag);
 static SIW_TOUCH_ATTR(init_late, NULL,
 						_store_init_late);
 
@@ -987,6 +1021,7 @@ static struct attribute *siw_touch_attribute_list[] = {
 #endif	/* __SIW_SUPPORT_ASC */
 	&_SIW_TOUCH_ATTR_T(module_info).attr,
 	&_SIW_TOUCH_ATTR_T(dbg_mask).attr,
+	&_SIW_TOUCH_ATTR_T(dbg_flag).attr,
 	&_SIW_TOUCH_ATTR_T(init_late).attr,
 	NULL,
 };

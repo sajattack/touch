@@ -171,5 +171,13 @@ extern u32 t_dev_dbg_mask;
 #define t_dev_dbg_etc(_dev, fmt, args...)	\
 		t_dev_dbg(DBG_ETC, _dev, fmt, ##args)
 
+
+extern u32 t_dbg_flag;
+
+enum {
+	DBG_FLAG_SKIP_IRQ	= (1<<0),
+};
+
+
 #endif	/* __SIW_TOUCH_DBG_H */
 
