@@ -1375,14 +1375,14 @@ static int prd_os_result_get(struct siw_hal_prd_data *prd, u32 *buf, int type)
 	}
 
 	ret = siw_hal_write_value(dev,
-				reg->tc_tsp_test_data_offset,
+				reg->serial_data_offset,
 				offset);
 	if (ret < 0) {
 		goto out;
 	}
 
 	ret = siw_hal_reg_read(dev,
-				reg->tc_tsp_data_access_addr,
+				reg->data_i2cbase_addr,
 				(void *)buf, sizeof(u32)*PRD_ROW_SIZE);
 	if (ret < 0) {
 		goto out;
@@ -2057,7 +2057,7 @@ static int prd_read_rawdata(struct siw_hal_prd_data *prd, int type)
 		for (i = 0; i < M2_RAWDATA_TEST_CNT; i++) {
 			/* raw data offset write */
 			ret = siw_hal_write_value(dev,
-						reg->tc_tsp_test_data_offset,
+						reg->serial_data_offset,
 						raw_data_offset[i]);
 			if (ret < 0) {
 				goto out;
@@ -2067,7 +2067,7 @@ static int prd_read_rawdata(struct siw_hal_prd_data *prd, int type)
 			memset(buf_rawdata[i], 0, __m2_frame_size);
 
 			ret = siw_hal_reg_read(dev,
-						reg->tc_tsp_data_access_addr,
+						reg->data_i2cbase_addr,
 						(void *)buf_rawdata[i], __m2_frame_size);
 			if (ret < 0) {
 				goto out;
@@ -2084,7 +2084,7 @@ static int prd_read_rawdata(struct siw_hal_prd_data *prd, int type)
 
 			/* raw data offset write */
 			ret = siw_hal_write_value(dev,
-						reg->tc_tsp_test_data_offset,
+						reg->serial_data_offset,
 						raw_data_offset[i]);
 			if (ret < 0) {
 				goto out;
@@ -2095,7 +2095,7 @@ static int prd_read_rawdata(struct siw_hal_prd_data *prd, int type)
 			memset(tmp_buf, 0, __m1_frame_size);
 
 			ret = siw_hal_reg_read(dev,
-						reg->tc_tsp_data_access_addr,
+						reg->data_i2cbase_addr,
 						(void *)tmp_buf, __m1_frame_size);
 			if (ret < 0) {
 				goto out;
@@ -2198,13 +2198,13 @@ static int prd_read_tune_code(struct siw_hal_prd_data *prd, int type, int result
 //	t_prd_dbg_base(prd, "tune_code_offset = %Xh", offset);
 
 	ret = siw_hal_write_value(dev,
-				reg->tc_tsp_test_data_offset,
+				reg->serial_data_offset,
 				offset);
 	if (ret < 0) {
 		goto out;
 	}
 	ret = siw_hal_reg_read(dev,
-				reg->tc_tsp_data_access_addr,
+				reg->data_i2cbase_addr,
 				(void *)tune_code_read_buf, TC_TUNE_CODE_SIZE);
 	if (ret < 0) {
 		goto out;
@@ -2848,7 +2848,7 @@ static int prd_show_prd_get_data_raw_ait(struct device *dev)
 	}
 
 	ret = siw_hal_write_value(dev,
-				reg->tc_tsp_test_data_offset,
+				reg->serial_data_offset,
 				AIT_RAW_DATA_OFFSET);
 	if (ret < 0) {
 		goto out;
@@ -2856,7 +2856,7 @@ static int prd_show_prd_get_data_raw_ait(struct device *dev)
 
 	memset(prd->m2_buf_odd_rawdata, 0, sizeof(prd->m2_buf_odd_rawdata));
 
-	ret = siw_hal_reg_read(dev, reg->tc_tsp_data_access_addr,
+	ret = siw_hal_reg_read(dev, reg->data_i2cbase_addr,
 					(void *)prd->m2_buf_odd_rawdata,
 					sizeof(int16_t)*(PRD_ROW_SIZE)*(PRD_COL_SIZE));
 	if (ret < 0) {
@@ -2902,7 +2902,7 @@ static int prd_show_prd_get_data_ait_basedata(struct device *dev)
 		}
 
 		ret = siw_hal_write_value(dev,
-					reg->tc_tsp_test_data_offset,
+					reg->serial_data_offset,
 					ait_offset[i]);
 		if (ret < 0) {
 			goto out;
@@ -2910,7 +2910,7 @@ static int prd_show_prd_get_data_ait_basedata(struct device *dev)
 
 		memset(buf_rawdata[i], 0, sizeof(buf_rawdata[i]));
 
-		ret = siw_hal_reg_read(dev, reg->tc_tsp_data_access_addr,
+		ret = siw_hal_reg_read(dev, reg->data_i2cbase_addr,
 					(void *)buf_rawdata[i],
 					sizeof(int16_t)*(PRD_ROW_SIZE)*(PRD_COL_SIZE));
 		if (ret < 0) {
@@ -2947,7 +2947,7 @@ static int prd_show_prd_get_data_filtered_deltadata(struct device *dev)
 	}
 
 	ret = siw_hal_write_value(dev,
-				reg->tc_tsp_test_data_offset,
+				reg->serial_data_offset,
 				FILTERED_DELTA_DATA_OFFSET);
 	if (ret < 0) {
 		goto out;
@@ -2957,7 +2957,7 @@ static int prd_show_prd_get_data_filtered_deltadata(struct device *dev)
 	memset(prd->m2_buf_odd_rawdata, 0, sizeof(prd->m2_buf_odd_rawdata));
 
 	ret = siw_hal_reg_read(dev,
-				reg->tc_tsp_data_access_addr,
+				reg->data_i2cbase_addr,
 				(void *)prd->buf_delta,
 				sizeof(int16_t)*(PRD_ROW_SIZE+2)*(PRD_COL_SIZE+2));
 	if (ret < 0) {
@@ -2999,7 +2999,7 @@ static int prd_show_prd_get_data_deltadata(struct device *dev)
 	}
 
 	ret = siw_hal_write_value(dev,
-				reg->tc_tsp_test_data_offset,
+				reg->serial_data_offset,
 				DELTA_DATA_OFFSET);
 	if (ret < 0) {
 		goto out;
@@ -3009,7 +3009,7 @@ static int prd_show_prd_get_data_deltadata(struct device *dev)
 	memset(prd->m2_buf_odd_rawdata, 0, sizeof(prd->m2_buf_odd_rawdata));
 
 	ret = siw_hal_reg_read(dev,
-				reg->tc_tsp_data_access_addr,
+				reg->data_i2cbase_addr,
 				(void *)prd->buf_delta,
 				sizeof(int16_t)*(PRD_ROW_SIZE+2)*(PRD_COL_SIZE+2));
 	if (ret < 0) {
@@ -3052,7 +3052,7 @@ static int prd_show_prd_get_data_labeldata(struct device *dev)
 	}
 
 	ret = siw_hal_write_value(dev,
-				reg->tc_tsp_test_data_offset,
+				reg->serial_data_offset,
 				LABLE_DATA_OFFSET);
 	if (ret < 0) {
 		goto out;
@@ -3062,7 +3062,7 @@ static int prd_show_prd_get_data_labeldata(struct device *dev)
 	memset(prd->buf_label_tmp, 0, sizeof(prd->buf_label_tmp));
 
 	ret = siw_hal_reg_read(dev,
-				reg->tc_tsp_data_access_addr,
+				reg->data_i2cbase_addr,
 				(void *)prd->buf_label_tmp,
 				sizeof(u8)*(PRD_ROW_SIZE+2)*(PRD_COL_SIZE+2));
 	if (ret < 0) {

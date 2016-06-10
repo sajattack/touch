@@ -2063,13 +2063,13 @@ static int siw_hal_fw_up_do_conf_dn(struct device *dev,
 	int ret;
 
 	/* conf sram base address write */
-	ret = siw_hal_fw_up_wr_value(dev, reg->spr_data_offset, addr);
+	ret = siw_hal_fw_up_wr_value(dev, reg->serial_data_offset, addr);
 	if (ret < 0) {
 		goto out;
 	}
 
 	/* Conf data download to conf sram */
-	ret = siw_hal_fw_up_wr_seq(dev, reg->data_access_addr,
+	ret = siw_hal_fw_up_wr_seq(dev, reg->data_i2cbase_addr,
 				(void *)dn_buf, dn_size);
 	if (ret < 0) {
 		goto out;
@@ -4570,7 +4570,6 @@ static const struct siw_hal_reg siw_touch_default_reg = {
 	.spr_boot_status			= SPR_BOOT_STS,
 	.spr_subdisp_status			= SPR_SUBDISP_STS,
 	.spr_code_offset			= SPR_CODE_OFFSET,
-	.spr_data_offset			= SPR_DATA_OFFSET,
 	.tc_ic_status				= TC_IC_STATUS,
 	.tc_status					= TC_STS,
 	.tc_version					= TC_VERSION,
@@ -4589,7 +4588,8 @@ static const struct siw_hal_reg siw_touch_default_reg = {
 	.cmd_abt_loc_y_start_read	= CMD_ABT_LOC_Y_START_READ,
 	.cmd_abt_loc_y_end_read		= CMD_ABT_LOC_Y_END_READ,
 	.code_access_addr			= CODE_ACCESS_ADDR,
-	.data_access_addr			= DATA_ACCESS_ADDR,
+	.data_i2cbase_addr			= DATA_I2CBASE_ADDR,
+	.prd_tcm_base_addr			= PRD_TCM_BASE_ADDR,
 	.tc_device_ctl				= TC_DEVICE_CTL,
 	.tc_interrupt_ctl			= TC_INTERRUPT_CTL,
 	.tc_interrupt_status		= TC_INTERRUPT_STS,
@@ -4637,14 +4637,11 @@ static const struct siw_hal_reg siw_touch_default_reg = {
 	.tc_tsp_test_status			= TC_TSP_TEST_STS,
 	.tc_tsp_test_pf_result		= TC_TSP_TEST_PF_RESULT,
 	.tc_tsp_test_off_info		= TC_TSP_TEST_OFF_INFO,
-	.tc_tsp_test_data_offset	= TC_TSP_TEST_DATA_OFFSET,
-	.tc_tsp_data_access_addr	= TC_TSP_DATA_ACCESS_ADDR,
 	.tc_flash_dn_status			= TC_FLASH_DN_STS,
 	.tc_confdn_base_addr		= TC_CONFDN_BASE_ADDR,
 	.tc_flash_dn_ctl			= TC_FLASH_DN_CTL,
 	.raw_data_ctl_read			= RAW_DATA_CTL_READ,
 	.raw_data_ctl_write			= RAW_DATA_CTL_WRITE,
-	.data_i2cbase_addr			= DATA_I2CBASE_ADDR,
 	.serial_data_offset			= SERIAL_DATA_OFFSET,
 	/* */
 	/* __SIW_SUPPORT_WATCH */
@@ -4677,7 +4674,6 @@ static const struct siw_hal_reg siw_touch_default_reg = {
 	/* __SIW_SUPPORT_PRD */
 	.prd_serial_tcm_offset		= PRD_SERIAL_TCM_OFFSET,
 	.prd_tc_mem_sel				= PRD_TC_MEM_SEL,
-	.prd_tcm_base_addr			= PRD_TCM_BASE_ADDR,
 	.prd_tc_test_mode_ctl		= PRD_TC_TEST_MODE_CTL,
 	.prd_m1_m2_raw_offset		= PRD_M1_M2_RAW_OFFSET,
 	.prd_tune_result_offset		= PRD_TUNE_RESULT_OFFSET,

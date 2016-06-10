@@ -73,7 +73,6 @@ static int __show_reg_list(struct device *dev, char *buf, int size)
 	size += _reg_snprintf(buf, size, reg, spr_boot_status);
 	size += _reg_snprintf(buf, size, reg, spr_subdisp_status);
 	size += _reg_snprintf(buf, size, reg, spr_code_offset);
-	size += _reg_snprintf(buf, size, reg, spr_data_offset);
 	size += _reg_snprintf(buf, size, reg, tc_ic_status);
 	size += _reg_snprintf(buf, size, reg, tc_status);
 	size += _reg_snprintf(buf, size, reg, tc_version);
@@ -89,7 +88,8 @@ static int __show_reg_list(struct device *dev, char *buf, int size)
 	size += _reg_snprintf(buf, size, reg, cmd_abt_loc_y_start_read);
 	size += _reg_snprintf(buf, size, reg, cmd_abt_loc_y_end_read);
 	size += _reg_snprintf(buf, size, reg, code_access_addr);
-	size += _reg_snprintf(buf, size, reg, data_access_addr);
+	size += _reg_snprintf(buf, size, reg, data_i2cbase_addr);
+	size += _reg_snprintf(buf, size, reg, prd_tcm_base_addr);
 	size += _reg_snprintf(buf, size, reg, tc_device_ctl);
 	size += _reg_snprintf(buf, size, reg, tc_interrupt_ctl);
 	size += _reg_snprintf(buf, size, reg, tc_interrupt_status);
@@ -137,14 +137,11 @@ static int __show_reg_list(struct device *dev, char *buf, int size)
 	size += _reg_snprintf(buf, size, reg, tc_tsp_test_status);
 	size += _reg_snprintf(buf, size, reg, tc_tsp_test_pf_result);
 	size += _reg_snprintf(buf, size, reg, tc_tsp_test_off_info);
-	size += _reg_snprintf(buf, size, reg, tc_tsp_test_data_offset);
-	size += _reg_snprintf(buf, size, reg, tc_tsp_data_access_addr);
 	size += _reg_snprintf(buf, size, reg, tc_flash_dn_status);
 	size += _reg_snprintf(buf, size, reg, tc_confdn_base_addr);
 	size += _reg_snprintf(buf, size, reg, tc_flash_dn_ctl);
 	size += _reg_snprintf(buf, size, reg, raw_data_ctl_read);
 	size += _reg_snprintf(buf, size, reg, raw_data_ctl_write);
-	size += _reg_snprintf(buf, size, reg, data_i2cbase_addr);
 	size += _reg_snprintf(buf, size, reg, serial_data_offset);
 	/* __SIW_SUPPORT_WATCH */
 	if (!touch_test_quirks(ts, CHIP_QUIRK_NOT_SUPPORT_WATCH)) {
@@ -186,7 +183,6 @@ static int __show_reg_list(struct device *dev, char *buf, int size)
 	/* __SIW_SUPPORT_PRD */
 	size += _reg_snprintf(buf, size, reg, prd_serial_tcm_offset);
 	size += _reg_snprintf(buf, size, reg, prd_tc_mem_sel);
-	size += _reg_snprintf(buf, size, reg, prd_tcm_base_addr);
 	size += _reg_snprintf(buf, size, reg, prd_tc_test_mode_ctl);
 	size += _reg_snprintf(buf, size, reg, prd_m1_m2_raw_offset);
 	size += _reg_snprintf(buf, size, reg, prd_tune_result_offset);

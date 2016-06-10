@@ -22,7 +22,6 @@
 #define SPR_SUBDISP_STS				(0x021)
 
 #define SPR_CODE_OFFSET				(0x078)
-#define SPR_DATA_OFFSET				(0x07B)
 
 #define TC_IC_STATUS				(0x200) 	/* siw_hal_touch_info base addr*/
 #define TC_STS						(0x201)
@@ -46,7 +45,8 @@
 #define CMD_ABT_LOC_Y_END_READ		(0x2A9)
 
 #define CODE_ACCESS_ADDR			(0x300)
-#define DATA_ACCESS_ADDR			(0x301)
+#define DATA_I2CBASE_ADDR			(0x301)
+#define PRD_TCM_BASE_ADDR			(0x303)
 
 #define TC_DEVICE_CTL				(0xC00)
 #define TC_INTERRUPT_CTL			(0xC01)
@@ -105,8 +105,6 @@
 #define TC_TSP_TEST_STS				(0x265)
 #define TC_TSP_TEST_PF_RESULT		(0x266)
 #define TC_TSP_TEST_OFF_INFO		(0x2FB)
-#define TC_TSP_TEST_DATA_OFFSET		(0x07B)
-#define TC_TSP_DATA_ACCESS_ADDR		(0x301)
 
 /* Firmware control */
 #define TC_FLASH_DN_STS				(0x247)
@@ -116,7 +114,6 @@
 /* */
 #define RAW_DATA_CTL_READ			(0x2A4)
 #define RAW_DATA_CTL_WRITE			(0xC49)
-#define DATA_I2CBASE_ADDR			(0x301)
 #define SERIAL_DATA_OFFSET			(0x07B)
 
 
@@ -159,7 +156,6 @@
 /* __SIW_SUPPORT_PRD */
 #define PRD_SERIAL_TCM_OFFSET		(0x07C)
 #define PRD_TC_MEM_SEL				(0x457)
-#define PRD_TCM_BASE_ADDR			(0x303)
 #define PRD_TC_TEST_MODE_CTL		(0xC6E)
 #define PRD_M1_M2_RAW_OFFSET		(0x287)
 #define PRD_TUNE_RESULT_OFFSET		(0x289)	//See 'chip_reg_quirks' in touch_lg4895.c
@@ -174,7 +170,6 @@ struct siw_hal_reg {
 	u32 spr_boot_status;
 	u32 spr_subdisp_status;
 	u32 spr_code_offset;
-	u32 spr_data_offset;
 	u32 tc_ic_status;
 	u32 tc_status;
 	u32 tc_version;
@@ -193,7 +188,8 @@ struct siw_hal_reg {
 	u32 cmd_abt_loc_y_start_read;
 	u32 cmd_abt_loc_y_end_read;
 	u32 code_access_addr;
-	u32 data_access_addr;
+	u32 data_i2cbase_addr;
+	u32 prd_tcm_base_addr;
 	u32 tc_device_ctl;
 	u32 tc_interrupt_ctl;
 	u32 tc_interrupt_status;
@@ -241,14 +237,11 @@ struct siw_hal_reg {
 	u32 tc_tsp_test_status;
 	u32 tc_tsp_test_pf_result;
 	u32 tc_tsp_test_off_info;
-	u32 tc_tsp_test_data_offset;
-	u32 tc_tsp_data_access_addr;
 	u32 tc_flash_dn_status;
 	u32 tc_confdn_base_addr;
 	u32 tc_flash_dn_ctl;
 	u32 raw_data_ctl_read;
 	u32 raw_data_ctl_write;
-	u32 data_i2cbase_addr;
 	u32 serial_data_offset;
 	/* */
 	/* __SIW_SUPPORT_WATCH */
@@ -281,7 +274,6 @@ struct siw_hal_reg {
 	/* __SIW_SUPPORT_PRD */
 	u32 prd_serial_tcm_offset;
 	u32 prd_tc_mem_sel;
-	u32 prd_tcm_base_addr;
 	u32 prd_tc_test_mode_ctl;
 	u32 prd_m1_m2_raw_offset;
 	u32 prd_tune_result_offset;
