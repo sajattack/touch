@@ -1172,6 +1172,7 @@ static int siw_hal_ic_info(struct device *dev)
 	return 0;
 }
 
+#if defined(CONFIG_FB)
 static int siw_hal_fb_notifier_callback(struct notifier_block *self,
 		unsigned long event, void *data)
 {
@@ -1190,6 +1191,26 @@ static int siw_hal_fb_notifier_callback(struct notifier_block *self,
 
 	return 0;
 }
+
+static int siw_hal_fb_notifier_init(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+
+	t_dev_dbg_base(dev, "fb_notif change\n");
+
+	fb_unregister_client(&ts->fb_notif);
+	ts->fb_notif.notifier_call = siw_hal_fb_notifier_callback;
+	fb_register_client(&ts->fb_notif);
+
+	return 0;
+}
+#else	/* CONFIG_FB */
+static int siw_hal_fb_notifier_init(struct device *dev)
+{
+	return 0;
+}
+#endif	/* CONFIG_FB */
 
 static int siw_hal_init_reg_set(struct device *dev)
 {
@@ -1348,7 +1369,6 @@ static int siw_hal_check_mode(struct device *dev){ return 0; }
 static void siw_hal_lcd_event_read_reg(struct device *dev){ }
 #endif	/* __SIW_SUPPORT_WATCH */
 
-
 static int siw_hal_init(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
@@ -1357,11 +1377,7 @@ static int siw_hal_init(struct device *dev)
 	int ret = 0;
 
 	if (atomic_read(&ts->state.core) == CORE_PROBE) {
-		t_dev_dbg_base(dev, "fb_notif change\n");
-
-		fb_unregister_client(&ts->fb_notif);
-		ts->fb_notif.notifier_call = siw_hal_fb_notifier_callback;
-		fb_register_client(&ts->fb_notif);
+		siw_hal_fb_notifier_init(dev);
 	}
 
 	t_dev_dbg_base(dev, "charger_state = 0x%02X\n", chip->charger);
