@@ -32,6 +32,10 @@ Add this 1 line into {kernel top}/input/touchscreen/Kconfig
 
 : source "drivers/input/touchscreen/siw/Kconfig"
 
+Add this 1 line into {kernel top}/input/touchscreen/Makefil
+
+: obj-$(CONFIG_TOUCHSCREEN_SIW) += siw/
+
 
 # for Module test
 
