@@ -587,7 +587,7 @@ static void __used siw_touch_init_locks(struct siw_ts *ts)
 	t_dev_dbg_base(ts->dev, "touch init locks\n");
 
 	mutex_init(&ts->lock);
-#if defined(CONFIG_ANDROID)
+#if defined(CONFIG_ANDROID) && defined(__SIW_SUPPORT_WAKE_LOCK)
 	wake_lock_init(&ts->lpwg_wake_lock,
 		WAKE_LOCK_SUSPEND, SIW_TOUCH_LPWG_LOCK_NAME);
 #endif
@@ -598,7 +598,7 @@ static void __used siw_touch_free_locks(struct siw_ts *ts)
 	t_dev_dbg_base(ts->dev, "free locks\n");
 
 	mutex_destroy(&ts->lock);
-#if defined(CONFIG_ANDROID)
+#if defined(CONFIG_ANDROID) && defined(__SIW_SUPPORT_WAKE_LOCK)
 	wake_lock_destroy(&ts->lpwg_wake_lock);
 #endif
 }
@@ -991,7 +991,7 @@ static irqreturn_t __used siw_touch_irq_handler(int irq, void *dev_id)
 		t_dev_info(dev, "interrupt in suspend[%d]\n",
 				atomic_read(&ts->state.pm));
 		atomic_set(&ts->state.pm, DEV_PM_SUSPEND_IRQ);
-	#if defined(CONFIG_ANDROID)
+	#if defined(CONFIG_ANDROID) && defined(__SIW_SUPPORT_WAKE_LOCK)
 		wake_lock_timeout(&ts->lpwg_wake_lock, msecs_to_jiffies(1000));
 	#endif
 		return IRQ_HANDLED;
@@ -1016,7 +1016,7 @@ static int _siw_touch_do_irq_thread(struct siw_ts *ts)
 				touch_chip_name(ts), ret);
 		if (ret == -ERESTART) {
 			if (atomic_read(&ts->state.pm) == DEV_PM_RESUME) {
-			#if defined(CONFIG_ANDROID)
+			#if defined(CONFIG_ANDROID) && defined(__SIW_SUPPORT_WAKE_LOCK)
 				wake_lock_timeout(&ts->lpwg_wake_lock, msecs_to_jiffies(1000));
 			#endif
 			}

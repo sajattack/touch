@@ -879,7 +879,7 @@ struct siw_ts {
 	struct siw_touch_pdata *pdata;
 
 	struct kobject kobj;
-#if defined(CONFIG_ANDROID)
+#if defined(CONFIG_ANDROID) && defined(__SIW_SUPPORT_WAKE_LOCK)
 	struct wake_lock lpwg_wake_lock;
 #endif
 	struct state_info state;

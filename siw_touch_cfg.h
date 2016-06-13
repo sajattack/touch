@@ -30,6 +30,8 @@
 
 //#define __SIW_SUPPORT_DEBUG_OPTION
 
+#define __SIW_SUPPORT_WAKE_LOCK
+
 #if defined(CONFIG_OF)
 #define __SIW_CONFIG_OF
 #endif
