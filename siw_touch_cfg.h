@@ -40,6 +40,10 @@
 #define __SIW_CONFIG_OF
 #endif
 
+#if defined(CONFIG_FB)
+#define __SIW_CONFIG_FB
+#endif
+
 #define SIW_TOUCH_NAME				"siw_touch"
 #define SIW_TOUCH_CORE				"siw_touch_core"
 #define SIW_TOUCH_INPUT				"siw_touch_input"

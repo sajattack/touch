@@ -1172,7 +1172,7 @@ static int siw_hal_ic_info(struct device *dev)
 	return 0;
 }
 
-#if defined(CONFIG_FB)
+#if defined(__SIW_CONFIG_FB)
 static int siw_hal_fb_notifier_callback(struct notifier_block *self,
 		unsigned long event, void *data)
 {
@@ -1205,12 +1205,12 @@ static int siw_hal_fb_notifier_init(struct device *dev)
 
 	return 0;
 }
-#else	/* CONFIG_FB */
+#else	/* __SIW_CONFIG_FB */
 static int siw_hal_fb_notifier_init(struct device *dev)
 {
 	return 0;
 }
-#endif	/* CONFIG_FB */
+#endif	/* __SIW_CONFIG_FB */
 
 static int siw_hal_init_reg_set(struct device *dev)
 {

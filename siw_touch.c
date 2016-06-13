@@ -343,7 +343,7 @@ static void siw_touch_resume(struct device *dev)
  */
 void siw_touch_suspend_call(struct device *dev)
 {
-#if !defined(CONFIG_HAS_EARLYSUSPEND) && !defined(CONFIG_FB)
+#if !defined(CONFIG_HAS_EARLYSUSPEND) && !defined(__SIW_CONFIG_FB)
 	siw_touch_suspend(dev);
 #endif
 }
@@ -355,7 +355,7 @@ void siw_touch_suspend_call(struct device *dev)
  */
 void siw_touch_resume_call(struct device *dev)
 {
-#if !defined(CONFIG_HAS_EARLYSUSPEND) && !defined(CONFIG_FB)
+#if !defined(CONFIG_HAS_EARLYSUSPEND) && !defined(__SIW_CONFIG_FB)
 	siw_touch_resume(dev);
 #endif
 }
@@ -410,7 +410,7 @@ static int __used siw_touch_free_pm(struct siw_ts *ts)
 
 	return 0;
 }
-#elif defined(CONFIG_FB)
+#elif defined(__SIW_CONFIG_FB)
 /**
  * touch pm control using FB notifier
  *

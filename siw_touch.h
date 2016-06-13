@@ -12,6 +12,8 @@
 #ifndef __SIW_TOUCH_H
 #define __SIW_TOUCH_H
 
+#include "siw_touch_cfg.h"
+
 #include <linux/kernel.h>
 #include <linux/async.h>
 #include <linux/delay.h>
@@ -23,7 +25,7 @@
 #include <linux/platform_device.h>
 #if defined(CONFIG_HAS_EARLYSUSPEND)
 #include <linux/earlysuspend.h>
-#elif defined(CONFIG_FB)
+#elif defined(__SIW_CONFIG_FB)
 #include <linux/fb.h>
 #endif
 #include <linux/notifier.h>
@@ -36,7 +38,6 @@
 
 #include <linux/input/siw_touch_notify.h>
 
-#include "siw_touch_cfg.h"
 #include "siw_touch_dbg.h"
 
 
@@ -944,7 +945,8 @@ struct siw_ts {
 	int notify_data;
 #if defined(CONFIG_HAS_EARLYSUSPEND)
 	struct early_suspend early_suspend;
-#elif defined(CONFIG_FB)
+#endif
+#if defined(__SIW_CONFIG_FB)
 	struct notifier_block fb_notif;
 #endif
 
