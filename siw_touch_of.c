@@ -261,9 +261,6 @@ static int siw_touch_do_parse_dts(struct siw_ts *ts)
 		ts->flags = chip_flags & 0xFFFF;
 		ts->flags |= p_flags & (0xFFFFUL<<16);
 	}
-#if 1	/* Temp test for SW1828 */
-	ts->flags &= ~TOUCH_USE_MON_THREAD;
-#endif
 	if (chip_flags >= 0) {
 		t_dev_info(dev, "flags(of) = 0x%08X (0x%08X, 0x%08X)\n",
 			ts->flags, p_flags, chip_flags);
@@ -303,11 +300,7 @@ static int siw_touch_do_parse_dts(struct siw_ts *ts)
 	}
 
 	/* Firmware */
-#if 1	/* Temp test for SW1828 */
-	role->use_firmware = 0;
-#else
 	role->use_firmware = siw_touch_of_bool(dev, np, "use_firmware");
-#endif
 	if (role->use_firmware == 1) {
 		role->use_fw_upgrade = siw_touch_of_bool(dev, np, "use_fw_upgrade");
 
