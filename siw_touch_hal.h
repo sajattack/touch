@@ -12,7 +12,11 @@
 #ifndef __SIW_TOUCH_HAL_H
 #define __SIW_TOUCH_HAL_H
 
+#include "siw_touch_cfg.h"
+
+#if defined(__SIW_SUPPORT_PM_QOS)
 #include <linux/pm_qos.h>
+#endif
 
 #include "siw_touch_hal_reg.h"
 
@@ -280,7 +284,9 @@ struct siw_touch_chip {
 	u8 swipe_debug_type;
 	atomic_t block_watch_cfg;
 	atomic_t init;
+#if defined(__SIW_SUPPORT_PM_QOS)
 	struct pm_qos_request pm_qos_req;
+#endif
 };
 
 #define TCI_MAX_NUM					2

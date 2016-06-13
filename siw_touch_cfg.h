@@ -34,6 +34,8 @@
 #define __SIW_SUPPORT_WAKE_LOCK
 #endif
 
+//#define __SIW_SUPPORT_PM_QOS
+
 #if defined(CONFIG_OF)
 #define __SIW_CONFIG_OF
 #endif

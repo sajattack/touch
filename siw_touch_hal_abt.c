@@ -2449,11 +2449,15 @@ static int siw_hal_abt_irq_handler(struct device *dev)
 		return 0;
 	}
 
+#if defined(__SIW_SUPPORT_PM_QOS)
 	pm_qos_update_request(&chip->pm_qos_req, 10);
+#endif
 	ret = siw_hal_reg_read(dev,
 				reg->tc_ic_status,
 			    (void *)all_data, sizeof(all_data));
+#if defined(__SIW_SUPPORT_PM_QOS)
 	pm_qos_update_request(&chip->pm_qos_req, PM_QOS_DEFAULT_VALUE);
+#endif
 	if (ret < 0) {
 		goto out;
 	}
