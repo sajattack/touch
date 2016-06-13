@@ -353,7 +353,11 @@ int siw_touch_init_input(void *ts_data)
 				caps->max_orientation, 0, 0);
 
 	/* Initialize multi-touch slot */
+#if (LINUX_VERSION_CODE <= KERNEL_VERSION(3, 6, 0))
+	ret = input_mt_init_slots(input, caps->max_id);
+#else
 	ret = input_mt_init_slots(input, caps->max_id, 0);
+#endif
 	if (ret < 0) {
 		t_dev_err(dev, "failed to initialize input device, %d\n", ret);
 		goto out_slot;
