@@ -3,6 +3,8 @@ SiW Touch Driver
 
 This driver supports Silicon-works Touch Device.
 
+Test playform : Odroid-xu4 (Exynos5422, Android 4.4.4, Kernel v3.10.9)
+
 Author:
 
 kimhh@siliconworks.co.kr
