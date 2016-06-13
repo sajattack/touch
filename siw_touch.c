@@ -46,6 +46,9 @@
 #include "siw_touch_irq.h"
 #include "siw_touch_sys.h"
 
+#if !defined(__SIW_CONFIG_OF)
+#pragma message("[SiW - Warning] No COFIG_OF")
+#endif
 
 extern int siw_touch_init_sysfs(struct siw_ts *ts);
 extern void siw_touch_free_sysfs(struct siw_ts *ts);

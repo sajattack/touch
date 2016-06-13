@@ -546,7 +546,9 @@ int siw_touch_spi_add_driver(void *data)
 	spi_drv = &bus_drv->bus.spi_drv;
 	spi_drv->driver.name = drv_name;
 	spi_drv->driver.owner = pdata->owner;
+#if defined(__SIW_CONFIG_OF)
 	spi_drv->driver.of_match_table = pdata->of_match_table;
+#endif
 	spi_drv->driver.pm = &siw_touch_spi_pm_ops;
 
 	spi_drv->probe = siw_touch_spi_probe;

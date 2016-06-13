@@ -560,7 +560,6 @@ struct siw_touch_pdata {
 	char *idrv_name;		//input driver name
 	char *ext_watch_name;	//ext_watch name
 	struct module *owner;
-	const struct of_device_id *of_match_table;
 	u32 chip_type;
 	u32 mode_allowed;
 	u32 fw_size;		//Pure F/W size, not include config data(1K)
@@ -586,7 +585,9 @@ struct siw_touch_pdata {
 
 	struct siw_touch_bus_info bus_info;
 
-#if !defined(__SIW_CONFIG_OF)
+#if defined(__SIW_CONFIG_OF)
+	const struct of_device_id *of_match_table;
+#else
 	struct touch_pins pins;
 	struct touch_device_caps caps;
 #endif

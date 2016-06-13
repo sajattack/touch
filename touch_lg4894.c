@@ -97,6 +97,7 @@ enum CHIP_CAPABILITY {
 #endif
 
 
+#if defined(__SIW_CONFIG_OF)
 /*
  * of_device_is_compatible(dev->of_node, CHIP_COMPATIBLE_NAME)
  */
@@ -104,8 +105,7 @@ static const struct of_device_id chip_match_ids[] = {
 	{ .compatible = CHIP_COMPATIBLE_NAME },
 	{ },
 };
-
-#if !defined(__SIW_CONFIG_OF)
+#else
 #define CHIP_PIN_RESET			0
 #define CHIP_PIN_IRQ			0
 #define CHIP_PIN_MAKER			-1
@@ -136,7 +136,6 @@ static const struct siw_touch_pdata chip_pdata = {
 	.drv_name			= chip_drv_name,
 	.idrv_name			= chip_idrv_name,
 	.owner				= THIS_MODULE,
-	.of_match_table		= of_match_ptr(chip_match_ids),
 	.chip_type			= CHIP_TYPE,
 	.mode_allowed		= CHIP_MODE_ALLOWED,
 	.fw_size			= CHIP_FW_SIZE,
@@ -155,7 +154,9 @@ static const struct siw_touch_pdata chip_pdata = {
 		.bus_tx_dummy_size	= CHIP_TX_DUMMY_SZ,
 		.bus_rx_dummy_size	= CHIP_RX_DUMMY_SZ,
 	},
-#if !defined(__SIW_CONFIG_OF)
+#if defined(__SIW_CONFIG_OF)
+	.of_match_table 	= of_match_ptr(chip_match_ids),
+#else
 	.pins				= {
 		.reset_pin		= CHIP_PIN_RESET,
 		.reset_pin_pol	= OF_GPIO_ACTIVE_LOW,
@@ -169,7 +170,7 @@ static const struct siw_touch_pdata chip_pdata = {
 		.max_y			= CHIP_MAX_Y,
 		.max_pressure	= CHIP_MAX_PRESSURE,
 		.max_width		= CHIP_MAX_WIDTH,
-		.max_orientation = CHIP_MAX_ORI;
+		.max_orientation = CHIP_MAX_ORI,
 		.max_id			= CHIP_MAX_ID,
 		.hw_reset_delay	= CHIP_HW_RST_DELAY,
 		.sw_reset_delay	= CHIP_SW_RST_DELAY,
