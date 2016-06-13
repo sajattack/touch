@@ -1506,7 +1506,7 @@ int siw_touch_probe(struct siw_ts *ts)
 {
 	struct device *dev = ts->dev;
 
-	BUILD_BUG_ON(sizeof(struct touch_data) != (9<<1));
+//	BUILD_BUG_ON(sizeof(struct touch_data) != (9<<1));
 
 	t_dev_info(dev, "SiW Touch Probe\n");
 
