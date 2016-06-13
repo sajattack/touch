@@ -1015,6 +1015,10 @@ static int _siw_touch_do_irq_thread(struct siw_ts *ts)
 		t_dev_dbg_irq(ts->dev, "Err in irq_handler of %s, %d",
 				touch_chip_name(ts), ret);
 		if (ret == -ERESTART) {
+			if (t_dbg_flag & DBG_FLAG_SKIP_IRQ_RESET) {
+				return ret;
+			}
+
 			if (atomic_read(&ts->state.pm) == DEV_PM_RESUME) {
 			#if defined(__SIW_SUPPORT_WAKE_LOCK)
 				wake_lock_timeout(&ts->lpwg_wake_lock, msecs_to_jiffies(1000));

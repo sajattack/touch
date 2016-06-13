@@ -175,7 +175,8 @@ extern u32 t_dev_dbg_mask;
 extern u32 t_dbg_flag;
 
 enum {
-	DBG_FLAG_SKIP_IRQ	= (1<<0),
+	DBG_FLAG_SKIP_IRQ		= (1<<0),
+	DBG_FLAG_SKIP_IRQ_RESET	= (1<<1),
 };
 
 

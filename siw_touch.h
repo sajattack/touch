@@ -965,7 +965,7 @@ struct siw_ts {
 	void *prd;
 
 	u32 flags;
-#define _IRQ_USE_WAKE				(1UL<<0)
+#define _IRQ_USE_WAKE				(1UL<<0)	/* unavailable */
 #define _IRQ_USE_SCHEDULE_WORK		(1UL<<1)
 
 #define _TOUCH_USE_MON_THREAD		(1UL<<8)
