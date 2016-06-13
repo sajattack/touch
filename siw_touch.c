@@ -343,7 +343,7 @@ static void siw_touch_resume(struct device *dev)
  */
 void siw_touch_suspend_call(struct device *dev)
 {
-#if !defined(CONFIG_HAS_EARLYSUSPEND) && !defined(__SIW_CONFIG_FB)
+#if !defined(__SIW_CONFIG_EARLYSUSPEND) && !defined(__SIW_CONFIG_FB)
 	siw_touch_suspend(dev);
 #endif
 }
@@ -355,12 +355,12 @@ void siw_touch_suspend_call(struct device *dev)
  */
 void siw_touch_resume_call(struct device *dev)
 {
-#if !defined(CONFIG_HAS_EARLYSUSPEND) && !defined(__SIW_CONFIG_FB)
+#if !defined(__SIW_CONFIG_EARLYSUSPEND) && !defined(__SIW_CONFIG_FB)
 	siw_touch_resume(dev);
 #endif
 }
 
-#if defined(CONFIG_HAS_EARLYSUSPEND)
+#if defined(__SIW_CONFIG_EARLYSUSPEND)
 /**
  * touch pm control using early pm
  *

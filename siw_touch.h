@@ -23,18 +23,22 @@
 #include <linux/string.h>
 #include <linux/of_gpio.h>
 #include <linux/platform_device.h>
-#if defined(CONFIG_HAS_EARLYSUSPEND)
-#include <linux/earlysuspend.h>
-#elif defined(__SIW_CONFIG_FB)
-#include <linux/fb.h>
-#endif
 #include <linux/notifier.h>
 #include <linux/atomic.h>
+#include <linux/input.h>
+#include <linux/input/mt.h>
+
+#if defined(__SIW_CONFIG_EARLYSUSPEND)
+#include <linux/earlysuspend.h>
+#endif
+
+#if defined(__SIW_CONFIG_FB)
+#include <linux/fb.h>
+#endif
+
 #if defined(CONFIG_ANDROID)
 #include <linux/wakelock.h>
 #endif
-#include <linux/input.h>
-#include <linux/input/mt.h>
 
 #include <linux/input/siw_touch_notify.h>
 
@@ -943,7 +947,7 @@ struct siw_ts {
 	struct notifier_block atomic_notif;
 	unsigned long notify_event;
 	int notify_data;
-#if defined(CONFIG_HAS_EARLYSUSPEND)
+#if defined(__SIW_CONFIG_EARLYSUSPEND)
 	struct early_suspend early_suspend;
 #endif
 #if defined(__SIW_CONFIG_FB)
