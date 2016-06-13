@@ -244,7 +244,7 @@ static ssize_t _store_lpwg_data(struct device *dev,
 	t_dev_info(dev, "uevent reply %d\n", reply);
 
 	atomic_set(&ts->state.uevent, UEVENT_IDLE);
-#if defined(CONFIG_ANDROID) && defined(__SIW_SUPPORT_WAKE_LOCK)
+#if defined(__SIW_SUPPORT_WAKE_LOCK)
 	wake_unlock(&ts->lpwg_wake_lock);
 #endif
 

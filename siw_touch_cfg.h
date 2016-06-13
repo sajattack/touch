@@ -30,7 +30,9 @@
 
 //#define __SIW_SUPPORT_DEBUG_OPTION
 
+#if defined(CONFIG_ANDROID)
 #define __SIW_SUPPORT_WAKE_LOCK
+#endif
 
 #if defined(CONFIG_OF)
 #define __SIW_CONFIG_OF
