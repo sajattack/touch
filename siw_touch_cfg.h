@@ -65,5 +65,9 @@ enum _SIW_CHIP_TYPE {
 #define mod_delayed_work	queue_delayed_work
 #endif
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 10, 0))
+#define subsys_system_register(_subsys, _group)	bus_register(_subsys)
+#endif
+
 #endif	/* __SIW_TOUCH_CFG_H */
 
