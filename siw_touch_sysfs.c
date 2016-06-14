@@ -174,12 +174,12 @@ static ssize_t _store_upgrade(struct device *dev,
 {
 	struct siw_ts *ts = to_touch_core(dev);
 
-	if (sscanf(buf, "%255s", &ts->test_fwpath[0]) <= 0) {
+	if (sscanf(buf, "%255s", ts->test_fwpath) <= 0) {
 		siw_sysfs_err_invalid_param(dev);
 		return count;
 	}
 
-	ts->force_fwup = 1;
+	ts->force_fwup |= FORCE_FWUP_SYS_STORE;
 
 	siw_touch_qd_upgrade_work_now(ts);
 
@@ -190,8 +190,8 @@ static ssize_t _show_upgrade(struct device *dev, char *buf)
 {
 	struct siw_ts *ts = to_touch_core(dev);
 
+	ts->force_fwup |= FORCE_FWUP_SYS_SHOW;
 	ts->test_fwpath[0] = '\0';
-	ts->force_fwup = 1;
 
 	siw_touch_qd_upgrade_work_now(ts);
 

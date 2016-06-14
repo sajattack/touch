@@ -690,7 +690,7 @@ static void siw_touch_upgrade_work_func(struct work_struct *work)
 	mutex_unlock(&ts->lock);
 
 	/* init force_upgrade */
-	ts->force_fwup = 0;
+	ts->force_fwup = FORCE_FWUP_CLEAR;
 	ts->test_fwpath[0] = '\0';
 
 	if (ret < 0) {

@@ -1641,7 +1641,7 @@ static int siw_hal_fw_compare(struct device *dev, u8 *fw_buf)
 	t_dev_dbg_base(dev, "pid %s\n", pid);
 
 	if (dev_major > bin_major) {
-		ts->force_fwup = 1;
+		ts->force_fwup |= FORCE_FWUP_ON;
 	}
 
 	if (ts->force_fwup) {
@@ -2176,12 +2176,88 @@ out:
 	return ret;
 }
 
+static int siw_hal_fw_read_firm(const struct firmware **fw_p,
+				const char *name,
+                struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	struct firmware *fw = NULL;
+	struct file *filp = NULL;
+	char *buf = NULL;
+	loff_t size;
+	int rd_size;
+	int ret = 0;
+
+	fw = kzalloc(sizeof(*fw), GFP_KERNEL);
+	if (fw == NULL) {
+		dev_err(dev, "can't allocate fw(struct firmware)\n");
+		return -ENOMEM;
+	}
+
+	filp = filp_open(name, O_RDONLY, 0);
+	if (IS_ERR(filp)) {
+		return (int)PTR_ERR(filp);
+	}
+
+	size = vfs_llseek(filp, 0, SEEK_END);
+	if (size < 0)	 {
+		t_dev_err(dev, "invalid file size, %d\n", (int)size);
+		ret = -EINVAL;
+		goto out;
+	}
+
+	buf = kzalloc((size_t)size, GFP_KERNEL);
+	if (buf == NULL) {
+		t_dev_err(dev, "can't allocate firm buf\n");
+		ret = -ENOMEM;
+		goto out;
+	}
+
+	rd_size = kernel_read(filp, 0,
+				(char *)buf,
+				(unsigned long)size);
+	if (rd_size != (int)size) {
+		t_dev_err(dev, "can't read[%d], %d\n",
+			(int)size, (int)rd_size);
+		ret = (rd_size < 0) ? rd_size : -EFAULT;
+		goto out;
+	}
+
+	fw->data = buf;
+	fw->size = size;
+	fw->priv = ts;		//for identification
+
+	if (fw_p) {
+		*fw_p = fw;
+	}
+
+	filp_close(filp, 0);
+
+	return 0;
+
+out:
+	if (buf)
+		kfree(buf);
+
+	if (fw)
+		kfree(fw);
+
+	filp_close(filp, 0);
+
+	return ret;
+}
+
+
 static int siw_hal_fw_get_from_kernel(struct device *dev, char *fwpath,
 			const struct firmware **fw_p)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
 	const struct firmware *fw = NULL;
+	char *src_path;
+	int src_len;
+	int abs_path = 0;
 	int ret = 0;
 
 	if (atomic_read(&ts->state.fb) >= FB_SUSPEND) {
@@ -2191,25 +2267,48 @@ static int siw_hal_fw_get_from_kernel(struct device *dev, char *fwpath,
 	}
 
 	if (ts->test_fwpath[0]) {
-		strncpy(fwpath, ts->test_fwpath, strlen(ts->test_fwpath));
-		t_dev_info(dev, "get fwpath from test_fwpath:%s\n",
-				&ts->test_fwpath[0]);
+		src_path = (char *)ts->test_fwpath;
 	} else if (ts->def_fwcnt) {
-		strncpy(fwpath, ts->def_fwpath[0], strlen(ts->def_fwpath[0]));
-		t_dev_info(dev, "get fwpath from def_fwpath : %s\n", fwpath);
+		src_path = (char *)ts->def_fwpath[0];
 	} else {
 		t_dev_err(dev, "no firmware file\n");
 		ret = -ENOENT;
 		goto out;
 	}
 
+	/*
+	 * Absolute path option
+	 * ex) echo {root}/.../target_fw_img > fw_upgrade
+	 *          ++++++~~~~~~~~~~~~~~~~~~
+	 *          flag  |
+	 *                absolute path
+	 */
+	src_len = strlen(src_path);
+	if (strncmp(src_path, "{root}", 6) == 0) {
+		abs_path = 1;
+		src_path += 6;
+		src_len -= 6;
+	}
+
+	strncpy(fwpath, src_path, src_len);
+	fwpath[src_len] = 0;
+
 	t_dev_info(dev, "fwpath[%s]\n", fwpath);
 
-	ret = request_firmware(&fw, fwpath, dev);
-	if (ret < 0) {
-		t_dev_err(dev, "failed to request_firmware fwpath: %s (ret:%d)\n",
-				fwpath, ret);
-		goto out;
+	if (abs_path) {
+		ret = siw_hal_fw_read_firm(&fw, fwpath, dev);
+		if (ret < 0) {
+			t_dev_err(dev, "failed to siw_hal_request_firm fwpath: %s (ret:%d)\n",
+					fwpath, ret);
+			goto out;
+		}
+	} else {
+		ret = request_firmware(&fw, fwpath, dev);
+		if (ret < 0) {
+			t_dev_err(dev, "failed to request_firmware fwpath: %s (ret:%d)\n",
+					fwpath, ret);
+			goto out;
+		}
 	}
 
 	if (fw_p) {
@@ -2220,6 +2319,41 @@ out:
 	return ret;
 }
 
+static void siw_hal_fw_release_firm(struct device *dev,
+			const struct firmware *fw)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+
+	if (fw->priv == (void *)ts) {
+		kfree(fw->data);
+		kfree(fw);
+		return;
+	}
+
+	release_firmware(fw);
+}
+/*
+ * FW upgrade option
+ *
+ * 1. If TOUCH_USE_FW_BINARY used
+ *  1-1 Default upgrade (through version comparison)
+ *      do upgarde using binary header link
+ *  1-2 echo {bin} > fw_upgrade
+ *      do force-upgrade using binary header link (same as 1-1)
+ *  1-3 echo /.../fw_img > fw_upgrade
+ *      do force-upgrade using request_firmware (relative path)
+ *  1-4 echo {root}/.../fw_img > fw_upgrade
+ *      do force-upgrade using normal file open control (absolute path)
+ *
+ * 2. Else
+ *  1-1 Default upgrade (through version comparison)
+ *      do upgarde using request_firmware (relative path)
+ *  1-2 echo /.../fw_img > fw_upgrade
+ *      do force-upgrade using request_firmware (relative path)
+ *  1-3 echo {root}/.../fw_img > fw_upgrade
+ *      do force-upgrade using normal file open control (absolute path)
+ */
 static int siw_hal_upgrade(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
@@ -2229,6 +2363,7 @@ static int siw_hal_upgrade(struct device *dev)
 	char *fwpath = NULL;
 	u8 *fw_buf = NULL;
 	int fw_size = 0;
+	int fw_up_binary = 0;
 	int ret = 0;
 	int ret_val = 0;
 	int i = 0;
@@ -2240,6 +2375,26 @@ static int siw_hal_upgrade(struct device *dev)
 	}
 
 	if (touch_flags(ts) & TOUCH_USE_FW_BINARY) {
+		fw_up_binary = 1;
+
+		if (ts->force_fwup & FORCE_FWUP_SYS_STORE) {
+			switch (ts->test_fwpath[0]) {
+			case 0:
+				/* fall through */
+			case ' ':	/* ignore space */
+				break;
+
+			default:
+				/* if target string is not "{bin}" */
+				if (strncmp(ts->test_fwpath, "{bin}", 5) != 0) {
+					fw_up_binary = 0;
+				}
+				break;
+			}
+		}
+	}
+
+	if (fw_up_binary) {
 		t_dev_info(dev, "getting fw from binary header data\n");
 		fw_bin = touch_fw_bin(ts);
 		if (fw_bin != NULL) {
@@ -2278,7 +2433,7 @@ static int siw_hal_upgrade(struct device *dev)
 	}
 
 	if (fw) {
-		release_firmware(fw);
+		siw_hal_fw_release_firm(dev, fw);
 	}
 
 out:
