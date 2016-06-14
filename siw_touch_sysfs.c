@@ -881,10 +881,9 @@ static ssize_t _store_dbg_flag(struct device *dev,
 				const char *buf, size_t count)
 {
 //	struct siw_ts *ts = to_touch_core(dev);
-	u32 flag = 0;
 	u32 old_value, new_value = 0;
 
-	if (sscanf(buf, "%d", &flag) <= 0) {
+	if (sscanf(buf, "%d", &new_value) <= 0) {
 		siw_sysfs_err_invalid_param(dev);
 		return count;
 	}
