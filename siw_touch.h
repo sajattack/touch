@@ -869,6 +869,7 @@ struct siw_ts {
 
 	int irq;
 	unsigned long irqflags;
+	unsigned long irqflags_curr;
 	irq_handler_t handler_fn;
 	irq_handler_t thread_fn;
 	struct delayed_work work_irq;

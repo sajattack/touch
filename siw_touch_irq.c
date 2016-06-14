@@ -268,6 +268,8 @@ int siw_touch_request_irq(struct siw_ts *ts,
 		goto out;
 	}
 
+	ts->irqflags_curr = flags;
+
 	if (irq_use_scheule_work) {
 		ret = siw_touch_request_irq_queue_work(ts,
 									handler, thread_fn,

@@ -896,6 +896,46 @@ static ssize_t _store_dbg_flag(struct device *dev,
 	return count;
 }
 
+static ssize_t _show_irq_flag(struct device *dev, char *buf)
+{
+	struct siw_ts *ts = to_touch_core(dev);
+	int size = 0;
+
+	size += siw_snprintf(buf, size,
+				"irq flag : %08Xh\n\n",
+				(u32)ts->irqflags_curr);
+
+	return (ssize_t)size;
+}
+
+
+static ssize_t _store_irq_flag(struct device *dev,
+				const char *buf, size_t count)
+{
+	struct siw_ts *ts = to_touch_core(dev);
+	u32 old_value, new_value = 0;
+
+	if (sscanf(buf, "%X", &new_value) <= 0) {
+		siw_sysfs_err_invalid_param(dev);
+		return count;
+	}
+
+	old_value = (u32)ts->irqflags_curr;
+
+	mutex_lock(&ts->lock);
+
+	irq_set_irq_type(ts->irq, new_value);
+	ts->irqflags_curr &= ~IRQ_TYPE_SENSE_MASK;
+	ts->irqflags_curr |= (new_value & IRQ_TYPE_SENSE_MASK);
+
+	mutex_unlock(&ts->lock);
+
+	t_dev_info(dev, "irq flag changed : %08Xh -> %08xh\n",
+		old_value, (int)ts->irqflags_curr);
+
+	return count;
+}
+
 static ssize_t _store_init_late(struct device *dev,
 				const char *buf, size_t count)
 {
@@ -985,9 +1025,14 @@ static SIW_TOUCH_ATTR(onhand,
 static SIW_TOUCH_ATTR(module_info,
 						_show_module_info, NULL);
 static SIW_TOUCH_ATTR(dbg_mask,
-						_show_dbg_mask, _store_dbg_mask);
+						_show_dbg_mask,
+						_store_dbg_mask);
 static SIW_TOUCH_ATTR(dbg_flag,
-						_show_dbg_flag, _store_dbg_flag);
+						_show_dbg_flag,
+						_store_dbg_flag);
+static SIW_TOUCH_ATTR(irq_flag,
+						_show_irq_flag,
+						_store_irq_flag);
 static SIW_TOUCH_ATTR(init_late, NULL,
 						_store_init_late);
 
@@ -1021,6 +1066,7 @@ static struct attribute *siw_touch_attribute_list[] = {
 	&_SIW_TOUCH_ATTR_T(module_info).attr,
 	&_SIW_TOUCH_ATTR_T(dbg_mask).attr,
 	&_SIW_TOUCH_ATTR_T(dbg_flag).attr,
+	&_SIW_TOUCH_ATTR_T(irq_flag).attr,
 	&_SIW_TOUCH_ATTR_T(init_late).attr,
 	NULL,
 };
