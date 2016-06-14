@@ -36,7 +36,7 @@
 #include <linux/fb.h>
 #endif
 
-#if defined(CONFIG_ANDROID)
+#if defined(__SIW_SUPPORT_WAKE_LOCK)
 #include <linux/wakelock.h>
 #endif
 
