@@ -1102,12 +1102,14 @@ struct siw_touch_attribute {
 			= __ATTR(_name, _attr, _show, _store)
 
 #if defined(__SIW_ATTR_PERMISSION_ALL)
-#define TOUCH_ATTR(_name, _show, _store)	\
-			__TOUCH_ATTR(_name, S_IRUGO | S_IWUGO, _show, _store)
+#define __TOUCH_DEFAULT_PERM	(S_IRUGO | S_IWUGO)
 #else
-#define TOUCH_ATTR(_name, _show, _store)	\
-			__TOUCH_ATTR(_name, S_IRUGO | S_IWUSR, _show, _store)
+#define __TOUCH_DEFAULT_PERM	(S_IRUGO | S_IWUSR)
 #endif
+
+#define TOUCH_ATTR(_name, _show, _store)	\
+			__TOUCH_ATTR(_name, __TOUCH_DEFAULT_PERM, _show, _store)
+
 
 static inline void touch_set_dev_data(struct siw_ts *ts, void *data)
 {

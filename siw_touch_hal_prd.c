@@ -3511,12 +3511,13 @@ static ssize_t prd_store_file_test(struct device *dev,
 
 
 #if defined(__SIW_ATTR_PERMISSION_ALL)
-#define SIW_TOUCH_HAL_PRD_ATTR(_name, _show, _store)	\
-		TOUCH_ATTR(_name, _show, _store)
+#define __TOUCH_PRD_PERM	(S_IRUGO | S_IWUGO)
 #else
-#define SIW_TOUCH_HAL_PRD_ATTR(_name, _show, _store)	\
-		__TOUCH_ATTR(_name, 0664, _show, _store)
+#define __TOUCH_PRD_PERM	(0664)
 #endif
+
+#define SIW_TOUCH_HAL_PRD_ATTR(_name, _show, _store)	\
+		__TOUCH_ATTR(_name, __TOUCH_PRD_PERM, _show, _store)
 
 #define _SIW_TOUCH_HAL_PRD_T(_name)	\
 		touch_attr_##_name
