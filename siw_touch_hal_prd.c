@@ -3510,8 +3510,13 @@ static ssize_t prd_store_file_test(struct device *dev,
 #endif	/* __PRD_FILE_RW_TEST */
 
 
+#if defined(__SIW_ATTR_PERMISSION_ALL)
+#define SIW_TOUCH_HAL_PRD_ATTR(_name, _show, _store)	\
+		TOUCH_ATTR(_name, _show, _store)
+#else
 #define SIW_TOUCH_HAL_PRD_ATTR(_name, _show, _store)	\
 		__TOUCH_ATTR(_name, 0664, _show, _store)
+#endif
 
 #define _SIW_TOUCH_HAL_PRD_T(_name)	\
 		touch_attr_##_name

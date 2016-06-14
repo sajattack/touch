@@ -2501,8 +2501,13 @@ void siw_hal_switch_to_abt_irq_handler(struct siw_ts *ts)
 	t_dev_info(ts->dev, "set new irq handler for ABT\n");
 }
 
+#if defined(__SIW_ATTR_PERMISSION_ALL)
+#define SIW_TOUCH_HAL_ABT_ATTR(_name, _show, _store)	\
+		TOUCH_ATTR(_name, _show, _store)
+#else
 #define SIW_TOUCH_HAL_ABT_ATTR(_name, _show, _store)	\
 		__TOUCH_ATTR(_name, 0660, _show, _store)
+#endif
 
 #define _SIW_TOUCH_HAL_ABT_T(_name)	\
 		touch_attr_##_name

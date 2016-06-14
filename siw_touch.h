@@ -1101,9 +1101,13 @@ struct siw_touch_attribute {
 			struct siw_touch_attribute touch_attr_##_name	\
 			= __ATTR(_name, _attr, _show, _store)
 
+#if defined(__SIW_ATTR_PERMISSION_ALL)
+#define TOUCH_ATTR(_name, _show, _store)	\
+			__TOUCH_ATTR(_name, S_IRUGO | S_IWUGO, _show, _store)
+#else
 #define TOUCH_ATTR(_name, _show, _store)	\
 			__TOUCH_ATTR(_name, S_IRUGO | S_IWUSR, _show, _store)
-
+#endif
 
 static inline void touch_set_dev_data(struct siw_ts *ts, void *data)
 {
