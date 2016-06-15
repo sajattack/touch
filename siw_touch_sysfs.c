@@ -947,10 +947,17 @@ static ssize_t _store_init_late(struct device *dev,
 		return count;
 	}
 
-	if (value == 0x55AA) {
-		siw_touch_init_late(ts);
+	if (value != 0x55AA) {
+		goto out;
 	}
 
+	if (touch_flags(ts) & TOUCH_USE_PROBE_INIT_LATE) {
+		siw_touch_init_late(ts);
+	} else {
+		t_dev_info(dev, "Nop...\n");
+	}
+
+out:
 	return count;
 }
 

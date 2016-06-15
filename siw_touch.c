@@ -1217,7 +1217,7 @@ out:
 
 static int siw_touch_do_normal_probe_init(struct siw_ts *ts)
 {
-	if (touch_test_quirks(ts, CHIP_QUIRK_NOT_SUPPORT_PROBE_INIT)) {
+	if (touch_flags(ts) & TOUCH_USE_PROBE_INIT_LATE) {
 		/*
 		 * Postpone actual init control
 		 * This is related to LCD_EVENT_TOUCH_INIT_LATE and
