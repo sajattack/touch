@@ -87,8 +87,8 @@ enum {
 };
 
 enum {
-	ACTIVE_SCREEN_CNT_X = 18,
-	ACTIVE_SCREEN_CNT_Y = 32,
+	ACTIVE_SCREEN_CNT_X = __PRD_COL_SIZE,
+	ACTIVE_SCREEN_CNT_Y = __PRD_ROW_SIZE,
 };
 
 enum {
