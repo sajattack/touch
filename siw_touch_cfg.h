@@ -42,9 +42,7 @@
 
 #if defined(CONFIG_HAS_EARLYSUSPEND)
 #define __SIW_CONFIG_EARLYSUSPEND
-#endif
-
-#if defined(CONFIG_FB)
+#elif defined(CONFIG_FB)
 #define __SIW_CONFIG_FB
 #endif
 
