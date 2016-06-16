@@ -1545,6 +1545,11 @@ int siw_touch_init_late(void *data)
 	struct device *dev = ts->dev;
 	int ret = 0;
 
+	if (!(touch_flags(ts) & TOUCH_USE_PROBE_INIT_LATE)) {
+		t_dev_info(dev, "Nop...\n");
+		goto out;
+	}
+
 	if (ts->init_late) {
 		ret = ts->init_late(ts);
 		if (ret < 0) {
@@ -1556,6 +1561,7 @@ int siw_touch_init_late(void *data)
 		ts->init_late = NULL;
 	}
 
+out:
 	return ret;
 }
 

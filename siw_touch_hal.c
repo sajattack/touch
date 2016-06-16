@@ -1192,6 +1192,13 @@ static int siw_hal_fb_notifier_callback(struct notifier_block *self,
 	return 0;
 }
 
+/*
+ * Change notifier to siw_hal_fb_notifier_callback
+ * instead of siw_touch_fb_notifier_callback and
+ * siw_touch_suspend/resume will be called via
+ * siw_touch_fb_work_func
+ * : siw_touch_notify -> siw_touch_qd_fb_work_now
+ */
 static int siw_hal_fb_notifier_init(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);

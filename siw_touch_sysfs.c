@@ -951,11 +951,7 @@ static ssize_t _store_init_late(struct device *dev,
 		goto out;
 	}
 
-	if (touch_flags(ts) & TOUCH_USE_PROBE_INIT_LATE) {
-		siw_touch_init_late(ts);
-	} else {
-		t_dev_info(dev, "Nop...\n");
-	}
+	siw_touch_init_late(ts);
 
 out:
 	return count;

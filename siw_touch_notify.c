@@ -195,6 +195,9 @@ static int _siw_touch_do_notify(struct siw_ts *ts,
 
 	case LCD_EVENT_TOUCH_INIT_LATE:
 		ret = siw_touch_init_late(ts);
+
+		call_hal_notify = 0;
+		noti_str = "INIT_LATE";
 		break;
 
 	default:
@@ -203,6 +206,8 @@ static int _siw_touch_do_notify(struct siw_ts *ts,
 	}
 
 	if (!call_hal_notify) {
+		t_dev_info(dev, "notify: event %s(%Xh), value %Xh\n",
+			noti_str, (int)event, value);
 		siwmon_submit_evt(dev, "NOTIFY", 0, noti_str, event, value, ret);
 	}
 
