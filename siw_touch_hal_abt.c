@@ -20,10 +20,10 @@
 #include <linux/moduleparam.h>
 #include <linux/kthread.h>
 #include <linux/sched.h>
-#include <linux/spi/spi.h>
-#include <linux/spi/spidev.h>
+
 /* */
 #include <linux/signal.h>
+#if defined(__SIW_CONFIG_NET)
 #include <linux/netdevice.h>
 #include <linux/ip.h>
 #include <linux/in.h>
@@ -32,6 +32,7 @@
 #include <linux/net.h>
 #include <net/sock.h>
 #include <net/tcp.h>
+#endif
 
 #include "siw_touch.h"
 #include "siw_touch_hal.h"
@@ -219,6 +220,7 @@ struct siw_hal_abt_comm {
 	int type;
 	int protocol;
 
+#if defined(__SIW_CONFIG_NET)
 	/*ABT Studio socket */
 	struct socket *sock;
 	struct sockaddr_in addr;
@@ -232,6 +234,7 @@ struct siw_hal_abt_comm {
 
 	struct socket *curr_sock;
 	struct sockaddr_in *curr_addr;
+#endif
 
 	abt_sock_listener_t	sock_listener;
 
@@ -501,7 +504,7 @@ static void __used siwmon_submit_ops_abt_sock(
 #define ABT_IP_PRT_PARAM(_addr)	\
 		((_addr)>>24)&0XFF, ((_addr)>>16)&0XFF, ((_addr)>>8)&0XFF, (_addr)&0XFF
 
-static int abt_sock_msg_chk_size(struct siw_hal_abt_data *abt,
+static int __used abt_sock_msg_chk_size(struct siw_hal_abt_data *abt,
 				int size, int boundary, char *name)
 {
 	if (size >= boundary) {
@@ -525,6 +528,7 @@ static int abt_sock_msg_chk_size(struct siw_hal_abt_data *abt,
 	return -1;
 }
 
+#if defined(__SIW_CONFIG_NET)
 static int abt_sock_recvmsg(struct siw_hal_abt_data *abt,
 					struct socket *sock,
 					struct sockaddr_in *addr_in,
@@ -804,8 +808,9 @@ static int __used __abt_sock_setsockopt(struct siw_hal_abt_data *abt,
 	return ret;
 }
 #endif
+#endif	/* __SIW_CONFIG_NET */
 
-static int abt_conn_is_invalid(struct siw_hal_abt_data *abt)
+static int __used abt_conn_is_invalid(struct siw_hal_abt_data *abt)
 {
 	int inval = !!(!abt->abt_conn_tool || (abt->abt_conn_tool >= ABT_CONN_MAX));
 	if (inval)
@@ -814,12 +819,12 @@ static int abt_conn_is_invalid(struct siw_hal_abt_data *abt)
 	return inval;
 }
 
-static int abt_is_set_func(struct siw_hal_abt_data *abt)
+static int __used abt_is_set_func(struct siw_hal_abt_data *abt)
 {
 	return abt->set_get_data_func;
 }
 
-static void abt_set_data_func(struct siw_hal_abt_data *abt, u8 mode)
+static void __used abt_set_data_func(struct siw_hal_abt_data *abt, u8 mode)
 {
 	abt->set_get_data_func = !!(mode);
 	t_abt_dbg_base(abt, "set_get_data_func = %d\n", mode);
@@ -1138,6 +1143,7 @@ static int abt_set_report_mode(struct siw_hal_abt_data *abt, u32 mode)
 	return ret;
 }
 
+#if defined(__SIW_CONFIG_NET)
 static int abt_ksocket_do_send(struct siw_hal_abt_data *abt,
 				struct socket *sock,
 				struct sockaddr_in *addr,
@@ -1889,6 +1895,32 @@ static int abt_ksocket_init(struct siw_hal_abt_data *abt,
 
 	return 0;
 }
+#else	/* __SIW_CONFIG_NET */
+static void abt_ksocket_exit(struct siw_hal_abt_data *abt)
+{
+
+}
+
+static int32_t abt_ksocket_raw_data_send(
+		struct siw_hal_abt_data *abt, uint8_t *buf, uint32_t len)
+{
+	return -EPERM;
+}
+
+static int abt_ksocket_recv_from_pctool(
+				void *data, uint8_t *buf, uint32_t len)
+{
+	return -EPERM;
+}
+
+static int abt_ksocket_init(struct siw_hal_abt_data *abt,
+			char *ip, int tool,
+			abt_sock_listener_t listener)
+{
+	t_abt_err(abt, "This system doesn't support network\n");
+	return -EPERM;
+}
+#endif	/* __SIW_CONFIG_NET */
 
 enum {
 	MODE_STR_IDX_RNORG		= (REPORT_RNORG - REPORT_RNORG),
@@ -2171,6 +2203,7 @@ static int abt_store_tool_exit_chk(struct siw_hal_abt_data *abt)
 	if (abt_comm->thread != NULL)
 		return 1;
 
+#if defined(__SIW_CONFIG_NET)
 	if (abt_comm->sock != NULL)
 		return 1;
 
@@ -2185,6 +2218,7 @@ static int abt_store_tool_exit_chk(struct siw_hal_abt_data *abt)
 
 	if (abt_comm->curr_sock != NULL)
 		return 1;
+#endif
 
 	return 0;
 }

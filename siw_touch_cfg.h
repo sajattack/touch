@@ -46,6 +46,10 @@
 #define __SIW_CONFIG_FB
 #endif
 
+#if defined(CONFIG_NET)
+#define __SIW_CONFIG_NET
+#endif
+
 #define __SIW_ATTR_PERMISSION_ALL
 
 #define SIW_TOUCH_NAME				"siw_touch"
