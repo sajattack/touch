@@ -4423,7 +4423,7 @@ static int siw_hal_notify(struct device *dev, ulong event, void *data)
 static int siw_hal_get_cmd_version(struct device *dev, char *buf)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
-//	struct siw_ts *ts = chip->ts;
+	struct siw_ts *ts = chip->ts;
 	struct siw_hal_reg *reg = chip->reg;
 	u32 rdata[4] = {0};
 	int offset = 0;
@@ -4437,34 +4437,42 @@ static int siw_hal_get_cmd_version(struct device *dev, char *buf)
 	}
 
 	offset += siw_snprintf(buf, offset,
-				"version    : v%d.%02d\n",
+				"chip : %s\n",
+				touch_chip_name(ts));
+
+	offset += siw_snprintf(buf, offset,
+				"version : v%d.%02d\n",
 				chip->fw.version[0], chip->fw.version[1]);
 
 	if (chip->fw.revision == 0xFF) {
 		offset += siw_snprintf(buf, offset,
-					"revision   : Flash Erased(0xFF)\n");
+					"revision : Flash Erased(0xFF)\n");
 	} else {
 		offset += siw_snprintf(buf, offset,
-					"revision   : %d\n", chip->fw.revision);
+					"revision : %d\n", chip->fw.revision);
 	}
 
 	offset += siw_snprintf(buf, offset,
 				"product id : [%s]\n", chip->fw.product_id);
 
-	ret = siw_hal_reg_read(dev,
-				reg->info_lot_num,
-				(void *)&rdata, sizeof(rdata));
-	offset += siw_snprintf(buf, offset, "lot    : %d\n", rdata[0]);
-	offset += siw_snprintf(buf, offset, "serial : 0x%X\n", rdata[1]);
+	switch (touch_chip_type(ts)) {
+	case CHIP_LG4946:
+		ret = siw_hal_reg_read(dev,
+					reg->info_lot_num,
+					(void *)&rdata, sizeof(rdata));
+		offset += siw_snprintf(buf, offset, "lot : %d\n", rdata[0]);
+		offset += siw_snprintf(buf, offset, "serial : 0x%X\n", rdata[1]);
 #if 0
-	offset += siw_snprintf(buf, offset, "date   : 0x%X 0x%X\n",
-					rdata[2], rdata[3]);
+		offset += siw_snprintf(buf, offset, "date : 0x%X 0x%X\n",
+						rdata[2], rdata[3]);
 #endif
-	offset += siw_snprintf(buf, offset, "date   : %04d.%02d.%02d " \
-					"%02d:%02d:%02d Site%d\n",
-					rdata[2] & 0xFFFF, (rdata[2] >> 16 & 0xFF), (rdata[2] >> 24 & 0xFF),
-					rdata[3] & 0xFF, (rdata[3] >> 8 & 0xFF), (rdata[3] >> 16 & 0xFF),
-					(rdata[3] >> 24 & 0xFF));
+		offset += siw_snprintf(buf, offset, "date : %04d.%02d.%02d " \
+						"%02d:%02d:%02d Site%d\n",
+						rdata[2] & 0xFFFF, (rdata[2] >> 16 & 0xFF), (rdata[2] >> 24 & 0xFF),
+						rdata[3] & 0xFF, (rdata[3] >> 8 & 0xFF), (rdata[3] >> 16 & 0xFF),
+						(rdata[3] >> 24 & 0xFF));
+		break;
+	}
 
 	return offset;
 }
