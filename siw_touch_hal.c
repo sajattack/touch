@@ -2183,7 +2183,7 @@ out:
 	return ret;
 }
 
-static int siw_hal_fw_read_firm(const struct firmware **fw_p,
+static int siw_hal_fw_do_get_fw_abs(const struct firmware **fw_p,
 				const char *name,
                 struct device *dev)
 {
@@ -2255,9 +2255,21 @@ out:
 	return ret;
 }
 
+static int siw_hal_fw_do_get_file(const struct firmware **fw_p,
+				const char *name,
+                struct device *dev,
+                int abs_path)
+{
+	if (abs_path) {
+		return siw_hal_fw_do_get_fw_abs(fw_p, name, dev);
+	}
 
-static int siw_hal_fw_get_from_kernel(struct device *dev, char *fwpath,
-			const struct firmware **fw_p)
+	return request_firmware(fw_p, name, dev);
+}
+
+static int siw_hal_fw_get_file(const struct firmware **fw_p,
+				char *fwpath,
+				struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
@@ -2278,7 +2290,7 @@ static int siw_hal_fw_get_from_kernel(struct device *dev, char *fwpath,
 	} else if (ts->def_fwcnt) {
 		src_path = (char *)ts->def_fwpath[0];
 	} else {
-		t_dev_err(dev, "no firmware file\n");
+		t_dev_err(dev, "no target fw defined\n");
 		ret = -ENOENT;
 		goto out;
 	}
@@ -2300,22 +2312,22 @@ static int siw_hal_fw_get_from_kernel(struct device *dev, char *fwpath,
 	strncpy(fwpath, src_path, src_len);
 	fwpath[src_len] = 0;
 
-	t_dev_info(dev, "fwpath[%s]\n", fwpath);
+	t_dev_info(dev, "target fw: %s (%s)\n",
+		fwpath,
+		(abs_path) ? "abs" : "rel");
 
-	if (abs_path) {
-		ret = siw_hal_fw_read_firm(&fw, fwpath, dev);
-		if (ret < 0) {
-			t_dev_err(dev, "failed to siw_hal_request_firm fwpath: %s (ret:%d)\n",
-					fwpath, ret);
-			goto out;
+	ret = siw_hal_fw_do_get_file(&fw,
+				(const char *)fwpath,
+				dev, abs_path);
+	if (ret < 0) {
+		if (ret == -ENOENT) {
+			t_dev_err(dev, "can't find fw: %s\n", fwpath);
+		} else {
+			t_dev_err(dev, "can't %s fw: %s, %d\n",
+				(abs_path) ? "read" : "request",
+				fwpath, ret);
 		}
-	} else {
-		ret = request_firmware(&fw, fwpath, dev);
-		if (ret < 0) {
-			t_dev_err(dev, "failed to request_firmware fwpath: %s (ret:%d)\n",
-					fwpath, ret);
-			goto out;
-		}
+		goto out;
 	}
 
 	if (fw_p) {
@@ -2411,8 +2423,8 @@ static int siw_hal_upgrade(struct device *dev)
 			t_dev_warn(dev, "empty fw info\n");
 		}
 	} else {
-		t_dev_info(dev, "getting fw from request_firmware\n");
-		ret = siw_hal_fw_get_from_kernel(dev, fwpath, &fw);
+		t_dev_info(dev, "getting fw from file\n");
+		ret = siw_hal_fw_get_file(&fw, fwpath, dev);
 		if (ret < 0) {
 			goto out;
 		}
