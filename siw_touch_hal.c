@@ -66,13 +66,25 @@ extern int siw_hal_abt_init(struct device *dev);
 extern int siw_hal_abt_sysfs(struct device *dev, int on_off);
 #else
 static int siw_hal_abt_init(struct device *dev){ return 0; }
-static int siw_hal_abt_sysfs(struct device *dev, int on_off){ return 0; }
+static int siw_hal_abt_sysfs(struct device *dev, int on_off)
+{
+	if (on_off)
+		t_dev_info(dev, "ABT disabled\n");
+
+	return 0;
+}
 #endif	/* __SIW_SUPPORT_ABT */
 
 #if defined(__SIW_SUPPORT_PRD)	//See siw_touch_cfg.h
 extern int siw_hal_prd_sysfs(struct device *dev, int on_off);
 #else
-static int siw_hal_prd_sysfs(struct device *dev, int on_off){ return 0; }
+static int siw_hal_prd_sysfs(struct device *dev, int on_off)
+{
+	if (on_off)
+		t_dev_info(dev, "PRD disabled\n");
+
+	return 0;
+}
 #endif	/* __SIW_SUPPORT_PRD */
 
 #if defined(__SIW_SUPPORT_WATCH)	//See siw_touch_cfg.h
@@ -88,7 +100,15 @@ extern void siw_hal_watch_set_rtc_clear(struct device *dev);
 extern void siw_hal_watch_set_font_empty(struct device *dev);
 extern void siw_hal_watch_set_cfg_blocked(struct device *dev);
 #else	/* __SIW_SUPPORT_WATCH */
-static int __used siw_hal_watch_sysfs(struct device *dev, int on_off){ return 0; }
+static int __used siw_hal_watch_sysfs(struct device *dev, int on_off)
+{
+#if defined(CONFIG_TOUCHSCREEN_SIW_LG4895) || defined(CONFIG_TOUCHSCREEN_SIW_LG4946)
+	if (on_off)
+		t_dev_warn(dev, "WATCH disabled\n");
+#endif
+
+	return 0;
+}
 static int __used siw_hal_watch_init(struct device *dev){ return 0; }
 static int __used siw_hal_watch_chk_font_status(struct device *dev){ return 0; }
 static int __used siw_hal_watch_get_curr_time(struct device *dev, char *buf, int *len){ return 0; }

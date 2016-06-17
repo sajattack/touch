@@ -1917,7 +1917,7 @@ static int abt_ksocket_init(struct siw_hal_abt_data *abt,
 			char *ip, int tool,
 			abt_sock_listener_t listener)
 {
-	t_abt_err(abt, "This system doesn't support network\n");
+	t_abt_warn(abt, "Network operation disabled\n");
 	return -EPERM;
 }
 #endif	/* __SIW_CONFIG_NET */
@@ -2683,6 +2683,10 @@ static int siw_hal_abt_create_sysfs(struct device *dev)
 
 	t_dev_dbg_base(dev, "%s abt sysfs registered\n",
 			touch_chip_name(ts));
+
+#if !defined(__SIW_CONFIG_NET)
+	t_abt_warn(abt, "Network operation disabled\n");
+#endif
 
 	return 0;
 
