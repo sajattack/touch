@@ -71,8 +71,6 @@
 #define DEF_RNDCPY_EVERY_NTH_FRAME		(4)
 #define PACKET_SIZE						128
 
-#define DBG_BUF_OFFSET					(0x3800)
-
 enum {
 	HEAD_LOAD = 10,
 	/* */
@@ -342,6 +340,7 @@ struct siw_hal_abt_data {
 
 	u32 prev_rnd_piece_no;
 	u32	dbg_offset;
+	u32 dbg_offset_base;
 	u32 ocd_pieces_cnt;
 	int ocd_piece_size;
 
@@ -979,7 +978,7 @@ static void abt_onchip_debug_on_mode(struct siw_hal_abt_data *abt, u8 *data)
 		abt->ocd_piece_size -= 1;
 
 	if (abt->ocd_pieces_cnt == 0)
-		abt->dbg_offset	= DBG_BUF_OFFSET>>2;
+		abt->dbg_offset	= abt->dbg_offset_base;
 
 	node = abt->ocd_pieces_cnt * abt->ocd_piece_size;
 
@@ -2033,8 +2032,15 @@ static ssize_t abt_store_app(struct device *dev,
 	/*
 	 * up to APP I/F
 	 */
+#if 1
+	if (sscanf(buf, "%d", &mode) <= 0) {
+		siw_abt_sysfs_err_invalid_param(abt);
+		return count;
+	}
+#else
 	mode = buf[0];
 //	mode = count;
+#endif
 
 	if (mode == HEAD_LOAD) {
 		abt->abt_head_flag = 1;
@@ -2046,7 +2052,7 @@ static ssize_t abt_store_app(struct device *dev,
 	abt->abt_show_mode = mode;
 	abt->abt_head_flag = 0;
 
-	switch (abt->abt_show_mode) {
+	switch (mode) {
 	case REPORT_RNORG:
 		/* fall through */
 	case REPORT_RAW:
@@ -2058,8 +2064,8 @@ static ssize_t abt_store_app(struct device *dev,
 	case REPORT_SEG2:
 		/* fall through */
 	case REPORT_DEBUG_ONLY:
-		t_abt_info(abt, "show mode : %s\n",
-			abt_show_mode_str[abt->abt_show_mode - REPORT_RNORG]);
+		t_abt_info(abt, "show mode : %s (%d)\n",
+			abt_show_mode_str[mode - REPORT_RNORG], mode);
 		break;
 	case REPORT_OFF:
 		t_abt_info(abt, "show mode : OFF\n");
@@ -2069,7 +2075,7 @@ static ssize_t abt_store_app(struct device *dev,
 		break;
 	}
 
-	return (ssize_t)abt->abt_show_mode;
+	return (ssize_t)mode;
 }
 
 enum {
@@ -2355,7 +2361,7 @@ static void __used siw_hal_abt_report_mode(struct device *dev, u8 *all_data)
 	d_header_size = sizeof(struct siw_abt_dbg_report_hdr);
 	t_info = (struct siw_hal_touch_info *)all_data;
 	rst_offset_val = 1;
-	dbg_offset = DBG_BUF_OFFSET>>2;
+	dbg_offset = abt->dbg_offset_base;
 	d_data_ptr = (u8 *)d_header + d_header_size;
 
 	if (abt->abt_report_mode) {
@@ -2605,12 +2611,22 @@ static struct siw_hal_abt_data *siw_hal_abt_alloc(struct device *dev)
 	abt->abt_socket_mutex_flag = 1;
 
 	abt->prev_rnd_piece_no = DEF_RNDCPY_EVERY_NTH_FRAME;
-	abt->dbg_offset = DBG_BUF_OFFSET>>2;
 
 	abt->abt_conn_tool = ABT_CONN_NOTHING;
 
 	abt->abt_ocd_off = 1;
 	abt->set_get_data_func = 0;
+
+	switch (touch_chip_type(ts)) {
+	case CHIP_LG4894:
+		abt->dbg_offset_base = 0x2A98;
+		break;
+	default:
+		abt->dbg_offset_base = 0x3800;
+		break;
+	}
+	abt->dbg_offset_base >>= 2;
+	abt->dbg_offset = abt->dbg_offset_base;
 
 	ts->abt = abt;
 
