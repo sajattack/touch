@@ -2621,6 +2621,9 @@ static struct siw_hal_abt_data *siw_hal_abt_alloc(struct device *dev)
 	case CHIP_LG4894:
 		abt->dbg_offset_base = 0x2A98;
 		break;
+	case CHIP_LG4895:
+		abt->dbg_offset_base = 0x2E10;
+		break;
 	default:
 		abt->dbg_offset_base = 0x3800;
 		break;
