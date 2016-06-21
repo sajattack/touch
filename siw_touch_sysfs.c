@@ -1011,6 +1011,9 @@ static SIW_TOUCH_ATTR(irq_state,
 static SIW_TOUCH_ATTR(debug_tool,
 						_show_debug_tool_state,
 						_store_debug_tool_state);
+static SIW_TOUCH_ATTR(debug_tool_t,
+						_show_debug_tool_state,
+						_store_debug_tool_state);
 static SIW_TOUCH_ATTR(debug_option,
 						_show_debug_option_state,
 						_store_debug_option_state);
@@ -1060,6 +1063,7 @@ static struct attribute *siw_touch_attribute_list[] = {
 	&_SIW_TOUCH_ATTR_T(sp_link_touch_off).attr,
 	&_SIW_TOUCH_ATTR_T(irq_state).attr,
 	&_SIW_TOUCH_ATTR_T(debug_tool).attr,
+	&_SIW_TOUCH_ATTR_T(debug_tool_t).attr,
 	&_SIW_TOUCH_ATTR_T(debug_option).attr,
 #if defined(__SIW_SUPPORT_ASC)
 	&_SIW_TOUCH_ATTR_T(incoming_call).attr,
