@@ -77,6 +77,61 @@ enum {
 	LINE_FILTER_OPTION	= (0x40000),
 };
 
+#if defined(CONFIG_TOUCHSCREEN_SIW_SW1828)
+#define __PRD_TYPE_S1
+#elif defined(CONFIG_TOUCHSCREEN_SIW_LG4946)
+#define __PRD_TYPE_L2
+#elif defined(CONFIG_TOUCHSCREEN_SIW_LG4895)
+#define __PRD_TYPE_L2
+#elif defined(CONFIG_TOUCHSCREEN_SIW_LG4894)
+#define __PRD_TYPE_L1
+#endif
+
+#if defined(__PRD_TYPE_S1)
+#define __M1_RAWDATA_TEST_CNT	1
+#define __M2_RAWDATA_TEST_CNT	1
+#define __PRD_ROW_SIZE			32
+#define __PRD_COL_SIZE			20
+#define __PRD_COL_ADD			0
+#define __TC_TOTAL_CH_SIZE		32
+enum {
+	__DELTA_DATA_OFFSET			= 0xD95,
+	__LABLE_DATA_OFFSET			= 0xE83,
+	__AIT_RAW_DATA_OFFSET		= 0xA8C,
+	__AIT_BASE_DATA_ODD_OFFSET	= 0xC0F,
+};
+#elif defined(__PRD_TYPE_L2)
+#define __M1_RAWDATA_TEST_CNT	1
+#define __M2_RAWDATA_TEST_CNT	1
+#define __PRD_ROW_SIZE			32
+#define __PRD_COL_SIZE			18
+#define __PRD_COL_ADD			0
+#define __TC_TOTAL_CH_SIZE		34
+enum {
+	__DELTA_DATA_OFFSET			= 0xF80,
+	__LABLE_DATA_OFFSET			= 0x10E8,
+	__AIT_RAW_DATA_OFFSET		= 0xD1C,
+	__AIT_BASE_DATA_ODD_OFFSET	= 0xE4E,
+};
+#elif defined(__PRD_TYPE_L1)
+#define __M1_RAWDATA_TEST_CNT	2
+#define __M2_RAWDATA_TEST_CNT	2
+#define __PRD_ROW_SIZE			26
+#define __PRD_COL_SIZE			15
+#define __PRD_COL_ADD			1
+#define __TC_TOTAL_CH_SIZE		32
+enum {
+	__DELTA_DATA_OFFSET			= 0xD95,
+	__LABLE_DATA_OFFSET			= 0xE83,
+	__AIT_RAW_DATA_OFFSET		= 0xA8C,
+	__AIT_BASE_DATA_ODD_OFFSET	= 0xC0F,
+};
+#else
+	#error Wrong PRD row and col size! check again!
+#define __PRD_ROW_SIZE		-1
+#define __PRD_COL_SIZE		1
+#endif
+
 /*
  * define M1_M2_RAWDATA_TEST_CNT
  * if you have odd/even frame setting num 2
@@ -155,6 +210,8 @@ enum {
 struct siw_hal_prd_data {
 	struct device *dev;
 	char name[PRD_DATA_NAME_SZ];
+	/* */
+	int prd_app_mode;
 	/* */
 	char log_buf[PRD_LOG_BUF_SIZE];
 	char line[PRD_LINE_NUM];
@@ -3451,6 +3508,102 @@ static ssize_t prd_store_file_test(struct device *dev,
 }
 #endif	/* __PRD_FILE_RW_TEST */
 
+enum {
+	REPORT_OFF = 0,
+	REPORT_RAW,
+	REPORT_BASE,
+	REPORT_LABEL,
+	REPORT_DELTA,
+	REPORT_MAX,
+};
+
+static const char *prd_app_mode_str[] = {
+	[REPORT_OFF]		= "OFF",
+	[REPORT_RAW]		= "RAW",
+	[REPORT_BASE]		= "BASE",
+	[REPORT_LABEL]		= "LABEL",
+	[REPORT_DELTA]		= "DELTA",
+};
+
+static ssize_t prd_show_app(struct device *dev, char *buf)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	struct siw_hal_prd_data *prd = (struct siw_hal_prd_data *)ts->prd;
+	int prd_app_mode = prd->prd_app_mode;
+	int size = 0;
+
+	t_prd_dbg_base(prd, "mode %d\n", prd_app_mode);
+
+	switch (prd_app_mode) {
+	case REPORT_RAW:
+		/* To Do
+		 * Copy raw data to buf and return size;
+		 */
+		break;
+	case REPORT_BASE:
+		/* To Do
+		 * Copy base data to buf and return size;
+		 */
+		break;
+	case REPORT_LABEL:
+		/* To Do
+		 * Copy label data to buf and return size;
+		 */
+		break;
+	case REPORT_DELTA:
+		/* To Do
+		 * Copy delta data to buf and return size;
+		 */
+		break;
+	default:
+		size = 0;
+		break;
+	}
+
+	if (touch_test_abt_quirks(ts, ABT_QUIRK_RAW_RETURN_MODE_VAL)) {
+		return (ssize_t)prd_app_mode;
+	}
+
+	return (ssize_t)size;
+}
+
+static ssize_t prd_store_app(struct device *dev,
+				const char *buf, size_t count)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	struct siw_hal_prd_data *prd = (struct siw_hal_prd_data *)ts->prd;
+	u32 mode = 0;
+
+	if (atomic_read(&ts->state.debug_tool) != DEBUG_TOOL_ENABLE){
+		return count;
+	}
+
+	/*
+	 * up to APP I/F
+	 */
+#if 1
+	if (sscanf(buf, "%d", &mode) <= 0) {
+		siw_prd_sysfs_err_invalid_param(prd);
+		return count;
+	}
+#else
+	mode = buf[0];
+//	mode = count;
+#endif
+
+	if (mode < REPORT_MAX) {
+		prd->prd_app_mode = mode;
+		t_prd_info(prd, "app mode : %s (%d)\n",
+			prd_app_mode_str[mode], mode);
+	} else {
+		t_prd_info(prd, "app mode : unknown, %d\n", mode);
+	}
+
+	return (ssize_t)mode;
+}
+
 
 #if defined(__SIW_ATTR_PERMISSION_ALL)
 #define __TOUCH_PRD_PERM	(S_IRUGO | S_IWUGO)
@@ -3473,6 +3626,7 @@ static SIW_TOUCH_HAL_PRD_ATTR(rawdata_ait, prd_show_rawdata_ait, NULL);
 static SIW_TOUCH_HAL_PRD_ATTR(base, prd_show_basedata, NULL);
 static SIW_TOUCH_HAL_PRD_ATTR(lpwg_sd, prd_show_lpwg_sd, NULL);
 static SIW_TOUCH_HAL_PRD_ATTR(file_test, prd_show_file_test, prd_store_file_test);
+static SIW_TOUCH_HAL_PRD_ATTR(prd_app, prd_show_app, prd_store_app);
 
 static struct attribute *siw_hal_prd_attribute_list[] = {
 	&_SIW_TOUCH_HAL_PRD_T(sd).attr,
@@ -3484,6 +3638,7 @@ static struct attribute *siw_hal_prd_attribute_list[] = {
 	&_SIW_TOUCH_HAL_PRD_T(base).attr,
 	&_SIW_TOUCH_HAL_PRD_T(lpwg_sd).attr,
 	&_SIW_TOUCH_HAL_PRD_T(file_test).attr,
+	&_SIW_TOUCH_HAL_PRD_T(prd_app).attr,
 	NULL,
 };
 

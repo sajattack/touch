@@ -72,25 +72,6 @@
 #define PACKET_SIZE						128
 
 enum {
-	HEAD_LOAD = 10,
-	/* */
-	REPORT_RNORG = 11,
-	REPORT_RAW,
-	REPORT_BASELINE,
-	REPORT_SEG1,
-	REPORT_SEG2,
-	REPORT_GLASS,
-	REPORT_DEBUG_ONLY,
-	/* */
-	REPORT_OFF = 20,
-};
-
-enum {
-	ACTIVE_SCREEN_CNT_X = __PRD_COL_SIZE,
-	ACTIVE_SCREEN_CNT_Y = __PRD_ROW_SIZE,
-};
-
-enum {
 	DEFAULT_PORT = 8095,
 	TS_TCP_PORT = 8097,
 	SEND_PORT = 8090,
@@ -351,17 +332,6 @@ struct siw_hal_abt_data {
 	int abt_report_mode_onoff;
 	int abt_conn_tool;
 
-	/*sysfs*/
-	u16 abt_ocd[2][ACTIVE_SCREEN_CNT_X * ACTIVE_SCREEN_CNT_Y];
-	u8 abt_ocd_read;
-	u8 abt_report_p[256];
-	char abt_head[128];
-	int abt_show_mode;
-	int abt_ocd_on;
-	u32 abt_compress_flag;
-	int abt_head_flag;
-
-	int abt_ocd_off;
 	int set_get_data_func;
 
 	int client_connected;
@@ -922,197 +892,6 @@ out:
 	}
 
 	return ret;
-}
-
-static int abt_is_debug_mode(int mode)
-{
-	return !!((mode >= REPORT_RNORG) && (mode <= REPORT_DEBUG_ONLY));
-}
-
-static void abt_onchip_debug_off(struct siw_hal_abt_data *abt)
-{
-	struct device *dev = abt->dev;
-	struct siw_touch_chip *chip = to_touch_chip(dev);
-//	struct siw_ts *ts = chip->ts;
-	struct siw_hal_reg *reg = chip->reg;
-	u32 wdata = 0;
-	int ret = 0;
-
-	if (abt->abt_ocd_off) {
-		ret = siw_hal_write_value(dev,
-					reg->cmd_abt_ocd_on_write,
-					wdata);
-
-		ret = siw_hal_read_value(dev,
-					reg->cmd_abt_ocd_on_read,
-					&wdata);
-		t_abt_info(abt, "onchipdebug off: wdata=0x%08X\n", wdata);
-		abt->abt_ocd_off = 0;
-	}
-}
-
-static void abt_onchip_debug_on_mode(struct siw_hal_abt_data *abt, u8 *data)
-{
-	struct device *dev = abt->dev;
-	struct siw_touch_chip *chip = to_touch_chip(dev);
-//	struct siw_ts *ts = chip->ts;
-	struct siw_hal_reg *reg = chip->reg;
-	int node;
-	u8 *buf;
-	u32 i, j;
-	u32 rst_offset_val = 1;
-	int ret = 0;
-
-	if (abt->abt_show_mode >= REPORT_DEBUG_ONLY) {
-		return;
-	}
-
-	if (!abt->ocd_pieces_cnt &&
-		(abt->ocd_pieces_cnt != abt->prev_rnd_piece_no))
-		abt->abt_ocd_read ^= 1;
-
-	abt->ocd_piece_size = ACTIVE_SCREEN_CNT_X * ACTIVE_SCREEN_CNT_Y;
-	abt->ocd_piece_size /= DEF_RNDCPY_EVERY_NTH_FRAME;
-
-	if (abt->ocd_piece_size % 2)
-		abt->ocd_piece_size -= 1;
-
-	if (abt->ocd_pieces_cnt == 0)
-		abt->dbg_offset	= abt->dbg_offset_base;
-
-	node = abt->ocd_pieces_cnt * abt->ocd_piece_size;
-
-	if (abt->ocd_pieces_cnt != abt->prev_rnd_piece_no) {
-		if (abt->ocd_pieces_cnt != DEF_RNDCPY_EVERY_NTH_FRAME - 1) {
-			int ocd_piece_size = (abt->ocd_piece_size<<1)>>MAX_RW_SIZE_POW;
-			int remain_size = (abt->ocd_piece_size<<1) % MAX_RW_SIZE;
-
-			buf = (u8 *)&abt->abt_ocd[abt->abt_ocd_read][node];
-			for (j = 0; j < ocd_piece_size; j++) {
-				ret = abt_read_memory(abt,
-						reg->data_i2cbase_addr,
-						reg->serial_data_offset,
-						abt->dbg_offset,
-						sizeof(u32),
-						buf,
-						sizeof(u8)<<MAX_RW_SIZE_POW);
-				if (ret < 0) {
-					t_abt_err(abt,
-						"RNdata reg addr read failed(%d, %d), %d\n",
-						abt->dbg_offset,
-						sizeof(u32),
-						ret);
-				}
-				buf += (sizeof(u8)<<MAX_RW_SIZE_POW);
-				abt->dbg_offset += (sizeof(u8)<<MAX_RW_SIZE_POW)>>2;
-			}
-			if (remain_size != 0) {
-				ret = abt_read_memory(abt,
-						reg->data_i2cbase_addr,
-						reg->serial_data_offset,
-						abt->dbg_offset,
-						sizeof(u32),
-						buf,
-						sizeof(u8)*remain_size);
-				if (ret < 0) {
-					t_abt_err(abt,
-						"RNdata reg addr read failed(%d, %d), %d\n",
-						abt->dbg_offset,
-						sizeof(u32),
-						ret);
-				}
-				buf += (sizeof(u8)*((abt->ocd_piece_size<<1)
-					%MAX_RW_SIZE));
-				abt->dbg_offset += (sizeof(u8)*((abt->ocd_piece_size<<1)
-					%MAX_RW_SIZE)>>2);
-			}
-		} else {
-			i = ACTIVE_SCREEN_CNT_X * ACTIVE_SCREEN_CNT_Y;
-			i -= abt->ocd_piece_size * (DEF_RNDCPY_EVERY_NTH_FRAME - 1);
-			buf = (u8 *)&abt->abt_ocd[abt->abt_ocd_read][node];
-
-			for (j = 0; j < (i<<1)>>MAX_RW_SIZE_POW; j++) {
-				ret = abt_read_memory(abt,
-						reg->data_i2cbase_addr,
-						reg->serial_data_offset,
-						abt->dbg_offset,
-						sizeof(u32),
-						buf,
-						sizeof(u8)<<MAX_RW_SIZE_POW);
-				if (ret < 0)
-					t_abt_err(abt, "RNdata reg addr write failed(%d, %d), %d\n",
-						abt->dbg_offset,
-						sizeof(u32),
-						ret);
-				buf += (sizeof(u8)<<MAX_RW_SIZE_POW);
-				abt->dbg_offset += (sizeof(u8)<<MAX_RW_SIZE_POW)>>2;
-			}
-			if ((i<<1) % MAX_RW_SIZE != 0) {
-				ret = abt_read_memory(abt,
-						reg->data_i2cbase_addr,
-						reg->serial_data_offset,
-						abt->dbg_offset,
-						sizeof(u32),
-						buf,
-						sizeof(u8)*((i<<1)%MAX_RW_SIZE));
-				if (ret < 0) {
-					t_abt_err(abt,
-						"RNdata reg addr read failed(%d, %d), %d\n",
-						abt->dbg_offset,
-						sizeof(u32),
-						ret);
-				}
-				buf += (sizeof(u8)*
-					((i<<1)%MAX_RW_SIZE));
-				abt->dbg_offset += (sizeof(u8)*
-					((i<<1)%MAX_RW_SIZE)>>2);
-			}
-			memcpy(abt->abt_report_p, data, (sizeof(u8) * 34)<<2);
-			memcpy(&abt->abt_report_p[34<<2], &data[34<<2],
-				sizeof(u8) * 112);
-			ret = siw_hal_reg_write(dev,
-						reg->tc_interrupt_status,
-						(void *)&rst_offset_val, sizeof(rst_offset_val));
-		}
-	}
-	abt->prev_rnd_piece_no = abt->ocd_pieces_cnt;
-	if (abt->ocd_pieces_cnt >= DEF_RNDCPY_EVERY_NTH_FRAME - 1)
-		abt->ocd_pieces_cnt = 0;
-	else
-		abt->ocd_pieces_cnt++;
-}
-
-static void abt_onchip_debug_on(struct siw_hal_abt_data *abt, u8 *data)
-{
-	struct device *dev = abt->dev;
-	struct siw_touch_chip *chip = to_touch_chip(dev);
-//	struct siw_ts *ts = chip->ts;
-	struct siw_hal_reg *reg = chip->reg;
-//	struct siw_hal_abt_report_p local_report_p;
-	u32 wdata;
-	int ret = 0;
-
-	abt->abt_ocd_off = 1;
-
-//	memcpy(&local_report_p, all_data, sizeof(local_report_p));
-
-	/* Write onchipdebug on */
-	if (abt->abt_ocd_on) {
-		wdata = abt->abt_show_mode;
-		t_abt_info(abt, "onchipdebug on(before write): wdata=0x%08X\n", wdata);
-		ret = siw_hal_write_value(dev,
-					reg->cmd_abt_ocd_on_write,
-					wdata);
-
-		ret = siw_hal_read_value(dev,
-					reg->cmd_abt_ocd_on_read,
-					&wdata);
-		t_abt_info(abt, "onchipdebug on(after write): wdata=0x%08X\n", wdata);
-		abt->abt_ocd_on = 0;
-		return;
-	}
-
-	abt_onchip_debug_on_mode(abt, data);
 }
 
 static int abt_set_report_mode(struct siw_hal_abt_data *abt, u32 mode)
@@ -1922,163 +1701,6 @@ static int abt_ksocket_init(struct siw_hal_abt_data *abt,
 #endif	/* __SIW_CONFIG_NET */
 
 enum {
-	MODE_STR_IDX_RNORG		= (REPORT_RNORG - REPORT_RNORG),
-	MODE_STR_IDX_RAW		= (REPORT_RAW - REPORT_RNORG),
-	MODE_STR_IDX_BASELINE	= (REPORT_BASELINE - REPORT_RNORG),
-	MODE_STR_IDX_SEG1		= (REPORT_SEG1 - REPORT_RNORG),
-	MODE_STR_IDX_SEG2		= (REPORT_SEG2 - REPORT_RNORG),
-	MODE_STR_IDX_GLASS		= (REPORT_GLASS - REPORT_RNORG),
-	MODE_STR_IDX_DBG_ONLY	= (REPORT_DEBUG_ONLY - REPORT_RNORG),
-};
-
-static const char *abt_show_mode_str[] = {
-	[MODE_STR_IDX_RNORG]		= "RNORG",
-	[MODE_STR_IDX_RAW]			= "RAW",
-	[MODE_STR_IDX_BASELINE]		= "BASELINE",
-	[MODE_STR_IDX_SEG1]			= "SEG1",
-	[MODE_STR_IDX_SEG2]			= "SEG2",
-	[MODE_STR_IDX_GLASS]		= "GLASS",		/* not used */
-	[MODE_STR_IDX_DBG_ONLY]		= "DEBUG_ONLY",
-};
-
-static ssize_t abt_show_app(struct device *dev, char *buf)
-{
-	struct siw_touch_chip *chip = to_touch_chip(dev);
-	struct siw_ts *ts = chip->ts;
-	struct siw_hal_abt_data *abt = (struct siw_hal_abt_data *)ts->abt;
-	int abt_head_flag = abt->abt_head_flag;
-	int abt_show_mode = abt->abt_show_mode;
-	char *abt_head = abt->abt_head;
-	int i;
-	int size = 0;
-
-	t_abt_dbg_base(abt, "flag %d, mode %d\n", abt_head_flag, abt_show_mode);
-
-	if (!abt_show_mode) {
-		abt_head_flag = 0;
-		abt_show_mode = REPORT_RAW;
-		abt->abt_show_mode = abt_show_mode;
-		t_abt_dbg_base(abt, "set default abt_show_mode: %s\n",
-			abt_show_mode_str[MODE_STR_IDX_RAW]);
-	}
-
-	if (abt_head_flag) {
-		if (abt_show_mode == REPORT_SEG1) {
-			abt_head[14] = DATA_TYPE_SEG1;
-		} else if (abt_show_mode == REPORT_SEG2) {
-			abt_head[14] = DATA_TYPE_SEG2;
-		} else if (abt_show_mode == REPORT_RAW) {
-			abt_head[14] = DATA_TYPE_RAW;
-		} else if (abt_show_mode == REPORT_BASELINE) {
-			abt_head[14] = DATA_TYPE_BASELINE;
-		} else if (abt_show_mode == REPORT_RNORG) {
-			abt_head[14] = DATA_TYPE_RN_ORG;
-		}
-
-		size = sizeof(abt_head);
-		memcpy((void *)&buf[0], (void *)abt_head, size);
-		abt_head_flag = 0;
-		return size;
-	}
-
-	switch (abt_show_mode) {
-	case REPORT_RNORG:
-	case REPORT_RAW:
-	case REPORT_BASELINE:
-	case REPORT_SEG1:
-	case REPORT_SEG2:
-		i = (ACTIVE_SCREEN_CNT_X * ACTIVE_SCREEN_CNT_Y)<<1;
-		memcpy((void *)&buf[0], (u8 *)&abt->abt_ocd[abt->abt_ocd_read^1][0], i);
-		memcpy((void *)&buf[i], (u8 *)&abt->abt_report_p, sizeof(abt->abt_report_p));
-		i += sizeof(abt->abt_report_p);
-		size = i;
-
-		t_abt_dbg_base(abt, "show mode: %s(%d)\n",
-			abt_show_mode_str[abt_show_mode - REPORT_RNORG], size);
-		break;
-	case REPORT_DEBUG_ONLY:
-		memcpy((void *)&buf[0], (u8 *)&abt->abt_report_p, sizeof(abt->abt_report_p));
-		i = sizeof(abt->abt_report_p);
-		size = i;
-
-		t_abt_dbg_base(abt, "show mode: %s(%d)\n",
-			abt_show_mode_str[abt_show_mode - REPORT_RNORG], size);
-		break;
-	default:
-		abt->abt_show_mode = 0;
-		size = 0;
-		break;
-	}
-
-	if (touch_test_abt_quirks(ts, ABT_QUIRK_RAW_RETURN_MODE_VAL)) {
-		return (ssize_t)abt->abt_show_mode;
-	}
-
-	return (ssize_t)size;
-}
-
-static ssize_t abt_store_app(struct device *dev,
-				const char *buf, size_t count)
-{
-	struct siw_touch_chip *chip = to_touch_chip(dev);
-	struct siw_ts *ts = chip->ts;
-	struct siw_hal_abt_data *abt = (struct siw_hal_abt_data *)ts->abt;
-	u32 mode = 0;
-
-	if (atomic_read(&ts->state.debug_tool) != DEBUG_TOOL_ENABLE){
-		return count;
-	}
-
-	/*
-	 * up to APP I/F
-	 */
-#if 1
-	if (sscanf(buf, "%d", &mode) <= 0) {
-		siw_abt_sysfs_err_invalid_param(abt);
-		return count;
-	}
-#else
-	mode = buf[0];
-//	mode = count;
-#endif
-
-	if (mode == HEAD_LOAD) {
-		abt->abt_head_flag = 1;
-		abt->abt_ocd_on = 1;
-		t_abt_info(abt, "abt_head load\n");
-		return abt->abt_head_flag;
-	}
-
-	abt->abt_show_mode = mode;
-	abt->abt_head_flag = 0;
-
-	switch (mode) {
-	case REPORT_RNORG:
-		/* fall through */
-	case REPORT_RAW:
-		/* fall through */
-	case REPORT_BASELINE:
-		/* fall through */
-	case REPORT_SEG1:
-		/* fall through */
-	case REPORT_SEG2:
-		/* fall through */
-	case REPORT_DEBUG_ONLY:
-		t_abt_info(abt, "show mode : %s (%d)\n",
-			abt_show_mode_str[mode - REPORT_RNORG], mode);
-		break;
-	case REPORT_OFF:
-		t_abt_info(abt, "show mode : OFF\n");
-		break;
-	default:
-		t_abt_info(abt, "show mode : unknown, %d\n", mode);
-		break;
-	}
-
-	return (ssize_t)mode;
-}
-
-enum {
 	SHOW_ABT_TOOL_MODE_SIZE	= 4,
 	SHOW_ABT_TOOL_IP_SIZE	= 16,
 	SHOW_ABT_TOOL_RET_SIZE	= (SHOW_ABT_TOOL_MODE_SIZE + SHOW_ABT_TOOL_IP_SIZE),
@@ -2520,11 +2142,6 @@ static int siw_hal_abt_irq_handler(struct device *dev)
 	}
 
 	if (chip->info.wakeup_type == ABS_MODE) {
-		if (abt_is_debug_mode(abt->abt_show_mode)) {
-			abt_onchip_debug_on(abt, &all_data[8]);
-		} else {
-			abt_onchip_debug_off(abt);
-		}
 		ret = siw_ops_irq_abs(ts);
 		goto out;
 	}
@@ -2553,12 +2170,10 @@ void siw_hal_switch_to_abt_irq_handler(struct siw_ts *ts)
 #define _SIW_TOUCH_HAL_ABT_T(_name)	\
 		touch_attr_##_name
 
-static SIW_TOUCH_HAL_ABT_ATTR(abt_monitor, abt_show_app, abt_store_app);
 static SIW_TOUCH_HAL_ABT_ATTR(raw_report, abt_show_tool_b, abt_store_tool_b);
 static SIW_TOUCH_HAL_ABT_ATTR(raw_report_t, abt_show_tool_t, abt_store_tool_t);
 
 static struct attribute *siw_hal_abt_attribute_list[] = {
-	&_SIW_TOUCH_HAL_ABT_T(abt_monitor).attr,
 	&_SIW_TOUCH_HAL_ABT_T(raw_report).attr,
 	&_SIW_TOUCH_HAL_ABT_T(raw_report_t).attr,
 	NULL,
@@ -2614,7 +2229,6 @@ static struct siw_hal_abt_data *siw_hal_abt_alloc(struct device *dev)
 
 	abt->abt_conn_tool = ABT_CONN_NOTHING;
 
-	abt->abt_ocd_off = 1;
 	abt->set_get_data_func = 0;
 
 	switch (touch_chip_type(ts)) {
