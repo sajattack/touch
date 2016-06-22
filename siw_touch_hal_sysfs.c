@@ -187,6 +187,8 @@ static int __show_reg_list(struct device *dev, char *buf, int size)
 	size += _reg_snprintf(buf, size, reg, prd_m1_m2_raw_offset);
 	size += _reg_snprintf(buf, size, reg, prd_tune_result_offset);
 	size += _reg_snprintf(buf, size, reg, prd_open3_short_offset);
+	size += _reg_snprintf(buf, size, reg, prd_ic_ait_start_reg);
+	size += _reg_snprintf(buf, size, reg, prd_ic_ait_data_readystatus);
 
 	return size;
 }

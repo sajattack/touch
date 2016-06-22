@@ -160,6 +160,10 @@
 #define PRD_M1_M2_RAW_OFFSET		(0x287)
 #define PRD_TUNE_RESULT_OFFSET		(0x289)	//See 'chip_reg_quirks' in touch_lg4895.c
 #define PRD_OPEN3_SHORT_OFFSET		(0x288)
+#define PRD_IC_AIT_START_REG		(0xC6C) //AIT Algorithm Engine HandShake Reg
+#define PRD_IC_AIT_DATA_READYSTATUS	(0xC64)
+
+
 /* __SIW_SUPPORT_PRD */
 
 struct siw_hal_reg {
@@ -278,6 +282,8 @@ struct siw_hal_reg {
 	u32 prd_m1_m2_raw_offset;
 	u32 prd_tune_result_offset;
 	u32 prd_open3_short_offset;
+	u32 prd_ic_ait_start_reg;
+	u32 prd_ic_ait_data_readystatus;
 };
 
 #define cmd_abt_ocd_on_write			cmd_raw_data_report_mode_write

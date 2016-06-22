@@ -4888,6 +4888,8 @@ static const struct siw_hal_reg siw_touch_default_reg = {
 	.prd_m1_m2_raw_offset		= PRD_M1_M2_RAW_OFFSET,
 	.prd_tune_result_offset		= PRD_TUNE_RESULT_OFFSET,
 	.prd_open3_short_offset		= PRD_OPEN3_SHORT_OFFSET,
+	.prd_ic_ait_start_reg		= PRD_IC_AIT_START_REG,
+	.prd_ic_ait_data_readystatus= PRD_IC_AIT_DATA_READYSTATUS,
 };
 
 enum {

@@ -1840,8 +1840,6 @@ out:
 	return ret;
 }
 
-#define IC_AIT_START_REG				(0xC6C) //AIT Algorithm Engine HandShake Reg
-#define IC_AIT_DATA_READYSTATUS			(0xC64)
 
 /*
  * SIW TOUCH IC F/W Stop HandShake
@@ -1849,8 +1847,8 @@ out:
 static int prd_stop_firmware(struct siw_hal_prd_data *prd, u32 wdata)
 {
 	struct device *dev = prd->dev;
-//	struct siw_touch_chip *chip = to_touch_chip(dev);
-//	struct siw_hal_reg *reg = chip->reg;
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_hal_reg *reg = chip->reg;
 	u32 read_val;
 	u32 check_data = 0;
 	int try_cnt = 0;
@@ -1859,16 +1857,16 @@ static int prd_stop_firmware(struct siw_hal_prd_data *prd, u32 wdata)
 	/*
 	 * STOP F/W to check
 	 */
-	ret = siw_hal_write_value(dev, IC_AIT_START_REG, wdata);
+	ret = siw_hal_write_value(dev, reg->prd_ic_ait_start_reg, wdata);
 	if (ret < 0) {
 		goto out;
 	}
-	ret = siw_hal_read_value(dev, IC_AIT_START_REG, &check_data);
+	ret = siw_hal_read_value(dev, reg->prd_ic_ait_start_reg, &check_data);
 	if (ret < 0) {
 		goto out;
 	}
 #if 0
-	ret = siw_hal_read_value(dev, IC_AIT_START_REG, &check_data);
+	ret = siw_hal_read_value(dev, reg->prd_ic_ait_start_reg, &check_data);
 	if (ret < 0) {
 		goto out;
 	}
@@ -1883,7 +1881,7 @@ static int prd_stop_firmware(struct siw_hal_prd_data *prd, u32 wdata)
 			ret = -ETIMEDOUT;
 			goto out;
 		}
-		siw_hal_read_value(dev, IC_AIT_DATA_READYSTATUS, &read_val);
+		siw_hal_read_value(dev, reg->prd_ic_ait_data_readystatus, &read_val);
 		t_prd_info(prd, "Read RS_IMAGE = [%x] , OK RS_IMAGE = [%x]\n",
 			read_val, (u32)RS_IMAGE);
 		touch_msleep(10);
@@ -1896,24 +1894,24 @@ out:
 static int prd_start_firmware(struct siw_hal_prd_data *prd)
 {
 	struct device *dev = prd->dev;
-//	struct siw_touch_chip *chip = to_touch_chip(dev);
-//	struct siw_hal_reg *reg = chip->reg;
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_hal_reg *reg = chip->reg;
 	u32 const cmd = IT_IMAGE_NONE;
 	u32 check_data = 0;
 	u32 read_val = 0;
 	int ret = 0;
 
 	/* Release F/W to operate */
-	ret = siw_hal_write_value(dev,IC_AIT_START_REG, cmd);
+	ret = siw_hal_write_value(dev, reg->prd_ic_ait_start_reg, cmd);
 	if (ret < 0) {
 		goto out;
 	}
-	ret = siw_hal_read_value(dev, IC_AIT_START_REG, &check_data);
+	ret = siw_hal_read_value(dev, reg->prd_ic_ait_start_reg, &check_data);
 	if (ret < 0) {
 		goto out;
 	}
 #if 0
-	ret = siw_hal_read_value(dev, IC_AIT_START_REG, &check_data);
+	ret = siw_hal_read_value(dev, reg->prd_ic_ait_start_reg, &check_data);
 	if (ret < 0) {
 		goto out;
 	}
@@ -1921,7 +1919,7 @@ static int prd_start_firmware(struct siw_hal_prd_data *prd)
 	t_prd_info(prd, "check_data : %x\n", check_data);
 
 	//for test
-	ret = siw_hal_read_value(dev, IC_AIT_DATA_READYSTATUS, &read_val);
+	ret = siw_hal_read_value(dev, reg->prd_ic_ait_data_readystatus, &read_val);
 	if (ret < 0) {
 		goto out;
 	}
