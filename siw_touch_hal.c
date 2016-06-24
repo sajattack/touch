@@ -1048,12 +1048,21 @@ static void siw_hal_ic_info_abnormal(struct device *dev)
 #endif
 }
 
+static int siw_hal_ic_info_ver_date_check(struct device *dev)
+{
+	return 0;
+}
+
 static int siw_hal_ic_info_ver_check(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
 	u32 version = chip->fw.version_raw;
 	int ret = 0;
+
+	if (touch_flags(ts) & TOUCH_USE_FW_FORMAT_DATE) {
+		return siw_hal_ic_info_ver_date_check(dev);
+	}
 
 	switch (touch_chip_type(ts)) {
 		case CHIP_LG4894 :
@@ -1095,6 +1104,7 @@ static int siw_hal_ic_info(struct device *dev)
 	u32 version = 0;
 	u32 revision = 0;
 	u32 bootmode = 0;
+	int fw_format_date = !!(touch_flags(ts) & TOUCH_USE_FW_FORMAT_DATE);
 	int ret = 0;
 
 	{
@@ -1151,17 +1161,24 @@ static int siw_hal_ic_info(struct device *dev)
 	}
 
 	siw_hal_fw_set_chip_id(fw, chip_id);
-	siw_hal_fw_set_version(fw, version);
+	siw_hal_fw_set_version(fw, version, fw_format_date);
 	siw_hal_fw_set_revision(fw, revision);
 	siw_hal_fw_set_prod_id(fw, (u8 *)product, sizeof(product));
 
 	fw->wfr &= WAFER_TYPE_MASK;
 
-	t_dev_info(dev,
-			"[T] chip id %s, version v%u.%02u (0x%08X, 0x%02X)\n",
-			chip->fw.chip_id,
-			(u32)(fw->version[0]), (u32)(fw->version[1]),
-			version, fw->revision);
+	if (fw_format_date) {
+		t_dev_info(dev,
+				"[T] chip id %s, version %08X (0x%02X)\n",
+				chip->fw.chip_id,
+				version, fw->revision);
+	} else {
+		t_dev_info(dev,
+				"[T] chip id %s, version v%u.%02u (0x%08Xh, 0x%02X)\n",
+				chip->fw.chip_id,
+				(u32)(fw->version[0]), (u32)(fw->version[1]),
+				version, fw->revision);
+	}
 	t_dev_info(dev,
 			"[T] product id %s, flash boot %s(%s), crc %s (0x%08X)\n",
 			fw->product_id,
@@ -1635,18 +1652,33 @@ static int siw_hal_fw_compare(struct device *dev, u8 *fw_buf)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
+	struct siw_touch_fquirks *fquirks = touch_fquirks(ts);
 	int fw_max_size = touch_fw_size(ts);
+	int fw_format_date = !!(touch_flags(ts) & TOUCH_USE_FW_FORMAT_DATE);
 	u32 bin_ver_offset = 0;
 	u32 bin_pid_offset = 0;
+	u32 bin_ver_ext_flag = 0;
 	u32 dev_major = 0;
 	u32 dev_minor = 0;
 	char pid[12] = {0, };
-	u32 bin_major;
-	u32 bin_minor;
+	u32 bin_major = 0;
+	u32 bin_minor = 0;
+	u32 bin_raw = 0;
 	int update = 0;
+	int ret = 0;
 
-	dev_major = (u32)chip->fw.version[0];
-	dev_minor = (u32)chip->fw.version[1];
+	if (fw_format_date) {
+		if (!bin_ver_ext_flag) {
+			t_dev_err(dev, "image doesn't have 'date version'!");
+			return 0;
+		}
+
+		dev_major = chip->fw.version_raw >> 8;
+		dev_minor = chip->fw.version_raw & 0xFF;
+	} else {
+		dev_major = (u32)chip->fw.version[0];
+		dev_minor = (u32)chip->fw.version[1];
+	}
 
 	if (!dev_major && !dev_minor){
 		t_dev_err(dev, "fw can not be 0.0!! Check your panel connection!!\n");
@@ -1655,6 +1687,7 @@ static int siw_hal_fw_compare(struct device *dev, u8 *fw_buf)
 
 	bin_ver_offset = *((u32 *)&fw_buf[BIN_VER_OFFSET_POS]);
 	bin_pid_offset = *((u32 *)&fw_buf[BIN_PID_OFFSET_POS]);
+//	bin_ver_ext_flag = ...
 
 	t_dev_dbg_base(dev, "bin_ver_offset 0x%06Xh, bin_pid_offset 0x%06Xh\n",
 			bin_ver_offset, bin_pid_offset);
@@ -1666,8 +1699,14 @@ static int siw_hal_fw_compare(struct device *dev, u8 *fw_buf)
 		return -EINVAL;
 	}
 
-	bin_major = (u32)fw_buf[bin_ver_offset];
-	bin_minor = (u32)fw_buf[bin_ver_offset + 1];
+	if (fw_format_date) {
+		/* To Do */
+
+	} else {
+		bin_major = (u32)fw_buf[bin_ver_offset];
+		bin_minor = (u32)fw_buf[bin_ver_offset + 1];
+		bin_raw = (bin_major <<8 ) | bin_minor;
+	}
 	memcpy(pid, &fw_buf[bin_pid_offset], 8);
 
 	t_dev_dbg_base(dev, "dev_major %02Xh, dev_minor %02Xh\n",
@@ -1678,14 +1717,22 @@ static int siw_hal_fw_compare(struct device *dev, u8 *fw_buf)
 
 	t_dev_dbg_base(dev, "pid %s\n", pid);
 
-	if (ts->force_fwup) {
-		update |= (1<<0);
+	if (fquirks->fwup_check) {
+		ret = fquirks->fwup_check(dev, bin_raw, chip->fw.version_raw);
+		if (ret < 0) {
+			return 0;
+		}
+		update = ret;
 	} else {
-		if (bin_major > dev_major) {
-			update |= (1<<1);
-		} else if (bin_major == dev_major) {
-			if (bin_minor > dev_minor) {
-				update |= (1<<2);
+		if (ts->force_fwup) {
+			update |= (1<<0);
+		} else {
+			if (bin_major > dev_major) {
+				update |= (1<<1);
+			} else if (bin_major == dev_major) {
+				if (bin_minor > dev_minor) {
+					update |= (1<<2);
+				}
 			}
 		}
 	}

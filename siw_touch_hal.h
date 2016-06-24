@@ -220,11 +220,18 @@ static inline void siw_hal_fw_set_chip_id(struct siw_hal_fw_info *fw, u32 chip_i
 	fw->chip_id[3] = chip_id & 0xFF;
 }
 
-static inline void siw_hal_fw_set_version(struct siw_hal_fw_info *fw, u32 version)
+static inline void siw_hal_fw_set_version(struct siw_hal_fw_info *fw, u32 version, int format_date)
 {
 	fw->version_raw = version;
-	fw->version[0] = ((version >> 8) & 0xFF);
-	fw->version[1] = version & 0xFF;
+	if (format_date) {
+		fw->version[0] = ((version >> 24) & 0xFF);
+		fw->version[1] = ((version >> 16) & 0xFF);
+		fw->version[2] = ((version >> 8) & 0xFF);
+		fw->version[3] = version & 0xFF;
+	} else {
+		fw->version[0] = ((version >> 8) & 0xFF);
+		fw->version[1] = version & 0xFF;
+	}
 }
 
 static inline void siw_hal_fw_set_revision(struct siw_hal_fw_info *fw, u32 revision)

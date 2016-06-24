@@ -533,6 +533,8 @@ struct siw_touch_fquirks {	//function quirks
 	int (*power_init)(struct device *dev);
 	int (*power_vdd)(struct device *dev, int value);
 	int (*power_vio)(struct device *dev, int value);
+	/* */
+	int (*fwup_check)(struct device *dev, u32 bin_raw, u32 dev_raw);
 };
 
 enum _SIW_TOUCH_UEVENT {
@@ -976,6 +978,7 @@ struct siw_ts {
 #define _TOUCH_USE_VIRT_DIR_WATCH	(1UL<<16)
 #define _TOUCH_USE_DRV_NAME_SYSFS	(1UL<<17)
 #define _TOUCH_USE_FW_BINARY		(1UL<<18)
+#define _TOUCH_USE_FW_FORMAT_DATE	(1UL<<19)
 
 #define _TOUCH_USE_PROBE_INIT_LATE	(1UL<<24)
 
@@ -1024,6 +1027,7 @@ enum {
 	TOUCH_USE_VIRT_DIR_WATCH	= _TOUCH_USE_VIRT_DIR_WATCH,
 	TOUCH_USE_DRV_NAME_SYSFS	= _TOUCH_USE_DRV_NAME_SYSFS,
 	TOUCH_USE_FW_BINARY			= _TOUCH_USE_FW_BINARY,
+	TOUCH_USE_FW_FORMAT_DATE	= _TOUCH_USE_FW_FORMAT_DATE,
 	/* */
 	TOUCH_USE_PROBE_INIT_LATE	= _TOUCH_USE_PROBE_INIT_LATE,
 	/* */
