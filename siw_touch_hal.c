@@ -1636,14 +1636,25 @@ static int siw_hal_fw_compare(struct device *dev, u8 *fw_buf)
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
 	int fw_max_size = touch_fw_size(ts);
-	u32 bin_ver_offset = *((u32 *)&fw_buf[BIN_VER_OFFSET_POS]);
-	u32 bin_pid_offset = *((u32 *)&fw_buf[BIN_PID_OFFSET_POS]);
-	u8 dev_major = chip->fw.version[0];
-	u8 dev_minor = chip->fw.version[1];
+	u32 bin_ver_offset = 0;
+	u32 bin_pid_offset = 0;
+	u32 dev_major = 0;
+	u32 dev_minor = 0;
 	char pid[12] = {0, };
-	u8 bin_major;
-	u8 bin_minor;
+	u32 bin_major;
+	u32 bin_minor;
 	int update = 0;
+
+	dev_major = (u32)chip->fw.version[0];
+	dev_minor = (u32)chip->fw.version[1];
+
+	if (!dev_major && !dev_minor){
+		t_dev_err(dev, "fw can not be 0.0!! Check your panel connection!!\n");
+		return 0;
+	}
+
+	bin_ver_offset = *((u32 *)&fw_buf[BIN_VER_OFFSET_POS]);
+	bin_pid_offset = *((u32 *)&fw_buf[BIN_PID_OFFSET_POS]);
 
 	t_dev_dbg_base(dev, "bin_ver_offset 0x%06Xh, bin_pid_offset 0x%06Xh\n",
 			bin_ver_offset, bin_pid_offset);
@@ -1655,8 +1666,8 @@ static int siw_hal_fw_compare(struct device *dev, u8 *fw_buf)
 		return -EINVAL;
 	}
 
-	bin_major = fw_buf[bin_ver_offset];
-	bin_minor = fw_buf[bin_ver_offset + 1];
+	bin_major = (u32)fw_buf[bin_ver_offset];
+	bin_minor = (u32)fw_buf[bin_ver_offset + 1];
 	memcpy(pid, &fw_buf[bin_pid_offset], 8);
 
 	t_dev_dbg_base(dev, "dev_major %02Xh, dev_minor %02Xh\n",
@@ -1667,27 +1678,20 @@ static int siw_hal_fw_compare(struct device *dev, u8 *fw_buf)
 
 	t_dev_dbg_base(dev, "pid %s\n", pid);
 
-	if (dev_major > bin_major) {
-		ts->force_fwup |= FORCE_FWUP_ON;
-	}
-
 	if (ts->force_fwup) {
-		update = 1;
-	} else if (bin_major && dev_major) {
-		update = !!(bin_minor != dev_minor);
-	} else if (bin_major ^ dev_major) {
-		update = !!(bin_major > dev_major);
-	} else if (!bin_major && !dev_major) {
-		update = !!(bin_minor > dev_minor);
-	}
-
-	if (!dev_major && !dev_minor){
-		t_dev_err(dev, "fw can not be 0.0!! Check your panel connection!!\n");
-		update = 0;
+		update |= (1<<0);
+	} else {
+		if (bin_major > dev_major) {
+			update |= (1<<1);
+		} else if (bin_major == dev_major) {
+			if (bin_minor > dev_minor) {
+				update |= (1<<2);
+			}
+		}
 	}
 
 	t_dev_info(dev,
-		"FW compare: bin-ver: %d.%02d (%s), dev-ver: %d.%02d - update %d, force_fwup %d\n",
+		"FW compare: bin-ver: %d.%02d (%s), dev-ver: %d.%02d - up %02X, fup %02X\n",
 		bin_major, bin_minor, pid, dev_major, dev_minor,
 		update, ts->force_fwup);
 
@@ -2376,22 +2380,22 @@ static void siw_hal_fw_release_firm(struct device *dev,
  * FW upgrade option
  *
  * 1. If TOUCH_USE_FW_BINARY used
- *  1-1 Default upgrade (through version comparison)
- *      do upgarde using binary header link
- *  1-2 echo {bin} > fw_upgrade
- *      do force-upgrade using binary header link (same as 1-1)
- *  1-3 echo /.../fw_img > fw_upgrade
- *      do force-upgrade using request_firmware (relative path)
- *  1-4 echo {root}/.../fw_img > fw_upgrade
- *      do force-upgrade using normal file open control (absolute path)
+ * 1-1 Default upgrade (through version comparison)
+ *     do upgarde using binary header link
+ * 1-2 echo {bin} > fw_upgrade
+ *     do force-upgrade using binary header link (same as 1-1)
+ * 1-3 echo /.../fw_img > fw_upgrade
+ *     do force-upgrade using request_firmware (relative path)
+ * 1-4 echo {root}/.../fw_img > fw_upgrade
+ *     do force-upgrade using normal file open control (absolute path)
  *
  * 2. Else
- *  1-1 Default upgrade (through version comparison)
- *      do upgarde using request_firmware (relative path)
- *  1-2 echo /.../fw_img > fw_upgrade
- *      do force-upgrade using request_firmware (relative path)
- *  1-3 echo {root}/.../fw_img > fw_upgrade
- *      do force-upgrade using normal file open control (absolute path)
+ * 2-1 Default upgrade (through version comparison)
+ *     do upgarde using request_firmware (relative path)
+ * 2-2 echo /.../fw_img > fw_upgrade
+ *     do force-upgrade using request_firmware (relative path)
+ * 2-3 echo {root}/.../fw_img > fw_upgrade
+ *     do force-upgrade using normal file open control (absolute path)
  */
 static int siw_hal_upgrade(struct device *dev)
 {
@@ -2461,6 +2465,7 @@ static int siw_hal_upgrade(struct device *dev)
 	}
 
 	t_dev_info(dev, "fw size:%zu\n", fw_size);
+
 	ret_val = siw_hal_fw_compare(dev, fw_buf);
 	if (ret_val < 0) {
 		ret = ret_val;
