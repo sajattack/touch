@@ -431,13 +431,14 @@ static int __used __siw_hal_do_reg_write(struct device *dev, u32 addr, void *dat
 	tx_buf[0] = (touch_bus_type(ts) == BUS_IF_SPI) ? 0x60 :	\
 					((size > 4) ? 0x60 : 0x40);
 	tx_buf[0] |= ((addr >> 8) & 0x0f);
-	tx_buf[1] = (addr  & 0xff);
+	tx_buf[1] = (addr & 0xff);
 
 	msg->tx_buf = tx_buf;
 	msg->tx_size = bus_tx_hdr_size + size;
 	msg->rx_buf = NULL;
 	msg->rx_size = 0;
 	msg->tx_dma = tx_dma;
+	msg->rx_dma = 0;
 	msg->bits_per_word = 8;
 	msg->priv = 0;
 

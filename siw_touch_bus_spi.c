@@ -59,6 +59,13 @@ static void siw_touch_spi_message_init(struct spi_device *spi,
 	spi_message_init(m);
 }
 
+static void siw_touch_spi_message_add_tail(struct spi_device *spi,
+						struct spi_transfer *x,
+						struct spi_message *m)
+{
+	spi_message_add_tail(x, m);
+}
+
 static int siw_touch_spi_sync(struct spi_device *spi,
 				struct spi_message *m)
 {
@@ -141,7 +148,7 @@ static int siw_touch_spi_do_read(struct spi_device *spi,
 	x.rx_dma = msg->rx_dma;
 	x.len = msg->rx_size;
 
-	spi_message_add_tail(&x, &m);
+	siw_touch_spi_message_add_tail(spi, &x, &m);
 
 	ret = siw_touch_spi_sync(spi, &m);
 	siwmon_submit_bus_spi_read(spi, msg, ret);
@@ -187,7 +194,7 @@ int siw_touch_spi_do_write(struct spi_device *spi,
 	x.rx_dma = msg->rx_dma;
 	x.len = msg->tx_size;
 
-	spi_message_add_tail(&x, &m);
+	siw_touch_spi_message_add_tail(spi, &x, &m);
 
 	ret = siw_touch_spi_sync(spi, &m);
 	siwmon_submit_bus_spi_write(spi, msg, ret);
@@ -297,7 +304,7 @@ static int siw_touch_spi_do_xfer(struct spi_device *spi, struct touch_xfer_msg *
 			break;
 		}
 
-		spi_message_add_tail(x, &m);
+		siw_touch_spi_message_add_tail(spi, x, &m);
 
 		x++;
 	}
