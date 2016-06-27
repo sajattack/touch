@@ -13,6 +13,7 @@ obj-$(CONFIG_TOUCHSCREEN_SIW) += siw_touch_of.o
 obj-$(CONFIG_TOUCHSCREEN_SIW) += siw_touch_irq.o siw_touch_gpio.o
 obj-$(CONFIG_TOUCHSCREEN_SIW) += siw_touch_event.o siw_touch_notify.o
 obj-$(CONFIG_TOUCHSCREEN_SIW) += siw_touch_sys.o siw_touch_sysfs.o
+obj-$(CONFIG_TOUCHSCREEN_SIW) += siw_touch_misc.o
 
 obj-$(CONFIG_TOUCHSCREEN_SIW_LG4894) += touch_lg4894.o
 obj-$(CONFIG_TOUCHSCREEN_SIW_LG4895) += touch_lg4895.o

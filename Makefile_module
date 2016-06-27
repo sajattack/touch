@@ -66,6 +66,7 @@ $(MODULE_NAME)-objs += siw_touch_of.o
 $(MODULE_NAME)-objs += siw_touch_irq.o siw_touch_gpio.o
 $(MODULE_NAME)-objs += siw_touch_event.o siw_touch_notify.o
 $(MODULE_NAME)-objs += siw_touch_sys.o siw_touch_sysfs.o
+$(MODULE_NAME)-objs += siw_touch_misc.o
 
 ifeq ($(CONFIG_TOUCHSCREEN_SIW_LG4894), y)
 $(MODULE_NAME)-objs += touch_lg4894.o

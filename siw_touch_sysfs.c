@@ -1124,6 +1124,14 @@ static struct kobj_type siw_touch_kobj_type = {
 	.sysfs_ops = &siw_touch_sysfs_ops,
 };
 
+#if defined(__SIW_SUPPORT_MISC)
+extern int siw_touch_misc_init(struct device *dev);
+extern void siw_touch_misc_free(struct device *dev);
+#else
+#define siw_touch_misc_init(_dev){ return 0; }
+#define siw_touch_misc_free(_dev){ }
+#endif
+
 int siw_touch_init_sysfs(struct siw_ts *ts)
 {
 	struct device *dev = ts->dev;
@@ -1157,6 +1165,8 @@ int siw_touch_init_sysfs(struct siw_ts *ts)
 		goto out_sysfs;
 	}
 
+	siw_touch_misc_init(dev);
+
 	return 0;
 
 out_sysfs:
@@ -1178,6 +1188,8 @@ void siw_touch_free_sysfs(struct siw_ts *ts)
 		t_dev_warn(dev, "Invalid kobject\n");
 		return;
 	}
+
+	siw_touch_misc_free(dev);
 
 	siw_ops_sysfs(ts, DRIVER_FREE);
 

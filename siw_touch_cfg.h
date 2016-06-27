@@ -17,6 +17,8 @@
 #define __SIW_SUPPORT_PINCTRL
 #define __SIW_SUPPORT_PWRCTRL
 
+//#define __SIW_SUPPORT_MISC
+
 //#define __SIW_SUPPORT_ASC
 
 #define __SIW_SUPPORT_ABT
