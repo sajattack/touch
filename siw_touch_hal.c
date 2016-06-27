@@ -1049,26 +1049,19 @@ static void siw_hal_ic_info_abnormal(struct device *dev)
 #endif
 }
 
-static int siw_hal_ic_info_ver_date_check(struct device *dev)
-{
-	return 0;
-}
-
 static int siw_hal_ic_info_ver_check(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
-	u32 version = chip->fw.version_raw;
+	struct siw_hal_fw_info *fw = &chip->fw;
+//	u32 version = fw->v.version_raw;
+	u32 vchip = fw->v.version.chip;
+	u32 vproto = fw->v.version.protocol;
 	int ret = 0;
-
-	if (touch_flags(ts) & TOUCH_USE_FW_FORMAT_DATE) {
-		return siw_hal_ic_info_ver_date_check(dev);
-	}
 
 	switch (touch_chip_type(ts)) {
 		case CHIP_LG4894 :
-			if ((((version >> 16) & 0xFF) != 4) ||
-				(((version >> 24) & 0xFF) != 4)) {
+			if ((vchip != 4) || (vproto != 4)) {
 				siw_hal_ic_info_abnormal(dev);
 				ret = -EFAULT;
 			}
@@ -1078,8 +1071,7 @@ static int siw_hal_ic_info_ver_check(struct device *dev)
 		case CHIP_LG4946 :
 			break;
 		case CHIP_SW1828 :
-			if ((((version >> 16) & 0xFF) != 9) ||
-				(((version >> 24) & 0xFF) != 4)) {
+			if ((vchip != 9) || (vproto != 4)) {
 				siw_hal_ic_info_abnormal(dev);
 				ret = -EFAULT;
 			}
@@ -1103,9 +1095,9 @@ static int siw_hal_ic_info(struct device *dev)
 	u32 product[2] = {0};
 	u32 chip_id = 0;
 	u32 version = 0;
+	u32 version_ext = 0;
 	u32 revision = 0;
 	u32 bootmode = 0;
-	int fw_format_date = !!(touch_flags(ts) & TOUCH_USE_FW_FORMAT_DATE);
 	int ret = 0;
 
 	{
@@ -1125,6 +1117,9 @@ static int siw_hal_ic_info(struct device *dev)
 		siw_hal_xfer_add_rx(xfer,
 				reg->tc_product_id1,
 				(void *)&product[0], sizeof(product));
+		siw_hal_xfer_add_rx(xfer,
+				reg->tc_version_ext,
+				(void *)&version_ext, sizeof(version_ext));
 		siw_hal_xfer_add_rx(xfer,
 				reg->spr_boot_status,
 				(void *)&bootmode, sizeof(bootmode));
@@ -1162,22 +1157,22 @@ static int siw_hal_ic_info(struct device *dev)
 	}
 
 	siw_hal_fw_set_chip_id(fw, chip_id);
-	siw_hal_fw_set_version(fw, version, fw_format_date);
+	siw_hal_fw_set_version(fw, version, version_ext);
 	siw_hal_fw_set_revision(fw, revision);
 	siw_hal_fw_set_prod_id(fw, (u8 *)product, sizeof(product));
 
 	fw->wfr &= WAFER_TYPE_MASK;
 
-	if (fw_format_date) {
+	if (fw->version_ext) {
 		t_dev_info(dev,
 				"[T] chip id %s, version %08X (0x%02X)\n",
 				chip->fw.chip_id,
-				version, fw->revision);
+				fw->version_ext, fw->revision);
 	} else {
 		t_dev_info(dev,
 				"[T] chip id %s, version v%u.%02u (0x%08Xh, 0x%02X)\n",
-				chip->fw.chip_id,
-				(u32)(fw->version[0]), (u32)(fw->version[1]),
+				fw->chip_id,
+				fw->v.version.major, fw->v.version.minor,
 				version, fw->revision);
 	}
 	t_dev_info(dev,
@@ -1653,9 +1648,9 @@ static int siw_hal_fw_compare(struct device *dev, u8 *fw_buf)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
+	struct siw_hal_fw_info *fw = &chip->fw;
 	struct siw_touch_fquirks *fquirks = touch_fquirks(ts);
 	int fw_max_size = touch_fw_size(ts);
-	int fw_format_date = !!(touch_flags(ts) & TOUCH_USE_FW_FORMAT_DATE);
 	u32 bin_ver_offset = 0;
 	u32 bin_pid_offset = 0;
 	u32 bin_ver_ext_flag = 0;
@@ -1668,17 +1663,17 @@ static int siw_hal_fw_compare(struct device *dev, u8 *fw_buf)
 	int update = 0;
 	int ret = 0;
 
-	if (fw_format_date) {
+	if (fw->version_ext) {
 		if (!bin_ver_ext_flag) {
 			t_dev_err(dev, "image doesn't have 'date version'!");
 			return 0;
 		}
 
-		dev_major = chip->fw.version_raw >> 8;
-		dev_minor = chip->fw.version_raw & 0xFF;
+		dev_major = fw->version_ext >> 8;
+		dev_minor = fw->version_ext & 0xFF;
 	} else {
-		dev_major = (u32)chip->fw.version[0];
-		dev_minor = (u32)chip->fw.version[1];
+		dev_major = fw->v.version.major;
+		dev_minor = fw->v.version.minor;
 	}
 
 	if (!dev_major && !dev_minor){
@@ -1700,7 +1695,7 @@ static int siw_hal_fw_compare(struct device *dev, u8 *fw_buf)
 		return -EINVAL;
 	}
 
-	if (fw_format_date) {
+	if (fw->version_ext) {
 		/* To Do */
 
 	} else {
@@ -1719,7 +1714,9 @@ static int siw_hal_fw_compare(struct device *dev, u8 *fw_buf)
 	t_dev_dbg_base(dev, "pid %s\n", pid);
 
 	if (fquirks->fwup_check) {
-		ret = fquirks->fwup_check(dev, bin_raw, chip->fw.version_raw);
+		ret = fquirks->fwup_check(dev, bin_raw,
+							chip->fw.v.version_raw,
+							chip->fw.version_ext);
 		if (ret < 0) {
 			return 0;
 		}
@@ -4498,6 +4495,7 @@ static int siw_hal_get_cmd_version(struct device *dev, char *buf)
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
 	struct siw_hal_reg *reg = chip->reg;
+	struct siw_hal_fw_info *fw = &chip->fw;
 	u32 rdata[4] = {0};
 	int offset = 0;
 	int ret = 0;
@@ -4513,20 +4511,26 @@ static int siw_hal_get_cmd_version(struct device *dev, char *buf)
 				"chip : %s\n",
 				touch_chip_name(ts));
 
-	offset += siw_snprintf(buf, offset,
-				"version : v%d.%02d\n",
-				chip->fw.version[0], chip->fw.version[1]);
+	if (fw->version_ext) {
+		offset += siw_snprintf(buf, offset,
+					"version : %08X\n",
+					fw->version_ext);
+	} else {
+		offset += siw_snprintf(buf, offset,
+					"version : v%d.%02d\n",
+					fw->v.version.major, fw->v.version.minor);
+	}
 
 	if (chip->fw.revision == 0xFF) {
 		offset += siw_snprintf(buf, offset,
 					"revision : Flash Erased(0xFF)\n");
 	} else {
 		offset += siw_snprintf(buf, offset,
-					"revision : %d\n", chip->fw.revision);
+					"revision : %d\n", fw->revision);
 	}
 
 	offset += siw_snprintf(buf, offset,
-				"product id : [%s]\n", chip->fw.product_id);
+				"product id : %s\n", fw->product_id);
 
 	switch (touch_chip_type(ts)) {
 	case CHIP_LG4946:
@@ -4553,6 +4557,7 @@ static int siw_hal_get_cmd_version(struct device *dev, char *buf)
 static int siw_hal_get_cmd_atcmd_version(struct device *dev, char *buf)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_hal_fw_info *fw = &chip->fw;
 	int offset = 0;
 	int ret = 0;
 
@@ -4563,8 +4568,16 @@ static int siw_hal_get_cmd_atcmd_version(struct device *dev, char *buf)
 		return offset;
 	}
 
-	offset += siw_snprintf(buf, offset, "v%d.%02d\n",
-				chip->fw.version[0], chip->fw.version[1]);
+	if (fw->version_ext) {
+		offset += siw_snprintf(buf, offset,
+					"version : %08X\n",
+					fw->version_ext);
+	} else {
+		offset += siw_snprintf(buf, offset,
+					"v%d.%02d\n",
+					fw->v.version.major,
+					fw->v.version.minor);
+	}
 
 	return offset;
 }
@@ -4838,6 +4851,7 @@ static const struct siw_hal_reg siw_touch_default_reg = {
 	.tc_version					= TC_VERSION,
 	.tc_product_id1				= TC_PRODUCT_ID1,
 	.tc_product_id2				= TC_PRODUCT_ID2,
+	.tc_version_ext				= TC_VERSION_EXT,
 	.info_fpc_type				= INFO_FPC_TYPE,
 	.info_wfr_type				= INFO_WFR_TYPE,
 	.info_chip_version			= INFO_CHIP_VERSION,

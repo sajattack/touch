@@ -2433,6 +2433,7 @@ static void prd_firmware_version_log(struct siw_hal_prd_data *prd)
 {
 	struct device *dev = prd->dev;
 	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_hal_fw_info *fw = &chip->fw;
 	char *log_buf = prd->log_buf;
 	int boot_mode = 0;
 	int ret = 0;
@@ -2445,16 +2446,22 @@ static void prd_firmware_version_log(struct siw_hal_prd_data *prd)
 
 	ret = snprintf(log_buf, PRD_LOG_BUF_SIZE,
 				"======== Firmware Info ========\n");
-	ret += snprintf(log_buf + ret, PRD_LOG_BUF_SIZE - ret,
-				"version : v%d.%02d\n",
-				chip->fw.version[0],
-				chip->fw.version[1]);
+	if (fw->version_ext) {
+		ret += snprintf(log_buf + ret, PRD_LOG_BUF_SIZE - ret,
+					"version : %08X\n",
+					fw->version_ext);
+	} else {
+		ret += snprintf(log_buf + ret, PRD_LOG_BUF_SIZE - ret,
+					"version : v%d.%02d\n",
+					fw->v.version.major,
+					fw->v.version.minor);
+	}
 	ret += snprintf(log_buf + ret, PRD_LOG_BUF_SIZE - ret,
 				"revision : %d\n",
-				chip->fw.revision);
+				fw->revision);
 	ret += snprintf(log_buf + ret, PRD_LOG_BUF_SIZE - ret,
 				"product id : %s\n",
-				chip->fw.product_id);
+				fw->product_id);
 
 	prd_write_file(prd, log_buf, TIME_INFO_SKIP);
 }
@@ -2502,51 +2509,6 @@ static int prd_ic_exception_check(struct siw_hal_prd_data *prd, char *buf)
 	int size = 0;
 
 	boot_mode = siw_touch_boot_mode_check(dev);
-
-#if 0
-	if (0) {
-		/* MINIOS mode, MFTS mode check */
-		if (siw_touch_get_boot_mode() || boot_mode > 0) {
-			if (chip->fw.revision < 2 ||
-					chip->fw.revision > 3 ||
-					chip->fw.version[0] != 1) {
-				t_prd_info(prd, "ic_revision : %d, fw_version : v%d.%02d\n",
-						chip->fw.revision,
-						chip->fw.version[0], chip->fw.version[1]);
-
-				size += siw_snprintf(buf, size,
-								"========RESULT=======\n");
-
-				if (chip->fw.version[0] != 1) {
-					size += siw_snprintf(buf, size,
-									"version[v%d.%02d] : Fail\n",
-									chip->fw.version[0], chip->fw.version[1]);
-				} else {
-					size += siw_snprintf(buf, size,
-									"version[v%d.%02d] : Pass\n",
-									chip->fw.version[0], chip->fw.version[1]);
-				}
-
-				if (chip->fw.revision < 2 || chip->fw.revision > 3) {
-					size += siw_snprintf(buf, size,
-									"revision[%d] : Fail\n",
-									chip->fw.revision);
-				} else {
-					size += siw_snprintf(buf, size,
-									"revision[%d] : Pass\n",
-									chip->fw.revision);
-				}
-				prd_write_file(dev, buf, TIME_INFO_SKIP);
-
-				size += siw_snprintf(buf, size,
-							"Raw data : Fail\n");
-				size += siw_snprintf(buf, size,
-							"Channel Status : Fail\n");
-				prd_write_file(dev, "", TIME_INFO_WRITE);
-			}
-		}
-	}
-#endif
 
 	return size;
 }

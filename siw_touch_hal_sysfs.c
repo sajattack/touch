@@ -198,33 +198,10 @@ static ssize_t _show_reg_ctrl(struct device *dev, char *buf)
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 //	struct siw_ts *ts = chip->ts;
 	struct siw_hal_reg *reg = chip->reg;
-	u32 product[2] = {0};
-	u32 version = 0;
-	u32 revision = 0;
+	struct siw_hal_fw_info *fw = &chip->fw;
 	u32 bootmode = 0;
 	int size = 0;
 	int ret = 0;
-
-	ret = siw_hal_read_value(dev,
-				reg->tc_version,
-				&version);
-	if (ret < 0) {
-		return (ssize_t)ret;
-	}
-
-	ret = siw_hal_read_value(dev,
-				reg->info_chip_version,
-				&revision);
-	if (ret < 0) {
-		return (ssize_t)ret;
-	}
-
-	ret = siw_hal_reg_read(dev,
-				reg->tc_product_id1,
-				(void *)product, sizeof(product));
-	if (ret < 0) {
-		return (ssize_t)ret;
-	}
 
 	ret = siw_hal_read_value(dev,
 				reg->spr_boot_status,
@@ -233,31 +210,23 @@ static ssize_t _show_reg_ctrl(struct device *dev, char *buf)
 		return (ssize_t)ret;
 	}
 
-	size += siw_snprintf(buf, size,
-				"[Version] 	: 0x%08X\n",
-				version);
+	if (fw->version_ext) {
+		size += siw_snprintf(buf, size,
+					">> version	: %08X, chip : %u, protocol : %u\n",
+					fw->version_ext,
+					fw->v.version.chip,
+					fw->v.version.protocol);
+	} else {
+		size += siw_snprintf(buf, size,
+					">> version	: v%u.%02u, chip : %u, protocol : %u\n",
+					fw->v.version.major,
+					fw->v.version.minor,
+					fw->v.version.chip,
+					fw->v.version.protocol);
+	}
 
 	size += siw_snprintf(buf, size,
-				"[Revision]	: 0x%08X\n",
-				revision);
-
-	size += siw_snprintf(buf, size,
-				"[Product ID1] : 0x%08X, 0x%08X\n",
-				product[0], product[1]);
-
-	size += siw_snprintf(buf, size,
-				"[Boot mode]	: 0x%08X\n",
-				bootmode);
-
-	size += siw_snprintf(buf, size,
-				">> version	: v%u.%02u, chip : %u, protocol : %u\n",
-				(u32)(chip->fw.version[0]),
-				(u32)(chip->fw.version[1]),
-				(u32)((version >> 16) & 0xFF),
-				(u32)((version >> 24) & 0xFF));
-
-	size += siw_snprintf(buf, size,
-					">> revision	: %d\n", chip->fw.revision);
+				">> revision	: %d\n", chip->fw.revision);
 
 	size += siw_snprintf(buf, size,
 				">> product id : %s\n",

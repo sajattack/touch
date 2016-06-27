@@ -192,11 +192,25 @@ enum {
 	WAFER_TYPE_MASK = (0x07),
 };
 
+struct siw_hal_tc_version {
+	u8 minor;
+	u8 major:4;
+	u8 build:4;
+	u8 chip;
+	u8 protocol:4;
+	u8 ext:4;
+};
+
 struct siw_hal_fw_info {
 	u32 chip_id_raw;
 	u8 chip_id[8];
-	u32 version_raw;
-	u8 version[4];
+	/* */
+	union {
+		struct siw_hal_tc_version version;
+		u32 version_raw;
+	} v;
+	u32 version_ext;
+	/* */
 	u8 product_id[8+4];
 	u8 image_version[4];
 	u8 image_product_id[8+4];
@@ -220,18 +234,11 @@ static inline void siw_hal_fw_set_chip_id(struct siw_hal_fw_info *fw, u32 chip_i
 	fw->chip_id[3] = chip_id & 0xFF;
 }
 
-static inline void siw_hal_fw_set_version(struct siw_hal_fw_info *fw, u32 version, int format_date)
+static inline void siw_hal_fw_set_version(struct siw_hal_fw_info *fw,
+						u32 version, u32 version_ext)
 {
-	fw->version_raw = version;
-	if (format_date) {
-		fw->version[0] = ((version >> 24) & 0xFF);
-		fw->version[1] = ((version >> 16) & 0xFF);
-		fw->version[2] = ((version >> 8) & 0xFF);
-		fw->version[3] = version & 0xFF;
-	} else {
-		fw->version[0] = ((version >> 8) & 0xFF);
-		fw->version[1] = version & 0xFF;
-	}
+	fw->v.version_raw = version;
+	fw->version_ext = (fw->v.version.ext) ? version_ext : 0;
 }
 
 static inline void siw_hal_fw_set_revision(struct siw_hal_fw_info *fw, u32 revision)

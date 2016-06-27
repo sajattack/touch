@@ -28,6 +28,7 @@
 #define TC_VERSION					(0x242)
 #define TC_PRODUCT_ID1				(0x244)
 #define TC_PRODUCT_ID2				(0x245)
+#define TC_VERSION_EXT				(0x246)
 
 #define INFO_FPC_TYPE				(0x278)
 #define INFO_WFR_TYPE				(0x27B)
@@ -179,6 +180,7 @@ struct siw_hal_reg {
 	u32 tc_version;
 	u32 tc_product_id1;
 	u32 tc_product_id2;
+	u32 tc_version_ext;
 	u32 info_fpc_type;
 	u32 info_wfr_type;
 	u32 info_chip_version;
