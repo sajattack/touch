@@ -96,6 +96,9 @@ static ssize_t siw_misc_read(struct file *filp,
 
 	dev = misc_data->dev;
 
+	/*
+	 * buf[0 ~ 3] : addr
+	 */
 	ret = copy_from_user(&addr, buf, 4);
 	if (ret) {
 		t_dev_info(dev, "rd: can't get addr, %d\n", ret);
@@ -121,6 +124,10 @@ out:
 	return ret;
 }
 
+enum {
+	MISC_WR_DATA_OFFSET	= 4,
+};
+
 static ssize_t siw_misc_write(struct file *filp,
 					const char __user *buf,
 					size_t count, loff_t *f_pos)
@@ -138,20 +145,21 @@ static ssize_t siw_misc_write(struct file *filp,
 
 	dev = misc_data->dev;
 
-	ret = copy_from_user(&addr, buf, 4);
-	if (ret) {
-		t_dev_info(dev, "wr: can't get addr, %d\n", ret);
-		goto out;
-	}
-
-	ret = copy_from_user(misc_data->buf, &buf[4], count);
+	/*
+	 * buf[0 ~ 3] : addr
+	 * buf[3 ~ (count - 1)] : data
+	 */
+	ret = copy_from_user(misc_data->buf, buf, count);
 	if (ret) {
 		t_dev_info(dev, "wr: can't copy buf(%d), %d\n",
 			count, ret);
 		goto out;
 	}
+	memcpy(&addr, misc_data->buf, MISC_WR_DATA_OFFSET);
 
-	ret = siw_hal_reg_write(dev, addr, misc_data->buf, count - 4);
+	ret = siw_hal_reg_write(dev, addr,
+				&misc_data->buf[MISC_WR_DATA_OFFSET],
+				count - MISC_WR_DATA_OFFSET);
 	if (ret < 0) {
 		goto out;
 	}
