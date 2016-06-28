@@ -1092,6 +1092,7 @@ static int siw_hal_ic_info(struct device *dev)
 	struct siw_ts *ts = chip->ts;
 	struct siw_hal_reg *reg = chip->reg;
 	struct siw_hal_fw_info *fw = &chip->fw;
+	struct touch_xfer_msg *xfer = ts->xfer;
 	u32 product[2] = {0};
 	u32 chip_id = 0;
 	u32 version = 0;
@@ -1100,60 +1101,65 @@ static int siw_hal_ic_info(struct device *dev)
 	u32 bootmode = 0;
 	int ret = 0;
 
-	{
-		struct touch_xfer_msg *xfer = ts->xfer;
+	siw_hal_xfer_init(dev, xfer);
 
+	siw_hal_xfer_add_rx(xfer,
+			reg->spr_chip_id,
+			(void *)&chip_id, sizeof(chip_id));
+	siw_hal_xfer_add_rx(xfer,
+			reg->tc_version,
+			(void *)&version, sizeof(version));
+	siw_hal_xfer_add_rx(xfer,
+			reg->info_chip_version,
+			(void *)&revision, sizeof(revision));
+	siw_hal_xfer_add_rx(xfer,
+			reg->tc_product_id1,
+			(void *)&product[0], sizeof(product));
+	siw_hal_xfer_add_rx(xfer,
+			reg->tc_version_ext,
+			(void *)&version_ext, sizeof(version_ext));
+	siw_hal_xfer_add_rx(xfer,
+			reg->spr_boot_status,
+			(void *)&bootmode, sizeof(bootmode));
+
+	ret = siw_hal_xfer_msg(dev, ts->xfer);
+	if (ret < 0) {
+		t_dev_err(dev, "ic_info(1): xfer failed, %d\n", ret);
+		return ret;
+	}
+
+	switch (touch_chip_type(ts)) {
+	case CHIP_LG4946:
 		siw_hal_xfer_init(dev, xfer);
 
 		siw_hal_xfer_add_rx(xfer,
-				reg->spr_chip_id,
-				(void *)&chip_id, sizeof(chip_id));
+				reg->info_fpc_type,
+				(void *)&fw->fpc, sizeof(fw->fpc));
 		siw_hal_xfer_add_rx(xfer,
-				reg->tc_version,
-				(void *)&version, sizeof(version));
+				reg->info_wfr_type,
+				(void *)&fw->wfr, sizeof(fw->wfr));
 		siw_hal_xfer_add_rx(xfer,
-				reg->info_chip_version,
-				(void *)&revision, sizeof(revision));
+				reg->info_cg_type,
+				(void *)&fw->cg, sizeof(fw->cg));
 		siw_hal_xfer_add_rx(xfer,
-				reg->tc_product_id1,
-				(void *)&product[0], sizeof(product));
+				reg->info_lot_num,
+				(void *)&fw->lot, sizeof(fw->lot));
 		siw_hal_xfer_add_rx(xfer,
-				reg->tc_version_ext,
-				(void *)&version_ext, sizeof(version_ext));
+				reg->info_serial_num,
+				(void *)&fw->sn, sizeof(fw->sn));
 		siw_hal_xfer_add_rx(xfer,
-				reg->spr_boot_status,
-				(void *)&bootmode, sizeof(bootmode));
+				reg->info_date,
+				(void *)&fw->date, sizeof(fw->date));
+		siw_hal_xfer_add_rx(xfer,
+				reg->info_time,
+				(void *)&fw->time, sizeof(fw->time));
 
-		switch (touch_chip_type(ts)) {
-		case CHIP_LG4946:
-			siw_hal_xfer_add_rx(xfer,
-					reg->info_fpc_type,
-					(void *)&fw->fpc, sizeof(fw->fpc));
-			siw_hal_xfer_add_rx(xfer,
-					reg->info_wfr_type,
-					(void *)&fw->wfr, sizeof(fw->wfr));
-			siw_hal_xfer_add_rx(xfer,
-					reg->info_cg_type,
-					(void *)&fw->cg, sizeof(fw->cg));
-			siw_hal_xfer_add_rx(xfer,
-					reg->info_lot_num,
-					(void *)&fw->lot, sizeof(fw->lot));
-			siw_hal_xfer_add_rx(xfer,
-					reg->info_serial_num,
-					(void *)&fw->sn, sizeof(fw->sn));
-			siw_hal_xfer_add_rx(xfer,
-					reg->info_date,
-					(void *)&fw->date, sizeof(fw->date));
-			siw_hal_xfer_add_rx(xfer,
-					reg->info_time,
-					(void *)&fw->time, sizeof(fw->time));
-			break;
+		ret = siw_hal_xfer_msg(dev, ts->xfer);
+		if (ret < 0) {
+			t_dev_err(dev, "ic_info(2): xfer failed, %d\n", ret);
+			return ret;
 		}
-	}
-	ret = siw_hal_xfer_msg(dev, ts->xfer);
-	if (ret < 0) {
-		t_dev_err(dev, "ic_info : xfer failed, %d\n", ret);
-		return ret;
+		break;
 	}
 
 	siw_hal_fw_set_chip_id(fw, chip_id);
@@ -1641,6 +1647,7 @@ static int siw_hal_reset_ctrl(struct device *dev, int ctrl)
 
 enum {
 	BIN_VER_OFFSET_POS = 0xE8,
+	BIN_VER_EXT_OFFSET_POS = 0xDC,
 	BIN_PID_OFFSET_POS = 0xF0,
 };
 
@@ -1652,23 +1659,31 @@ static int siw_hal_fw_compare(struct device *dev, u8 *fw_buf)
 	struct siw_touch_fquirks *fquirks = touch_fquirks(ts);
 	int fw_max_size = touch_fw_size(ts);
 	u32 bin_ver_offset = 0;
+	u32 bin_ver_ext_offset = 0;
 	u32 bin_pid_offset = 0;
-	u32 bin_ver_ext_flag = 0;
 	u32 dev_major = 0;
 	u32 dev_minor = 0;
 	char pid[12] = {0, };
 	u32 bin_major = 0;
 	u32 bin_minor = 0;
 	u32 bin_raw = 0;
+	u32 bin_raw_ext = 0;
+	int bin_diff = 0;
 	int update = 0;
-	int ret = 0;
+//	int ret = 0;
+
+	if (fquirks->fwup_check) {
+		update = fquirks->fwup_check(dev, fw_buf);
+		if (update != -EAGAIN) {
+			if (update < 0) {
+				return update;
+			}
+			goto out;
+		}
+		update = 0;
+	}
 
 	if (fw->version_ext) {
-		if (!bin_ver_ext_flag) {
-			t_dev_err(dev, "image doesn't have 'date version'!");
-			return 0;
-		}
-
 		dev_major = fw->version_ext >> 8;
 		dev_minor = fw->version_ext & 0xFF;
 	} else {
@@ -1682,62 +1697,90 @@ static int siw_hal_fw_compare(struct device *dev, u8 *fw_buf)
 	}
 
 	bin_ver_offset = *((u32 *)&fw_buf[BIN_VER_OFFSET_POS]);
-	bin_pid_offset = *((u32 *)&fw_buf[BIN_PID_OFFSET_POS]);
-//	bin_ver_ext_flag = ...
-
-	t_dev_dbg_base(dev, "bin_ver_offset 0x%06Xh, bin_pid_offset 0x%06Xh\n",
-			bin_ver_offset, bin_pid_offset);
-
-	if ((bin_ver_offset > fw_max_size) ||
-		(bin_pid_offset > fw_max_size)) {
-		t_dev_info(dev, "FW compare: invalid offset - ver %08Xh, pid %08Xh, max %08Xh\n",
-			bin_ver_offset, bin_pid_offset, fw_max_size);
+	if (!bin_ver_offset) {
+		t_dev_err(dev, "FW compare: zero ver offset\n");
 		return -EINVAL;
 	}
 
-	if (fw->version_ext) {
-		/* To Do */
+	bin_ver_ext_offset = *((u32 *)&fw_buf[BIN_VER_EXT_OFFSET_POS]);
 
-	} else {
-		bin_major = (u32)fw_buf[bin_ver_offset];
-		bin_minor = (u32)fw_buf[bin_ver_offset + 1];
-		bin_raw = (bin_major <<8 ) | bin_minor;
+	if ((fw->version_ext && !bin_ver_ext_offset) ||
+		(!fw->version_ext && bin_ver_ext_offset)) {
+		if (!ts->force_fwup) {
+			t_dev_warn(dev,
+				"FW compare: different version format, "
+				"use force update %s",
+				(fw->version_ext) ? "(ext)" : "");
+			return -EINVAL;
+		}
+		bin_diff = 1;
 	}
+
+	bin_pid_offset = *((u32 *)&fw_buf[BIN_PID_OFFSET_POS]);
+	if (!bin_pid_offset) {
+		t_dev_err(dev, "FW compare: zero pid offset\n");
+		return -EINVAL;
+	}
+
 	memcpy(pid, &fw_buf[bin_pid_offset], 8);
-
-	t_dev_dbg_base(dev, "dev_major %02Xh, dev_minor %02Xh\n",
-			dev_major, dev_minor);
-
-	t_dev_dbg_base(dev, "bin_major %02Xh, bin_minor %02Xh\n",
-			bin_major, bin_minor);
-
 	t_dev_dbg_base(dev, "pid %s\n", pid);
 
-	if (fquirks->fwup_check) {
-		ret = fquirks->fwup_check(dev, bin_raw,
-							chip->fw.v.version_raw,
-							chip->fw.version_ext);
-		if (ret < 0) {
-			return 0;
-		}
-		update = ret;
+	if ((bin_ver_offset > fw_max_size) ||
+		(bin_ver_ext_offset > fw_max_size) ||
+		(bin_pid_offset > fw_max_size)) {
+		t_dev_err(dev, "FW compare: invalid offset - ver %06Xh, ver_ext %06Xh pid %06Xh, max %06Xh\n",
+			bin_ver_offset, bin_ver_ext_offset, bin_pid_offset, fw_max_size);
+		return -EINVAL;
+	}
+
+	t_dev_dbg_base(dev, "ver %06Xh, ver_ext %06Xh, pid %06Xh\n",
+			bin_ver_offset, bin_ver_ext_offset, bin_pid_offset);
+
+	bin_major = (u32)fw_buf[bin_ver_offset];
+	bin_minor = (u32)fw_buf[bin_ver_offset + 1];
+	bin_raw = (bin_major<<8) | bin_minor;
+
+	if (bin_ver_ext_offset) {
+		bin_raw_ext = (u32)fw_buf[bin_ver_ext_offset];
+		bin_raw_ext |= fw_buf[bin_ver_ext_offset + 1]<<8;
+		bin_raw_ext |= fw_buf[bin_ver_ext_offset + 2]<<16;
+		bin_raw_ext |= fw_buf[bin_ver_ext_offset + 3]<<24;
+
+		bin_major = bin_raw >> 8;
+		bin_minor = bin_raw & 0xFF;
+
+		t_dev_info(dev,
+			"FW compare: bin-ver: %08X (%s)(%d)\n",
+			bin_raw, pid, bin_diff);
 	} else {
-		if (ts->force_fwup) {
-			update |= (1<<0);
-		} else {
-			if (bin_major > dev_major) {
-				update |= (1<<1);
-			} else if (bin_major == dev_major) {
-				if (bin_minor > dev_minor) {
-					update |= (1<<2);
-				}
+		t_dev_info(dev,
+			"FW compare: bin-ver: %d.%02d (%s)(%d)\n",
+			bin_major, bin_minor, pid, bin_diff);
+	}
+
+	if (fw->version_ext) {
+		t_dev_info(dev, "FW compare: dev-ver: %08X (%s)\n",
+				fw->version_ext, fw->product_id);
+	} else {
+		t_dev_info(dev, "FW compare: dev-ver: %d.%02d (%s)\n",
+				dev_major, dev_minor, fw->product_id);
+	}
+
+	if (ts->force_fwup) {
+		update |= (1<<0);
+	} else {
+		if (bin_major > dev_major) {
+			update |= (1<<1);
+		} else if (bin_major == dev_major) {
+			if (bin_minor > dev_minor) {
+				update |= (1<<2);
 			}
 		}
 	}
 
+out:
 	t_dev_info(dev,
-		"FW compare: bin-ver: %d.%02d (%s), dev-ver: %d.%02d - up %02X, fup %02X\n",
-		bin_major, bin_minor, pid, dev_major, dev_minor,
+		"FW compare: up %02X, fup %02X\n",
 		update, ts->force_fwup);
 
 	return update;

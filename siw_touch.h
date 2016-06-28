@@ -534,7 +534,7 @@ struct siw_touch_fquirks {	//function quirks
 	int (*power_vdd)(struct device *dev, int value);
 	int (*power_vio)(struct device *dev, int value);
 	/* */
-	int (*fwup_check)(struct device *dev, u32 bin_raw, u32 dev_raw, u32 dev_raw_ext);
+	int (*fwup_check)(struct device *dev, u8 *fw_buf);
 };
 
 enum _SIW_TOUCH_UEVENT {

@@ -78,6 +78,7 @@ static int __show_reg_list(struct device *dev, char *buf, int size)
 	size += _reg_snprintf(buf, size, reg, tc_version);
 	size += _reg_snprintf(buf, size, reg, tc_product_id1);
 	size += _reg_snprintf(buf, size, reg, tc_product_id2);
+	size += _reg_snprintf(buf, size, reg, tc_version_ext);
 	size += _reg_snprintf(buf, size, reg, info_chip_version);
 	size += _reg_snprintf(buf, size, reg, info_lot_num);
 	size += _reg_snprintf(buf, size, reg, info_serial_num);

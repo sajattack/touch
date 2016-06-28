@@ -28,7 +28,7 @@
 #define TC_VERSION					(0x242)
 #define TC_PRODUCT_ID1				(0x244)
 #define TC_PRODUCT_ID2				(0x245)
-#define TC_VERSION_EXT				(0x246)
+#define TC_VERSION_EXT				(0x269)		/* YYMMDDXX format (BCD)*/
 
 #define INFO_FPC_TYPE				(0x278)
 #define INFO_WFR_TYPE				(0x27B)
