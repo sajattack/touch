@@ -263,32 +263,32 @@ static ssize_t _store_reg_ctrl(struct device *dev,
 	}
 
 	reg_addr = reg;
-	if (!strcmp(command, "write")) {
+	if (!strcmp(command, "wr")) {
 		data = value;
 		ret = siw_hal_write_value(dev,
 					reg_addr,
 					data);
 		if (ret >= 0) {
-			t_dev_info(dev, "reg[0x%04X] = 0x%08X\n", reg_addr, data);
+			t_dev_info(dev, "wr: reg[0x%04X] = 0x%08X\n", reg_addr, data);
 		}
 		goto out;
 	}
 
-	if (!strcmp(command, "read")) {
+	if (!strcmp(command, "rd")) {
 		ret = siw_hal_read_value(dev,
 					reg_addr,
 					&data);
 		if (ret >= 0) {
-			t_dev_info(dev, "reg[0x%04X] = 0x%08X\n", reg_addr, data);
+			t_dev_info(dev, "rd: reg[0x%04X] = 0x%08X\n", reg_addr, data);
 		}
 		goto out;
 	}
 
 	t_dev_dbg_base(dev, "[Usage]\n");
 	t_dev_dbg_base(dev,
-		" echo write 0x1234 {value} > /sys/devices/virtual/input/siw_touch_input/reg_ctrl\n");
+		" echo wr 0x1234 {value} > /sys/devices/virtual/input/siw_touch_input/reg_ctrl\n");
 	t_dev_dbg_base(dev,
-		" echo read 0x1234 > /sys/devices/virtual/input/siw_touch_input/reg_ctrl\n");
+		" echo rd 0x1234 > /sys/devices/virtual/input/siw_touch_input/reg_ctrl\n");
 
 out:
 	return count;
