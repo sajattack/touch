@@ -1667,6 +1667,7 @@ static int siw_hal_fw_compare(struct device *dev, u8 *fw_buf)
 	struct siw_ts *ts = chip->ts;
 	struct siw_hal_fw_info *fw = &chip->fw;
 	struct siw_touch_fquirks *fquirks = touch_fquirks(ts);
+	struct siw_hal_tc_version_bin *bin_ver;
 	int fw_max_size = touch_fw_size(ts);
 	u32 bin_ver_offset = 0;
 	u32 bin_ver_ext_offset = 0;
@@ -1676,7 +1677,7 @@ static int siw_hal_fw_compare(struct device *dev, u8 *fw_buf)
 	char pid[12] = {0, };
 	u32 bin_major = 0;
 	u32 bin_minor = 0;
-	u32 bin_raw = 0;
+//	u32 bin_raw = 0;
 	u32 bin_raw_ext = 0;
 	int bin_diff = 0;
 	int update = 0;
@@ -1746,16 +1747,17 @@ static int siw_hal_fw_compare(struct device *dev, u8 *fw_buf)
 	t_dev_dbg_base(dev, "ver %06Xh, ver_ext %06Xh, pid %06Xh\n",
 			bin_ver_offset, bin_ver_ext_offset, bin_pid_offset);
 
-	bin_major = (u32)fw_buf[bin_ver_offset];
-	bin_minor = (u32)fw_buf[bin_ver_offset + 1];
-	bin_raw = (bin_major<<8) | bin_minor;
+	bin_ver = (struct siw_hal_tc_version_bin *)&fw_buf[bin_ver_offset];
+	bin_major = bin_ver->major;
+	bin_minor = bin_ver->minor;
 
 	if (bin_ver_ext_offset) {
-		bin_raw_ext = (u32)fw_buf[bin_ver_ext_offset];
-		bin_raw_ext |= fw_buf[bin_ver_ext_offset + 1]<<8;
-		bin_raw_ext |= fw_buf[bin_ver_ext_offset + 2]<<16;
-		bin_raw_ext |= fw_buf[bin_ver_ext_offset + 3]<<24;
+		if (!bin_ver->ext) {
+			t_dev_err(dev, "FW compare: (no ext flag in binary)\n");
+			return -EINVAL;
+		}
 
+		memcpy(&bin_raw_ext, &fw_buf[bin_ver_ext_offset], sizeof(bin_raw_ext));
 		bin_major = bin_raw_ext >> 8;
 		bin_minor = bin_raw_ext & 0xFF;
 
@@ -1764,8 +1766,8 @@ static int siw_hal_fw_compare(struct device *dev, u8 *fw_buf)
 			bin_raw_ext, pid, bin_diff);
 
 		if (siw_hal_fw_chk_version_ext(bin_raw_ext,
-					fw->v.version.ext) < 0) {
-			t_dev_err(dev, "FW compare: (invalid version format)\n");
+					bin_ver->ext) < 0) {
+			t_dev_err(dev, "FW compare: (invalid extension in binary)\n");
 			return -EINVAL;
 		}
 	} else {

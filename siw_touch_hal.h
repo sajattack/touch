@@ -192,6 +192,14 @@ enum {
 	WAFER_TYPE_MASK = (0x07),
 };
 
+struct siw_hal_tc_version_bin {
+	u8 major:4;
+	u8 build:4;
+	u8 minor;
+	u16 rsvd:12;
+	u16 ext:4;
+};
+
 struct siw_hal_tc_version {
 	u8 minor;
 	u8 major:4;
@@ -202,7 +210,7 @@ struct siw_hal_tc_version {
 };
 
 struct siw_hal_tc_version_ext_date {
-	u8 xx;
+	u8 rr;
 	u8 dd;
 	u8 mm;
 	u8 yy;
@@ -257,6 +265,10 @@ static inline int siw_hal_fw_chk_version_ext(u32 version_ext, u32 ext_flag)
 			if (ext_date.yy &&
 				ext_date.mm &&
 				ext_date.dd) {
+
+				if (ext_date.yy < 0x16) {
+					break;
+				}
 
 				if (ext_date.mm > 0x12) {
 					break;
