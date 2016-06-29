@@ -1746,12 +1746,12 @@ static int siw_hal_fw_compare(struct device *dev, u8 *fw_buf)
 		bin_raw_ext |= fw_buf[bin_ver_ext_offset + 2]<<16;
 		bin_raw_ext |= fw_buf[bin_ver_ext_offset + 3]<<24;
 
-		bin_major = bin_raw >> 8;
-		bin_minor = bin_raw & 0xFF;
+		bin_major = bin_raw_ext >> 8;
+		bin_minor = bin_raw_ext & 0xFF;
 
 		t_dev_info(dev,
 			"FW compare: bin-ver: %08X (%s)(%d)\n",
-			bin_raw, pid, bin_diff);
+			bin_raw_ext, pid, bin_diff);
 	} else {
 		t_dev_info(dev,
 			"FW compare: bin-ver: %d.%02d (%s)(%d)\n",
@@ -2316,6 +2316,7 @@ static int siw_hal_fw_do_get_fw_abs(const struct firmware **fw_p,
 
 	filp = filp_open(name, O_RDONLY, 0);
 	if (IS_ERR(filp)) {
+		dev_err(dev, "can't open %s\n", name);
 		return (int)PTR_ERR(filp);
 	}
 
