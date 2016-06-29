@@ -1077,7 +1077,7 @@ static int siw_hal_ic_info_ver_check(struct device *dev)
 			}
 			break;
 		default :
-			t_dev_info(dev, "[%s] abnormal chip type\n",
+			t_dev_err(dev, "[%s] abnormal chip type\n",
 				touch_chip_name(ts));
 			ret = -EINVAL;
 			break;
@@ -1086,7 +1086,7 @@ static int siw_hal_ic_info_ver_check(struct device *dev)
 	return ret;
 }
 
-static int siw_hal_ic_info(struct device *dev)
+static int siw_hal_do_ic_info(struct device *dev, int prt_on)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
@@ -1174,19 +1174,19 @@ static int siw_hal_ic_info(struct device *dev)
 
 		ferr = siw_hal_fw_chk_version_ext(fw->version_ext,
 									fw->v.version.ext);
-		t_dev_info(dev,
+		t_dev_info_sel(dev, prt_on,
 				"[T] chip id %s, version %08X (0x%02X) %s\n",
 				chip->fw.chip_id,
 				fw->version_ext, fw->revision,
 				(ferr < 0) ? "(invalid)" : "");
 	} else {
-		t_dev_info(dev,
+		t_dev_info_sel(dev, prt_on,
 				"[T] chip id %s, version v%u.%02u (0x%08Xh, 0x%02X)\n",
 				fw->chip_id,
 				fw->v.version.major, fw->v.version.minor,
 				version, fw->revision);
 	}
-	t_dev_info(dev,
+	t_dev_info_sel(dev, prt_on,
 			"[T] product id %s, flash boot %s(%s), crc %s (0x%08X)\n",
 			fw->product_id,
 			(bootmode >> 1 & 0x1) ? "BUSY" : "idle",
@@ -1196,7 +1196,7 @@ static int siw_hal_ic_info(struct device *dev)
 
 	switch (touch_chip_type(ts)) {
 	case CHIP_LG4946:
-		t_dev_info(dev,
+		t_dev_info_sel(dev, prt_on,
 			"[T] lot %d, sn %Xh, "
 			"date %04d.%02d.%02d, time %02d:%02d:%02d site%d\n",
 			fw->lot, fw->sn,
@@ -1214,6 +1214,11 @@ static int siw_hal_ic_info(struct device *dev)
 	siw_hal_ic_info_ver_check(dev);
 
 	return 0;
+}
+
+static int siw_hal_ic_info(struct device *dev)
+{
+	return siw_hal_do_ic_info(dev, 1);
 }
 
 #if defined(__SIW_CONFIG_FB)
@@ -4555,7 +4560,7 @@ static int siw_hal_get_cmd_version(struct device *dev, char *buf)
 	int offset = 0;
 	int ret = 0;
 
-	ret = siw_hal_ic_info(dev);
+	ret = siw_hal_do_ic_info(dev, 0);
 	if (ret < 0) {
 		offset += siw_snprintf(buf, offset, "-1\n");
 		offset += siw_snprintf(buf, offset, "Read Fail Touch IC Info\n");
@@ -4616,7 +4621,7 @@ static int siw_hal_get_cmd_atcmd_version(struct device *dev, char *buf)
 	int offset = 0;
 	int ret = 0;
 
-	ret = siw_hal_ic_info(dev);
+	ret = siw_hal_do_ic_info(dev, 0);
 	if (ret < 0) {
 		offset += siw_snprintf(buf, offset, "-1\n");
 		offset += siw_snprintf(buf, offset, "Read Fail Touch IC Info\n");
