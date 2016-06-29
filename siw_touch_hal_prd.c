@@ -208,7 +208,6 @@ enum {
 };
 
 struct siw_hal_prd_data {
-	struct siw_ts *ts;
 	struct device *dev;
 	char name[PRD_DATA_NAME_SZ];
 	/* */
@@ -411,6 +410,10 @@ static u32 t_prd_dbg_mask = 0;
 module_param_named(s_prd_dbg_mask, t_prd_dbg_mask, int, S_IRUGO|S_IWUSR|S_IWGRP);
 
 
+enum {
+	PRD_SHOW_FLAG_DISABLE_PRT_RAW = (1<<0),
+};
+
 #define t_prd_info(_prd, fmt, args...)	\
 		__t_dev_info(_prd->dev, "%s : " fmt, _prd->name, ##args)
 
@@ -432,9 +435,9 @@ module_param_named(s_prd_dbg_mask, t_prd_dbg_mask, int, S_IRUGO|S_IWUSR|S_IWGRP)
 #define t_prd_dbg_trace(_prd, fmt, args...)	\
 		t_prd_dbg(DBG_TRACE, _prd, fmt, ##args)
 
-#define t_prd_info_tool(_prd, fmt, args...)	\
+#define t_prd_info_flag(_prd, _flag, fmt, args...)	\
 		do { \
-			if (atomic_read(&_prd->ts->state.debug_tool) != DEBUG_TOOL_ENABLE){ \
+			if (!(_flag & PRD_SHOW_FLAG_DISABLE_PRT_RAW)){ \
 				t_prd_info(_prd, fmt, ##args); \
 			} \
 		} while(0)
@@ -1909,7 +1912,7 @@ out:
 /*
  * SIW TOUCH IC F/W Stop HandShake
  */
-static int prd_stop_firmware(struct siw_hal_prd_data *prd, u32 wdata)
+static int prd_stop_firmware(struct siw_hal_prd_data *prd, u32 wdata, int flag)
 {
 	struct device *dev = prd->dev;
 	struct siw_touch_chip *chip = to_touch_chip(dev);
@@ -1936,7 +1939,7 @@ static int prd_stop_firmware(struct siw_hal_prd_data *prd, u32 wdata)
 		goto out;
 	}
 #endif
-	t_prd_info_tool(prd, "check_data : %x\n", check_data);
+	t_prd_info_flag(prd, flag, "check_data : %x\n", check_data);
 
 	try_cnt = 1000;
 	do {
@@ -1947,7 +1950,7 @@ static int prd_stop_firmware(struct siw_hal_prd_data *prd, u32 wdata)
 			goto out;
 		}
 		siw_hal_read_value(dev, reg->prd_ic_ait_data_readystatus, &read_val);
-		t_prd_info_tool(prd, "Read RS_IMAGE = [%x] , OK RS_IMAGE = [%x]\n",
+		t_prd_info_flag(prd, flag, "Read RS_IMAGE = [%x] , OK RS_IMAGE = [%x]\n",
 			read_val, (u32)RS_IMAGE);
 		touch_msleep(2);
 	} while (read_val != (u32)RS_IMAGE);
@@ -2695,7 +2698,7 @@ out:
 	return (ssize_t)size;
 }
 
-static int prd_show_prd_get_data_raw_prd(struct device *dev)
+static int prd_show_prd_get_data_raw_prd(struct device *dev, int flag)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
@@ -2750,7 +2753,7 @@ out:
 	return ret;
 }
 
-static int prd_show_prd_get_data_raw_tcm(struct device *dev)
+static int prd_show_prd_get_data_raw_tcm(struct device *dev, int flag)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
@@ -2801,7 +2804,7 @@ out:
 	return ret;
 }
 
-static int prd_show_prd_get_data_raw_ait(struct device *dev)
+static int prd_show_prd_get_data_raw_ait(struct device *dev, int flag)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
@@ -2809,9 +2812,9 @@ static int prd_show_prd_get_data_raw_ait(struct device *dev)
 	struct siw_hal_prd_data *prd = (struct siw_hal_prd_data *)ts->prd;
 	int ret = 0;
 
-	t_prd_info_tool(prd, "======== CMD_RAWDATA_AIT ========\n");
+	t_prd_info_flag(prd, flag, "======== CMD_RAWDATA_AIT ========\n");
 
-	ret = prd_stop_firmware(prd, IT_IMAGE_RAW);
+	ret = prd_stop_firmware(prd, IT_IMAGE_RAW, flag);
 	if (ret < 0) {
 		goto out;
 	}
@@ -2832,7 +2835,7 @@ static int prd_show_prd_get_data_raw_ait(struct device *dev)
 		goto out;
 	}
 
-	if (atomic_read(&ts->state.debug_tool) != DEBUG_TOOL_ENABLE){
+	if (!(flag & PRD_SHOW_FLAG_DISABLE_PRT_RAW)){
 		prd_print_rawdata(prd, prd->buf_write, M2_ODD_DATA, 0, 0);
 
 		ret = prd_start_firmware(prd);
@@ -2845,7 +2848,7 @@ out:
 	return ret;
 }
 
-static int prd_show_prd_get_data_ait_basedata(struct device *dev)
+static int prd_show_prd_get_data_ait_basedata(struct device *dev, int flag)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
@@ -2864,10 +2867,10 @@ static int prd_show_prd_get_data_ait_basedata(struct device *dev)
 	int i = 0;
 	int ret = 0;
 
-	t_prd_info_tool(prd, "======== CMD_AIT_BASEDATA ========\n");
+	t_prd_info_flag(prd, flag, "======== CMD_AIT_BASEDATA ========\n");
 
 	for (i = 0; i < M2_RAWDATA_TEST_CNT; i++) {
-		ret = prd_stop_firmware(prd, ait_cmd[i]);
+		ret = prd_stop_firmware(prd, ait_cmd[i], flag);
 		if (ret < 0) {
 			goto out;
 		}
@@ -2888,7 +2891,7 @@ static int prd_show_prd_get_data_ait_basedata(struct device *dev)
 			goto out;
 		}
 
-		if (atomic_read(&ts->state.debug_tool) != DEBUG_TOOL_ENABLE){
+		if (!(flag & PRD_SHOW_FLAG_DISABLE_PRT_RAW)){
 			prd_print_rawdata(prd, prd->buf_write, buf_type[i], 0, 0);
 
 			ret = prd_start_firmware(prd);
@@ -2902,7 +2905,7 @@ out:
 	return ret;
 }
 
-static int prd_show_prd_get_data_filtered_deltadata(struct device *dev)
+static int prd_show_prd_get_data_filtered_deltadata(struct device *dev, int flag)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
@@ -2914,7 +2917,7 @@ static int prd_show_prd_get_data_filtered_deltadata(struct device *dev)
 
 	t_prd_info(prd, "======== CMD_FILTERED_DELTADATA ========\n");
 
-	ret = prd_stop_firmware(prd, IT_IMAGE_FILTERED_DELTA);
+	ret = prd_stop_firmware(prd, IT_IMAGE_FILTERED_DELTA, flag);
 	if (ret < 0) {
 		goto out;
 	}
@@ -2954,7 +2957,7 @@ out:
 	return ret;
 };
 
-static int prd_show_prd_get_data_deltadata(struct device *dev)
+static int prd_show_prd_get_data_deltadata(struct device *dev, int flag)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
@@ -2964,9 +2967,9 @@ static int prd_show_prd_get_data_deltadata(struct device *dev)
 	int i;
 	int ret = 0;
 
-	t_prd_info_tool(prd, "======== CMD_DELTADATA ========\n");
+	t_prd_info_flag(prd, flag, "======== CMD_DELTADATA ========\n");
 
-	ret = prd_stop_firmware(prd, IT_IMAGE_DELTA);
+	ret = prd_stop_firmware(prd, IT_IMAGE_DELTA, flag);
 	if (ret < 0) {
 		goto out;
 	}
@@ -2995,7 +2998,7 @@ static int prd_show_prd_get_data_deltadata(struct device *dev)
 		prd->m2_buf_odd_rawdata[i] = prd->buf_delta[(row + 1)*(PRD_COL_SIZE + 2) + (col + 1)];
 	}
 
-	if (atomic_read(&ts->state.debug_tool) != DEBUG_TOOL_ENABLE){
+	if (!(flag & PRD_SHOW_FLAG_DISABLE_PRT_RAW)){
 		prd_print_rawdata(prd, prd->buf_write, M2_ODD_DATA, 0, 0);
 
 		ret = prd_start_firmware(prd);
@@ -3009,7 +3012,7 @@ out:
 
 }
 
-static int prd_show_prd_get_data_labeldata(struct device *dev)
+static int prd_show_prd_get_data_labeldata(struct device *dev, int flag)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
@@ -3019,9 +3022,9 @@ static int prd_show_prd_get_data_labeldata(struct device *dev)
 	int i;
 	int ret = 0;
 
-	t_prd_info_tool(prd, "======== CMD_LABELDATA ========\n");
+	t_prd_info_flag(prd, flag, "======== CMD_LABELDATA ========\n");
 
-	ret = prd_stop_firmware(prd, IT_IMAGE_LABEL);
+	ret = prd_stop_firmware(prd, IT_IMAGE_LABEL, flag);
 	if (ret < 0) {
 		goto out;
 	}
@@ -3050,7 +3053,7 @@ static int prd_show_prd_get_data_labeldata(struct device *dev)
 		prd->buf_label[i] = prd->buf_label_tmp[(row + 1)*(PRD_COL_SIZE + 2) + (col + 1)];
 	}
 
-	if (atomic_read(&ts->state.debug_tool) != DEBUG_TOOL_ENABLE){
+	if (!(flag & PRD_SHOW_FLAG_DISABLE_PRT_RAW)){
 		prd_print_rawdata(prd, prd->buf_write, LABEL_DATA, 0, 0);
 
 		ret = prd_start_firmware(prd);
@@ -3063,7 +3066,7 @@ out:
 	return ret;
 }
 
-static int prd_show_prd_get_data_blu_jitter(struct device *dev)
+static int prd_show_prd_get_data_blu_jitter(struct device *dev, int flag)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
@@ -3110,7 +3113,7 @@ out:
 	return ret;
 }
 
-static ssize_t prd_show_prd_get_data(struct device *dev, int type)
+static ssize_t prd_show_prd_get_data(struct device *dev, int type, int flag)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
@@ -3119,28 +3122,28 @@ static ssize_t prd_show_prd_get_data(struct device *dev, int type)
 
 	switch (type) {
 	case CMD_RAWDATA_PRD:
-		ret = prd_show_prd_get_data_raw_prd(dev);
+		ret = prd_show_prd_get_data_raw_prd(dev, flag);
 		break;
 	case CMD_RAWDATA_TCM:
-		ret = prd_show_prd_get_data_raw_tcm(dev);
+		ret = prd_show_prd_get_data_raw_tcm(dev, flag);
 		break;
 	case CMD_RAWDATA_AIT:
-		ret = prd_show_prd_get_data_raw_ait(dev);
+		ret = prd_show_prd_get_data_raw_ait(dev, flag);
 		break;
 	case CMD_AIT_BASEDATA:
-		ret = prd_show_prd_get_data_ait_basedata(dev);
+		ret = prd_show_prd_get_data_ait_basedata(dev, flag);
 		break;
 	case CMD_FILTERED_DELTADATA:
-		ret = prd_show_prd_get_data_filtered_deltadata(dev);
+		ret = prd_show_prd_get_data_filtered_deltadata(dev, flag);
 		break;
 	case CMD_DELTADATA:
-		ret = prd_show_prd_get_data_deltadata(dev);
+		ret = prd_show_prd_get_data_deltadata(dev, flag);
 		break;
 	case CMD_LABELDATA:
-		ret = prd_show_prd_get_data_labeldata(dev);
+		ret = prd_show_prd_get_data_labeldata(dev, flag);
 		break;
 	case CMD_BLU_JITTER:
-		ret = prd_show_prd_get_data_blu_jitter(dev);
+		ret = prd_show_prd_get_data_blu_jitter(dev, flag);
 		break;
 	default:
 		t_prd_err(prd, "invalid get_data request CMD");
@@ -3151,7 +3154,7 @@ static ssize_t prd_show_prd_get_data(struct device *dev, int type)
 	return ret;
 }
 
-static ssize_t prd_show_get_data_common(struct device *dev, char *buf, int type)
+static ssize_t prd_show_get_data_common(struct device *dev, char *buf, int type, int flag)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
@@ -3159,7 +3162,7 @@ static ssize_t prd_show_get_data_common(struct device *dev, char *buf, int type)
 	int size = 0;
 	int ret = 0;
 
-	ret = prd_show_prd_get_data(dev, type);
+	ret = prd_show_prd_get_data(dev, type, flag);
 	if (ret < 0){
 		t_prd_err(prd, "prd_show_prd_get_data(%d) failed, %d\n",
 			type, ret);
@@ -3177,7 +3180,7 @@ static ssize_t prd_show_get_data_common(struct device *dev, char *buf, int type)
 
 static ssize_t prd_show_delta(struct device *dev, char *buf)
 {
-	return (ssize_t)prd_show_get_data_common(dev, buf, CMD_DELTADATA);
+	return (ssize_t)prd_show_get_data_common(dev, buf, CMD_DELTADATA, 0);
 }
 
 static ssize_t prd_show_label(struct device *dev, char *buf)
@@ -3192,17 +3195,17 @@ static ssize_t prd_show_label(struct device *dev, char *buf)
 					chip->lcd_mode);
 		return (ssize_t)size;
 	}
-	return (ssize_t)prd_show_get_data_common(dev, buf, CMD_LABELDATA);
+	return (ssize_t)prd_show_get_data_common(dev, buf, CMD_LABELDATA, 0);
 }
 
 static ssize_t prd_show_rawdata_prd(struct device *dev, char *buf)
 {
-	return (ssize_t)prd_show_get_data_common(dev, buf, CMD_RAWDATA_PRD);
+	return (ssize_t)prd_show_get_data_common(dev, buf, CMD_RAWDATA_PRD, 0);
 }
 
 static ssize_t prd_show_rawdata_tcm(struct device *dev, char *buf)
 {
-	return (ssize_t)prd_show_get_data_common(dev, buf, CMD_RAWDATA_TCM);
+	return (ssize_t)prd_show_get_data_common(dev, buf, CMD_RAWDATA_TCM, 0);
 }
 
 static ssize_t prd_show_rawdata_ait(struct device *dev, char *buf)
@@ -3217,7 +3220,7 @@ static ssize_t prd_show_rawdata_ait(struct device *dev, char *buf)
 					chip->lcd_mode);
 		return (ssize_t)size;
 	}
-	return (ssize_t)prd_show_get_data_common(dev, buf, CMD_RAWDATA_AIT);
+	return (ssize_t)prd_show_get_data_common(dev, buf, CMD_RAWDATA_AIT, 0);
 }
 
 static ssize_t prd_show_basedata(struct device *dev, char *buf)
@@ -3233,7 +3236,7 @@ static ssize_t prd_show_basedata(struct device *dev, char *buf)
 		return size;
 	}
 
-	return (ssize_t)prd_show_get_data_common(dev, buf, CMD_AIT_BASEDATA);
+	return (ssize_t)prd_show_get_data_common(dev, buf, CMD_AIT_BASEDATA, 0);
 }
 
 static int prd_show_do_lpwg_sd(struct siw_hal_prd_data *prd, char *buf)
@@ -3509,27 +3512,29 @@ static ssize_t prd_show_app(struct device *dev, char *buf)
 	struct siw_ts *ts = chip->ts;
 	struct siw_hal_prd_data *prd = (struct siw_hal_prd_data *)ts->prd;
 	int prd_app_mode = prd->prd_app_mode;
+	int flag = 0;
 	int size = 0;
 
 	t_prd_dbg_base(prd, "mode %d\n", prd_app_mode);
 
+	flag = PRD_SHOW_FLAG_DISABLE_PRT_RAW;
 	size = (PRD_ROW_SIZE * PRD_COL_SIZE)<<1;
 
 	switch (prd_app_mode) {
 	case REPORT_RAW:
-		prd_show_get_data_common(dev, buf, CMD_RAWDATA_AIT);
+		prd_show_get_data_common(dev, buf, CMD_RAWDATA_AIT, flag);
 		memcpy((void *)buf, (u8 *)prd->m2_buf_odd_rawdata, size);
 		break;
 	case REPORT_BASE:
-		prd_show_get_data_common(dev, buf, CMD_AIT_BASEDATA);
+		prd_show_get_data_common(dev, buf, CMD_AIT_BASEDATA, flag);
 		memcpy((void *)buf, (u8 *)prd->m2_buf_odd_rawdata, size);
 		break;
 	case REPORT_LABEL:
-		prd_show_get_data_common(dev, buf, CMD_LABELDATA);
+		prd_show_get_data_common(dev, buf, CMD_LABELDATA, flag);
 		memcpy((void *)buf, (u8 *)prd->buf_label, size);
 		break;
 	case REPORT_DELTA:
-		prd_show_get_data_common(dev, buf, CMD_DELTADATA);
+		prd_show_get_data_common(dev, buf, CMD_DELTADATA, flag);
 		memcpy((void *)buf, (u8 *)prd->m2_buf_odd_rawdata, size);
 		break;
 	default:
@@ -3648,7 +3653,6 @@ static struct siw_hal_prd_data *siw_hal_prd_alloc(struct device *dev)
 	t_dev_dbg_base(dev, "create prd[%s] (0x%X)\n",
 				prd->name, sizeof(*prd));
 
-	prd->ts = ts;
 	prd->dev = ts->dev;
 
 	ts->prd = prd;
