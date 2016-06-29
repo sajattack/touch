@@ -201,6 +201,13 @@ struct siw_hal_tc_version {
 	u8 ext:4;
 };
 
+struct siw_hal_tc_version_ext_date {
+	u8 xx;
+	u8 dd;
+	u8 mm;
+	u8 yy;
+};
+
 struct siw_hal_fw_info {
 	u32 chip_id_raw;
 	u8 chip_id[8];
@@ -232,6 +239,40 @@ static inline void siw_hal_fw_set_chip_id(struct siw_hal_fw_info *fw, u32 chip_i
 	fw->chip_id[1] = (chip_id>>16) & 0xFF;
 	fw->chip_id[2] = (chip_id>>8) & 0xFF;
 	fw->chip_id[3] = chip_id & 0xFF;
+}
+
+enum {
+	VERSION_EXT_DATE = 1,
+};
+
+static inline int siw_hal_fw_chk_version_ext(u32 version_ext, u32 ext_flag)
+{
+	switch (ext_flag) {
+	case VERSION_EXT_DATE:
+		{
+			struct siw_hal_tc_version_ext_date ext_date;
+
+			memcpy(&ext_date, &version_ext, sizeof(ext_date));
+
+			if (ext_date.yy &&
+				ext_date.mm &&
+				ext_date.dd) {
+
+				if (ext_date.mm > 0x12) {
+					break;
+				}
+
+				if (ext_date.dd > 0x31) {
+					break;
+				}
+
+				return 0;
+			}
+		}
+		break;
+	}
+
+	return -EINVAL;
 }
 
 static inline void siw_hal_fw_set_version(struct siw_hal_fw_info *fw,

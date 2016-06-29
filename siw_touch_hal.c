@@ -1170,10 +1170,15 @@ static int siw_hal_ic_info(struct device *dev)
 	fw->wfr &= WAFER_TYPE_MASK;
 
 	if (fw->version_ext) {
+		int ferr;
+
+		ferr = siw_hal_fw_chk_version_ext(fw->version_ext,
+									fw->v.version.ext);
 		t_dev_info(dev,
-				"[T] chip id %s, version %08X (0x%02X)\n",
+				"[T] chip id %s, version %08X (0x%02X) %s\n",
 				chip->fw.chip_id,
-				fw->version_ext, fw->revision);
+				fw->version_ext, fw->revision,
+				(ferr < 0) ? "(invalid)" : "");
 	} else {
 		t_dev_info(dev,
 				"[T] chip id %s, version v%u.%02u (0x%08Xh, 0x%02X)\n",
@@ -1752,6 +1757,12 @@ static int siw_hal_fw_compare(struct device *dev, u8 *fw_buf)
 		t_dev_info(dev,
 			"FW compare: bin-ver: %08X (%s)(%d)\n",
 			bin_raw_ext, pid, bin_diff);
+
+		if (siw_hal_fw_chk_version_ext(bin_raw_ext,
+					fw->v.version.ext) < 0) {
+			t_dev_err(dev, "FW compare: (invalid version format)\n");
+			return -EINVAL;
+		}
 	} else {
 		t_dev_info(dev,
 			"FW compare: bin-ver: %d.%02d (%s)(%d)\n",
