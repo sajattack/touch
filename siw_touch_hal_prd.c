@@ -3506,36 +3506,53 @@ static const char *prd_app_mode_str[] = {
 	[REPORT_DELTA]		= "DELTA",
 };
 
+struct prd_app_param {
+	int type;
+	u8 *pbuf;
+};
+
 static ssize_t prd_show_app(struct device *dev, char *buf)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
 	struct siw_hal_prd_data *prd = (struct siw_hal_prd_data *)ts->prd;
-	int prd_app_mode = prd->prd_app_mode;
+	struct prd_app_param param_table[] = {
+		[REPORT_RAW] = {
+			.type = CMD_RAWDATA_AIT,
+			.pbuf = (u8 *)prd->m2_buf_odd_rawdata,
+		},
+		[REPORT_BASE] = {
+			.type = CMD_AIT_BASEDATA,
+			.pbuf = (u8 *)prd->m2_buf_odd_rawdata,
+		},
+		[REPORT_LABEL] = {
+			.type = CMD_LABELDATA,
+			.pbuf = (u8 *)prd->buf_label,
+		},
+		[REPORT_DELTA] = {
+			.type = CMD_DELTADATA,
+			.pbuf = (u8 *)prd->m2_buf_odd_rawdata,
+		},
+	};
+	struct prd_app_param *param = NULL;
+	int mode = prd->prd_app_mode;
 	int flag = 0;
 	int size = 0;
 
-	t_prd_dbg_base(prd, "mode %d\n", prd_app_mode);
+	t_prd_info(prd, "show app mode : %s (%d)\n",
+			prd_app_mode_str[mode], mode);
 
-	flag = PRD_SHOW_FLAG_DISABLE_PRT_RAW;
-	size = (PRD_ROW_SIZE * PRD_COL_SIZE)<<1;
-
-	switch (prd_app_mode) {
+	switch (mode) {
 	case REPORT_RAW:
-		prd_show_get_data_common(dev, buf, CMD_RAWDATA_AIT, flag);
-		memcpy((void *)buf, (u8 *)prd->m2_buf_odd_rawdata, size);
-		break;
 	case REPORT_BASE:
-		prd_show_get_data_common(dev, buf, CMD_AIT_BASEDATA, flag);
-		memcpy((void *)buf, (u8 *)prd->m2_buf_odd_rawdata, size);
-		break;
 	case REPORT_LABEL:
-		prd_show_get_data_common(dev, buf, CMD_LABELDATA, flag);
-		memcpy((void *)buf, (u8 *)prd->buf_label, size);
-		break;
 	case REPORT_DELTA:
-		prd_show_get_data_common(dev, buf, CMD_DELTADATA, flag);
-		memcpy((void *)buf, (u8 *)prd->m2_buf_odd_rawdata, size);
+		param = &param_table[mode];
+		flag = PRD_SHOW_FLAG_DISABLE_PRT_RAW;
+		size = (PRD_ROW_SIZE * PRD_COL_SIZE)<<1;
+
+		prd_show_get_data_common(dev, buf, param->type, flag);
+		memcpy(buf, param->pbuf, size);
 		break;
 	default:
 		size = 0;
@@ -3543,7 +3560,7 @@ static ssize_t prd_show_app(struct device *dev, char *buf)
 	}
 
 	if (touch_test_abt_quirks(ts, ABT_QUIRK_RAW_RETURN_MODE_VAL)) {
-		return (ssize_t)prd_app_mode;
+		return (ssize_t)mode;
 	}
 
 	return (ssize_t)size;
@@ -3577,7 +3594,7 @@ static ssize_t prd_store_app(struct device *dev,
 
 	if (mode < REPORT_MAX) {
 		prd->prd_app_mode = mode;
-		t_prd_info(prd, "app mode : %s (%d)\n",
+		t_prd_info(prd, "store app mode : %s (%d)\n",
 			prd_app_mode_str[mode], mode);
 
 		if(mode == REPORT_OFF){
