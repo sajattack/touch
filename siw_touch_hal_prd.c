@@ -208,6 +208,7 @@ enum {
 };
 
 struct siw_hal_prd_data {
+	struct siw_ts *ts;
 	struct device *dev;
 	char name[PRD_DATA_NAME_SZ];
 	/* */
@@ -430,6 +431,13 @@ module_param_named(s_prd_dbg_mask, t_prd_dbg_mask, int, S_IRUGO|S_IWUSR|S_IWGRP)
 
 #define t_prd_dbg_trace(_prd, fmt, args...)	\
 		t_prd_dbg(DBG_TRACE, _prd, fmt, ##args)
+
+#define t_prd_info_tool(_prd, fmt, args...)	\
+		do { \
+			if (atomic_read(&_prd->ts->state.debug_tool) != DEBUG_TOOL_ENABLE){ \
+				t_prd_info(_prd, fmt, ##args); \
+			} \
+		} while(0)
 
 
 #define siw_prd_sysfs_err_invalid_param(_prd)	\
@@ -1928,7 +1936,7 @@ static int prd_stop_firmware(struct siw_hal_prd_data *prd, u32 wdata)
 		goto out;
 	}
 #endif
-	t_prd_info(prd, "check_data : %x\n", check_data);
+	t_prd_info_tool(prd, "check_data : %x\n", check_data);
 
 	try_cnt = 1000;
 	do {
@@ -1939,9 +1947,9 @@ static int prd_stop_firmware(struct siw_hal_prd_data *prd, u32 wdata)
 			goto out;
 		}
 		siw_hal_read_value(dev, reg->prd_ic_ait_data_readystatus, &read_val);
-		t_prd_info(prd, "Read RS_IMAGE = [%x] , OK RS_IMAGE = [%x]\n",
+		t_prd_info_tool(prd, "Read RS_IMAGE = [%x] , OK RS_IMAGE = [%x]\n",
 			read_val, (u32)RS_IMAGE);
-		touch_msleep(10);
+		touch_msleep(2);
 	} while (read_val != (u32)RS_IMAGE);
 
 out:
@@ -2801,7 +2809,7 @@ static int prd_show_prd_get_data_raw_ait(struct device *dev)
 	struct siw_hal_prd_data *prd = (struct siw_hal_prd_data *)ts->prd;
 	int ret = 0;
 
-	t_prd_info(prd, "======== CMD_RAWDATA_AIT ========\n");
+	t_prd_info_tool(prd, "======== CMD_RAWDATA_AIT ========\n");
 
 	ret = prd_stop_firmware(prd, IT_IMAGE_RAW);
 	if (ret < 0) {
@@ -2824,11 +2832,13 @@ static int prd_show_prd_get_data_raw_ait(struct device *dev)
 		goto out;
 	}
 
-	prd_print_rawdata(prd, prd->buf_write, M2_ODD_DATA, 0, 0);
+	if (atomic_read(&ts->state.debug_tool) != DEBUG_TOOL_ENABLE){
+		prd_print_rawdata(prd, prd->buf_write, M2_ODD_DATA, 0, 0);
 
-	ret = prd_start_firmware(prd);
-	if (ret < 0) {
-		goto out;
+		ret = prd_start_firmware(prd);
+		if (ret < 0) {
+			goto out;
+		}
 	}
 
 out:
@@ -2854,7 +2864,7 @@ static int prd_show_prd_get_data_ait_basedata(struct device *dev)
 	int i = 0;
 	int ret = 0;
 
-	t_prd_info(prd, "======== CMD_AIT_BASEDATA ========\n");
+	t_prd_info_tool(prd, "======== CMD_AIT_BASEDATA ========\n");
 
 	for (i = 0; i < M2_RAWDATA_TEST_CNT; i++) {
 		ret = prd_stop_firmware(prd, ait_cmd[i]);
@@ -2878,11 +2888,13 @@ static int prd_show_prd_get_data_ait_basedata(struct device *dev)
 			goto out;
 		}
 
-		prd_print_rawdata(prd, prd->buf_write, buf_type[i], 0, 0);
+		if (atomic_read(&ts->state.debug_tool) != DEBUG_TOOL_ENABLE){
+			prd_print_rawdata(prd, prd->buf_write, buf_type[i], 0, 0);
 
-		ret = prd_start_firmware(prd);
-		if (ret < 0) {
-			goto out;
+			ret = prd_start_firmware(prd);
+			if (ret < 0) {
+				goto out;
+			}
 		}
 	}
 
@@ -2952,7 +2964,7 @@ static int prd_show_prd_get_data_deltadata(struct device *dev)
 	int i;
 	int ret = 0;
 
-	t_prd_info(prd, "======== CMD_DELTADATA ========\n");
+	t_prd_info_tool(prd, "======== CMD_DELTADATA ========\n");
 
 	ret = prd_stop_firmware(prd, IT_IMAGE_DELTA);
 	if (ret < 0) {
@@ -2983,11 +2995,13 @@ static int prd_show_prd_get_data_deltadata(struct device *dev)
 		prd->m2_buf_odd_rawdata[i] = prd->buf_delta[(row + 1)*(PRD_COL_SIZE + 2) + (col + 1)];
 	}
 
-	prd_print_rawdata(prd, prd->buf_write, M2_ODD_DATA, 0, 0);
+	if (atomic_read(&ts->state.debug_tool) != DEBUG_TOOL_ENABLE){
+		prd_print_rawdata(prd, prd->buf_write, M2_ODD_DATA, 0, 0);
 
-	ret = prd_start_firmware(prd);
-	if (ret < 0) {
-		goto out;
+		ret = prd_start_firmware(prd);
+		if (ret < 0) {
+			goto out;
+		}
 	}
 
 out:
@@ -3005,7 +3019,7 @@ static int prd_show_prd_get_data_labeldata(struct device *dev)
 	int i;
 	int ret = 0;
 
-	t_prd_info(prd, "======== CMD_LABELDATA ========\n");
+	t_prd_info_tool(prd, "======== CMD_LABELDATA ========\n");
 
 	ret = prd_stop_firmware(prd, IT_IMAGE_LABEL);
 	if (ret < 0) {
@@ -3036,11 +3050,13 @@ static int prd_show_prd_get_data_labeldata(struct device *dev)
 		prd->buf_label[i] = prd->buf_label_tmp[(row + 1)*(PRD_COL_SIZE + 2) + (col + 1)];
 	}
 
-	prd_print_rawdata(prd, prd->buf_write, LABEL_DATA, 0, 0);
+	if (atomic_read(&ts->state.debug_tool) != DEBUG_TOOL_ENABLE){
+		prd_print_rawdata(prd, prd->buf_write, LABEL_DATA, 0, 0);
 
-	ret = prd_start_firmware(prd);
-	if (ret < 0) {
-		goto out;
+		ret = prd_start_firmware(prd);
+		if (ret < 0) {
+			goto out;
+		}
 	}
 
 out:
@@ -3497,26 +3513,24 @@ static ssize_t prd_show_app(struct device *dev, char *buf)
 
 	t_prd_dbg_base(prd, "mode %d\n", prd_app_mode);
 
+	size = (PRD_ROW_SIZE * PRD_COL_SIZE)<<1;
+
 	switch (prd_app_mode) {
 	case REPORT_RAW:
-		/* To Do
-		 * Copy raw data to buf and return size;
-		 */
+		prd_show_get_data_common(dev, buf, CMD_RAWDATA_AIT);
+		memcpy((void *)buf, (u8 *)prd->m2_buf_odd_rawdata, size);
 		break;
 	case REPORT_BASE:
-		/* To Do
-		 * Copy base data to buf and return size;
-		 */
+		prd_show_get_data_common(dev, buf, CMD_AIT_BASEDATA);
+		memcpy((void *)buf, (u8 *)prd->m2_buf_odd_rawdata, size);
 		break;
 	case REPORT_LABEL:
-		/* To Do
-		 * Copy label data to buf and return size;
-		 */
+		prd_show_get_data_common(dev, buf, CMD_LABELDATA);
+		memcpy((void *)buf, (u8 *)prd->buf_label, size);
 		break;
 	case REPORT_DELTA:
-		/* To Do
-		 * Copy delta data to buf and return size;
-		 */
+		prd_show_get_data_common(dev, buf, CMD_DELTADATA);
+		memcpy((void *)buf, (u8 *)prd->m2_buf_odd_rawdata, size);
 		break;
 	default:
 		size = 0;
@@ -3537,6 +3551,7 @@ static ssize_t prd_store_app(struct device *dev,
 	struct siw_ts *ts = chip->ts;
 	struct siw_hal_prd_data *prd = (struct siw_hal_prd_data *)ts->prd;
 	u32 mode = 0;
+	int ret = 0;
 
 	if (atomic_read(&ts->state.debug_tool) != DEBUG_TOOL_ENABLE){
 		return count;
@@ -3559,6 +3574,13 @@ static ssize_t prd_store_app(struct device *dev,
 		prd->prd_app_mode = mode;
 		t_prd_info(prd, "app mode : %s (%d)\n",
 			prd_app_mode_str[mode], mode);
+
+		if(mode == REPORT_OFF){
+			ret = prd_start_firmware(prd);
+			if (ret < 0) {
+				t_prd_err(prd, "prd_start_firmware Fail : %d\n", ret);
+			}
+		}
 	} else {
 		t_prd_info(prd, "app mode : unknown, %d\n", mode);
 	}
@@ -3626,6 +3648,7 @@ static struct siw_hal_prd_data *siw_hal_prd_alloc(struct device *dev)
 	t_dev_dbg_base(dev, "create prd[%s] (0x%X)\n",
 				prd->name, sizeof(*prd));
 
+	prd->ts = ts;
 	prd->dev = ts->dev;
 
 	ts->prd = prd;
