@@ -3862,7 +3862,7 @@ static int siw_hal_check_status_default(struct device *dev,
 	}
 
 	if (ic_status & INT_IC_ABNORMAL_STATUS) {
-		t_dev_err(dev, "abnormal ic status %08Xh\n", status);
+		t_dev_err(dev, "abnormal ic status %08Xh\n", ic_status);
 		ret = -ERESTART;
 	}
 
