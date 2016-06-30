@@ -86,6 +86,7 @@ static ssize_t siw_misc_read(struct file *filp,
 	struct siw_misc_data *misc_data = __siw_misc_data;
 	struct device *dev = NULL;
 	u32 addr;
+	ssize_t result = 0;
 	ssize_t ret = -EFAULT;
 
 	if (count > SIW_MISC_BUF_SZ) {
@@ -110,10 +111,11 @@ static ssize_t siw_misc_read(struct file *filp,
 		goto out;
 	}
 
-	ret = copy_to_user((void __user *)buf, misc_data->buf, count);
-	if (ret) {
+	result = copy_to_user((void __user *)buf, misc_data->buf, count);
+	if (result) {
 		t_dev_err(dev, "rd: can't copy buf(%d), %d\n",
-			count, ret);
+			count, result);
+		ret = result;
 		goto out;
 	}
 
@@ -139,6 +141,10 @@ static ssize_t siw_misc_write(struct file *filp,
 
 	if (count > SIW_MISC_BUF_SZ) {
 		return -EMSGSIZE;
+	}
+
+	if (count <= MISC_WR_DATA_OFFSET) {
+		return -EINVAL;
 	}
 
 	mutex_lock(&siw_misc_lock);
