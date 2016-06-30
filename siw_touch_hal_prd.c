@@ -3575,10 +3575,6 @@ static ssize_t prd_store_app(struct device *dev,
 	u32 mode = 0;
 	int ret = 0;
 
-	if (atomic_read(&ts->state.debug_tool) != DEBUG_TOOL_ENABLE){
-		return count;
-	}
-
 	/*
 	 * up to APP I/F
 	 */
@@ -3604,7 +3600,7 @@ static ssize_t prd_store_app(struct device *dev,
 			}
 		}
 	} else {
-		t_prd_info(prd, "app mode : unknown, %d\n", mode);
+		t_prd_err(prd, "app mode : unknown, %d\n", mode);
 	}
 
 	return (ssize_t)mode;
