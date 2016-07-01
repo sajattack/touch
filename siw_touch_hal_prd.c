@@ -212,6 +212,7 @@ struct siw_hal_prd_data {
 	char name[PRD_DATA_NAME_SZ];
 	/* */
 	int prd_app_mode;
+	int prd_app_flag;
 	/* */
 	char log_buf[PRD_LOG_BUF_SIZE];
 	char line[PRD_LINE_NUM];
@@ -411,7 +412,8 @@ module_param_named(s_prd_dbg_mask, t_prd_dbg_mask, int, S_IRUGO|S_IWUSR|S_IWGRP)
 
 
 enum {
-	PRD_SHOW_FLAG_DISABLE_PRT_RAW = (1<<0),
+	PRD_SHOW_FLAG_DISABLE_PRT_RAW	= (1<<0),
+	PRD_SHOW_FLAG_DISABLE_START_FW	= (1<<1),
 };
 
 #define t_prd_info(_prd, fmt, args...)	\
@@ -2837,7 +2839,9 @@ static int prd_show_prd_get_data_raw_ait(struct device *dev, int flag)
 
 	if (!(flag & PRD_SHOW_FLAG_DISABLE_PRT_RAW)){
 		prd_print_rawdata(prd, prd->buf_write, M2_ODD_DATA, 0, 0);
+	}
 
+	if (!(flag & PRD_SHOW_FLAG_DISABLE_START_FW)){
 		ret = prd_start_firmware(prd);
 		if (ret < 0) {
 			goto out;
@@ -2893,7 +2897,9 @@ static int prd_show_prd_get_data_ait_basedata(struct device *dev, int flag)
 
 		if (!(flag & PRD_SHOW_FLAG_DISABLE_PRT_RAW)){
 			prd_print_rawdata(prd, prd->buf_write, buf_type[i], 0, 0);
+		}
 
+		if (!(flag & PRD_SHOW_FLAG_DISABLE_START_FW)){
 			ret = prd_start_firmware(prd);
 			if (ret < 0) {
 				goto out;
@@ -3000,7 +3006,9 @@ static int prd_show_prd_get_data_deltadata(struct device *dev, int flag)
 
 	if (!(flag & PRD_SHOW_FLAG_DISABLE_PRT_RAW)){
 		prd_print_rawdata(prd, prd->buf_write, M2_ODD_DATA, 0, 0);
+	}
 
+	if (!(flag & PRD_SHOW_FLAG_DISABLE_START_FW)){
 		ret = prd_start_firmware(prd);
 		if (ret < 0) {
 			goto out;
@@ -3055,7 +3063,9 @@ static int prd_show_prd_get_data_labeldata(struct device *dev, int flag)
 
 	if (!(flag & PRD_SHOW_FLAG_DISABLE_PRT_RAW)){
 		prd_print_rawdata(prd, prd->buf_write, LABEL_DATA, 0, 0);
+	}
 
+	if (!(flag & PRD_SHOW_FLAG_DISABLE_START_FW)){
 		ret = prd_start_firmware(prd);
 		if (ret < 0) {
 			goto out;
@@ -3548,7 +3558,7 @@ static ssize_t prd_show_app(struct device *dev, char *buf)
 	case REPORT_LABEL:
 	case REPORT_DELTA:
 		param = &param_table[mode];
-		flag = PRD_SHOW_FLAG_DISABLE_PRT_RAW;
+		flag = prd->prd_app_flag;
 		size = (PRD_ROW_SIZE * PRD_COL_SIZE)<<1;
 
 		prd_show_get_data_common(dev, buf, param->type, flag);
@@ -3573,13 +3583,14 @@ static ssize_t prd_store_app(struct device *dev,
 	struct siw_ts *ts = chip->ts;
 	struct siw_hal_prd_data *prd = (struct siw_hal_prd_data *)ts->prd;
 	u32 mode = 0;
+	u32 flag = PRD_SHOW_FLAG_DISABLE_PRT_RAW | PRD_SHOW_FLAG_DISABLE_START_FW;
 	int ret = 0;
 
 	/*
 	 * up to APP I/F
 	 */
 #if 1
-	if (sscanf(buf, "%d", &mode) <= 0) {
+	if (sscanf(buf, "%d %x", &mode, &flag) <= 0) {
 		siw_prd_sysfs_err_invalid_param(prd);
 		return count;
 	}
@@ -3590,8 +3601,9 @@ static ssize_t prd_store_app(struct device *dev,
 
 	if (mode < REPORT_MAX) {
 		prd->prd_app_mode = mode;
-		t_prd_info(prd, "store app mode : %s (%d)\n",
-			prd_app_mode_str[mode], mode);
+		prd->prd_app_flag = flag;
+		t_prd_info(prd, "store app mode : %s (%d, %Xh)\n",
+			prd_app_mode_str[mode], mode, flag);
 
 		if(mode == REPORT_OFF){
 			ret = prd_start_firmware(prd);
@@ -3603,7 +3615,7 @@ static ssize_t prd_store_app(struct device *dev,
 		t_prd_err(prd, "app mode : unknown, %d\n", mode);
 	}
 
-	return (ssize_t)mode;
+	return (ssize_t)count;
 }
 
 
