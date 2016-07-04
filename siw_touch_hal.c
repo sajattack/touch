@@ -4552,15 +4552,30 @@ static int siw_hal_notify(struct device *dev, ulong event, void *data)
 	return ret;
 }
 
-static int siw_hal_get_cmd_version(struct device *dev, char *buf)
+enum {
+	SIW_GET_CHIP_NAME	= (1<<0),
+	SIW_GET_VERSION		= (1<<1),
+	SIW_GET_REVISION	= (1<<2),
+	SIW_GET_PRODUCT		= (1<<3),
+	/* */
+	SIW_GET_OPT1		= (1<<8),
+	/* */
+	SIW_GET_VER_SIMPLE	= (1<<16),
+	/* */
+	SIW_GET_ALL			= 0xFFFF,
+};
+
+static int siw_hal_get_cmd_version(struct device *dev, char *buf, int flag)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
-	struct siw_hal_reg *reg = chip->reg;
+//	struct siw_hal_reg *reg = chip->reg;
 	struct siw_hal_fw_info *fw = &chip->fw;
-	u32 rdata[4] = {0};
 	int offset = 0;
 	int ret = 0;
+
+	if (!flag)
+		return 0;
 
 	ret = siw_hal_do_ic_info(dev, 0);
 	if (ret < 0) {
@@ -4569,76 +4584,58 @@ static int siw_hal_get_cmd_version(struct device *dev, char *buf)
 		return offset;
 	}
 
-	offset += siw_snprintf(buf, offset,
-				"chip : %s\n",
-				touch_chip_name(ts));
-
-	if (fw->version_ext) {
+	if (flag & SIW_GET_CHIP_NAME) {
 		offset += siw_snprintf(buf, offset,
-					"version : %08X\n",
-					fw->version_ext);
-	} else {
-		offset += siw_snprintf(buf, offset,
-					"version : v%d.%02d\n",
-					fw->v.version.major, fw->v.version.minor);
+					"chip : %s\n",
+					touch_chip_name(ts));
 	}
 
-	if (chip->fw.revision == 0xFF) {
-		offset += siw_snprintf(buf, offset,
-					"revision : Flash Erased(0xFF)\n");
-	} else {
-		offset += siw_snprintf(buf, offset,
-					"revision : %d\n", fw->revision);
+	if (flag & (SIW_GET_VERSION|SIW_GET_VER_SIMPLE)) {
+		char *ver_tag = (flag & SIW_GET_VER_SIMPLE) ? "" : "version : ";
+		if (fw->version_ext) {
+			offset += siw_snprintf(buf, offset,
+						"%s%08X\n",
+						ver_tag,
+						fw->version_ext);
+		} else {
+			offset += siw_snprintf(buf, offset,
+						"%sv%d.%02d\n",
+						ver_tag,
+						fw->v.version.major, fw->v.version.minor);
+		}
 	}
 
-	offset += siw_snprintf(buf, offset,
-				"product id : %s\n", fw->product_id);
-
-	switch (touch_chip_type(ts)) {
-	case CHIP_LG4946:
-		ret = siw_hal_reg_read(dev,
-					reg->info_lot_num,
-					(void *)&rdata, sizeof(rdata));
-		offset += siw_snprintf(buf, offset, "lot : %d\n", rdata[0]);
-		offset += siw_snprintf(buf, offset, "serial : 0x%X\n", rdata[1]);
-#if 0
-		offset += siw_snprintf(buf, offset, "date : 0x%X 0x%X\n",
-						rdata[2], rdata[3]);
-#endif
-		offset += siw_snprintf(buf, offset, "date : %04d.%02d.%02d " \
-						"%02d:%02d:%02d Site%d\n",
-						rdata[2] & 0xFFFF, (rdata[2] >> 16 & 0xFF), (rdata[2] >> 24 & 0xFF),
-						rdata[3] & 0xFF, (rdata[3] >> 8 & 0xFF), (rdata[3] >> 16 & 0xFF),
-						(rdata[3] >> 24 & 0xFF));
-		break;
+	if (flag & SIW_GET_REVISION) {
+		if (chip->fw.revision == 0xFF) {
+			offset += siw_snprintf(buf, offset,
+						"revision : Flash Erased(0xFF)\n");
+		} else {
+			offset += siw_snprintf(buf, offset,
+						"revision : %d\n", fw->revision);
+		}
 	}
 
-	return offset;
-}
-
-static int siw_hal_get_cmd_atcmd_version(struct device *dev, char *buf)
-{
-	struct siw_touch_chip *chip = to_touch_chip(dev);
-	struct siw_hal_fw_info *fw = &chip->fw;
-	int offset = 0;
-	int ret = 0;
-
-	ret = siw_hal_do_ic_info(dev, 0);
-	if (ret < 0) {
-		offset += siw_snprintf(buf, offset, "-1\n");
-		offset += siw_snprintf(buf, offset, "Read Fail Touch IC Info\n");
-		return offset;
+	if (flag & SIW_GET_PRODUCT) {
+		offset += siw_snprintf(buf, offset,
+					"product id : %s\n", fw->product_id);
 	}
 
-	if (fw->version_ext) {
-		offset += siw_snprintf(buf, offset,
-					"version : %08X\n",
-					fw->version_ext);
-	} else {
-		offset += siw_snprintf(buf, offset,
-					"v%d.%02d\n",
-					fw->v.version.major,
-					fw->v.version.minor);
+	if (flag & SIW_GET_OPT1) {
+		switch (touch_chip_type(ts)) {
+		case CHIP_LG4946:
+			offset += siw_snprintf(buf, offset,
+						"lot : %d\n", fw->lot);
+			offset += siw_snprintf(buf, offset,
+						"serial : 0x%X\n", fw->sn);
+			offset += siw_snprintf(buf, offset,
+						"date : %04d.%02d.%02d %02d:%02d:%02d Site%d\n",
+						fw->date & 0xFFFF,
+						((fw->date>>16) & 0xFF), ((fw->date>>24) & 0xFF),
+						fw->time & 0xFF,
+						((fw->time>>8) & 0xFF), ((fw->time>>16) & 0xFF),
+						((fw->time>>24) & 0xFF));
+			break;
+		}
 	}
 
 	return offset;
@@ -4657,11 +4654,11 @@ static int siw_hal_get(struct device *dev, u32 cmd, void *buf)
 
 	switch (cmd) {
 	case CMD_VERSION:
-		ret = siw_hal_get_cmd_version(dev, (char *)buf);
+		ret = siw_hal_get_cmd_version(dev, (char *)buf, SIW_GET_ALL);
 		break;
 
 	case CMD_ATCMD_VERSION:
-		ret = siw_hal_get_cmd_atcmd_version(dev, (char *)buf);
+		ret = siw_hal_get_cmd_version(dev, (char *)buf, SIW_GET_VER_SIMPLE);
 		break;
 
 	default:
