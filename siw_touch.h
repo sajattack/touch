@@ -587,6 +587,7 @@ struct siw_touch_pdata {
 #define _ABT_QUIRK_RAW_RETURN_MODE_VAL		(1L<<0)
 
 	unsigned long prd_quirks;
+#define _PRD_QUIRK_RAW_RETURN_MODE_VAL		(1L<<0)
 
 	struct siw_touch_bus_info bus_info;
 
@@ -638,6 +639,10 @@ enum {
 
 enum {
 	ABT_QUIRK_RAW_RETURN_MODE_VAL		= _ABT_QUIRK_RAW_RETURN_MODE_VAL,
+};
+
+enum {
+	PRD_QUIRK_RAW_RETURN_MODE_VAL		= _PRD_QUIRK_RAW_RETURN_MODE_VAL,
 };
 
 static inline unsigned long pdata_get_quirks(struct siw_touch_pdata *pdata)
