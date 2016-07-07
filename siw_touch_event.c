@@ -38,9 +38,19 @@
 #include "siw_touch.h"
 #include "siw_touch_event.h"
 
+
+#define __siw_input_report_abs(_idev, _code, _value)	\
+	do {	\
+		if (t_dbg_flag & DBG_FLAG_SKIP_IEVENT) {	\
+			t_dev_dbg_event(&_idev->dev, "skip input report: c %d, v %d\n", _code, _value);	\
+		} else {	\
+			input_report_abs(_idev, _code, _value);	\
+		}	\
+	} while (0)
+
 #define siw_input_report_abs(_idev, _code, _value)	\
 	do {	\
-		input_report_abs(_idev, _code, _value);	\
+		__siw_input_report_abs(_idev, _code, _value);	\
 		siwmon_submit_evt(&_idev->dev, "EV_ABS", EV_ABS, #_code, _code, _value, 0);	\
 	} while (0)
 
@@ -197,12 +207,11 @@ void siw_touch_send_uevent(void *ts_data, int type)
 	struct siw_ts *ts = ts_data;
 	struct siw_touch_uevent_ctrl *uevent_ctrl = touch_uevent_ctrl(ts);
 	struct device *idev = &ts->input->dev;
+	char *str = NULL;
 
 	if (uevent_ctrl == NULL) {
 		uevent_ctrl = &siw_uevent_ctrl_default;
 	}
-
-	t_dev_dbg_event(idev, "send uevent (%d)\n", type);
 
 	if (type >= TOUCH_UEVENT_MAX) {
 		t_dev_err(idev, "Invalid event type, %d\n", type);
@@ -212,6 +221,13 @@ void siw_touch_send_uevent(void *ts_data, int type)
 	if ((uevent_ctrl->str[type] == NULL) ||
 		(uevent_ctrl->str[type][0] == NULL)) {
 		t_dev_err(idev, "empty event str, %d\n", type);
+		return;
+	}
+
+	str = uevent_ctrl->str[type][0];
+
+	if (t_dbg_flag & DBG_FLAG_SKIP_UEVENT) {
+		t_dev_dbg_event(idev, "skip uevent, %s\n", str);
 		return;
 	}
 
@@ -226,7 +242,7 @@ void siw_touch_send_uevent(void *ts_data, int type)
 		siw_kobject_uevent_env(ts->input, type, &ts->udev.kobj,
 						KOBJ_CHANGE, uevent_ctrl->str[type]);
 
-		t_dev_info(ts->dev, "%s\n", uevent_ctrl->str[type][0]);
+		t_dev_info(ts->dev, "%s\n", str);
 		siw_touch_report_all_event(ts);
 
 		/*

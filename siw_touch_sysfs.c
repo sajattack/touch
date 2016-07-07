@@ -827,8 +827,8 @@ static ssize_t _show_dbg_mask(struct device *dev, char *buf)
 static void _store_dbg_mask_usage(struct device *dev)
 {
 	t_dev_info(dev, "Usage:\n");
-	t_dev_info(dev, " t_dev_dbg_mask : echo 0 {mask_value} > dbg_mask\n");
-	t_dev_info(dev, " t_pr_dbg_mask  : echo 1 {mask_value} > dbg_mask\n");
+	t_dev_info(dev, " t_dev_dbg_mask : echo 0 {mask_value(hex)} > dbg_mask\n");
+	t_dev_info(dev, " t_pr_dbg_mask  : echo 1 {mask_value(hex)} > dbg_mask\n");
 }
 
 static ssize_t _store_dbg_mask(struct device *dev,
@@ -838,7 +838,7 @@ static ssize_t _store_dbg_mask(struct device *dev,
 	int type = 0;
 	u32 old_value, new_value = 0;
 
-	if (sscanf(buf, "%d %u", &type, &new_value) <= 0) {
+	if (sscanf(buf, "%d %X", &type, &new_value) <= 0) {
 		siw_sysfs_err_invalid_param(dev);
 		_store_dbg_mask_usage(dev);
 		return count;
@@ -883,7 +883,7 @@ static ssize_t _store_dbg_flag(struct device *dev,
 //	struct siw_ts *ts = to_touch_core(dev);
 	u32 old_value, new_value = 0;
 
-	if (sscanf(buf, "%d", &new_value) <= 0) {
+	if (sscanf(buf, "%X", &new_value) <= 0) {
 		siw_sysfs_err_invalid_param(dev);
 		return count;
 	}
@@ -1128,8 +1128,7 @@ static struct kobj_type siw_touch_kobj_type = {
 extern int siw_touch_misc_init(struct device *dev);
 extern void siw_touch_misc_free(struct device *dev);
 #else
-#define siw_touch_misc_init(_dev){ return 0; }
-#define siw_touch_misc_free(_dev){ }
+
 #endif
 
 int siw_touch_init_sysfs(struct siw_ts *ts)
