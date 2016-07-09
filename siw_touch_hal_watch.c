@@ -1000,9 +1000,17 @@ static u16 ext_watch_cal_crc16(const u16 *data, u32 size, u16 init_val)
 	return crc_sum;
 }
 
-static u32 ext_watch_font_crc_cal(char *data, u32 size)
+static u32 ext_watch_font_crc_cal(struct device *dev, char *data, u32 size)
 {
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
 	u32 crc_value = 0;
+
+	switch (touch_chip_type(ts)) {
+	case CHIP_LG4946:
+		size += sizeof(struct ext_watch_font_header);
+		break;
+	}
 
 	/*CRC Calculation*/
 	crc_value = ext_watch_cal_crc16((const u16*)&data[0], size>>1, 0);
@@ -1125,7 +1133,7 @@ static void ext_watch_font_download(struct work_struct *font_download_work)
 			ext_wdata->font_crc, crc_addr);
 
 	ext_wdata->font_crc =
-		 ext_watch_font_crc_cal(ext_wdata->font_data, font_hdr->size);
+		 ext_watch_font_crc_cal(dev, ext_wdata->font_data, font_hdr->size);
 	t_watch_info(dev, "font dn work: result crc %08Xh\n", ext_wdata->font_crc);
 
 	memcpy((void *)&ext_wdata->font_data[font_hdr->size+SIW_FONT_MAGIC_CODE_SIZE],
