@@ -63,16 +63,15 @@
 #define MAX_LPWG_CODE				128
 
 enum _SIW_CHIP_TYPE {
-	CHIP_NONE = 0,
+	CHIP_NONE		= 0,
 	//
-	CHIP_LG4894 = 1,
-	CHIP_LG4895 = 2,
+	CHIP_LG4894		= 1,
+	CHIP_LG4895		= 2,
+	CHIP_LG4946		= 3,
 	//
-	CHIP_LG4946 = 0x10,
+	CHIP_SW1828		= 0x80,
 	//
-	CHIP_SW1828 = 0x80,
-	//
-	CHIP_SW49105,
+	CHIP_SW49105	= 0x100,
 };
 
 //#define __SIW_TEST_IRQ_OFF

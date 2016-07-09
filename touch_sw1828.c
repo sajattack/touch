@@ -202,7 +202,7 @@ static const struct siw_touch_pdata chip_pdata = {
 	.swipe_ctrl			= NULL,
 	//See 'store_ext_watch_config_font_position' [siw_touch_hal_watch.c]
 	.watch_win			= NULL,
-	//See 'siw_setup_operations'
+	//See 'siw_setup_operations' [siw_touch.c]
 	.reg_quirks			= (void *)chip_reg_quirks,
 };
 
