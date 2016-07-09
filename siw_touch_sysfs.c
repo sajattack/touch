@@ -1128,7 +1128,8 @@ static struct kobj_type siw_touch_kobj_type = {
 extern int siw_touch_misc_init(struct device *dev);
 extern void siw_touch_misc_free(struct device *dev);
 #else
-
+static int siw_touch_misc_init(struct device *dev){ return 0; };
+static void siw_touch_misc_free(struct device *dev){ };
 #endif
 
 int siw_touch_init_sysfs(struct siw_ts *ts)
