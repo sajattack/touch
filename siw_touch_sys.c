@@ -41,9 +41,12 @@
 #include "siw_touch.h"
 #include "siw_touch_gpio.h"
 #include "siw_touch_sys.h"
-#if defined(CONFIG_TOUCHSCREEN_SIW_LG4895_F650)
+
+#if defined(CONFIG_TOUCHSCREEN_SIW_LG4895_F650) ||	\
+	defined(CONFIG_TOUCHSCREEN_SIW_LG4946_F700)
 #include <soc/qcom/lge/board_lge.h>
 #endif
+
 
 /*
  * depends on AP bus
@@ -75,7 +78,8 @@ int siw_touch_get_boot_mode(void)
 	if (sys_get_boot_mode() == BOOT_MODE_CHARGERLOGO) {
 		return SIW_TOUCH_CHARGER_MODE;
 	}
-#elif defined(CONFIG_TOUCHSCREEN_SIW_LG4895_F650)
+#elif defined(CONFIG_TOUCHSCREEN_SIW_LG4895_F650) ||	\
+	defined(CONFIG_TOUCHSCREEN_SIW_LG4946_F700)
 	if (lge_get_boot_mode() == LGE_BOOT_MODE_CHARGERLOGO) {
 		return SIW_TOUCH_CHARGER_MODE;
 	}
@@ -91,7 +95,8 @@ int siw_touch_boot_mode_check(struct device *dev)
 
 #if defined(CONFIG_SIW_GET_FACTORY_MODE)
 	ret = sys_get_factory_boot();
-#elif defined(CONFIG_TOUCHSCREEN_SIW_LG4895_F650)
+#elif defined(CONFIG_TOUCHSCREEN_SIW_LG4895_F650) ||	\
+	defined(CONFIG_TOUCHSCREEN_SIW_LG4946_F700)
 	ret = lge_get_factory_boot();
 #endif
 
@@ -120,6 +125,12 @@ int siw_touch_boot_mode_check(struct device *dev)
 
 int siw_touch_boot_mode_tc_check(struct device *dev)
 {
+#if defined(CONFIG_TOUCHSCREEN_SIW_LG4946_F700)
+	int ret = 1;
+#else
+	int ret = 0;
+#endif
+
 #if defined(CONFIG_SIW_GET_BOOT_MODE)
 	if (sys_get_boot_mode() == BOOT_MODE_CHARGERLOGO) {
 		return 1;
@@ -131,7 +142,7 @@ int siw_touch_boot_mode_tc_check(struct device *dev)
 	}
 #endif
 
-	return 0;
+	return ret;
 }
 
 int siw_touch_sys_gpio_set_pull(int pin, int value)

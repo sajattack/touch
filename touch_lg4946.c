@@ -92,8 +92,8 @@
 
 #if !defined(__SIW_CONFIG_OF)	//See siw_touch_cfg.h
 enum CHIP_CAPABILITY {
-	CHIP_MAX_X			= 720,
-	CHIP_MAX_Y			= 1280,
+	CHIP_MAX_X			= 1440,
+	CHIP_MAX_Y			= 2560,
 	CHIP_MAX_PRESSURE	= 255,
 	CHIP_MAX_WIDTH		= 15,
 	CHIP_MAX_ORI		= 1,
@@ -123,47 +123,50 @@ static const struct tci_info chip_tci_info[2] = {
 	},
 };
 
-static const struct reset_area chip_tci_reset_area = {
-	.x1	= ((35<<16) | 35),
-	.y1 = ((684<<16) | 684),
-	.x2 = ((35<<16) | 35),
-	.y2 = ((1324<<16) | 1324),
+static struct reset_area chip_qcover_open = {
+	.x1	= 80,
+	.y1	= 0,
+	.x2	= 1359,
+	.y2	= 2479,
+};
+
+static struct reset_area chip_qcover_close = {
+	.x1	= 179,
+	.y1	= 144,
+	.x2	= 1261,
+	.y2	= 662,
 };
 
 static const struct siw_hal_swipe_ctrl chip_swipe_info = {
 	.mode	= SWIPE_LEFT_BIT | SWIPE_RIGHT_BIT,
 	.info = {
 		[SWIPE_R] = {
-			.distance		= 5,
+			.distance		= 10,
 			.ratio_thres	= 100,
 			.ratio_distance	= 2,
 			.ratio_period	= 5,
 			.min_time		= 0,
 			.max_time		= 150,
-			.area.x1		= 201,
+			.area.x1		= 419,
 			.area.y1		= 0,
-			.area.x2		= 719,
-			.area.y2		= 79,
+			.area.x2		= 1019,
+			.area.y2		= 679,
 		},
 		[SWIPE_L] = {
-			.distance		= 5,
+			.distance		= 10,
 			.ratio_thres	= 100,
 			.ratio_distance	= 2,
 			.ratio_period	= 5,
 			.min_time		= 0,
 			.max_time		= 150,
-			.area.x1		= 201,
+			.area.x1		= 419,
 			.area.y1		= 0,
-			.area.x2		= 719,
-			.area.y2		= 79,
+			.area.x2		= 1019,
+			.area.y2		= 679,
 		},
 	},
 };
 
-static const struct siw_touch_second_screen chip_2nd_scr = {
-	.bound_i = 1,
-	.bound_j = 4,
-};
 
 #if defined(__SIW_CONFIG_OF)
 /*
@@ -262,17 +265,17 @@ static const struct siw_touch_pdata chip_pdata = {
 	/* */
 	//See 'siw_hal_get_tci_info' [siw_touch_hal.c]
 	.tci_info			= (void *)chip_tci_info,
-	.tci_reset_area		= (void *)&chip_tci_reset_area,
-	.tci_qcover_open	= NULL,
-	.tci_qcover_close	= NULL,
+	.tci_reset_area		= NULL,
+	.tci_qcover_open	= (void *)&chip_qcover_open,
+	.tci_qcover_close	= (void *)&chip_qcover_close,
 	//See 'siw_hal_get_swipe_info' [siw_touch_hal.c]
 	.swipe_ctrl			= (void *)&chip_swipe_info,
 	//See 'store_ext_watch_config_font_position' [siw_touch_hal_watch.c]
 	.watch_win			= NULL,
-	//See 'siw_setup_operations'
+	//See 'siw_setup_operations' [siw_touch.c]
 	.reg_quirks			= NULL,
 	/* */
-	.second_screen		= (void *)&chip_2nd_scr,
+	.second_screen		= NULL,
 };
 
 static struct siw_touch_chip_data chip_data = {

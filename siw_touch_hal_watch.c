@@ -27,7 +27,9 @@
 #include "siw_touch_irq.h"
 #include "siw_touch_sys.h"
 
-#define SIW_MAX_FONT_SIZE			(6<<10)	//6KB used
+#define SIW_MAX_FONT_SIZE			(6<<10)
+#define SIW_MAX_FONT_SIZE_LG4946	(87<<10)
+
 #define SIW_FONT_MAGIC_CODE_SIZE	(4)
 
 enum {
@@ -282,12 +284,15 @@ struct ext_watch_cfg {
 struct watch_state_info {
 	atomic_t font_status;
 	atomic_t rtc_status;
+	struct ext_watch_cfg_status status_r;
+	struct ext_watch_cfg_position position_r;
 };
 
 struct watch_data {
 	struct watch_state_info state;
 	struct bin_attribute fontdata_attr;
 	u32 font_written_size;
+	u32 font_max_size;
 	struct ext_watch_cfg ext_wdata;
 };
 
@@ -563,8 +568,9 @@ static int ext_watch_get_position(struct device *dev, char *buf, int *len)
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
 	struct siw_hal_reg *reg = chip->reg;
-	struct ext_watch_cfg_position position = {0, };
-	struct ext_watch_cfg_status status = {0, };
+	struct watch_data *watch = (struct watch_data *)chip->watch;
+	struct ext_watch_cfg_position *position_r = &watch->state.position_r;
+	struct ext_watch_cfg_status *status_r = &watch->state.status_r;
 	char log[FONT_TEMP_LOG_SZ] = {0, 0};
 	int loglen = 0;
 	int buflen = 0;
@@ -588,11 +594,11 @@ static int ext_watch_get_position(struct device *dev, char *buf, int *len)
 
 		siw_hal_xfer_add_rx(xfer,
 				reg->ext_watch_position_r,
-				(void *)&position, sizeof(u32)*3);
+				(void *)position_r, sizeof(u32)*3);
 
 		siw_hal_xfer_add_rx(xfer,
 				reg->ext_watch_state,
-				(void *)&status, sizeof(u32));
+				(void *)status_r, sizeof(u32));
 	}
 	ret = siw_hal_xfer_msg(dev, ts->xfer);
 	if (ret < 0) {
@@ -603,37 +609,37 @@ static int ext_watch_get_position(struct device *dev, char *buf, int *len)
 					"position[%04Xh ~ %04Xh] h10x %d, h1x %d, m10x %d, m1x %d, clx %d\n",
 					reg->ext_watch_position_r,
 					reg->ext_watch_position_r + 3,
-					position.h10x_pos, position.h1x_pos,
-		 			position.m10x_pos, position.m1x_pos,
-		 			position.clx_pos);
+					position_r->h10x_pos, position_r->h1x_pos,
+		 			position_r->m10x_pos, position_r->m1x_pos,
+		 			position_r->clx_pos);
 	__store_log_buf(dev, buf, log, &buflen, loglen);
 
-	position.zero_disp = status.zero_en;
-	position.h24_en = status.en_24;
-	position.clock_disp_mode = status.disp_mode;
-	position.midnight_hour_zero_en = status.midnight_hour_zero_en;
-	position.bhprd = status.bhprd;
+	position_r->zero_disp = status_r->zero_en;
+	position_r->h24_en = status_r->en_24;
+	position_r->clock_disp_mode = status_r->disp_mode;
+	position_r->midnight_hour_zero_en = status_r->midnight_hour_zero_en;
+	position_r->bhprd = status_r->bhprd;
 
 	loglen = siw_watch_snprintf(log, FONT_TEMP_LOG_SZ, 0,
 					"state[%04Xh] zero disp %d, 24H mode %d, clock mode %d\n",
 					reg->ext_watch_state,
-					position.zero_disp, position.h24_en,
-					position.clock_disp_mode);
+					position_r->zero_disp, position_r->h24_en,
+					position_r->clock_disp_mode);
 
 	__store_log_buf(dev, buf, log, &buflen, loglen);
 
 	loglen = siw_watch_snprintf(log, FONT_TEMP_LOG_SZ, 0,
 					"state[%04Xh] midnight mode %d, blink period %d\n",
 					reg->ext_watch_state,
-					position.midnight_hour_zero_en,
-					position.bhprd);
+					position_r->midnight_hour_zero_en,
+					position_r->bhprd);
 
 	__store_log_buf(dev, buf, log, &buflen, loglen);
 
 	loglen = siw_watch_snprintf(log, FONT_TEMP_LOG_SZ, 0,
 					"state[%04Xh] step %d, enable %d\n",
 					reg->ext_watch_state,
-		 			status.step, status.en);
+		 			status_r->step, status_r->en);
 
 	__store_log_buf(dev, buf, log, &buflen, loglen);
 
@@ -776,11 +782,13 @@ static int ext_watch_set_mode(struct device *dev)
 		/* SKIP : all handled by MIPI, no effect */
 		return 0;
 	//	break;
+	case CHIP_LG4946:
+		mode->watch_ctrl.alpha = 1;	/* bypass foreground */
+		break;
 	default:
+		mode->watch_ctrl.alpha = !!position->bhprd;	/* bypass foreground */
 		break;
 	}
-
-	mode->watch_ctrl.alpha = !!position->bhprd;	/* bypass foreground */
 
 	ptr = (u8 *)&mode->watch_ctrl;
 	val = (ptr[1]<<8) | ptr[0];
@@ -2040,7 +2048,7 @@ static ssize_t ext_watch_access_read(struct file *filp, struct kobject *kobj,
 		}
 	}
 
-	if ((off + count) > SIW_MAX_FONT_SIZE) {
+	if ((off + count) > watch->font_max_size) {
 		t_watch_err(dev, "access_read: size overflow : offset[%d] size[%d]\n",
 			 (int)off, (int)count);
 		ret = -EOVERFLOW;
@@ -2078,7 +2086,7 @@ static ssize_t ext_watch_access_write(struct file *filp, struct kobject *kobj,
 		goto out;
 	}
 
-	if ((off + count) > SIW_MAX_FONT_SIZE)	 {
+	if ((off + count) > watch->font_max_size)	 {
 		t_watch_err(dev, "access_read: size overflow : offset[%d] size[%d]\n",
 			(int)off, (int)count);
 		atomic_set(&watch->state.font_status, FONT_EMPTY);
@@ -2107,7 +2115,7 @@ static int ext_watch_fontdata_attr_init(struct device *dev)
 	struct watch_data *watch = (struct watch_data *)chip->watch;
 	struct bin_attribute *fontdata_attr = &watch->fontdata_attr;
 	u8 *buf;
-	int size = SIW_MAX_FONT_SIZE;
+	int size = watch->font_max_size;
 	int ret = 0;
 
 	watch->font_written_size = 0;
@@ -2197,7 +2205,7 @@ static int ext_watch_fontdata_preload(struct device *dev)
 	}
 
 	size = vfs_llseek(filp, 0, SEEK_END);
-	if (size > SIW_MAX_FONT_SIZE)	 {
+	if (size > watch->font_max_size)	 {
 		t_watch_warn(dev, "font_preload: size overflow, %d > %d\n",
 			(int)size, SIW_MAX_FONT_SIZE);
 		ret = -EOVERFLOW;
@@ -2210,7 +2218,7 @@ static int ext_watch_fontdata_preload(struct device *dev)
 	if (rd_size != (int)size) {
 		t_watch_warn(dev, "font_preload: failed to read[%d], %d\n",
 			(int)size, (int)rd_size);
-		memset(watch->ext_wdata.font_data, 0, SIW_MAX_FONT_SIZE);
+		memset(watch->ext_wdata.font_data, 0, watch->font_max_size);
 		ret = (rd_size < 0) ? rd_size : -EFAULT;
 		goto out;
 	}
@@ -2298,6 +2306,15 @@ static int ext_watch_create_sysfs(struct device *dev)
 	}
 	chip->watch = watch;
 	t_dev_dbg_base(dev, "watch_data allocated\n");
+
+	switch (touch_chip_type(ts)) {
+	case CHIP_LG4946:
+		watch->font_max_size = SIW_MAX_FONT_SIZE_LG4946;
+		break;
+	default:
+		watch->font_max_size = SIW_MAX_FONT_SIZE;
+		break;
+	}
 
 	name = touch_ext_watch_name(ts);
 
