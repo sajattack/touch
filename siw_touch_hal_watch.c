@@ -33,7 +33,7 @@
 #define SIW_FONT_MAGIC_CODE_SIZE	(4)
 
 enum {
-	EXT_WATCH_CFG_DEFAULT = 'd',
+	EXT_WATCH_CFG_DEBUG = 'd',
 };
 
 enum {
@@ -1418,6 +1418,10 @@ out:
 	return ret;
 }
 
+/*
+ * just for LG4895
+ * <---
+ */
 static const struct reset_area watch_win_default = {
 	.x1	= 200,
 	.y1 = 0,
@@ -1428,30 +1432,33 @@ static const struct reset_area watch_win_default = {
 #define __WATCH_GOOD_BLINK_CASE
 
 enum {
-	DEFAULT_WSX = 522,
-	DEFAULT_WEX = 630,
-	DEFAULT_WSY = 9,
-	DEFAULT_WEY = 59,
+	DBG_WSX = 522,
+	DBG_WEX = 630,
+	DBG_WSY = 9,
+	DBG_WEY = 59,
 };
 #if defined(__WATCH_GOOD_BLINK_CASE)
 enum {
-	DEFAULT_BLINK_TYPE = 3,
-	DEFAULT_H10X = 0,
-	DEFAULT_H1X = 16,
-	DEFAULT_CLX = 32+4,
-	DEFAULT_M10X = 48,
-	DEFAULT_M1X = 64,
+	DBG_BLINK_TYPE	= 3,
+	DBG_H1X			= 16,
+	DBG_H10X		= 0,
+	DBG_M1X			= 64,
+	DBG_M10X		= 48,
+	DBG_CLX			= 32+4,
 };
 #else
 enum {
-	DEFAULT_BLINK_TYPE = 0,
-	DEFAULT_H10X = 0,
-	DEFAULT_H1X = 24,
-	DEFAULT_CLX = 48,
-	DEFAULT_M10X = 60,
-	DEFAULT_M1X = 84,
+	DBG_BLINK_TYPE	= 0,
+	DBG_H1X			= 24,
+	DBG_H10X		= 0,
+	DBG_M1X			= 84,
+	DBG_M10X		= 60,
+	DBG_CLX			= 48,
 };
 #endif
+/*
+ * --->
+ */
 
 static ssize_t store_ext_watch_config_font_effect(struct device *dev,
 		 			const char *buf, size_t count)
@@ -1471,21 +1478,21 @@ static ssize_t store_ext_watch_config_font_effect(struct device *dev,
 		return __ret_val_blocked(count);
 	}
 
-	//for the case of using echo command
-	if ((count == 2) && (buf[0] == EXT_WATCH_CFG_DEFAULT)) {
+	//for test using echo command
+	if ((count == 2) && (buf[0] == EXT_WATCH_CFG_DEBUG)) {
 		memset((char *)&cfg, 0, sizeof(cfg));
 
 	//	cfg.h24_en = 0;
 	//	cfg.zero_disp = 0;
 	//	cfg.clock_disp_type = 0;
 		cfg.midnight_hour_zero_en = 1;
-		cfg.blink.blink_type = DEFAULT_BLINK_TYPE;
+		cfg.blink.blink_type = DBG_BLINK_TYPE;
 
 		/*
 		 * for CHIP_LG4895
 		 * blink position is handled by MIPI, no effect.
 		 */
-		cfg.blink.bstartx = DEFAULT_CLX;
+		cfg.blink.bstartx = DBG_CLX;
 		cfg.blink.bendx = cfg.blink.bstartx + 8;
 
 		cfg.watchon = 1;
@@ -1562,6 +1569,18 @@ static int __ext_watch_chk_font_pos(struct device *dev,
 	return 0;
 }
 
+static const struct ext_watch_config_font_pos extwatch_pos_dbg = {
+	.watstartx	= DBG_WSX,
+	.watendx	= DBG_WEX,
+	.watstarty	= DBG_WSY,
+	.watendy	= DBG_WEY,
+	.h1x_pos	= DBG_H1X,
+	.h10x_pos	= DBG_H10X,
+	.m1x_pos	= DBG_M1X,
+	.m10x_pos	= DBG_M10X,
+	.clx_pos	= DBG_CLX,
+};
+
 static ssize_t store_ext_watch_config_font_position(struct device *dev,
 					const char *buf, size_t count)
 {
@@ -1583,20 +1602,9 @@ static ssize_t store_ext_watch_config_font_position(struct device *dev,
 		watch_win = (struct reset_area *)&watch_win_default;
 	}
 
-	//for the case of using echo command
-	if ((count == 2) && (buf[0] == EXT_WATCH_CFG_DEFAULT)) {
-		memset((char *)&cfg, 0, sizeof(cfg));
-
-		cfg.watstartx = DEFAULT_WSX;
-		cfg.watendx = DEFAULT_WEX;
-		cfg.watstarty = DEFAULT_WSY;
-		cfg.watendy = DEFAULT_WEY;
-
-		cfg.h10x_pos = DEFAULT_H10X;
-		cfg.h1x_pos = DEFAULT_H1X;
-		cfg.clx_pos = DEFAULT_CLX;
-		cfg.m10x_pos = DEFAULT_M10X;
-		cfg.m1x_pos = DEFAULT_M1X;
+	//for test using echo command
+	if ((count == 2) && (buf[0] == EXT_WATCH_CFG_DEBUG)) {
+		memcpy((void *)&cfg, (void *)&extwatch_pos_dbg, sizeof(cfg));
 	} else {
 		memcpy((char *)&cfg, buf, sizeof(cfg));
 	}
@@ -1670,8 +1678,8 @@ static ssize_t store_ext_watch_config_font_property(struct device *dev,
 		return __ret_val_blocked(count);
 	}
 
-	//for the case of using echo command
-	if ((count == 2) && (buf[0] == EXT_WATCH_CFG_DEFAULT)) {
+	//for test using echo command
+	if ((count == 2) && (buf[0] == EXT_WATCH_CFG_DEBUG)) {
 		memset((char *)&cfg, 0, sizeof(cfg));
 
 		cfg.max_num = EXT_WATCH_LUT_NUM;
@@ -1738,8 +1746,8 @@ static ssize_t store_ext_watch_config_time_sync(struct device *dev,
 
 	t_watch_dbg(dev, "store config type sync\n");
 
-	//for the case of using echo command
-	if ((count == 2) && (buf[0] == EXT_WATCH_CFG_DEFAULT)) {
+	//for test using echo command
+	if ((count == 2) && (buf[0] == EXT_WATCH_CFG_DEBUG)) {
 		struct timespec my_time;
 		struct tm my_date;
 
