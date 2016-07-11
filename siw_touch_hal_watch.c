@@ -38,7 +38,7 @@ enum {
 
 enum {
 	EXT_WATCH_LUT_NUM	= 7,
-	EXT_WATCH_LUT_MAX	= EXT_WATCH_LUT_NUM,
+	EXT_WATCH_LUT_MAX	= 7,
 };
 
 enum {
@@ -1482,19 +1482,23 @@ static ssize_t store_ext_watch_config_font_effect(struct device *dev,
 	if ((count == 2) && (buf[0] == EXT_WATCH_CFG_DEBUG)) {
 		memset((char *)&cfg, 0, sizeof(cfg));
 
-	//	cfg.h24_en = 0;
-	//	cfg.zero_disp = 0;
-	//	cfg.clock_disp_type = 0;
-		cfg.midnight_hour_zero_en = 1;
-		cfg.blink.blink_type = DBG_BLINK_TYPE;
-
-		/*
-		 * for CHIP_LG4895
-		 * blink position is handled by MIPI, no effect.
-		 */
-		cfg.blink.bstartx = DBG_CLX;
-		cfg.blink.bendx = cfg.blink.bstartx + 8;
-
+		switch (touch_chip_type(ts)) {
+		case CHIP_LG4895:
+			cfg.midnight_hour_zero_en = 1;
+			cfg.blink.blink_type = DBG_BLINK_TYPE;
+			/*
+			 * blink position is handled by MIPI, no effect.
+			 */
+			cfg.blink.bstartx = DBG_CLX;
+			cfg.blink.bendx = cfg.blink.bstartx + 8;
+			break;
+		case CHIP_LG4946:
+			cfg.midnight_hour_zero_en = 0;
+			cfg.blink.blink_type = DBG_BLINK_TYPE;
+			cfg.blink.bstartx = 0;
+			cfg.blink.bendx = 48;
+			break;
+		}
 		cfg.watchon = 1;
 	} else {
 		memcpy((char *)&cfg, buf, sizeof(cfg));
@@ -1569,7 +1573,7 @@ static int __ext_watch_chk_font_pos(struct device *dev,
 	return 0;
 }
 
-static const struct ext_watch_config_font_pos extwatch_pos_dbg = {
+static const struct ext_watch_config_font_pos extwatch_pos_dbg_lg4895 = {
 	.watstartx	= DBG_WSX,
 	.watendx	= DBG_WEX,
 	.watstarty	= DBG_WSY,
@@ -1579,6 +1583,18 @@ static const struct ext_watch_config_font_pos extwatch_pos_dbg = {
 	.m1x_pos	= DBG_M1X,
 	.m10x_pos	= DBG_M10X,
 	.clx_pos	= DBG_CLX,
+};
+
+static const struct ext_watch_config_font_pos extwatch_pos_dbg_lg4946 = {
+	.watstartx	= 464,
+	.watendx	= 976,
+	.watstarty	= 244,
+	.watendy	= 408,
+	.h1x_pos	= 114,
+	.h10x_pos	= 0,
+	.m1x_pos	= 398,
+	.m10x_pos	= 284,
+	.clx_pos	= 232,
 };
 
 static ssize_t store_ext_watch_config_font_position(struct device *dev,
@@ -1591,6 +1607,7 @@ static ssize_t store_ext_watch_config_font_position(struct device *dev,
 	struct ext_watch_cfg_position *position = &watch->ext_wdata.position;
 	struct ext_watch_config_font_pos cfg;
 	struct reset_area *watch_win = pdata_watch_win(ts->pdata);
+	int chip_type = touch_chip_type(ts);
 	int ret = 0;
 
 	if (atomic_read(&chip->block_watch_cfg) == BLOCKED) {
@@ -1598,13 +1615,34 @@ static ssize_t store_ext_watch_config_font_position(struct device *dev,
 		return __ret_val_blocked(count);
 	}
 
-	if (!watch_win) {
-		watch_win = (struct reset_area *)&watch_win_default;
+	switch (chip_type) {
+	case CHIP_LG4895:
+		if (!watch_win) {
+			watch_win = (struct reset_area *)&watch_win_default;
+		}
+		break;
+	default:
+		watch_win = NULL;
+		break;
 	}
 
 	//for test using echo command
 	if ((count == 2) && (buf[0] == EXT_WATCH_CFG_DEBUG)) {
-		memcpy((void *)&cfg, (void *)&extwatch_pos_dbg, sizeof(cfg));
+		void *pos_dbg = NULL;
+
+		switch (chip_type) {
+		case CHIP_LG4895:
+			pos_dbg = (void *)&extwatch_pos_dbg_lg4895;
+			break;
+		case CHIP_LG4946:
+			pos_dbg = (void *)&extwatch_pos_dbg_lg4946;
+			break;
+		}
+		if (pos_dbg) {
+			memcpy((void *)&cfg, pos_dbg, sizeof(cfg));
+		} else {
+			memset((char *)&cfg, 0, sizeof(cfg));
+		}
 	} else {
 		memcpy((char *)&cfg, buf, sizeof(cfg));
 	}
@@ -1626,10 +1664,12 @@ static ssize_t store_ext_watch_config_font_position(struct device *dev,
 	position->clx_pos = cfg.clx_pos;
 
 #if 1
-	if ((cfg.watstartx < watch_win->x1) || (cfg.watendx > watch_win->x2) ||
-		(cfg.watstarty <  watch_win->y1) || (cfg.watendy > watch_win->y2)) {
-		t_watch_err(dev, "check the position. (invalid range)\n");
-		ret = -EINVAL;
+	if (watch_win) {
+		if ((cfg.watstartx < watch_win->x1) || (cfg.watendx > watch_win->x2) ||
+			(cfg.watstarty <  watch_win->y1) || (cfg.watendy > watch_win->y2)) {
+			t_watch_err(dev, "check the position. (invalid range)\n");
+			ret = -EINVAL;
+		}
 	}
 #endif
 
@@ -1658,6 +1698,19 @@ out:
 	return ret;
 }
 
+const struct ext_watch_config_font_prop extwatch_prop_dbg_lg4946 = {
+	.max_num = EXT_WATCH_LUT_NUM,
+	.lut = {
+		[0] = { 0x01, 0x01, 0x01 },
+		[1] = { 0x36, 0x36, 0x36 },
+		[2] = { 0x4F, 0x4F, 0x4F },
+		[3] = { 0x73, 0x73, 0x73 },
+		[4] = { 0x8E, 0x8E, 0x8E },
+		[5] = { 0xA2, 0xA2, 0xA2 },
+		[6] = { 0xC0, 0xC0, 0xC0 },
+	},
+};
+
 static ssize_t store_ext_watch_config_font_property(struct device *dev,
  					const char *buf, size_t count)
 {
@@ -1678,15 +1731,6 @@ static ssize_t store_ext_watch_config_font_property(struct device *dev,
 		return __ret_val_blocked(count);
 	}
 
-	//for test using echo command
-	if ((count == 2) && (buf[0] == EXT_WATCH_CFG_DEBUG)) {
-		memset((char *)&cfg, 0, sizeof(cfg));
-
-		cfg.max_num = EXT_WATCH_LUT_NUM;
-	} else {
-		memcpy((char *)&cfg, buf, sizeof(cfg));
-	}
-
 	switch (touch_chip_type(ts)) {
 	case CHIP_LG4895:
 		/* SKIP : lut setup is handled by MIPI, no effect */
@@ -1695,6 +1739,24 @@ static ssize_t store_ext_watch_config_font_property(struct device *dev,
 	//	break;
 	default:
 		break;
+	}
+
+	//for test using echo command
+	if ((count == 2) && (buf[0] == EXT_WATCH_CFG_DEBUG)) {
+		void *pos_dbg = NULL;
+
+		switch (touch_chip_type(ts)) {
+		case CHIP_LG4946:
+			pos_dbg = (void *)&extwatch_prop_dbg_lg4946;
+			break;
+		}
+		if (pos_dbg) {
+			memcpy((void *)&cfg, pos_dbg, sizeof(cfg));
+		} else {
+			memset((char *)&cfg, 0, sizeof(cfg));
+		}
+	} else {
+		memcpy((char *)&cfg, buf, sizeof(cfg));
 	}
 
 	loglen += siw_watch_snprintf(log, FONT_TEMP_LOG_SZ, loglen,
