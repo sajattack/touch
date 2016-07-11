@@ -951,6 +951,7 @@ out:
 static int __ext_watch_display_onoff(struct device *dev, u32 data, int log)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
 	struct siw_hal_reg *reg = chip->reg;
 	struct watch_data *watch = (struct watch_data *)chip->watch;
 	struct ext_watch_cfg_time *time = &watch->ext_wdata.time;
@@ -958,6 +959,36 @@ static int __ext_watch_display_onoff(struct device *dev, u32 data, int log)
 
 	if (data == ~0) {
 		data = time->disp_waton;
+	}
+
+	switch (touch_chip_type(ts)) {
+	case CHIP_LG4946:
+		if (atomic_read(&watch->state.rtc_status) != RTC_RUN) {
+			ret = ext_watch_set_curr_time(dev);
+			if (ret < 0) {
+				goto out;
+			}
+		}
+
+		switch (chip->lcd_mode) {
+		case LCD_MODE_U2:
+		case LCD_MODE_U2_UNBLANK:
+			if (data) {
+				ret = siw_hal_write_value(dev,
+							reg->ext_watch_dcs_ctrl,
+							data);
+				if (ret < 0) {
+					goto out;
+				}
+				if (log) {
+					t_watch_info(dev, "display[%04Xh] : %s for U2\n",
+						reg->ext_watch_dcs_ctrl,
+						data ? "on" : "off");
+				}
+			}
+			break;
+		}
+		break;
 	}
 
 	ret = siw_hal_write_value(dev,
@@ -970,7 +1001,7 @@ static int __ext_watch_display_onoff(struct device *dev, u32 data, int log)
 	if (log) {
 		t_watch_info(dev, "display[%04Xh] : %s\n",
 			reg->ext_watch_display_on,
-			data? "on" : "off");
+			data ? "on" : "off");
 	}
 	return 0;
 
