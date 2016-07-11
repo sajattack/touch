@@ -264,7 +264,16 @@ __packed struct ext_watch_cfg_status {	/* 0x270*/
 	u32 reserved0:4;
 };
 
-struct ext_watch_font_header {
+struct ext_watch_font_header_type_1 {
+	u8 width_num;
+	u8 width_colon;
+	u8 height;
+	u8 font_id;
+	u32 size;
+};
+
+struct ext_watch_font_header_type_2 {
+	u32 magic_code;
 	u8 width_num;
 	u8 width_colon;
 	u8 height;
@@ -1002,15 +1011,7 @@ static u16 ext_watch_cal_crc16(const u16 *data, u32 size, u16 init_val)
 
 static u32 ext_watch_font_crc_cal(struct device *dev, char *data, u32 size)
 {
-	struct siw_touch_chip *chip = to_touch_chip(dev);
-	struct siw_ts *ts = chip->ts;
 	u32 crc_value = 0;
-
-	switch (touch_chip_type(ts)) {
-	case CHIP_LG4946:
-		size += sizeof(struct ext_watch_font_header);
-		break;
-	}
 
 	/*CRC Calculation*/
 	crc_value = ext_watch_cal_crc16((const u16*)&data[0], size>>1, 0);
@@ -1059,18 +1060,14 @@ out:
 	return ret;
 }
 
-
-static void ext_watch_font_download(struct work_struct *font_download_work)
+static int ext_watch_font_dn_type_1(struct device *dev)
 {
-	struct siw_touch_chip *chip =
-			container_of(to_delayed_work(font_download_work),
-				 struct siw_touch_chip, font_download_work);
+	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_hal_reg *reg = chip->reg;
-	struct siw_ts *ts = chip->ts;
-	struct device *dev = chip->dev;
+//	struct siw_ts *ts = chip->ts;
 	struct watch_data *watch = (struct watch_data *)chip->watch;
 	struct ext_watch_cfg *ext_wdata = &watch->ext_wdata;
-	struct ext_watch_font_header *font_hdr = NULL;
+	struct ext_watch_font_header_type_1 *font_hdr = NULL;
 	u8 *font_data;
 	int font_size;
 	int curr_size;
@@ -1081,64 +1078,51 @@ static void ext_watch_font_download(struct work_struct *font_download_work)
 	u32 font_magic_check = 0;
 	int ret = 0;
 
-	if (atomic_read(&watch->state.font_status) == FONT_EMPTY) {
-		t_watch_err(dev, "font dn work: data not downloaded\n");
-		return;
-	}
-
-	if (atomic_read(&ts->state.sleep) == IC_DEEP_SLEEP) {
-		atomic_set(&watch->state.font_status, FONT_DOWNLOADING);
-
-		t_watch_info(dev, "font dn work: IC deep sleep\n");
-		return;
-	}
-
-	mutex_lock(&ts->lock);
-
-	t_watch_info(dev, "font dn work: begins\n");
+	t_watch_info(dev, "font dn work(1): begins\n");
 
 	if (chip->lcd_mode == LCD_MODE_U2) {
 		ext_wdata->time.disp_waton = 0;
 		ret = ext_watch_display_onoff(dev, 1);
 		if (ret < 0) {
-			return;
+			goto out;
 		}
 
-		ret = ext_watch_mem_ctrl(dev, 1, "font dn work: U2 mode");
+		ret = ext_watch_mem_ctrl(dev, 1, "font dn work(1): U2 mode");
 		if (ret < 0) {
-			return;
+			goto out;
 		}
 	}
 
-	font_hdr = (struct ext_watch_font_header *)watch->ext_wdata.font_data;
+	font_hdr = (struct ext_watch_font_header_type_1 *)watch->ext_wdata.font_data;
 
-	t_watch_info(dev, "font dn work: id %d, size %d\n",
+	t_watch_info(dev, "font dn work(1): id %d, size %d\n",
 		 font_hdr->font_id, font_hdr->size);
-	t_watch_info(dev, "font dn work: width_num %d, width_colon %d, height %d\n",
+	t_watch_info(dev, "font dn work(1): width_num %d, width_colon %d, height %d\n",
 		 font_hdr->width_num, font_hdr->width_colon, font_hdr->height);
 
-	magic_addr = (font_hdr->size)>>2;
+	magic_addr = font_hdr->size;
 
 	memcpy((void *)&ext_wdata->magic_code,
-		(void *)&ext_wdata->font_data[font_hdr->size], sizeof(u32));
-	t_watch_info(dev, "font dn work: input magic code %08Xh[addr %08Xh]\n",
+		(void *)&ext_wdata->font_data[magic_addr], sizeof(u32));
+	t_watch_info(dev, "font dn work(1): input magic code %08Xh[addr %08Xh]\n",
 			ext_wdata->magic_code, magic_addr);
 
-	crc_addr = (font_hdr->size+SIW_FONT_MAGIC_CODE_SIZE)>>2;
+	crc_addr = font_hdr->size + SIW_FONT_MAGIC_CODE_SIZE;
 
 	memcpy((void *)&ext_wdata->font_crc,
-		(void *)&ext_wdata->font_data[font_hdr->size+SIW_FONT_MAGIC_CODE_SIZE],
-		sizeof(u32));
-	t_watch_info(dev, "font dn work: input crc %08Xh[addr %08Xh]\n",
+		(void *)&ext_wdata->font_data[crc_addr], sizeof(u32));
+	t_watch_info(dev, "font dn work(1): input crc %08Xh[addr %08Xh]\n",
 			ext_wdata->font_crc, crc_addr);
 
 	ext_wdata->font_crc =
 		 ext_watch_font_crc_cal(dev, ext_wdata->font_data, font_hdr->size);
-	t_watch_info(dev, "font dn work: result crc %08Xh\n", ext_wdata->font_crc);
+	t_watch_info(dev, "font dn work(1): result crc %08Xh\n", ext_wdata->font_crc);
 
 	memcpy((void *)&ext_wdata->font_data[font_hdr->size+SIW_FONT_MAGIC_CODE_SIZE],
 		 (void *)&ext_wdata->font_crc, sizeof(u32));
 
+	magic_addr >>= 2;
+	crc_addr >>= 2;
 	offset = 0;
 	font_data = ext_wdata->font_data;
 	font_size = watch->font_written_size;
@@ -1175,7 +1159,7 @@ static void ext_watch_font_download(struct work_struct *font_download_work)
 			goto out;
 		}
 
-		t_watch_info(dev, "fotn dn work: font magic return check : %Xh\n",
+		t_watch_info(dev, "font dn work(1): font magic return check : %Xh\n",
 				font_magic_check);
 
 		ret = siw_hal_write_value(dev,
@@ -1192,7 +1176,7 @@ static void ext_watch_font_download(struct work_struct *font_download_work)
 			goto out;
 		}
 
-		t_watch_info(dev, "fotn dn work: font crc return check : %Xh\n",
+		t_watch_info(dev, "font dn work(1): font crc return check : %Xh\n",
 				font_crc_check);
 
 
@@ -1210,25 +1194,168 @@ static void ext_watch_font_download(struct work_struct *font_download_work)
 	atomic_set(&watch->state.font_status, FONT_READY);
 
 	if (chip->lcd_mode == LCD_MODE_U2) {
-		ret = ext_watch_mem_ctrl(dev, 0, "font dn work: U2 mode");
+		ret = ext_watch_mem_ctrl(dev, 0, "font dn work(1): U2 mode");
 		if (ret < 0) {
 			goto out;
 		}
 	}
 
-	t_watch_info(dev, "font dn work: done(%d)\n",
+	t_watch_info(dev, "font dn work(1): done(%d)\n",
 			watch->font_written_size);
 
-	mutex_unlock(&ts->lock);
-	return;
+	return 0;
 
 out:
 	atomic_set(&watch->state.font_status, FONT_EMPTY);
 
-	t_watch_err(dev, "font dn work: failed, %d\n", ret);
+	t_watch_err(dev, "font dn work(1): failed, %d\n", ret);
+
+	return ret;
+}
+
+static int ext_watch_font_dn_type_2(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_hal_reg *reg = chip->reg;
+//	struct siw_ts *ts = chip->ts;
+	struct watch_data *watch = (struct watch_data *)chip->watch;
+	struct ext_watch_cfg *ext_wdata = &watch->ext_wdata;
+	struct ext_watch_font_header_type_2 *font_hdr = NULL;
+	u8 *font_data;
+	int font_size;
+	int curr_size;
+	u32 offset = 0;
+	u32 crc_addr = 0;
+	int ret = 0;
+
+	t_watch_info(dev, "font dn work(2): begins\n");
+
+	if (chip->lcd_mode == LCD_MODE_U2) {
+		ext_wdata->time.disp_waton = 0;
+		ret = ext_watch_display_onoff(dev, 1);
+		if (ret < 0) {
+			goto out;
+		}
+
+		ret = ext_watch_mem_ctrl(dev, 1, "font dn work(2): U2 mode");
+		if (ret < 0) {
+			goto out;
+		}
+	}
+
+	font_hdr = (struct ext_watch_font_header_type_2 *)watch->ext_wdata.font_data;
+
+	t_watch_info(dev, "font dn work(2): magic %08Xh, id %d, size %d\n",
+		 font_hdr->magic_code, font_hdr->font_id, font_hdr->size);
+	t_watch_info(dev, "font dn work(2): width_num %d, width_colon %d, height %d\n",
+		 font_hdr->width_num, font_hdr->width_colon, font_hdr->height);
+
+	crc_addr = font_hdr->size + sizeof(struct ext_watch_font_header_type_2);
+
+	memcpy((void *)&ext_wdata->font_crc,
+		(void *)&ext_wdata->font_data[crc_addr], sizeof(u32));
+	t_watch_info(dev, "font dn work(2): input crc %08Xh[addr %08Xh]\n",
+			ext_wdata->font_crc, crc_addr);
+
+	ext_wdata->font_crc =
+		 ext_watch_font_crc_cal(dev, ext_wdata->font_data, crc_addr);
+	t_watch_info(dev, "font dn work(2): result crc %08Xh\n", ext_wdata->font_crc);
+
+	if (watch->font_written_size ==
+		(sizeof(struct ext_watch_font_header_type_2) + font_hdr->size)) {
+		watch->font_written_size += sizeof(ext_wdata->font_crc);
+	}
+
+	memcpy((void *)&ext_wdata->font_data[crc_addr],
+		 (void *)&ext_wdata->font_crc, sizeof(u32));
+
+	offset = 0;
+	font_data = ext_wdata->font_data;
+	font_size = watch->font_written_size;
+	while (font_size) {
+		curr_size = min(font_size, WATCH_MAX_RW_SIZE);
+
+		/* write font */
+		ret = siw_hal_write_value(dev,
+					reg->ext_watch_font_offset,
+			 		offset);
+		if (ret < 0) {
+			 goto out;
+		}
+
+		ret = siw_hal_reg_write(dev,
+					reg->ext_watch_font_addr,
+			 		(void *)font_data, curr_size);
+		if (ret < 0) {
+			goto out;
+		}
+
+		font_size -= curr_size;
+		font_data += curr_size;
+		offset += (curr_size>>2);
+	}
+
+	ret = siw_hal_write_value(dev,
+				reg->ext_watch_font_crc, 1);
+	if (ret < 0) {
+		goto out;
+	}
+
+	atomic_set(&watch->state.font_status, FONT_READY);
+
+	if (chip->lcd_mode == LCD_MODE_U2) {
+		ret = ext_watch_mem_ctrl(dev, 0, "font dn work(2): U2 mode");
+		if (ret < 0) {
+			goto out;
+		}
+	}
+
+	t_watch_info(dev, "font dn work(2): done(%d)\n",
+			watch->font_written_size);
+
+	return 0;
+
+out:
+	atomic_set(&watch->state.font_status, FONT_EMPTY);
+
+	t_watch_err(dev, "font dn work(2): failed, %d\n", ret);
+
+	return ret;
+}
+
+static void ext_watch_font_download(struct work_struct *font_download_work)
+{
+	struct siw_touch_chip *chip =
+			container_of(to_delayed_work(font_download_work),
+				 struct siw_touch_chip, font_download_work);
+	struct siw_ts *ts = chip->ts;
+	struct device *dev = chip->dev;
+	struct watch_data *watch = (struct watch_data *)chip->watch;
+
+	if (atomic_read(&watch->state.font_status) == FONT_EMPTY) {
+		t_watch_err(dev, "font dn work: data not downloaded\n");
+		return;
+	}
+
+	if (atomic_read(&ts->state.sleep) == IC_DEEP_SLEEP) {
+		atomic_set(&watch->state.font_status, FONT_DOWNLOADING);
+
+		t_watch_info(dev, "font dn work: IC deep sleep\n");
+		return;
+	}
+
+	mutex_lock(&ts->lock);
+
+	switch (touch_chip_type(ts)) {
+	case CHIP_LG4895:
+		ext_watch_font_dn_type_1(dev);
+		break;
+	case CHIP_LG4946:
+		ext_watch_font_dn_type_2(dev);
+		break;
+	}
 
 	mutex_unlock(&ts->lock);
-	return;
 }
 
 static int ext_watch_font_dump(struct device *dev, u8 *buf)
@@ -1472,6 +1599,7 @@ static ssize_t store_ext_watch_config_font_effect(struct device *dev,
 	struct ext_watch_config_font_effect cfg;
 	char period[16];
 	int blink_type, blink_max, blink_boundary, blink_unit;
+	int chip_type = touch_chip_type(ts);
 
 	if (atomic_read(&chip->block_watch_cfg) == BLOCKED) {
 		t_watch_err(dev, "store font effect blocked\n");
@@ -1482,7 +1610,7 @@ static ssize_t store_ext_watch_config_font_effect(struct device *dev,
 	if ((count == 2) && (buf[0] == EXT_WATCH_CFG_DEBUG)) {
 		memset((char *)&cfg, 0, sizeof(cfg));
 
-		switch (touch_chip_type(ts)) {
+		switch (chip_type) {
 		case CHIP_LG4895:
 			cfg.midnight_hour_zero_en = 1;
 			cfg.blink.blink_type = DBG_BLINK_TYPE;
@@ -1491,6 +1619,7 @@ static ssize_t store_ext_watch_config_font_effect(struct device *dev,
 			 */
 			cfg.blink.bstartx = DBG_CLX;
 			cfg.blink.bendx = cfg.blink.bstartx + 8;
+			cfg.watchon = 1;
 			break;
 		case CHIP_LG4946:
 			cfg.midnight_hour_zero_en = 0;
@@ -1499,7 +1628,6 @@ static ssize_t store_ext_watch_config_font_effect(struct device *dev,
 			cfg.blink.bendx = 48;
 			break;
 		}
-		cfg.watchon = 1;
 	} else {
 		memcpy((char *)&cfg, buf, sizeof(cfg));
 	}
@@ -1549,7 +1677,11 @@ static ssize_t store_ext_watch_config_font_effect(struct device *dev,
 	mode->blink_area.bstartx = cfg.blink.bstartx;
 	mode->blink_area.bendx = cfg.blink.bendx;
 
-	time->disp_waton = cfg.watchon;
+	switch (chip_type) {
+	case CHIP_LG4895:
+		time->disp_waton = cfg.watchon;
+		break;
+	}
 
 	t_watch_info(dev,
 		"24h mode %s, zero dispaly %s, %s type, %s mode\n",
