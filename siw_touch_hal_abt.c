@@ -454,11 +454,11 @@ static void __used siwmon_submit_ops_abt_sock(
 			int ret,
 			int recv)
 {
-	u32 data[2] = { (u32)buf, len };
+	size_t data[2] = { (size_t)buf, len };
 	siwmon_submit_ops(abt->dev,
 			(recv) ? ABT_MON_SOCK_RSTR : ABT_MON_SOCK_SSTR,
-			data,
-			2,
+			(u32 *)data,
+			sizeof(data),
 			ret);
 }
 
@@ -800,9 +800,9 @@ static void __used abt_set_data_func(struct siw_hal_abt_data *abt, u8 mode)
 }
 
 static int abt_read_memory(struct siw_hal_abt_data *abt,
-			u16 raddr, u16 waddr,
-			u32 wdata, u16 wsize,
-			u8 *rdata, u32 rsize)
+			u32 raddr, u32 waddr,
+			u32 wdata, int wsize,
+			u8 *rdata, int rsize)
 {
 	struct device *dev = abt->dev;
 	u16 curr_read = 0;
@@ -1991,14 +1991,14 @@ static void __used siw_hal_abt_report_mode(struct device *dev, u8 *all_data)
 				reg->data_i2cbase_addr,
 				reg->serial_data_offset,
 				dbg_offset,
-				sizeof(u32),
+				(int)sizeof(u32),
 				(u8 *)d_header,
 				d_header_size);
 		if (ret < 0) {
 			t_abt_err(abt,
 					"Report reg addr read failed(%d, %d), %d\n",
 					dbg_offset,
-					sizeof(u32),
+					(int)sizeof(u32),
 					ret);
 		}
 
@@ -2009,14 +2009,14 @@ static void __used siw_hal_abt_report_mode(struct device *dev, u8 *all_data)
 						reg->data_i2cbase_addr,
 						reg->serial_data_offset,
 						dbg_offset,
-						sizeof(u32),
+						(int)sizeof(u32),
 						d_data_ptr,
 						sizeof(u8)<<MAX_RW_SIZE_POW);
 				if (ret < 0) {
 					t_abt_err(abt,
 							"Report reg addr read failed(%d, %d), %d\n",
 							dbg_offset,
-							sizeof(u32),
+							(int)sizeof(u32),
 							ret);
 				}
 
@@ -2029,14 +2029,14 @@ static void __used siw_hal_abt_report_mode(struct device *dev, u8 *all_data)
 						reg->data_i2cbase_addr,
 						reg->serial_data_offset,
 						dbg_offset,
-						sizeof(u32),
+						(int)sizeof(u32),
 						d_data_ptr,
 						sizeof(u8)*(d_header->data_size%MAX_RW_SIZE));
 				if (ret < 0) {
 					t_abt_err(abt,
 							"Report reg addr read failed(%d, %d), %d\n",
 							dbg_offset,
-							sizeof(u32),
+							(int)sizeof(u32),
 							ret);
 				}
 
@@ -2216,8 +2216,8 @@ static struct siw_hal_abt_data *siw_hal_abt_alloc(struct device *dev)
 
 	snprintf(abt->name, sizeof(abt->name)-1, "%s-abt", dev_name(dev));
 
-	t_dev_dbg_base(dev, "create abt[%s] (0x%X)\n",
-				abt->name, sizeof(*abt));
+	t_dev_dbg_base(dev, "create abt[%s] (0x%zX)\n",
+				abt->name, (size_t)sizeof(*abt));
 
 	abt->dev = ts->dev;
 
