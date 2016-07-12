@@ -301,7 +301,7 @@ static inline void siw_hal_fw_set_revision(struct siw_hal_fw_info *fw, u32 revis
 
 static inline void siw_hal_fw_set_prod_id(struct siw_hal_fw_info *fw, u8 *prod, u32 size)
 {
-	int len = min(sizeof(fw->product_id), size);
+	int len = min((int)sizeof(fw->product_id), (int)size);
 	memset(fw->product_id, 0, sizeof(fw->product_id));
 	memcpy(fw->product_id, prod, len);
 }

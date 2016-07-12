@@ -2572,7 +2572,7 @@ static int siw_hal_upgrade(struct device *dev)
 		goto out;
 	}
 
-	t_dev_info(dev, "fw size:%zu\n", fw_size);
+	t_dev_info(dev, "fw size: %d\n", fw_size);
 
 	ret_val = siw_hal_fw_compare(dev, fw_buf);
 	if (ret_val < 0) {
