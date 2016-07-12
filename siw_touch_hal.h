@@ -356,6 +356,10 @@ struct siw_touch_chip {
 #endif
 };
 
+enum {
+	CHIP_INIT_RETRY_MAX = 5,
+};
+
 #define TCI_MAX_NUM					2
 #define SWIPE_MAX_NUM				2
 #define TCI_DEBUG_MAX_NUM			16

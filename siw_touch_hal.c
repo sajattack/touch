@@ -1040,12 +1040,15 @@ static void siw_hal_ic_info_abnormal(struct device *dev)
 
 	t_dev_info(dev, "[%s] FW is in abnormal state\n",
 			touch_chip_name(ts));
+
+#if 0
 #if 1
 	siw_hal_reset_ctrl(dev, HW_RESET_ASYNC);
 #else
 	siw_hal_power(dev, POWER_OFF);
 	siw_hal_power(dev, POWER_ON);
 	touch_msleep(ts->caps.hw_reset_delay);
+#endif
 #endif
 }
 
@@ -1211,9 +1214,7 @@ static int siw_hal_do_ic_info(struct device *dev, int prt_on)
 		return -EINVAL;
 	}
 
-	siw_hal_ic_info_ver_check(dev);
-
-	return 0;
+	return siw_hal_ic_info_ver_check(dev);
 }
 
 static int siw_hal_ic_info(struct device *dev)
@@ -1442,7 +1443,7 @@ static int siw_hal_init(struct device *dev)
 		siw_hal_abt_init(dev);
 	}
 
-	for (i = 0; i < 2; i++) {
+	for (i = 0; i < CHIP_INIT_RETRY_MAX; i++) {
 		ret = siw_hal_ic_info(dev);
 		if (ret >= 0) {
 			break;
