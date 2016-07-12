@@ -3722,7 +3722,7 @@ static struct siw_hal_prd_data *siw_hal_prd_alloc(struct device *dev)
 	snprintf(prd->name, sizeof(prd->name)-1, "%s-prd", dev_name(dev));
 
 	t_dev_dbg_base(dev, "create prd[%s] (0x%X)\n",
-				prd->name, sizeof(*prd));
+				prd->name, (int)sizeof(*prd));
 
 	prd->dev = ts->dev;
 
