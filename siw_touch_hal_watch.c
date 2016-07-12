@@ -1484,7 +1484,7 @@ static ssize_t store_ext_watch_rtc_onoff(struct device *dev,
 	int ret = 0;
 
 	buf_val = buf[0];
-	value = !(!value || (value == zero));
+	value = !(!buf_val || (buf_val == zero));
 
 	mutex_lock(&ts->lock);
 	ret = ext_watch_rtc_start(dev, value);
