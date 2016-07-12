@@ -294,7 +294,7 @@ static void siw_mon_prt_submit_memmove(struct siw_mon_data *data)
 			if (siw_mon_txt_sock_str_cmp(ops->ops) > 0) {
 				buf = siw_mon_get_buf_cache(buf,
 							siw_mon_buf_size_cur(ops->data[1]));
-				ops->data[0] = (u64)buf;
+				ops->data[0] = (size_t)buf;
 			}
 		}
 	#endif

@@ -623,7 +623,7 @@ static int siw_mon_submit_ops_sock(struct siw_mon_data *smdata, int ret)
 		if (buf_org && buf_len) {
 			buf = buf_org;
 		}
-		ops->data[0] = (buf_len) ? ((u64)buf) : 0;
+		ops->data[0] = (buf_len) ? ((size_t)buf) : 0;
 		ops->data[1] = buf_len;
 		ops->priv = 0;
 
@@ -640,7 +640,7 @@ static int siw_mon_submit_ops_sock(struct siw_mon_data *smdata, int ret)
 
 		buf = buf_org;
 
-		ops->data[0] = (cur) ? ((u64)buf) : 0;
+		ops->data[0] = (cur) ? ((size_t)buf) : 0;
 		ops->data[1] = siw_mon_set_buf_size(cur, tot);
 		buf_len -= cur;
 		buf_org += cur;

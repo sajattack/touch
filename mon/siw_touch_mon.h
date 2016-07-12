@@ -143,7 +143,7 @@ enum {
 
 struct siw_mon_data_ops {
 	char ops[OPS_NAME_SZ];
-	u64 data[OPS_DATA_SZ];
+	size_t data[OPS_DATA_SZ];
 	int len;
 	int priv;
 };
