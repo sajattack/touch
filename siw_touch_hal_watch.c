@@ -346,7 +346,7 @@ enum {
 };
 
 enum {
-	WATCH_MAX_RW_SIZE = (60<<10),
+	WATCH_MAX_RW_SIZE = (SIW_TOUCH_MAX_BUF_SIZE>>1),
 };
 
 
