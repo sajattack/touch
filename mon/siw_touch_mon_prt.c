@@ -294,7 +294,7 @@ static void siw_mon_prt_submit_memmove(struct siw_mon_data *data)
 			if (siw_mon_txt_sock_str_cmp(ops->ops) > 0) {
 				buf = siw_mon_get_buf_cache(buf,
 							siw_mon_buf_size_cur(ops->data[1]));
-				ops->data[0] = (u32)buf;
+				ops->data[0] = (u64)buf;
 			}
 		}
 	#endif
@@ -650,7 +650,7 @@ static void __siw_mon_txt_read_ops(struct siw_mon_reader_txt *rp,
 		return;
 
 	for (i = 0; i < len; i++) {
-		p->cnt += siw_mon_prt_snprintf(p, " %08X", ops->data[i]);
+		p->cnt += siw_mon_prt_snprintf(p, " %08zX", (size_t)ops->data[i]);
 	}
 }
 
