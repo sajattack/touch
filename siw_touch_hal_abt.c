@@ -457,8 +457,8 @@ static void __used siwmon_submit_ops_abt_sock(
 	size_t data[2] = { (size_t)buf, len };
 	siwmon_submit_ops(abt->dev,
 			(recv) ? ABT_MON_SOCK_RSTR : ABT_MON_SOCK_SSTR,
-			(u32 *)data,
-			sizeof(data),
+			(void *)data,
+			2,
 			ret);
 }
 

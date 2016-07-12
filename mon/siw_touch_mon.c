@@ -655,7 +655,7 @@ static int siw_mon_submit_ops_sock(struct siw_mon_data *smdata, int ret)
 }
 
 static void siw_mon_submit_ops(struct device *dev,
-					char *ops_str, u32 *data,
+					char *ops_str, void *data,
 					int size, int ret)
 {
 	struct siw_mon_data smdata = {
@@ -673,7 +673,7 @@ static void siw_mon_submit_ops(struct device *dev,
 
 	snprintf(ops->ops, OPS_NAME_SZ, "%s", ops_str);
 	if (len && data) {
-		memcpy(ops->data, data, len<<2);
+		memcpy(ops->data, data, sizeof(ops->data[0]) * len);
 	} else {
 		memset(ops->data, 0, sizeof(ops->data));
 	}

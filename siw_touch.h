@@ -1571,7 +1571,7 @@ struct touch_bus_msg;
 struct siw_mon_operations {
 	void (*submit_bus)(struct device *dev, char *dir, void *data, int ret);
 	void (*submit_evt)(struct device *dev, char *type, int type_v, char *code, int code_v, int value, int ret);
-	void (*submit_ops)(struct device *dev, char *ops, u32 *data, int size, int ret);
+	void (*submit_ops)(struct device *dev, char *ops, void *data, int size, int ret);
 };
 
 extern struct siw_mon_operations *siw_mon_ops;
@@ -1588,7 +1588,7 @@ static inline void siwmon_submit_evt(struct device *dev, char *type, int type_v,
 		(*siw_mon_ops->submit_evt)(dev, type, type_v, code, code_v, value, ret);
 }
 
-static inline void siwmon_submit_ops(struct device *dev, char *ops, u32 *data, int size, int ret)
+static inline void siwmon_submit_ops(struct device *dev, char *ops, void *data, int size, int ret)
 {
 	if (siw_mon_ops && siw_mon_ops->submit_ops)
 		(*siw_mon_ops->submit_ops)(dev, ops, data, size, ret);
@@ -1601,7 +1601,7 @@ extern void siw_mon_deregister(void);
 
 static inline void siwmon_submit_bus(struct device *dev, char *dir, void *data, int ret){ }
 static inline void siwmon_submit_evt(struct device *dev, char *type, int type_v, char *code, int code_v, int value, int ret){ }
-static inline void siwmon_submit_ops(struct device *dev, char *ops, u32 *data, int size, int ret){ }
+static inline void siwmon_submit_ops(struct device *dev, char *ops, void *data, int size, int ret){ }
 
 #endif	/* CONFIG_TOUCHSCREEN_SIWMON */
 

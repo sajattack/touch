@@ -3615,7 +3615,7 @@ static int siw_hal_asc(struct device *dev, u32 code, u32 value)
 	u32 rdata = 0;
 	u32 wdata = 0;
 	u32 asc_ret = 0;
-	int mon_data[6] = { 0, };
+	size_t mon_data[6] = { 0, };
 	int mon_cnt = 0;
 	int ret = 0;
 
@@ -3626,8 +3626,8 @@ static int siw_hal_asc(struct device *dev, u32 code, u32 value)
 		ret = siw_hal_reg_read(dev,
 					reg->max_delta,
 					(void *)&rdata, sizeof(rdata));
-		mon_data[mon_cnt++] = reg->max_delta;
-		mon_data[mon_cnt++] = rdata;
+		mon_data[mon_cnt++] = (size_t)reg->max_delta;
+		mon_data[mon_cnt++] = (size_t)rdata;
 		if (ret < 0) {
 			break;
 		}
@@ -3642,8 +3642,8 @@ static int siw_hal_asc(struct device *dev, u32 code, u32 value)
 		ret = siw_hal_reg_read(dev,
 					reg->touch_max_r,
 					(void *)&rdata, sizeof(rdata));
-		mon_data[mon_cnt++] = reg->touch_max_r;
-		mon_data[mon_cnt++] = rdata;
+		mon_data[mon_cnt++] = (size_t)reg->touch_max_r;
+		mon_data[mon_cnt++] = (size_t)rdata;
 		if (ret < 0) {
 			break;
 		}
@@ -3681,8 +3681,8 @@ static int siw_hal_asc(struct device *dev, u32 code, u32 value)
 		ret = siw_hal_write_value(dev,
 					reg->touch_max_w,
 					wdata);
-		mon_data[mon_cnt++] = reg->touch_max_w;
-		mon_data[mon_cnt++] = wdata;
+		mon_data[mon_cnt++] = (size_t)reg->touch_max_w;
+		mon_data[mon_cnt++] = (size_t)wdata;
 		if (ret < 0) {
 			break;
 		}
