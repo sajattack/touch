@@ -861,7 +861,7 @@ enum {
 struct siw_ts {
 //	struct platform_device *pdev;
 
-	u32	addr;
+	size_t addr;
 
 	char *chip_id;
 	char *chip_name;		//chip name

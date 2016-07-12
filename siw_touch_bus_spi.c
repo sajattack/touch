@@ -374,7 +374,7 @@ static struct siw_ts *siw_touch_spi_alloc(
 	}
 
 	ts->bus_dev = spi;
-	ts->addr = (u32)spi;
+	ts->addr = (size_t)spi;
 	ts->dev = dev;
 	ts->irq = spi->irq;
 	pdata = bus_drv->pdata;

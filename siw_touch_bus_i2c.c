@@ -184,7 +184,7 @@ static struct siw_ts *siw_touch_i2c_alloc(
 	}
 
 	ts->bus_dev = i2c;
-	ts->addr = (u32)i2c->addr;
+	ts->addr = (size_t)i2c->addr;
 	ts->dev = dev;
 	ts->irq = i2c->irq;
 	pdata = bus_drv->pdata;
