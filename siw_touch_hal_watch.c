@@ -303,8 +303,23 @@ struct watch_data {
 	u32 font_written_size;
 	u32 font_max_size;
 	struct ext_watch_cfg ext_wdata;
+	int flag;
+#define _WATCH_FLAG_SKIP_GET_MODE		(1UL<<0)
+#define _WATCH_FLAG_SKIP_SET_MODE		(1UL<<1)
+#define _WATCH_FLAG_SKIP_LUT_UPDATE		(1UL<<2)
+	int type;
 };
 
+enum {
+	WATCH_FLAG_SKIP_GET_MODE	= _WATCH_FLAG_SKIP_GET_MODE,
+	WATCH_FLAG_SKIP_SET_MODE	= _WATCH_FLAG_SKIP_SET_MODE,
+	WATCH_FLAG_SKIP_LUT_UPDATE	= _WATCH_FLAG_SKIP_LUT_UPDATE,
+};
+
+enum {
+	WATCH_TYPE_0 = 0,	/* LG4895 */
+	WATCH_TYPE_1,		/* LG4946 */
+};
 
 #define SIW_WATCH_TAG 	"watch: "
 
@@ -448,7 +463,7 @@ static void __store_log_buf(struct device *dev, char *buf,
 static int ext_watch_get_mode(struct device *dev, char *buf, int *len)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
-	struct siw_ts *ts = chip->ts;
+//	struct siw_ts *ts = chip->ts;
 	struct siw_hal_reg *reg = chip->reg;
 	struct watch_data *watch = (struct watch_data *)chip->watch;
 	struct ext_watch_cfg_mode *mode = &watch->ext_wdata.mode;
@@ -461,13 +476,8 @@ static int ext_watch_get_mode(struct device *dev, char *buf, int *len)
 	int i;
 	int ret = 0;
 
-	switch (touch_chip_type(ts)) {
-	case CHIP_LG4895:
-		/* SKIP : all handled by MIPI, no effect */
+	if (watch->flag & WATCH_FLAG_SKIP_GET_MODE) {
 		return 0;
-	//	break;
-	default:
-		break;
 	}
 
 	if (len)
@@ -536,11 +546,7 @@ static int ext_watch_get_mode(struct device *dev, char *buf, int *len)
 
 	__store_log_buf(dev, buf, log, &buflen, loglen);
 
-	switch (touch_chip_type(ts)) {
-	case CHIP_LG4895:
-		/* SKIP : reg->ext_watch_lut not available */
-		break;
-	default:
+	if (!(watch->flag & WATCH_FLAG_SKIP_LUT_UPDATE)) {
 		lut = mode->lut;
 		for (i = 0; i < EXT_WATCH_LUT_NUM; i++) {
 			ret = siw_hal_read_value(dev, reg->ext_watch_lut + i, &val);
@@ -560,7 +566,6 @@ static int ext_watch_get_mode(struct device *dev, char *buf, int *len)
 
 			lut++;
 		}
-		break;
 	}
 
 	if (len)
@@ -777,7 +782,7 @@ out:
 static int ext_watch_set_mode(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
-	struct siw_ts *ts = chip->ts;
+//	struct siw_ts *ts = chip->ts;
 	struct siw_hal_reg *reg = chip->reg;
 	struct watch_data *watch = (struct watch_data *)chip->watch;
 	struct ext_watch_cfg_mode *mode = &watch->ext_wdata.mode;
@@ -786,12 +791,13 @@ static int ext_watch_set_mode(struct device *dev)
 	u32 val;
 	int ret;
 
-	switch (touch_chip_type(ts)) {
-	case CHIP_LG4895:
+	if (watch->flag & WATCH_FLAG_SKIP_SET_MODE) {
 		/* SKIP : all handled by MIPI, no effect */
 		return 0;
-	//	break;
-	case CHIP_LG4946:
+	}
+
+	switch (watch->type) {
+	case WATCH_TYPE_1:
 		mode->watch_ctrl.alpha = 1;	/* bypass foreground */
 		break;
 	default:
@@ -827,19 +833,12 @@ static int ext_watch_set_mode(struct device *dev)
 		goto out;
 	}
 
-	switch (touch_chip_type(ts)) {
-	case CHIP_LG4895:
-		/* SKIP : reg->ext_watch_lut not available */
-		break;
-	default:
-		ret = siw_hal_reg_write(dev,
-				reg->ext_watch_lut,
-				(void *)mode->lut,
-				sizeof(u32) * EXT_WATCH_LUT_NUM);
-		if (ret < 0) {
-			goto out;
-		}
-		break;
+	ret = siw_hal_reg_write(dev,
+			reg->ext_watch_lut,
+			(void *)mode->lut,
+			sizeof(u32) * EXT_WATCH_LUT_NUM);
+	if (ret < 0) {
+		goto out;
 	}
 
 	t_watch_info(dev, "set mode: done\n");
@@ -951,7 +950,7 @@ out:
 static int __ext_watch_display_onoff(struct device *dev, u32 data, int log)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
-	struct siw_ts *ts = chip->ts;
+//	struct siw_ts *ts = chip->ts;
 	struct siw_hal_reg *reg = chip->reg;
 	struct watch_data *watch = (struct watch_data *)chip->watch;
 	struct ext_watch_cfg_time *time = &watch->ext_wdata.time;
@@ -961,8 +960,8 @@ static int __ext_watch_display_onoff(struct device *dev, u32 data, int log)
 		data = time->disp_waton;
 	}
 
-	switch (touch_chip_type(ts)) {
-	case CHIP_LG4946:
+	switch (watch->type) {
+	case WATCH_TYPE_1:
 		if (atomic_read(&watch->state.rtc_status) != RTC_RUN) {
 			ret = ext_watch_set_curr_time(dev);
 			if (ret < 0) {
@@ -1040,7 +1039,7 @@ static u16 ext_watch_cal_crc16(const u16 *data, u32 size, u16 init_val)
 	return crc_sum;
 }
 
-static u32 ext_watch_font_crc_cal(struct device *dev, char *data, u32 size)
+static u32 ext_watch_font_crc_cal(char *data, u32 size)
 {
 	u32 crc_value = 0;
 
@@ -1091,7 +1090,7 @@ out:
 	return ret;
 }
 
-static int ext_watch_font_dn_type_1(struct device *dev)
+static int ext_watch_font_dn_type_0(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_hal_reg *reg = chip->reg;
@@ -1146,7 +1145,7 @@ static int ext_watch_font_dn_type_1(struct device *dev)
 			ext_wdata->font_crc, crc_addr);
 
 	ext_wdata->font_crc =
-		 ext_watch_font_crc_cal(dev, ext_wdata->font_data, font_hdr->size);
+		 ext_watch_font_crc_cal(ext_wdata->font_data, font_hdr->size);
 	t_watch_info(dev, "font dn work(1): result crc %08Xh\n", ext_wdata->font_crc);
 
 	memcpy((void *)&ext_wdata->font_data[font_hdr->size+SIW_FONT_MAGIC_CODE_SIZE],
@@ -1244,7 +1243,7 @@ out:
 	return ret;
 }
 
-static int ext_watch_font_dn_type_2(struct device *dev)
+static int ext_watch_font_dn_type_1(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_hal_reg *reg = chip->reg;
@@ -1289,7 +1288,7 @@ static int ext_watch_font_dn_type_2(struct device *dev)
 			ext_wdata->font_crc, crc_addr);
 
 	ext_wdata->font_crc =
-		 ext_watch_font_crc_cal(dev, ext_wdata->font_data, crc_addr);
+		 ext_watch_font_crc_cal(ext_wdata->font_data, crc_addr);
 	t_watch_info(dev, "font dn work(2): result crc %08Xh\n", ext_wdata->font_crc);
 
 	if (watch->font_written_size ==
@@ -1377,12 +1376,12 @@ static void ext_watch_font_download(struct work_struct *font_download_work)
 
 	mutex_lock(&ts->lock);
 
-	switch (touch_chip_type(ts)) {
-	case CHIP_LG4895:
-		ext_watch_font_dn_type_1(dev);
+	switch (watch->type) {
+	case WATCH_TYPE_0:
+		ext_watch_font_dn_type_0(dev);
 		break;
-	case CHIP_LG4946:
-		ext_watch_font_dn_type_2(dev);
+	case WATCH_TYPE_1:
+		ext_watch_font_dn_type_1(dev);
 		break;
 	}
 
@@ -1622,7 +1621,7 @@ static ssize_t store_ext_watch_config_font_effect(struct device *dev,
 		 			const char *buf, size_t count)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
-	struct siw_ts *ts = chip->ts;
+//	struct siw_ts *ts = chip->ts;
 	struct watch_data *watch = (struct watch_data *)chip->watch;
 	struct ext_watch_cfg_mode *mode = &watch->ext_wdata.mode;
 	struct ext_watch_cfg_time *time = &watch->ext_wdata.time;
@@ -1630,7 +1629,6 @@ static ssize_t store_ext_watch_config_font_effect(struct device *dev,
 	struct ext_watch_config_font_effect cfg;
 	char period[16];
 	int blink_type, blink_max, blink_boundary, blink_unit;
-	int chip_type = touch_chip_type(ts);
 
 	if (atomic_read(&chip->block_watch_cfg) == BLOCKED) {
 		t_watch_err(dev, "store font effect blocked\n");
@@ -1641,8 +1639,8 @@ static ssize_t store_ext_watch_config_font_effect(struct device *dev,
 	if ((count == 2) && (buf[0] == EXT_WATCH_CFG_DEBUG)) {
 		memset((char *)&cfg, 0, sizeof(cfg));
 
-		switch (chip_type) {
-		case CHIP_LG4895:
+		switch (watch->type) {
+		case WATCH_TYPE_0:
 			cfg.midnight_hour_zero_en = 1;
 			cfg.blink.blink_type = DBG_BLINK_TYPE;
 			/*
@@ -1652,7 +1650,7 @@ static ssize_t store_ext_watch_config_font_effect(struct device *dev,
 			cfg.blink.bendx = cfg.blink.bstartx + 8;
 			cfg.watchon = 1;
 			break;
-		case CHIP_LG4946:
+		case WATCH_TYPE_1:
 			cfg.midnight_hour_zero_en = 0;
 			cfg.blink.blink_type = DBG_BLINK_TYPE;
 			cfg.blink.bstartx = 0;
@@ -1665,8 +1663,8 @@ static ssize_t store_ext_watch_config_font_effect(struct device *dev,
 
 	blink_type = cfg.blink.blink_type;
 
-	switch (touch_chip_type(ts)) {
-	case CHIP_LG4946:
+	switch (watch->type) {
+	case WATCH_TYPE_1:
 		/*
 		 * 2:1s, 3:2s
 		 * 1:500ms
@@ -1708,8 +1706,8 @@ static ssize_t store_ext_watch_config_font_effect(struct device *dev,
 	mode->blink_area.bstartx = cfg.blink.bstartx;
 	mode->blink_area.bendx = cfg.blink.bendx;
 
-	switch (chip_type) {
-	case CHIP_LG4895:
+	switch (watch->type) {
+	case WATCH_TYPE_0:
 		time->disp_waton = cfg.watchon;
 		break;
 	}
@@ -1770,7 +1768,6 @@ static ssize_t store_ext_watch_config_font_position(struct device *dev,
 	struct ext_watch_cfg_position *position = &watch->ext_wdata.position;
 	struct ext_watch_config_font_pos cfg;
 	struct reset_area *watch_win = pdata_watch_win(ts->pdata);
-	int chip_type = touch_chip_type(ts);
 	int ret = 0;
 
 	if (atomic_read(&chip->block_watch_cfg) == BLOCKED) {
@@ -1778,8 +1775,8 @@ static ssize_t store_ext_watch_config_font_position(struct device *dev,
 		return __ret_val_blocked(count);
 	}
 
-	switch (chip_type) {
-	case CHIP_LG4895:
+	switch (watch->type) {
+	case WATCH_TYPE_0:
 		if (!watch_win) {
 			watch_win = (struct reset_area *)&watch_win_default;
 		}
@@ -1793,11 +1790,11 @@ static ssize_t store_ext_watch_config_font_position(struct device *dev,
 	if ((count == 2) && (buf[0] == EXT_WATCH_CFG_DEBUG)) {
 		void *pos_dbg = NULL;
 
-		switch (chip_type) {
-		case CHIP_LG4895:
+		switch (watch->type) {
+		case WATCH_TYPE_0:
 			pos_dbg = (void *)&extwatch_pos_dbg_lg4895;
 			break;
-		case CHIP_LG4946:
+		case WATCH_TYPE_1:
 			pos_dbg = (void *)&extwatch_pos_dbg_lg4946;
 			break;
 		}
@@ -1878,7 +1875,7 @@ static ssize_t store_ext_watch_config_font_property(struct device *dev,
  					const char *buf, size_t count)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
-	struct siw_ts *ts = chip->ts;
+//	struct siw_ts *ts = chip->ts;
 	struct watch_data *watch = (struct watch_data *)chip->watch;
 	struct ext_watch_cfg_mode *mode = &watch->ext_wdata.mode;
 	struct ext_watch_bits_lut *lut;
@@ -1894,22 +1891,12 @@ static ssize_t store_ext_watch_config_font_property(struct device *dev,
 		return __ret_val_blocked(count);
 	}
 
-	switch (touch_chip_type(ts)) {
-	case CHIP_LG4895:
-		/* SKIP : lut setup is handled by MIPI, no effect */
-		t_watch_info(dev, "skip font property\n");
-		goto out;
-	//	break;
-	default:
-		break;
-	}
-
 	//for test using echo command
 	if ((count == 2) && (buf[0] == EXT_WATCH_CFG_DEBUG)) {
 		void *pos_dbg = NULL;
 
-		switch (touch_chip_type(ts)) {
-		case CHIP_LG4946:
+		switch (watch->type) {
+		case WATCH_TYPE_1:
 			pos_dbg = (void *)&extwatch_prop_dbg_lg4946;
 			break;
 		}
@@ -1920,6 +1907,12 @@ static ssize_t store_ext_watch_config_font_property(struct device *dev,
 		}
 	} else {
 		memcpy((char *)&cfg, buf, sizeof(cfg));
+	}
+
+	if (watch->flag & WATCH_FLAG_SKIP_LUT_UPDATE) {
+		/* SKIP : lut setup is handled by MIPI, no effect */
+		t_watch_info(dev, "skip font property\n");
+		goto out;
 	}
 
 	loglen += siw_watch_snprintf(log, FONT_TEMP_LOG_SZ, loglen,
@@ -1946,6 +1939,7 @@ static ssize_t store_ext_watch_config_font_property(struct device *dev,
 	t_watch_info(dev, "%s\n", log);
 
 out:
+	/* Transfer LUT data to DSI driver */
 	siw_touch_blocking_notifier_call(LCD_EVENT_TOUCH_WATCH_LUT_UPDATE, (void*)(&cfg));
 
 	return count;
@@ -2023,14 +2017,18 @@ out:
 static ssize_t show_ext_watch_query_font_data(struct device *dev, char *buf)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
-	struct siw_ts *ts = chip->ts;
+//	struct siw_ts *ts = chip->ts;
+	struct watch_data *watch = (struct watch_data *)chip->watch;
 	struct ext_watch_query_font_data query;
 	ssize_t size = sizeof(struct ext_watch_query_font_data);
 
 	query.Font_supported = SUPPORT;
 
-	switch (touch_chip_type(ts)) {
-	case CHIP_LG4946:
+	/*
+	 * Not fixed, depends on F/W spec.
+	 */
+	switch (watch->type) {
+	case WATCH_TYPE_1:
 		query.max_font_x_size = 255;
 		query.max_font_y_size = 184;
 		query.max_cln_x_size = 255;
@@ -2052,15 +2050,15 @@ static ssize_t show_ext_watch_query_font_data(struct device *dev, char *buf)
 static ssize_t show_ext_watch_query_font_position(struct device *dev, char *buf)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
-	struct siw_ts *ts = chip->ts;
+//	struct siw_ts *ts = chip->ts;
 	struct watch_data *watch = (struct watch_data *)chip->watch;
 	struct ext_watch_cfg_mode *mode = &watch->ext_wdata.mode;
 	struct ext_watch_cfg_position *position = &watch->ext_wdata.position;
 	struct ext_watch_query_font_position query;
 	ssize_t size = sizeof(struct ext_watch_query_font_position);
 
-	switch (touch_chip_type(ts)) {
-	case CHIP_LG4946:
+	switch (watch->type) {
+	case WATCH_TYPE_1:
 		query.vertical_position_supported = SUPPORT;
 		break;
 	default:
@@ -2548,12 +2546,17 @@ static int ext_watch_create_sysfs(struct device *dev)
 	chip->watch = watch;
 	t_dev_dbg_base(dev, "watch_data allocated\n");
 
+	watch->font_max_size = SIW_MAX_FONT_SIZE;
+	watch->flag = 0;
+	watch->type = WATCH_TYPE_0;
+
 	switch (touch_chip_type(ts)) {
 	case CHIP_LG4946:
 		watch->font_max_size = SIW_MAX_FONT_SIZE_LG4946;
+		watch->type = WATCH_TYPE_1;
 		break;
-	default:
-		watch->font_max_size = SIW_MAX_FONT_SIZE;
+	case CHIP_LG4895:
+		watch->flag = WATCH_FLAG_SKIP_GET_MODE | WATCH_FLAG_SKIP_LUT_UPDATE;
 		break;
 	}
 
