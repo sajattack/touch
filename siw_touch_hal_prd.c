@@ -80,7 +80,7 @@ enum {
 #if defined(CONFIG_TOUCHSCREEN_SIW_SW1828)
 #define __PRD_TYPE_S1
 #elif defined(CONFIG_TOUCHSCREEN_SIW_LG4946)
-#define __PRD_TYPE_L2
+#define __PRD_TYPE_L3
 #elif defined(CONFIG_TOUCHSCREEN_SIW_LG4895)
 #define __PRD_TYPE_L2
 #elif defined(CONFIG_TOUCHSCREEN_SIW_LG4894)
@@ -99,6 +99,19 @@ enum {
 	__LABLE_DATA_OFFSET			= 0xE83,
 	__AIT_RAW_DATA_OFFSET		= 0xA8C,
 	__AIT_BASE_DATA_ODD_OFFSET	= 0xC0F,
+};
+#elif defined(__PRD_TYPE_L3)
+#define __M1_RAWDATA_TEST_CNT	1
+#define __M2_RAWDATA_TEST_CNT	1
+#define __PRD_ROW_SIZE			32
+#define __PRD_COL_SIZE			18
+#define __PRD_COL_ADD			0
+#define __TC_TOTAL_CH_SIZE		34
+enum {
+	__DELTA_DATA_OFFSET			= 0xDC2,
+	__LABLE_DATA_OFFSET			= 0xF16,
+	__AIT_RAW_DATA_OFFSET		= 0xB82,
+	__AIT_BASE_DATA_ODD_OFFSET	= 0xCA2,
 };
 #elif defined(__PRD_TYPE_L2)
 #define __M1_RAWDATA_TEST_CNT	1
