@@ -50,6 +50,7 @@
 
 #define CHIP_MODE_ALLOWED			(0 |	\
 									LCD_MODE_BIT_U0 |	\
+									LCD_MODE_BIT_U2_UNBLANK |	\
 									LCD_MODE_BIT_U2 |	\
 									LCD_MODE_BIT_U3 |	\
 									LCD_MODE_BIT_U3_PARTIAL |	\

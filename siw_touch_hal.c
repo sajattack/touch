@@ -1416,17 +1416,19 @@ static int siw_hal_check_watch(struct device *dev)
 	return 0;
 }
 
-static int siw_hal_check_mode(struct device *dev)
+static int siw_hal_check_mode_type_0(struct device *dev,
+				int lcd_mode, int chk_mode)
 {
-	struct siw_touch_chip *chip = to_touch_chip(dev);
+//	struct siw_touch_chip *chip = to_touch_chip(dev);
+//	struct siw_ts *ts = chip->ts;
 	int ret = 0;
 
-	if (chip->lcd_mode == LCD_MODE_U3) {
+	if (lcd_mode == LCD_MODE_U3) {
 		goto out;
 	}
 
-	if (chip->lcd_mode == LCD_MODE_U2) {
-		if (chip->driving_mode == LCD_MODE_U2_UNBLANK) {
+	if (lcd_mode == LCD_MODE_U2) {
+		if (chk_mode == LCD_MODE_U2_UNBLANK) {
 			t_dev_info(dev, "U1 -> U2 : watch on\n");
 			siw_hal_watch_init(dev);
 			// knockon mode change + swipe enable
@@ -1439,8 +1441,8 @@ static int siw_hal_check_mode(struct device *dev)
 		goto out;
 	}
 
-	if (chip->lcd_mode == LCD_MODE_U2_UNBLANK) {
-		switch (chip->driving_mode) {
+	if (lcd_mode == LCD_MODE_U2_UNBLANK) {
+		switch (chk_mode) {
 		case LCD_MODE_STOP:
 			t_dev_info(dev, "Skip mode change : LCD_MODE_STOP -> U1\n");
 			siw_hal_watch_display_off(dev);
@@ -1458,20 +1460,90 @@ static int siw_hal_check_mode(struct device *dev)
 			t_dev_info(dev, "U0 -> U1 mode change\n");
 			break;
 		default:
-			t_dev_info(dev, "Not Defined Mode, %d\n", chip->driving_mode);
+			t_dev_info(dev, "Not Defined Mode, %d\n", chk_mode);
 			break;
 		}
 		goto out;
 	}
 
-	if (chip->lcd_mode == LCD_MODE_U0) {
+	if (lcd_mode == LCD_MODE_U0) {
 		t_dev_info(dev, "U0 mode change\n");
 		goto out;
 	}
 
-	t_dev_info(dev, "Not defined mode, %d\n", chip->lcd_mode);
+	t_dev_info(dev, "Not defined mode, %d\n", lcd_mode);
 
 out:
+	return ret;
+}
+
+static int siw_hal_check_mode_type_1(struct device *dev,
+				int lcd_mode, int chk_mode)
+{
+//	struct siw_touch_chip *chip = to_touch_chip(dev);
+//	struct siw_ts *ts = chip->ts;
+	int ret = 0;
+
+	if (lcd_mode == LCD_MODE_U3) {
+		goto out;
+	}
+
+	if (lcd_mode == LCD_MODE_U2) {
+		if (chk_mode == LCD_MODE_U2_UNBLANK) {
+			t_dev_info(dev, "U1 -> U2 : watch on\n");
+			siw_hal_watch_init(dev);
+			ret = 1;
+		} else {
+			t_dev_info(dev, "U2 mode change\n");
+		}
+		goto out;
+	}
+
+	if (lcd_mode == LCD_MODE_U2_UNBLANK) {
+		switch (chk_mode) {
+		case LCD_MODE_U2:
+			t_dev_info(dev, "U2 -> U1 : watch off\n");
+			siw_hal_watch_display_off(dev);
+			break;
+		case LCD_MODE_U0:
+			t_dev_info(dev, "U0 -> U1 mode change\n");
+			siw_hal_watch_init(dev);
+			break;
+		default:
+			t_dev_info(dev, "Not Defined Mode, %d\n", chk_mode);
+			break;
+		}
+		goto out;
+	}
+
+	if (lcd_mode == LCD_MODE_U0) {
+		t_dev_info(dev, "U0 mode change\n");
+		goto out;
+	}
+
+	t_dev_info(dev, "Not defined mode, %d\n", lcd_mode);
+
+out:
+	return ret;
+}
+
+static int siw_hal_check_mode(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	int ret = 0;
+
+	switch (touch_chip_type(ts)) {
+	case CHIP_LG4946:
+		ret = siw_hal_check_mode_type_1(dev,
+					chip->lcd_mode, chip->prev_lcd_mode);
+		break;
+	default:
+		ret = siw_hal_check_mode_type_0(dev,
+					chip->lcd_mode, chip->driving_mode);
+		break;
+	}
+
 	return ret;
 }
 
@@ -3209,6 +3281,7 @@ static int siw_hal_tc_driving(struct device *dev, int mode)
 		ctrl = siw_hal_tc_driving_u0(dev);
 		break;
 
+	case LCD_MODE_U2_UNBLANK:
 	case LCD_MODE_U2:
 		ctrl = siw_hal_tc_driving_u2(dev);
 		break;
@@ -4416,18 +4489,23 @@ static int siw_hal_lcd_mode(struct device *dev, u32 mode)
 		return -EPERM;
 	}
 
-	t_dev_info(dev, "lcd_mode: %d (prev: %d)\n", mode, chip->lcd_mode);
-
 	if ((chip->lcd_mode == LCD_MODE_U2) &&
 		siw_hal_watch_is_disp_waton(dev)) {
 		siw_hal_watch_get_curr_time(dev, NULL, NULL);
 	}
 
-	if (mode == LCD_MODE_U2_UNBLANK)
-		mode = LCD_MODE_U2;
+	switch (touch_chip_type(ts)) {
+	case CHIP_LG4895:
+		if (mode == LCD_MODE_U2_UNBLANK)
+			mode = LCD_MODE_U2;
+		break;
+	}
 
 	chip->prev_lcd_mode = chip->lcd_mode;
 	chip->lcd_mode = mode;
+
+	t_dev_info(dev, "lcd_mode: %d (prev: %d)\n",
+		mode, chip->prev_lcd_mode);
 
 	return 0;
 }
