@@ -471,7 +471,6 @@ static int ext_watch_get_mode(struct device *dev, char *buf, int *len)
 	char log[FONT_TEMP_LOG_SZ] = {0, };
 	int loglen = 0;
 	int buflen = 0;
-	u8 *ptr = NULL;
 	u32 val;
 	int i;
 	int ret = 0;
@@ -487,9 +486,8 @@ static int ext_watch_get_mode(struct device *dev, char *buf, int *len)
 	if (ret < 0) {
 		goto out;
 	}
-	ptr = (u8 *)&mode->watch_ctrl;
-	ptr[0] = val & 0xFF;
-	ptr[1] = (val>>8) & 0xFF;
+	t_watch_dbg(dev, "get mode: watch_ctrl %Xh\n", val);
+	memcpy((void *)&mode->watch_ctrl, (void *)&val, sizeof(mode->watch_ctrl));
 	loglen = siw_watch_snprintf(log, FONT_TEMP_LOG_SZ, 0,
 					"watch_ctrl[%04Xh] dispmode %d, alpha %d\n",
 					reg->ext_watch_ctrl,
@@ -502,10 +500,8 @@ static int ext_watch_get_mode(struct device *dev, char *buf, int *len)
 	if (ret < 0) {
 		goto out;
 	}
-	ptr = (u8 *)&mode->watch_area_x;
-	ptr[0] = val & 0xFF;
-	ptr[1] = (val>>8) & 0xFF;
-	ptr[2] = (val>>16) & 0xFF;
+	t_watch_dbg(dev, "get mode: watch_area_x %Xh\n", val);
+	memcpy((void *)&mode->watch_area_x, (void *)&val, sizeof(mode->watch_area_x));
 	loglen = siw_watch_snprintf(log, FONT_TEMP_LOG_SZ, 0,
 					"watch_area_x[%04Xh] sx %d, ex %d\n",
 					reg->ext_watch_area_x,
@@ -518,10 +514,8 @@ static int ext_watch_get_mode(struct device *dev, char *buf, int *len)
 	if (ret < 0) {
 		goto out;
 	}
-	ptr = (u8 *)&mode->watch_area_y;
-	ptr[0] = val & 0xFF;
-	ptr[1] = (val>>8) & 0xFF;
-	ptr[2] = (val>>16) & 0xFF;
+	t_watch_dbg(dev, "get mode: watch_area_y %Xh\n", val);
+	memcpy((void *)&mode->watch_area_y, (void *)&val, sizeof(mode->watch_area_y));
 	loglen = siw_watch_snprintf(log, FONT_TEMP_LOG_SZ, 0,
 					"watch_area_y[%04Xh] sy %d, ey %d\n",
 					reg->ext_watch_area_y,
@@ -534,10 +528,8 @@ static int ext_watch_get_mode(struct device *dev, char *buf, int *len)
 	if (ret < 0) {
 		goto out;
 	}
-	ptr = (u8 *)&mode->blink_area;
-	ptr[0] = val & 0xFF;
-	ptr[1] = (val>>8) & 0xFF;
-	ptr[2] = (val>>16) & 0xFF;
+	t_watch_dbg(dev, "get mode: blink_area %Xh\n", val);
+	memcpy((void *)&mode->blink_area, (void *)&val, sizeof(mode->blink_area));
 	loglen = siw_watch_snprintf(log, FONT_TEMP_LOG_SZ, 0,
 					"blink_area[%04Xh] bsx %d, bex %d\n",
 					reg->ext_watch_blink_area,
@@ -553,12 +545,9 @@ static int ext_watch_get_mode(struct device *dev, char *buf, int *len)
 			if (ret < 0) {
 				goto out;
 			}
-			ptr = (u8 *)lut;
-			ptr[0] = val & 0xFF;
-			ptr[1] = (val>>8) & 0xFF;
-			ptr[2] = (val>>16) & 0xFF;
+			memcpy((void *)lut, (void *)&val, sizeof(*lut));
 			loglen = siw_watch_snprintf(log, FONT_TEMP_LOG_SZ, 0,
-						"LUT[%d][%04Xh] b %d, g %d, r %d\n",
+						"LUT[%d][%04Xh] b %02X, g %02X, r %02X\n",
 						i, reg->ext_watch_blink_area + i,
 						lut->b, lut->g, lut->r);
 
@@ -787,7 +776,6 @@ static int ext_watch_set_mode(struct device *dev)
 	struct watch_data *watch = (struct watch_data *)chip->watch;
 	struct ext_watch_cfg_mode *mode = &watch->ext_wdata.mode;
 	struct ext_watch_cfg_position *position = &watch->ext_wdata.position;
-	u8 *ptr = NULL;
 	u32 val;
 	int ret;
 
@@ -805,29 +793,33 @@ static int ext_watch_set_mode(struct device *dev)
 		break;
 	}
 
-	ptr = (u8 *)&mode->watch_ctrl;
-	val = (ptr[1]<<8) | ptr[0];
+	val = 0;
+	memcpy((void *)&val, (void *)&mode->watch_ctrl, sizeof(mode->watch_ctrl));
+	t_watch_dbg(dev, "set mode: watch_ctrl %Xh\n", val);
 	ret = siw_hal_write_value(dev, reg->ext_watch_ctrl, val);
 	if (ret < 0) {
 		goto out;
 	}
 
-	ptr = (u8 *)&mode->watch_area_x;
-	val = (ptr[2]<<16) | (ptr[1]<<8) | ptr[0];
+	val = 0;
+	memcpy((void *)&val, (void *)&mode->watch_area_x, sizeof(mode->watch_area_x));
+	t_watch_dbg(dev, "set mode: watch_area_x %Xh\n", val);
 	ret = siw_hal_write_value(dev, reg->ext_watch_area_x, val);
 	if (ret < 0) {
 		goto out;
 	}
 
-	ptr = (u8 *)&mode->watch_area_y;
-	val = (ptr[2]<<16) | (ptr[1]<<8) | ptr[0];
+	val = 0;
+	memcpy((void *)&val, (void *)&mode->watch_area_y, sizeof(mode->watch_area_y));
+	t_watch_dbg(dev, "set mode: watch_area_y %Xh\n", val);
 	ret = siw_hal_write_value(dev, reg->ext_watch_area_y, val);
 	if (ret < 0) {
 		goto out;
 	}
 
-	ptr = (u8 *)&mode->blink_area;
-	val = (ptr[2]<<16) | (ptr[1]<<8) | ptr[0];
+	val = 0;
+	memcpy((void *)&val, (void *)&mode->blink_area, sizeof(mode->blink_area));
+	t_watch_dbg(dev, "set mode: blink_area %Xh\n", val);
 	ret = siw_hal_write_value(dev, reg->ext_watch_blink_area, val);
 	if (ret < 0) {
 		goto out;
@@ -1727,9 +1719,32 @@ static ssize_t store_ext_watch_config_font_effect(struct device *dev,
 }
 
 static int __ext_watch_chk_font_pos(struct device *dev,
-				struct ext_watch_config_font_pos *cfg)
+				struct ext_watch_config_font_pos *cfg,
+				struct reset_area *watch_win)
 {
-	/* */
+#if 0
+	/* Testing... */
+	if (!cfg->h1x_pos ||
+		!cfg->m1x_pos ||
+		!cfg->m10x_pos ||
+		!cfg->clx_pos) {
+		t_watch_err(dev, "check pos: invalid t-pos: %d %d %d %d\n",
+			cfg->h1x_pos, cfg->m1x_pos, cfg->m10x_pos, cfg->clx_pos);
+		return -EINVAL;
+	}
+#endif
+
+#if 1
+	if (watch_win) {
+		if ((cfg->watstartx < watch_win->x1) || (cfg->watendx > watch_win->x2) ||
+			(cfg->watstarty < watch_win->y1) || (cfg->watendy > watch_win->y2)) {
+			t_watch_err(dev, "check pos: invalid win: %d %d %d %d - %d %d %d %d\n",
+				watch_win->x1, watch_win->x2, watch_win->y1, watch_win->y2,
+				cfg->watstartx, cfg->watendx, cfg->watstarty, cfg->watendy);
+			return -EINVAL;
+		}
+	}
+#endif
 
 	return 0;
 }
@@ -1807,7 +1822,7 @@ static ssize_t store_ext_watch_config_font_position(struct device *dev,
 		memcpy((char *)&cfg, buf, sizeof(cfg));
 	}
 
-	ret = __ext_watch_chk_font_pos(dev, &cfg);
+	ret = __ext_watch_chk_font_pos(dev, &cfg, watch_win);
 	if (ret < 0) {
 		goto out;
 	}
@@ -1822,16 +1837,6 @@ static ssize_t store_ext_watch_config_font_position(struct device *dev,
 	position->m10x_pos = cfg.m10x_pos;
 	position->m1x_pos = cfg.m1x_pos;
 	position->clx_pos = cfg.clx_pos;
-
-#if 1
-	if (watch_win) {
-		if ((cfg.watstartx < watch_win->x1) || (cfg.watendx > watch_win->x2) ||
-			(cfg.watstarty <  watch_win->y1) || (cfg.watendy > watch_win->y2)) {
-			t_watch_err(dev, "check the position. (invalid range)\n");
-			ret = -EINVAL;
-		}
-	}
-#endif
 
 	t_watch_info(dev,
 			"watch area: sx %d, ex %d, sy %d, ey %d\n",
