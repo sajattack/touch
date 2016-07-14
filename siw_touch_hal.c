@@ -222,6 +222,15 @@ static void siw_hal_init_gpio_reset(struct device *dev)
 			reset_pin, GPIO_NO_PULL);
 }
 
+static void siw_hal_trigger_gpio_reset(struct device *dev)
+{
+	siw_hal_set_gpio_reset(dev, GPIO_OUT_ZERO);
+	touch_msleep(1);
+	siw_hal_set_gpio_reset(dev, GPIO_OUT_ONE);
+
+	t_dev_info(dev, "trigger gpio reset\n");
+}
+
 static void siw_hal_free_gpio_reset(struct device *dev)
 {
 	struct siw_ts *ts = to_touch_core(dev);
@@ -299,6 +308,8 @@ static void siw_hal_init_gpios(struct device *dev)
 	siw_hal_init_gpio_irq(dev);
 
 	siw_hal_init_gpio_maker_id(dev);
+
+	siw_hal_trigger_gpio_reset(dev);
 }
 
 static void siw_hal_free_gpios(struct device *dev)
