@@ -1037,9 +1037,12 @@ static void siw_hal_ic_info_abnormal(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
+	struct siw_hal_fw_info *fw = &chip->fw;
+	u32 vchip = fw->v.version.chip;
+	u32 vproto = fw->v.version.protocol;
 
-	t_dev_info(dev, "[%s] FW is in abnormal state\n",
-			touch_chip_name(ts));
+	t_dev_info(dev, "[%s] FW is in abnormal state: %d, %d\n",
+			touch_chip_name(ts), vchip, vproto);
 
 #if 0
 #if 1
@@ -1060,32 +1063,40 @@ static int siw_hal_ic_info_ver_check(struct device *dev)
 //	u32 version = fw->v.version_raw;
 	u32 vchip = fw->v.version.chip;
 	u32 vproto = fw->v.version.protocol;
+	u32 vchip_chk = 0;
+	u32 vproto_chk = 0;
 	int ret = 0;
 
+	vproto_chk = 4;
 	switch (touch_chip_type(ts)) {
-		case CHIP_LG4894 :
-			if ((vchip != 4) || (vproto != 4)) {
-				siw_hal_ic_info_abnormal(dev);
-				ret = -EFAULT;
-			}
-			break;
-		case CHIP_LG4895 :
-			break;
-		case CHIP_LG4946 :
-			break;
-		case CHIP_SW1828 :
-			if ((vchip != 9) || (vproto != 4)) {
-				siw_hal_ic_info_abnormal(dev);
-				ret = -EFAULT;
-			}
-			break;
-		default :
-			t_dev_err(dev, "[%s] abnormal chip type\n",
-				touch_chip_name(ts));
-			ret = -EINVAL;
-			break;
+	case CHIP_LG4894 :
+		vchip_chk = 4;
+		break;
+	case CHIP_LG4895 :
+		vchip_chk = 8;
+		break;
+	case CHIP_LG4946 :
+		vchip_chk = 7;
+		break;
+	case CHIP_SW1828 :
+		vchip_chk = 9;
+		break;
 	}
 
+	if (!vchip_chk) {
+		t_dev_err(dev, "[%s] abnormal chip type\n",
+				touch_chip_name(ts));
+		ret = -EINVAL;
+		goto out;
+	}
+
+	if ((vchip != vchip_chk) || (vproto != vproto_chk)) {
+		siw_hal_ic_info_abnormal(dev);
+		ret = -EFAULT;
+		goto out;
+	}
+
+out:
 	return ret;
 }
 
@@ -1178,9 +1189,11 @@ static int siw_hal_do_ic_info(struct device *dev, int prt_on)
 		ferr = siw_hal_fw_chk_version_ext(fw->version_ext,
 									fw->v.version.ext);
 		t_dev_info_sel(dev, prt_on,
-				"[T] chip id %s, version %08X (0x%02X) %s\n",
+				"[T] chip id %s, version %08X(%u.%02u) (0x%02X) %s\n",
 				chip->fw.chip_id,
-				fw->version_ext, fw->revision,
+				fw->version_ext,
+				fw->v.version.major, fw->v.version.minor,
+				fw->revision,
 				(ferr < 0) ? "(invalid)" : "");
 	} else {
 		t_dev_info_sel(dev, prt_on,
