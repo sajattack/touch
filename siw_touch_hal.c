@@ -1235,6 +1235,67 @@ static int siw_hal_ic_info(struct device *dev)
 	return siw_hal_do_ic_info(dev, 1);
 }
 
+static int siw_hal_ic_test_unit(struct device *dev, u32 data)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+//	struct siw_ts *ts = chip->ts;
+	struct siw_hal_reg *reg = chip->reg;
+	u32 data_rd;
+	int ret;
+
+	ret = siw_hal_write_value(dev,
+				reg->spr_chip_test,
+				data);
+	if (ret < 0) {
+		t_dev_err(dev, "ic test wr err, %0x08X, %d\n", data, ret);
+		goto out;
+	}
+
+	ret = siw_hal_read_value(dev,
+				reg->spr_chip_test,
+				&data_rd);
+	if (ret < 0) {
+		t_dev_err(dev, "ic test rd err: %0x08X, %d\n", data, ret);
+		goto out;
+	}
+
+	if (data != data_rd) {
+		t_dev_err(dev, "ic test cmp err, %0x08X, %0x08X\n", data, data_rd);
+		ret = -EFAULT;
+		goto out;
+	}
+
+out:
+	return ret;
+}
+
+static int siw_hal_ic_test(struct device *dev)
+{
+	u32 data[] = {
+		0x5A5A5A5A,
+		0xA5A5A5A5,
+		0xF0F0F0F0,
+		0x0F0F0F0F,
+		0xFF00FF00,
+		0x00FF00FF,
+		0xFFFF0000,
+		0x0000FFFF,
+		0xFFFFFFFF,
+		0x00000000,
+	};
+	int i;
+	int ret = 0;
+
+	for (i = 0; i < ARRAY_SIZE(data); i++) {
+		ret = siw_hal_ic_test_unit(dev, data[i]);
+		if (ret < 0) {
+			break;
+		}
+	}
+
+	return ret;
+}
+
 #if defined(__SIW_CONFIG_FB)
 static int siw_hal_fb_notifier_callback(struct notifier_block *self,
 		unsigned long event, void *data)
@@ -1293,22 +1354,38 @@ static int siw_hal_init_reg_set(struct device *dev)
 	ret = siw_hal_write_value(dev,
 				reg->tc_device_ctl,
 				1);
+	if (ret < 0) {
+		t_dev_err(dev, "failed to start chip, %d\n", ret);
+		goto out;
+	}
 
 	ret = siw_hal_write_value(dev,
 				reg->tc_interrupt_ctl,
 				1);
+	if (ret < 0) {
+		t_dev_err(dev, "failed to start chip irq, %d\n", ret);
+		goto out;
+	}
 
 #if 0
 	ret = siw_hal_write_value(dev,
 				reg->spr_charger_status,
 				chip->charger);
+	if (ret < 0) {
+		goto out;
+	}
 #endif
 
 	data = atomic_read(&ts->state.ime);
+
 	ret = siw_hal_write_value(dev,
 				reg->ime_state,
 				data);
+	if (ret < 0) {
+		goto out;
+	}
 
+out:
 	return ret;
 }
 
@@ -1448,6 +1525,11 @@ static int siw_hal_init(struct device *dev)
 
 	if (atomic_read(&ts->state.core) == CORE_PROBE) {
 		siw_hal_fb_notifier_init(dev);
+
+		ret = siw_hal_ic_test(dev);
+		if (ret < 0) {
+			goto out;
+		}
 	}
 
 	t_dev_dbg_base(dev, "charger_state = 0x%02X\n", chip->charger);
@@ -4912,6 +4994,7 @@ static int siw_hal_resume(struct device *dev)
 }
 
 static const struct siw_hal_reg siw_touch_default_reg = {
+	.spr_chip_test				= SPR_CHIP_TEST,
 	.spr_chip_id				= SPR_CHIP_ID,
 	.spr_rst_ctl				= SPR_RST_CTL,
 	.spr_boot_ctl				= SPR_BOOT_CTL,

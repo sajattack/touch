@@ -14,6 +14,8 @@
 
 #include "siw_touch_cfg.h"
 
+#define SPR_CHIP_TEST				(0x041)
+
 #define SPR_CHIP_ID					(0x000)
 #define SPR_RST_CTL					(0x006)
 #define SPR_BOOT_CTL				(0x00F)
@@ -168,6 +170,7 @@
 /* __SIW_SUPPORT_PRD */
 
 struct siw_hal_reg {
+	u32 spr_chip_test;
 	u32 spr_chip_id;
 	u32 spr_rst_ctl;
 	u32 spr_boot_ctl;
