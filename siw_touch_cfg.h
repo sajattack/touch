@@ -36,6 +36,12 @@
 #define __SIW_SUPPORT_WAKE_LOCK
 #endif
 
+#if defined(CONFIG_TOUCHSCREEN_SIW_LG4894) ||	\
+	defined(CONFIG_TOUCHSCREEN_SIW_LG4895) ||	\
+	defined(CONFIG_TOUCHSCREEN_SIW_LG4946)
+#define __SIW_SUPPORT_UEVENT
+#endif
+
 //#define __SIW_SUPPORT_PM_QOS
 
 #if defined(CONFIG_OF)

@@ -167,6 +167,7 @@ void siw_touch_report_all_event(void *ts_data)
 	ts->is_palm = 0;
 }
 
+#if defined(__SIW_SUPPORT_UEVENT)
 static void siw_touch_uevent_release(struct device *dev)
 {
 	if (dev->platform_data)
@@ -300,6 +301,21 @@ void siw_touch_free_uevent(void *ts_data)
 
 	bus_unregister(&ts->ubus);
 }
+#else	/* __SIW_SUPPORT_UEVENT */
+void siw_touch_send_uevent(void *ts_data, int type)
+{
+
+}
+int siw_touch_init_uevent(void *ts_data)
+{
+	return 0;
+}
+
+void siw_touch_free_uevent(void *ts_data)
+{
+
+}
+#endif	/* __SIW_SUPPORT_UEVENT */
 
 #define SIW_TOUCH_PHYS_NAME_SIZE	128
 
