@@ -102,7 +102,7 @@ static ssize_t siw_misc_read(struct file *filp,
 	 */
 	ret = copy_from_user(&addr, buf, 4);
 	if (ret) {
-		t_dev_err(dev, "rd: can't get addr, %d\n", ret);
+		t_dev_err(dev, "rd: can't get addr, %d\n", (int)ret);
 		goto out;
 	}
 
@@ -114,7 +114,7 @@ static ssize_t siw_misc_read(struct file *filp,
 	result = copy_to_user((void __user *)buf, misc_data->buf, count);
 	if (result) {
 		t_dev_err(dev, "rd: can't copy buf(%d), %d\n",
-			count, result);
+			(int)count, (int)result);
 		ret = result;
 		goto out;
 	}
@@ -158,7 +158,7 @@ static ssize_t siw_misc_write(struct file *filp,
 	ret = copy_from_user(misc_data->buf, buf, count);
 	if (ret) {
 		t_dev_err(dev, "wr: can't copy buf(%d), %d\n",
-			count, ret);
+			(int)count, (int)ret);
 		goto out;
 	}
 	memcpy(&addr, misc_data->buf, MISC_WR_DATA_OFFSET);
