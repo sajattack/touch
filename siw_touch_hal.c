@@ -2027,7 +2027,7 @@ static int siw_hal_fw_up_wr_seq(struct device *dev,
 {
 	int ret;
 
-	ret = siw_hal_reg_write(dev, addr, (void *)data,size);
+	ret = siw_hal_reg_write(dev, addr, (void *)data, size);
 	if (ret < 0) {
 		return ret;
 	}
@@ -2044,9 +2044,9 @@ static int siw_hal_fw_up_sram_wr_enable(struct device *dev, int onoff)
 //	struct siw_ts *ts = chip->ts;
 	struct siw_hal_reg *reg = chip->reg;
 	u32 data;
-	int ret;
+	int ret = 0;
 
-#if 1
+#if 0
 	ret = siw_hal_fw_up_rd_value(dev, reg->spr_sram_ctl, &data);
 	if (ret < 0) {
 		goto out;
@@ -2062,7 +2062,9 @@ static int siw_hal_fw_up_sram_wr_enable(struct device *dev, int onoff)
 		goto out;
 	}
 #else
-	ret = siw_hal_fw_up_wr_value(dev, reg->spr_sram_ctl, !!onoff);
+//	data = !!onoff;
+	data = (onoff) ? 0x03 : 0x00;
+	ret = siw_hal_fw_up_wr_value(dev, reg->spr_sram_ctl, data);
 	if (ret < 0) {
 		goto out;
 	}
@@ -2126,13 +2128,17 @@ static int __siw_hal_fw_up_verify(struct device *dev, u8 *chk_buf, int chk_size)
 			ret = -EFAULT;
 		} else {
 		#if 0
-			t_dev_err(dev, "  OK! [%06X] rd(%02X) == wr(%02X)\n",
+			t_dev_info(dev, "  OK! [%06X] rd(%02X) == wr(%02X)\n",
 				i, (*r_data), (*w_data));
 		#endif
 		}
 
 		r_data++;
 		w_data++;
+	}
+
+	if (ret >= 0) {
+		t_dev_info(dev, "FW dn verified\n");
 	}
 
 out_free:
@@ -2202,7 +2208,7 @@ static int siw_hal_fw_up_post_fw_dn(struct device *dev)
 	ret = siw_hal_condition_wait(dev, reg->tc_flash_dn_status, &data,
 				chk_resp, ~0, 10, 200);
 	if (ret < 0) {
-		t_dev_err(dev, "FW upgrade: failed - boot check(%Xh), %Xh\n",
+		t_dev_err(dev, "FW upgrade: failed - boot check(%Xh), %08Xh\n",
 			chk_resp, data);
 		return ret;
 	}
@@ -2222,7 +2228,7 @@ static int siw_hal_fw_up_post_fw_dn(struct device *dev)
 	ret = siw_hal_condition_wait(dev, reg->tc_flash_dn_status, &data,
 				chk_resp, 0xFFFF, 30, 600);
 	if (ret < 0) {
-		t_dev_err(dev, "FW upgrade: failed - code check(%Xh), %Xh\n",
+		t_dev_err(dev, "FW upgrade: failed - code check(%Xh), %08Xh\n",
 			chk_resp, data);
 		goto out;
 	}
@@ -2699,6 +2705,11 @@ static int siw_hal_upgrade(struct device *dev)
 	int ret = 0;
 	int ret_val = 0;
 	int i = 0;
+
+	if (atomic_read(&ts->state.fb) >= FB_SUSPEND) {
+		t_dev_warn(dev, "state.fb is not FB_RESUME\n");
+		return -EPERM;
+	}
 
 	fwpath = touch_getname();
 	if (fwpath == NULL) {
