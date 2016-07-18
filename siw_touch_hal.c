@@ -1224,9 +1224,12 @@ static int siw_hal_do_ic_info(struct device *dev, int prt_on)
 	switch (touch_chip_type(ts)) {
 	case CHIP_LG4946:
 		t_dev_info_sel(dev, prt_on,
-			"[T] lot %d, sn %Xh, "
+			"[T] fpc %d, wfr %d, cg %d, lot %d\n",
+			fw->fpc, fw->wfr, fw->cg, fw->lot);
+		t_dev_info_sel(dev, prt_on,
+			"[T] sn %Xh, "
 			"date %04d.%02d.%02d, time %02d:%02d:%02d site%d\n",
-			fw->lot, fw->sn,
+			fw->sn,
 			fw->date & 0xFFFF, ((fw->date>>16) & 0xFF), ((fw->date>>24) & 0xFF),
 			fw->time & 0xFF, ((fw->time>>8) & 0xFF), ((fw->time>>16) & 0xFF),
 			((fw->time>>24) & 0xFF));
@@ -3025,7 +3028,7 @@ static int siw_hal_lpwg_control(struct device *dev, int mode)
 		break;
 	}
 
-	t_dev_dbg_base(dev, "siw_hal_lpwg_control mode = %d\n", mode);
+	t_dev_info(dev, "lpwg_control mode = %d\n", mode);
 
 	return ret;
 }
@@ -4808,6 +4811,12 @@ static int siw_hal_get_cmd_version(struct device *dev, char *buf, int flag)
 	if (flag & SIW_GET_OPT1) {
 		switch (touch_chip_type(ts)) {
 		case CHIP_LG4946:
+			offset += siw_snprintf(buf, offset,
+						"fpc : %d\n", fw->fpc);
+			offset += siw_snprintf(buf, offset,
+						"wfr : %d\n", fw->wfr);
+			offset += siw_snprintf(buf, offset,
+						"cg  : %d\n", fw->cg);
 			offset += siw_snprintf(buf, offset,
 						"lot : %d\n", fw->lot);
 			offset += siw_snprintf(buf, offset,
