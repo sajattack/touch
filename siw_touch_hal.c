@@ -1498,6 +1498,7 @@ static int siw_hal_check_mode_type_1(struct device *dev,
 			ret = 1;
 		} else {
 			t_dev_info(dev, "U2 mode change\n");
+			siw_hal_watch_init(dev);
 		}
 		goto out;
 	}
@@ -1505,8 +1506,7 @@ static int siw_hal_check_mode_type_1(struct device *dev,
 	if (lcd_mode == LCD_MODE_U2_UNBLANK) {
 		switch (chk_mode) {
 		case LCD_MODE_U2:
-			t_dev_info(dev, "U2 -> U1 : watch off\n");
-			siw_hal_watch_display_off(dev);
+			t_dev_info(dev, "U2 -> U1\n");
 			break;
 		case LCD_MODE_U0:
 			t_dev_info(dev, "U0 -> U1 mode change\n");
