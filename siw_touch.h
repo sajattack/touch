@@ -45,7 +45,7 @@
 #include "siw_touch_dbg.h"
 
 
-#define SIW_DRV_VERSION		"v2.13r"
+#define SIW_DRV_VERSION		"v2.14b"
 
 
 enum {
@@ -1123,7 +1123,7 @@ struct siw_touch_attribute {
 #if defined(__SIW_ATTR_PERMISSION_ALL)
 #define __TOUCH_DEFAULT_PERM	(S_IRUGO | S_IWUGO)
 #else
-#define __TOUCH_DEFAULT_PERM	(S_IRUGO | S_IWUSR)
+#define __TOUCH_DEFAULT_PERM	(S_IRUGO | S_IWUSR | S_IWGRP)
 #endif
 
 #define TOUCH_ATTR(_name, _show, _store)	\

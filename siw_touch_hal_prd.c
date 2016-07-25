@@ -3672,7 +3672,7 @@ static ssize_t prd_show_app_end(struct device *dev, char *buf)
 #if defined(__SIW_ATTR_PERMISSION_ALL)
 #define __TOUCH_PRD_PERM	(S_IRUGO | S_IWUGO)
 #else
-#define __TOUCH_PRD_PERM	(0664)
+#define __TOUCH_PRD_PERM	(S_IRUGO | S_IWUSR | S_IWGRP)
 #endif
 
 #define SIW_TOUCH_HAL_PRD_ATTR(_name, _show, _store)	\

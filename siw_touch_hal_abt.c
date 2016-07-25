@@ -2161,7 +2161,7 @@ void siw_hal_switch_to_abt_irq_handler(struct siw_ts *ts)
 #if defined(__SIW_ATTR_PERMISSION_ALL)
 #define __TOUCH_ABT_PERM	(S_IRUGO | S_IWUGO)
 #else
-#define __TOUCH_ABT_PERM	(0660)
+#define __TOUCH_ABT_PERM	(S_IRUGO | S_IWUSR | S_IWGRP)
 #endif
 
 #define SIW_TOUCH_HAL_ABT_ATTR(_name, _show, _store)	\

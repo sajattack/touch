@@ -58,7 +58,9 @@
 #define __SIW_CONFIG_NET
 #endif
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 15, 0))
 #define __SIW_ATTR_PERMISSION_ALL
+#endif
 
 #define SIW_TOUCH_NAME				"siw_touch"
 #define SIW_TOUCH_CORE				"siw_touch_core"
