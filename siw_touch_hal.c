@@ -1249,7 +1249,7 @@ static int siw_hal_ic_info(struct device *dev)
 	return siw_hal_do_ic_info(dev, 1);
 }
 
-static int siw_hal_ic_test_unit(struct device *dev, u32 data)
+int siw_hal_ic_test_unit(struct device *dev, u32 data)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 //	struct siw_ts *ts = chip->ts;
@@ -4922,6 +4922,10 @@ static int siw_hal_mon_handler(struct device *dev)
 	struct siw_ts *ts = chip->ts;
 
 	if (atomic_read(&ts->state.core) != CORE_NORMAL) {
+		return 0;
+	}
+
+	if (atomic_read(&ts->state.mon_ignore)) {
 		return 0;
 	}
 

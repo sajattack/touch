@@ -341,6 +341,7 @@ struct state_info {
 	atomic_t debug_option_mask;
 	atomic_t onhand;
 	atomic_t hw_reset;
+	atomic_t mon_ignore;
 };
 
 struct touch_pins {

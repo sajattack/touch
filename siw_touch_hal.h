@@ -408,6 +408,7 @@ extern int siw_hal_xfer_msg(struct device *dev, struct touch_xfer_msg *xfer);
 extern int siw_hal_xfer_rx_seq(struct device *dev, u32 reg, u32 *data, int size);
 extern int siw_hal_xfer_tx_seq(struct device *dev, u32 reg, u32 *data, int size);
 
+extern int siw_hal_ic_test_unit(struct device *dev, u32 data);
 
 extern struct siw_touch_operations *siw_hal_get_default_ops(int opt);
 

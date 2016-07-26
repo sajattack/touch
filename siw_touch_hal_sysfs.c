@@ -45,6 +45,9 @@
 #include "siw_touch_sys.h"
 
 
+//#define __SIW_USE_BUS_TEST
+
+
 #define siw_hal_sysfs_err_invalid_param(_dev)	\
 		t_dev_err(_dev, "Invalid param\n");
 
@@ -400,7 +403,7 @@ static ssize_t _show_reset_ctrl(struct device *dev, char *buf)
 {
 	int size = 0;
 
-	size += siw_snprintf(buf, size, "%s\n", "Reset Control Usage");
+	size += siw_snprintf(buf, size, "Reset Control Usage\n");
 	size += siw_snprintf(buf, size,
 				" SW Reset        : echo %d > hal_reset_ctrl\n",
 				SW_RESET);
@@ -480,6 +483,137 @@ static ssize_t _store_lcd_mode(struct device *dev,
 	return count;
 }
 
+#if defined(__SIW_USE_BUS_TEST)
+u32 t_dbg_bus_cnt = 10000;
+module_param_named(dbg_bus_cnt, t_dbg_bus_cnt, uint, S_IRUGO|S_IWUSR|S_IWGRP);
+
+static int _show_debug_bus_test(struct device *dev, int tcnt, int *lcnt)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_hal_reg *reg = chip->reg;
+	struct siw_hal_fw_info *fw = &chip->fw;
+	u32 chip_id;
+	u32 data;
+	int log_cnt = 10;
+	int i;
+	int last = 0;
+	int ret = 0;
+
+	if (tcnt >= 100000) {
+		log_cnt = 10000;
+	} else if (tcnt >= 10000) {
+		log_cnt = 1000;
+	} else if (tcnt >= 1000) {
+		log_cnt = 100;
+	}
+
+	for (i = 0 ; i < tcnt ; i++) {
+		data = i & 0xFFFF;
+		data |= (i & 0x01) ? 0x5A5A0000 : 0xA5A50000;
+
+		ret = siw_hal_ic_test_unit(dev, data);
+		if (ret < 0) {
+			break;
+		}
+
+		if (!i)
+			continue;
+
+		last = (i == (tcnt - 1));
+
+		if (last || !(i % log_cnt)) {
+			t_dev_info(dev, "bus testing... (%d)\n", i);
+		}
+
+		if (last || !(i % SIW_TOUCH_MAX_BUF_IDX)) {
+			ret = siw_hal_read_value(dev,
+					reg->spr_chip_id,
+					&chip_id);
+			if (ret < 0) {
+				break;
+			}
+
+			if (fw->chip_id_raw != chip_id) {
+				ret = -EFAULT;
+				break;
+			}
+		}
+	}
+
+	if (lcnt != NULL) {
+		*lcnt = i;
+	}
+
+	return ret;
+}
+
+static ssize_t _show_debug_bus(struct device *dev, char *buf)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	char *bus_str = NULL;
+	u32 bus_type = touch_bus_type(ts);
+	u32 bus_freq = 0;
+	int size = 0;
+	int tcnt = t_dbg_bus_cnt;
+	int lcnt = 0;
+	int ret = 0;
+
+	switch (bus_type) {
+	case BUS_IF_I2C:
+		bus_str = "I2C";
+		break;
+	case BUS_IF_SPI:
+		bus_str = "SPI";
+		break;
+	default:
+		t_dev_err(dev, "unknown bus type, %d\n", bus_type);
+		goto out;
+	}
+
+	t_dev_info(dev, "%s bus test(%d) begins\n", bus_str, tcnt);
+
+	if (bus_type == BUS_IF_SPI) {
+		bus_freq = touch_max_freq(ts);
+		if ((bus_freq == ~0) || (bus_freq < 1000000)) {
+			t_dev_err(dev, "wrong frequency, %d\n", bus_freq);
+			goto out;
+		}
+
+		t_dev_info(dev, "SPI bus freq: %d MHz\n", bus_freq / 1000000);
+	}
+
+	atomic_set(&ts->state.mon_ignore, 1);
+
+#if defined(__SIW_SUPPORT_WAKE_LOCK)
+	wake_lock_timeout(&ts->lpwg_wake_lock, msecs_to_jiffies(1000));
+#endif
+
+	touch_msleep(10);
+
+	mutex_lock(&ts->lock);
+
+	siw_touch_irq_control(dev, INTERRUPT_DISABLE);
+
+	ret = _show_debug_bus_test(dev, tcnt, &lcnt);
+
+	siw_touch_irq_control(dev, INTERRUPT_ENABLE);
+
+	mutex_unlock(&ts->lock);
+
+	atomic_set(&ts->state.mon_ignore, 0);
+
+	t_dev_info(dev, "%s bus test(%d) %s, %d\n",
+		bus_str, tcnt, (ret < 0) ? "failed" : "done", lcnt);
+
+	size += siw_snprintf(buf, size,
+			 "%s bus test(%d) %s, %d\n",
+			 bus_str, tcnt, (ret < 0) ? "failed" : "done", lcnt);
+
+out:
+	return (ssize_t)size;
+}
+#endif
 
 #define SIW_TOUCH_HAL_ATTR(_name, _show, _store)	\
 		TOUCH_ATTR(_name, _show, _store)
@@ -494,6 +628,9 @@ static SIW_TOUCH_HAL_ATTR(reset_ctrl, _show_reset_ctrl, _store_reset_ctrl);
 static SIW_TOUCH_HAL_ATTR(reset_sw, _show_reset_sw, NULL);
 static SIW_TOUCH_HAL_ATTR(reset_hw, _show_reset_hw, NULL);
 static SIW_TOUCH_HAL_ATTR(lcd_mode, _show_lcd_mode, _store_lcd_mode);
+#if defined(__SIW_USE_BUS_TEST)
+static SIW_TOUCH_HAL_ATTR(debug_bus, _show_debug_bus, NULL);
+#endif
 
 static struct attribute *siw_hal_attribute_list[] = {
 	&_SIW_TOUCH_HAL_ATTR_T(reg_ctrl).attr,
@@ -503,6 +640,9 @@ static struct attribute *siw_hal_attribute_list[] = {
 	&_SIW_TOUCH_HAL_ATTR_T(reset_sw).attr,
 	&_SIW_TOUCH_HAL_ATTR_T(reset_hw).attr,
 	&_SIW_TOUCH_HAL_ATTR_T(lcd_mode).attr,
+#if defined(__SIW_USE_BUS_TEST)
+	&_SIW_TOUCH_HAL_ATTR_T(debug_bus).attr,
+#endif
 	NULL,
 };
 
