@@ -357,12 +357,16 @@ int siw_touch_init_input(void *ts_data)
 			dev_name(dev),
 			input_name);
 
-	/*
-	 * To fix sysfs location
-	 * With no parent, sysfs folder is created at
-	 * '/sys/devices/virtual/input/{input_name}'
-	 */
-	input->dev.parent = NULL;
+	if (touch_flags(ts) & TOUCH_USE_INPUT_PARENT) {
+		input->dev.parent = dev;
+	} else {
+		/*
+		 * To fix sysfs location
+		 * With no parent, sysfs folder is created at
+		 * '/sys/devices/virtual/input/{input_name}'
+		 */
+		input->dev.parent = NULL;
+	}
 
 	input->name = (const char *)input_name;
 	input->phys = (const char *)phys_name;;
