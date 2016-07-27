@@ -4918,17 +4918,6 @@ out:
 
 static int siw_hal_mon_handler(struct device *dev)
 {
-	struct siw_touch_chip *chip = to_touch_chip(dev);
-	struct siw_ts *ts = chip->ts;
-
-	if (atomic_read(&ts->state.core) != CORE_NORMAL) {
-		return 0;
-	}
-
-	if (atomic_read(&ts->state.mon_ignore)) {
-		return 0;
-	}
-
 	t_dev_dbg_trace(dev, "mon handler begins\n");
 
 	siw_hal_mon_handler_self_reset(dev);

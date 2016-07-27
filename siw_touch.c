@@ -825,8 +825,12 @@ static int siw_touch_mon_thread(void *d)
 	struct siw_ts *ts = d;
 	struct siw_ts_thread *ts_thread = &ts->mon_thread;
 	struct device *dev = ts->dev;
-	unsigned long timeout = ts_thread->interval * HZ;
+	int (*handler)(struct device *dev);
+	unsigned long timeout;
 	int ret = 0;
+
+	handler = ts_thread->handler;
+	timeout = ts_thread->interval * HZ;
 
 	atomic_set(&ts_thread->state, TS_THREAD_ON);
 
@@ -843,7 +847,15 @@ static int siw_touch_mon_thread(void *d)
 
 		set_current_state(TASK_RUNNING);
 
-		ret = siw_ops_mon_handler(ts);
+		if (atomic_read(&ts->state.core) != CORE_NORMAL) {
+			continue;
+		}
+
+		if (atomic_read(&ts->state.mon_ignore)) {
+			continue;
+		}
+
+		ret = handler(dev);
 	}
 
 	atomic_set(&ts_thread->state, TS_THREAD_OFF);
@@ -866,20 +878,31 @@ static int siw_touch_mon_thread(void *d)
 
 static int __used siw_touch_init_thread(struct siw_ts *ts)
 {
+	struct siw_touch_fquirks *fquirks = touch_fquirks(ts);
 	struct device *dev = ts->dev;
 	struct siw_ts_thread *ts_thread = NULL;
 	struct task_struct *thread;
+	int (*handler)(struct device *dev);
+	int interval;
 	int ret = 0;
 
 	if (touch_flags(ts) & TOUCH_USE_MON_THREAD) {
 		ts_thread = &ts->mon_thread;
 
-		if (siw_ops_is_null(ts, mon_handler)) {
+		if (fquirks->mon_handler) {
+			handler = fquirks->mon_handler;
+			interval = fquirks->mon_interval;
+		} else {
+			handler = ts->ops->mon_handler;
+			interval = ts->ops->mon_interval;
+		}
+
+		if (!handler) {
 			t_dev_warn(dev, "No mon_handler defined!\n");
 			goto mon_skip;
 		}
 
-		if (!ts->ops->mon_interval) {
+		if (!interval) {
 			t_dev_warn(dev, "mon_interval is zero!\n");
 			goto mon_skip;
 		}
@@ -889,7 +912,8 @@ static int __used siw_touch_init_thread(struct siw_ts *ts)
 		} while (atomic_read(&ts->state.core) != CORE_NORMAL);
 
 		atomic_set(&ts_thread->state, TS_THREAD_OFF);
-		ts_thread->interval = ts->ops->mon_interval;
+		ts_thread->interval = interval;
+		ts_thread->handler = handler;
 
 		thread = siw_touch_kthread_run(dev,
 						siw_touch_mon_thread, ts,

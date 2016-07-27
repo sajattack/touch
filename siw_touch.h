@@ -536,6 +536,9 @@ struct siw_touch_fquirks {	//function quirks
 	int (*power_vio)(struct device *dev, int value);
 	/* */
 	int (*fwup_check)(struct device *dev, u8 *fw_buf);
+	/* */
+	int (*mon_handler)(struct device *dev);
+	int mon_interval;
 };
 
 enum _SIW_TOUCH_UEVENT {
@@ -853,6 +856,7 @@ struct siw_ts_thread {
 	struct task_struct *thread;
 	atomic_t state;
 	int interval;
+	int (*handler)(struct device *dev);
 };
 
 enum {
