@@ -4793,12 +4793,13 @@ static int siw_hal_get_cmd_version(struct device *dev, char *buf, int flag)
 		char *ver_tag = (flag & SIW_GET_VER_SIMPLE) ? "" : "version : ";
 		if (fw->version_ext) {
 			offset += siw_snprintf(buf, offset,
-						"%s%08X\n",
+						"%s%08X(%u.%02u)\n",
 						ver_tag,
-						fw->version_ext);
+						fw->version_ext,
+						fw->v.version.major, fw->v.version.minor);
 		} else {
 			offset += siw_snprintf(buf, offset,
-						"%sv%d.%02d\n",
+						"%sv%u.%02u\n",
 						ver_tag,
 						fw->v.version.major, fw->v.version.minor);
 		}
