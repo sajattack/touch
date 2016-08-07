@@ -62,7 +62,7 @@ static void siw_touch_report_palm_event(struct siw_ts *ts)
 	if (!ts->input)
 		return;
 
-	for (i = 0; i < MAX_FINGER; i++) {
+	for (i = 0; i < touch_max_finger(ts); i++) {
 		if (old_mask & (1 << i)) {
 			input_mt_slot(ts->input, i);
 			siw_input_report_abs(ts->input,
@@ -112,7 +112,7 @@ void siw_touch_report_event(void *ts_data)
 		ts->is_palm = 0;
 	}
 
-	for (i = 0; i < MAX_FINGER; i++) {
+	for (i = 0; i < touch_max_finger(ts); i++) {
 		if (new_mask & (1 << i)) {
 			input_mt_slot(ts->input, i);
 			siw_input_report_abs(ts->input, ABS_MT_TRACKING_ID,
@@ -162,7 +162,7 @@ void siw_touch_report_all_event(void *ts_data)
 		ts->new_mask = 0;
 		siw_touch_report_event(ts);
 		ts->tcount = 0;
-		memset(ts->tdata, 0, sizeof(struct touch_data) * MAX_FINGER);
+		memset(ts->tdata, 0, sizeof(struct touch_data) * touch_max_finger(ts));
 	}
 	ts->is_palm = 0;
 }

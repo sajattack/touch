@@ -571,6 +571,7 @@ struct siw_touch_pdata {
 	char *idrv_name;		//input driver name
 	char *ext_watch_name;	//ext_watch name
 	struct module *owner;
+	u32 max_finger;
 	u32 chip_type;
 	u32 mode_allowed;
 	u32 fw_size;		//Pure F/W size, not include config data(1K)
@@ -705,6 +706,11 @@ static inline char *pdata_idrv_name(struct siw_touch_pdata *pdata)
 static inline char *pdata_ext_watch_name(struct siw_touch_pdata *pdata)
 {
 	return pdata->ext_watch_name;
+}
+
+static inline u32 pdata_max_finger(struct siw_touch_pdata *pdata)
+{
+	return (pdata->max_finger) ? pdata->max_finger : MAX_FINGER;
 }
 
 static inline u32 pdata_chip_type(struct siw_touch_pdata *pdata)
@@ -873,6 +879,7 @@ struct siw_ts {
 	char *drv_name; 		//driver name
 	char *idrv_name;		//input driver name
 	char *ext_watch_name;	//ext_watch name
+	int max_finger;
 	int chip_type;
 
 	int irq;
@@ -1201,6 +1208,11 @@ static inline char *touch_idrv_name(struct siw_ts *ts)
 static inline char *touch_ext_watch_name(struct siw_ts *ts)
 {
 	return ts->ext_watch_name;
+}
+
+static inline u32 touch_max_finger(struct siw_ts *ts)
+{
+	return ts->max_finger;
 }
 
 static inline u32 touch_chip_type(struct siw_ts *ts)
@@ -1549,7 +1561,7 @@ extern u32 t_lpwg_screen;
 extern u32 t_lpwg_sensor;
 extern u32 t_lpwg_qcover;
 
-extern int siw_setup_names(struct siw_ts *ts, struct siw_touch_pdata *pdata);
+extern int siw_setup_params(struct siw_ts *ts, struct siw_touch_pdata *pdata);
 
 extern void *siw_setup_operations(struct siw_ts *ts, struct siw_touch_operations *ops_ext);
 

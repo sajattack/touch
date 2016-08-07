@@ -4156,7 +4156,7 @@ static int siw_hal_irq_abs_data(struct device *dev)
 
 	data = chip->info.data;
 	for (i = 0; i < touch_count; i++, data++) {
-		if (data->track_id >= MAX_FINGER) {
+		if (data->track_id >= touch_max_finger(ts)) {
 			continue;
 		}
 

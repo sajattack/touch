@@ -124,31 +124,27 @@ module_param_named(lpwg_sensor, t_lpwg_sensor, uint, S_IRUGO|S_IWUSR|S_IWGRP);
 module_param_named(lpwg_qcover, t_lpwg_qcover, uint, S_IRUGO|S_IWUSR|S_IWGRP);
 
 
-int siw_setup_names(struct siw_ts *ts, struct siw_touch_pdata *pdata)
+static int siw_setup_names(struct siw_ts *ts, struct siw_touch_pdata *pdata)
 {
-	int type;
+	struct device *dev = ts->dev;
 	char *name;
 
 	/*
 	 * Mandatory
 	 */
-	type = pdata_chip_type(pdata);
-	if (!type) {
-		return -EFAULT;
-	}
-	ts->chip_type = type;
-
 	name = pdata_chip_id(pdata);
 	if (name == NULL) {
 		return -EFAULT;
 	}
 	ts->chip_id = name;
+	t_dev_info(dev, "chip id    : %s\n", name);
 
 	name = pdata_chip_name(pdata);
 	if (name == NULL) {
 		return -EFAULT;
 	}
 	ts->chip_name = name;
+	t_dev_info(dev, "chip name  : %s\n", name);
 
 	/*
 	 * Optional
@@ -158,18 +154,53 @@ int siw_setup_names(struct siw_ts *ts, struct siw_touch_pdata *pdata)
 		name = SIW_TOUCH_NAME;
 	}
 	ts->drv_name = name;
+	t_dev_info(dev, "drv name   : %s\n", name);
 
 	name = pdata_idrv_name(pdata);
 	if (name == NULL) {
 		name = SIW_TOUCH_INPUT;
 	}
 	ts->idrv_name = name;
+	t_dev_info(dev, "idrv name  : %s\n", name);
 
-	name = pdata_ext_watch_name(pdata);
-	if (name == NULL) {
-		name = SIW_TOUCH_EXT_WATCH;
+	if (!pdata_test_quirks(pdata, CHIP_QUIRK_NOT_SUPPORT_WATCH)) {
+		name = pdata_ext_watch_name(pdata);
+		if (name == NULL) {
+			name = SIW_TOUCH_EXT_WATCH;
+		}
+		ts->ext_watch_name = name;
+		t_dev_info(dev, "watch name : %s\n", name);
 	}
-	ts->ext_watch_name = name;
+
+	return 0;
+}
+
+int siw_setup_params(struct siw_ts *ts, struct siw_touch_pdata *pdata)
+{
+	struct device *dev = ts->dev;
+	int max_finger = 0;
+	int type = 0;
+	int ret = 0;
+
+	max_finger = pdata_max_finger(pdata);
+	if ((max_finger < 0) || (max_finger > MAX_FINGER)) {
+		t_dev_err(dev, "invalid max finger, %d\n", max_finger);
+		return -EFAULT;
+	}
+	ts->max_finger = max_finger;
+	t_dev_info(dev, "max finger : %d\n", max_finger);
+
+	type = pdata_chip_type(pdata);
+	if (!type) {
+		return -EFAULT;
+	}
+	ts->chip_type = type;
+	t_dev_info(dev, "chip type  : 0x%04X\n", type);
+
+	ret = siw_setup_names(ts, pdata);
+	if (ret < 0) {
+		return ret;
+	}
 
 	return 0;
 }

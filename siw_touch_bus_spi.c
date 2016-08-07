@@ -383,12 +383,12 @@ static struct siw_ts *siw_touch_spi_alloc(
 		goto out_pdata;
 	}
 
-	ret = siw_setup_names(ts, pdata);
+	ts->pdata = pdata;
+
+	ret = siw_setup_params(ts, pdata);
 	if (ret < 0) {
 		goto out_name;
 	}
-
-	ts->pdata = pdata;
 
 	siw_setup_operations(ts, bus_drv->pdata->ops);
 
