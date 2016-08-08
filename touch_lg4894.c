@@ -66,6 +66,7 @@
 #define __CHIP_QUIRK_ADD			0
 
 #define CHIP_QUIRKS					(0 |	\
+									CHIP_QUIRK_NOT_SUPPORT_ASC |	\
 									CHIP_QUIRK_NOT_SUPPORT_WATCH |	\
 									CHIP_QUIRK_NOT_SUPPORT_IME |	\
 									__CHIP_QUIRK_ADD |	\
