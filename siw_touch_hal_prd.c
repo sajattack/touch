@@ -162,6 +162,7 @@ enum {
 	AIT_RAW_DATA_OFFSET			= __AIT_RAW_DATA_OFFSET,
 	AIT_BASE_DATA_ODD_OFFSET	= __AIT_BASE_DATA_ODD_OFFSET,
 	AIT_BASE_DATA_EVEN_OFFSET	= 0xCD2,
+	AIT_DEBUG_BUF_DATA_OFFSET	= 0xADA,
 	FILTERED_DELTA_DATA_OFFSET	= 0x7FD,
 };
 
@@ -218,6 +219,7 @@ enum {
 	PRD_DELTA_SIZE			= ((PRD_ROW_SIZE+2)*(PRD_COL_SIZE+2)),
 	/* */
 	PRD_LABEL_TMP_SIZE		= ((PRD_ROW_SIZE+2)*(PRD_COL_SIZE+2)),
+	PRD_DEBUG_BUF_SIZE		= (336),
 };
 
 struct siw_hal_prd_data {
@@ -241,6 +243,7 @@ struct siw_hal_prd_data {
 	int image_upper;
 	/* */
 	int16_t	buf_delta[PRD_DELTA_SIZE];
+	int16_t	buf_debug[PRD_DEBUG_BUF_SIZE];
 	u8	buf_label_tmp[PRD_LABEL_TMP_SIZE];
 	u8	buf_label[PRD_M2_ROW_COL_SIZE];
 };
@@ -266,6 +269,7 @@ enum {
 	CMD_DELTADATA,
 	CMD_LABELDATA,
 	CMD_BLU_JITTER,
+	CMD_DEBUG_BUF,
 	CMD_MAX,
 };
 
@@ -281,6 +285,7 @@ static const char *prd_get_data_cmd_name[] = {
 	__PRD_GET_DATA_CMD_SET(CMD_DELTADATA),
 	__PRD_GET_DATA_CMD_SET(CMD_LABELDATA),
 	__PRD_GET_DATA_CMD_SET(CMD_BLU_JITTER),
+	__PRD_GET_DATA_CMD_SET(CMD_DEBUG_BUF),
 };
 
 enum {
@@ -326,6 +331,7 @@ enum{
 	M2_ODD_DATA ,
 	M2_EVEN_DATA,
 	LABEL_DATA,
+	DEBUG_DATA,
 	};
 
 /* PRD RAWDATA test RESULT Save On/Off CMD */
@@ -354,7 +360,8 @@ enum {
 	IT_IMAGE_FILTERED_DELTA,
 	IT_IMAGE_RESERVED,
 	IT_IMAGE_DEBUG,
-	IT_WAIT = 0xFF
+	IT_DONT_USE_CMD = 0xEE,
+	IT_WAIT = 0xFF,
 };
 
 /* AIT Algorithm Engine HandShake Status */
@@ -1725,6 +1732,12 @@ static int prd_print_rawdata(struct siw_hal_prd_data *prd,
 		rawdata_buf_u8 = prd->buf_label;
 		name = "LABEL Data";
 		break;
+	case DEBUG_DATA:
+		rawdata_buf_16 = prd->buf_debug;
+		name = "DEBUG Data";
+		row_size = 16;
+		col_size = 21;
+		break;
 	default:
 		t_prd_warn(prd, "prd_print_rawdata: invalud type, %d\n", type);
 		break;
@@ -2719,12 +2732,13 @@ static int prd_show_prd_get_data_raw_core(struct device *dev,
 	struct siw_ts *ts = chip->ts;
 	struct siw_hal_reg *reg = chip->reg;
 	struct siw_hal_prd_data *prd = (struct siw_hal_prd_data *)ts->prd;
-
 	int ret = 0;
 
-	ret = prd_stop_firmware(prd, cmd, flag);
-	if (ret < 0) {
-		goto out;
+	if (cmd != IT_DONT_USE_CMD) {
+		ret = prd_stop_firmware(prd, cmd, flag);
+		if (ret < 0) {
+			goto out;
+		}
 	}
 
 	ret = siw_hal_write_value(dev,
@@ -3104,6 +3118,18 @@ out:
 
 }
 
+static int prd_show_prd_get_data_do_debug_buf(struct device *dev, u8 *buf, int size, int flag)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+//	struct siw_hal_reg *reg = chip->reg;
+	struct siw_hal_prd_data *prd = (struct siw_hal_prd_data *)ts->prd;
+	u8 *pbuf = (buf) ? buf : (u8 *)prd->buf_debug;
+
+	return prd_show_prd_get_data_raw_core(dev, pbuf, size,
+				IT_DONT_USE_CMD, AIT_DEBUG_BUF_DATA_OFFSET, flag);
+}
+
 static int prd_show_prd_get_data_labeldata(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
@@ -3181,6 +3207,32 @@ out:
 	return ret;
 }
 
+static int prd_show_prd_get_data_debug_buf(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+//	struct siw_hal_reg *reg = chip->reg;
+	struct siw_hal_prd_data *prd = (struct siw_hal_prd_data *)ts->prd;
+	int size = (PRD_DEBUG_BUF_SIZE<<1);
+	int ret = 0;
+
+	t_prd_info(prd, "======== CMD_DEBUGDATA ========\n");
+
+	ret = prd_show_prd_get_data_do_debug_buf(dev,
+				(u8 *)prd->buf_debug,
+				size,
+				0);
+	if (ret < 0) {
+		goto out;
+	}
+
+	prd_print_rawdata(prd, prd->buf_write, DEBUG_DATA, 0, 0);
+
+out:
+	return ret;
+}
+
+
 static ssize_t prd_show_prd_get_data(struct device *dev, int type)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
@@ -3212,6 +3264,9 @@ static ssize_t prd_show_prd_get_data(struct device *dev, int type)
 		break;
 	case CMD_BLU_JITTER:
 		ret = prd_show_prd_get_data_blu_jitter(dev);
+		break;
+	case CMD_DEBUG_BUF:
+		ret = prd_show_prd_get_data_debug_buf(dev);
 		break;
 	default:
 		t_prd_err(prd, "invalid get_data request CMD");
@@ -3289,6 +3344,11 @@ static ssize_t prd_show_rawdata_ait(struct device *dev, char *buf)
 		return (ssize_t)size;
 	}
 	return (ssize_t)prd_show_get_data_common(dev, buf, CMD_RAWDATA_AIT);
+}
+
+static ssize_t prd_show_debug_buf(struct device *dev, char *buf)
+{
+	return (ssize_t)prd_show_get_data_common(dev, buf, CMD_DEBUG_BUF);
 }
 
 static ssize_t prd_show_basedata(struct device *dev, char *buf)
@@ -3568,6 +3628,7 @@ enum {
 	REPORT_BASE,
 	REPORT_DELTA,
 	REPORT_LABEL,
+	REPORT_DEBUG_BUF,
 	REPORT_MAX,
 };
 
@@ -3624,6 +3685,11 @@ static ssize_t prd_show_app_operator(struct device *dev, char *buf, int mode)
 		pbuf = (u8 *)prd->buf_label,
 		prd_show_prd_get_data_do_labeldata(dev, pbuf, size, flag);
 		break;
+	case REPORT_DEBUG_BUF:
+		size = PRD_DEBUG_BUF_SIZE;
+		pbuf = (u8 *)prd->buf_debug,
+		prd_show_prd_get_data_do_debug_buf(dev, pbuf, size, flag);
+		break;
 	default:
 		prd->prd_app_mode = REPORT_OFF;
 		t_prd_err(prd, "unknown mode, %d\n", mode);
@@ -3663,6 +3729,11 @@ static ssize_t prd_show_app_delta(struct device *dev, char *buf)
 	return prd_show_app_operator(dev, buf, REPORT_DELTA);
 }
 
+static ssize_t prd_show_app_debug_buf(struct device *dev, char *buf)
+{
+	return prd_show_app_operator(dev, buf, REPORT_DEBUG_BUF);
+}
+
 static ssize_t prd_show_app_end(struct device *dev, char *buf)
 {
 	return prd_show_app_operator(dev, buf, REPORT_OFF);
@@ -3688,6 +3759,7 @@ static SIW_TOUCH_HAL_PRD_ATTR(rawdata_prd, prd_show_rawdata_prd, NULL);
 static SIW_TOUCH_HAL_PRD_ATTR(rawdata_tcm, prd_show_rawdata_tcm, NULL);
 static SIW_TOUCH_HAL_PRD_ATTR(rawdata_ait, prd_show_rawdata_ait, NULL);
 static SIW_TOUCH_HAL_PRD_ATTR(base, prd_show_basedata, NULL);
+static SIW_TOUCH_HAL_PRD_ATTR(debug_buf, prd_show_debug_buf, NULL);
 static SIW_TOUCH_HAL_PRD_ATTR(lpwg_sd, prd_show_lpwg_sd, NULL);
 static SIW_TOUCH_HAL_PRD_ATTR(file_test, prd_show_file_test, prd_store_file_test);
 
@@ -3695,6 +3767,7 @@ static SIW_TOUCH_HAL_PRD_ATTR(prd_app_raw, prd_show_app_raw, NULL);
 static SIW_TOUCH_HAL_PRD_ATTR(prd_app_base, prd_show_app_base, NULL);
 static SIW_TOUCH_HAL_PRD_ATTR(prd_app_label, prd_show_app_label, NULL);
 static SIW_TOUCH_HAL_PRD_ATTR(prd_app_delta, prd_show_app_delta, NULL);
+static SIW_TOUCH_HAL_PRD_ATTR(prd_app_debug_buf, prd_show_app_debug_buf, NULL);
 static SIW_TOUCH_HAL_PRD_ATTR(prd_app_end, prd_show_app_end, NULL);
 
 static struct attribute *siw_hal_prd_attribute_list[] = {
@@ -3705,12 +3778,14 @@ static struct attribute *siw_hal_prd_attribute_list[] = {
 	&_SIW_TOUCH_HAL_PRD_T(rawdata_tcm).attr,
 	&_SIW_TOUCH_HAL_PRD_T(rawdata_ait).attr,
 	&_SIW_TOUCH_HAL_PRD_T(base).attr,
+	&_SIW_TOUCH_HAL_PRD_T(debug_buf).attr,
 	&_SIW_TOUCH_HAL_PRD_T(lpwg_sd).attr,
 	&_SIW_TOUCH_HAL_PRD_T(file_test).attr,
 	&_SIW_TOUCH_HAL_PRD_T(prd_app_raw).attr,
 	&_SIW_TOUCH_HAL_PRD_T(prd_app_base).attr,
 	&_SIW_TOUCH_HAL_PRD_T(prd_app_label).attr,
 	&_SIW_TOUCH_HAL_PRD_T(prd_app_delta).attr,
+	&_SIW_TOUCH_HAL_PRD_T(prd_app_debug_buf).attr,
 	&_SIW_TOUCH_HAL_PRD_T(prd_app_end).attr,
 	NULL,
 };
