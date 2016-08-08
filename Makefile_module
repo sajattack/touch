@@ -81,15 +81,9 @@ ifeq ($(CONFIG_TOUCHSCREEN_SIW_SW1828), y)
 $(MODULE_NAME)-objs += touch_sw1828.o
 endif
 
-#FONT_TEST_APP_NAME = font_test
 
 module:
 	$(MAKE) -C $(KERNEL_DIR) M=$(BASE_DIR) modules ARCH=arm
-#	arm-linux-gnueabi-gcc $(FONT_TEST_APP_NAME)_app.c $(BUILD_FLAGS) -o $(FONT_TEST_APP_NAME) -lm
-#	cp $(MODULE_NAME).ko $(INSTALL_DIR)/
-
-#app:
-#	arm-linux-gnueabi-gcc $(FONT_TEST_APP_NAME)_app.c $(BUILD_FLAGS) -o $(FONT_TEST_APP_NAME) -lm
 
 clean:
 	rm -rf .tmp_versions
@@ -101,7 +95,5 @@ clean:
 	rm -f *.symvers
 	rm -f modules.builtin
 	rm -f $(MODULE_NAME)
-#	rm -f $(FONT_TEST_APP_NAME)
-#	rm -f $(INSTALL_DIR)/$(MODULE_NAME)
 
 
