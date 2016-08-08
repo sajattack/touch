@@ -1780,10 +1780,6 @@ static int siw_hal_sw_reset(struct device *dev)
 		atomic_set(&chip->init, IC_INIT_NEED);
 		break;
 
-	case CHIP_LG4894:
-		/* fall through */
-	case CHIP_SW1828:
-		/* fall through */
 	default:
 		ret = siw_hal_sw_reset_default(dev);
 		atomic_set(&chip->init, IC_INIT_NEED);
