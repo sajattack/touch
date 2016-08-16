@@ -4870,24 +4870,15 @@ static int siw_hal_get(struct device *dev, u32 cmd, void *buf)
 	return ret;
 }
 
-static void siw_hal_mon_handler_self_reset(struct device *dev)
+
+static int siw_hal_mon_handler_chk_id(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
-	struct siw_ts *ts = chip->ts;
+//	struct siw_ts *ts = chip->ts;
 	struct siw_hal_reg *reg = chip->reg;
 	struct siw_hal_fw_info *fw = &chip->fw;
 	u32 chip_id;
 	int ret = 0;
-
-	if (atomic_read(&ts->state.core) != CORE_NORMAL) {
-		return;
-	}
-
-	if (chip->lcd_mode < LCD_MODE_U3) {
-		return;
-	}
-
-	mutex_lock(&ts->lock);
 
 	ret = siw_hal_read_value(dev,
 				reg->spr_chip_id,
@@ -4902,12 +4893,95 @@ static void siw_hal_mon_handler_self_reset(struct device *dev)
 	}
 
 out:
+	return ret;
+}
+
+struct siw_mon_hanlder_op {
+	unsigned int step;
+	unsigned int delay;	//msec
+	unsigned int retry;
+	char *name;
+	int (*func)(struct device *dev);
+};
+
+#define SIW_MON_HANDLER_OP_SET(_step, _delay, _retry, _name, _func)	\
+	[_step] = {	\
+		.step = _step,	\
+		.delay = _delay,	\
+		.retry = _retry,	\
+		.name = _name,	\
+		.func = _func,	\
+	}
+
+static const struct siw_mon_hanlder_op siw_mon_hanlder_ops[] = {
+	SIW_MON_HANDLER_OP_SET(0, 10, 3, "id", siw_hal_mon_handler_chk_id),
+};
+
+static int siw_hal_mon_hanlder_do_op(struct device *dev,
+				const struct siw_mon_hanlder_op *op, char *p_name)
+{
+	unsigned int delay = op->delay;
+	unsigned int retry = op->retry;
+	unsigned int i;
+	int ret = 0;
+
+	for (i = 0; i < retry; i++) {
+		ret = op->func(dev);
+		if (ret >= 0) {
+			t_dev_dbg_trace(dev,
+				"mon %s : [%d] %s check done\n",
+				p_name, op->step, op->name);
+			break;
+		}
+
+		t_dev_err(dev,
+			"mon %s : [%d] %s check failed(%d), %d (%d)\n",
+			p_name, op->step, op->name, i, ret, op->delay);
+
+		touch_msleep(delay);
+	}
+
+	return ret;
+}
+
+static void siw_hal_mon_handler_self_reset(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	const struct siw_mon_hanlder_op *ops = siw_mon_hanlder_ops;
+	unsigned int ops_num = ARRAY_SIZE(siw_mon_hanlder_ops);
+	int step;
+	int ret = 0;
+
+	if (atomic_read(&ts->state.core) != CORE_NORMAL) {
+		return;
+	}
+
+	if (chip->lcd_mode < LCD_MODE_U3) {
+		return;
+	}
+
+	mutex_lock(&ts->lock);
+
+	for (step = 0 ; step<ops_num ; step++, ops++) {
+		if ((ops->step >= ops_num) ||
+			(ops->name == NULL) ||
+			(ops->func == NULL)) {
+			break;
+		}
+
+		ret = siw_hal_mon_hanlder_do_op(dev, ops, "self-reset");
+		if (ret < 0){
+			break;
+		}
+	}
+
 	if (ret < 0) {
 		t_dev_err(dev, "mon self-reset : recovery begins(hw reset)\n");
 
 		siw_hal_reset_ctrl(dev, HW_RESET_SYNC);
 	} else {
-		t_dev_dbg_trace(dev, "mon self-reset : chip id check ok\n");
+		t_dev_dbg_trace(dev, "mon self-reset : check ok\n");
 	}
 
 	mutex_unlock(&ts->lock);
