@@ -618,6 +618,7 @@ static void __used siw_touch_init_locks(struct siw_ts *ts)
 	t_dev_dbg_base(ts->dev, "touch init locks\n");
 
 	mutex_init(&ts->lock);
+	mutex_init(&ts->reset_lock);
 #if defined(__SIW_SUPPORT_WAKE_LOCK)
 	wake_lock_init(&ts->lpwg_wake_lock,
 		WAKE_LOCK_SUSPEND, SIW_TOUCH_LPWG_LOCK_NAME);
@@ -629,6 +630,7 @@ static void __used siw_touch_free_locks(struct siw_ts *ts)
 	t_dev_dbg_base(ts->dev, "free locks\n");
 
 	mutex_destroy(&ts->lock);
+	mutex_destroy(&ts->reset_lock);
 #if defined(__SIW_SUPPORT_WAKE_LOCK)
 	wake_lock_destroy(&ts->lpwg_wake_lock);
 #endif

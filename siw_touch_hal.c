@@ -1812,25 +1812,33 @@ static int siw_hal_reset_ctrl(struct device *dev, int ctrl)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
+	int ret = -EINVAL;
+
+	mutex_lock(&ts->reset_lock);
 
 	t_dev_info(dev, "%s reset control(%d)\n",
 			touch_chip_name(ts), ctrl);
 
 	switch (ctrl) {
-	default :
 	case SW_RESET:
-		siw_hal_sw_reset(dev);
+		ret = siw_hal_sw_reset(dev);
 		break;
 
 	case HW_RESET_ASYNC:
 	case HW_RESET_SYNC:
-		siw_hal_hw_reset(dev, ctrl);
+		ret = siw_hal_hw_reset(dev, ctrl);
+		break;
+
+	default:
+		t_dev_err(dev, "unknown reset type, %d\n", ctrl);
 		break;
 	}
 
 	siw_hal_watch_set_rtc_clear(dev);
 
-	return 0;
+	mutex_unlock(&ts->reset_lock);
+
+	return ret;
 }
 
 enum {
@@ -4979,7 +4987,7 @@ static void siw_hal_mon_handler_self_reset(struct device *dev)
 	if (ret < 0) {
 		t_dev_err(dev, "mon self-reset : recovery begins(hw reset)\n");
 
-		siw_hal_reset_ctrl(dev, HW_RESET_SYNC);
+		siw_hal_reset_ctrl(dev, HW_RESET_ASYNC);
 	} else {
 		t_dev_dbg_trace(dev, "mon self-reset : check ok\n");
 	}

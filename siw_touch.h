@@ -954,6 +954,7 @@ struct siw_ts {
 	int rx_buf_idx;
 
 	struct mutex lock;
+	struct mutex reset_lock;
 	struct workqueue_struct *wq;
 	struct delayed_work init_work;
 	struct delayed_work upgrade_work;
