@@ -3932,7 +3932,7 @@ enum {
 		})
 
 static int siw_hal_check_status_type_1(struct device *dev,
-				u32 status, u32 ic_status)
+				u32 status, u32 ic_status, int irq)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	u32 dbg_mask = 0;
@@ -3963,7 +3963,8 @@ static int siw_hal_check_status_type_1(struct device *dev,
 					"[b9] abnormal status detected ");
 	}
 	if (status & (1<<10)) {
-		t_dev_err(dev, "h/w:%Xh, f/w:%Xh\n", (ic_status&(1<<1)), (status&(1<<10)));
+		t_dev_err(dev, "[%d] hw %Xh, fw %Xh\n",
+			irq, (ic_status&(1<<1)), (status&(1<<10)));
 
 		log_flag = 1;
 		len += siw_chk_sts_snprintf(dev, log, log_max, len,
@@ -4006,13 +4007,13 @@ static int siw_hal_check_status_type_1(struct device *dev,
 	}
 
 	if (log_flag) {
-		t_dev_err(dev, "status %Xh, ic_status %Xh : %s\n",
-			status, ic_status, log);
+		t_dev_err(dev, "[%d] status %Xh, ic_status %Xh : %s\n",
+			irq, status, ic_status, log);
 	}
 
 	if ((ic_status&1) || (ic_status & (1<<3))) {
-		t_dev_err(dev, "watchdog exception - status %Xh, ic_status %Xh\n",
-					status, ic_status);
+		t_dev_err(dev, "[%d] watchdog exception - status %Xh, ic_status %Xh\n",
+			irq, status, ic_status);
 		if (chip->lcd_mode == LCD_MODE_U0) {
 			ret = -ERESTART;
 		} else {
@@ -4032,12 +4033,13 @@ static int siw_hal_check_status_type_1(struct device *dev,
 	dbg_mask = ((status>>16) & 0xF);
 	switch (dbg_mask) {
 		case 0x2 :
-		//	t_dev_dbg_irq(dev, "TC_Driving OK\n");
+		//	t_dev_dbg_irq(dev, "[%d] TC_Driving OK\n", irq);
 			/* fall through */
 		case 0x3 :
 			/* fall through */
 		case 0x4 :
-			t_dev_dbg_trace(dev, "dbg_mask %Xh\n", dbg_mask);
+			t_dev_dbg_trace(dev, "[%d] dbg_mask %Xh\n",
+				irq, dbg_mask);
 			ret = -ERANGE;
 			break;
 	}
@@ -4046,33 +4048,35 @@ static int siw_hal_check_status_type_1(struct device *dev,
 }
 
 static int siw_hal_check_status_default(struct device *dev,
-				u32 status, u32 ic_status)
+				u32 status, u32 ic_status, int irq)
 {
 //	struct siw_touch_chip *chip = to_touch_chip(dev);
 	int ret = 0;
 
 	if (!(status & (1<<5))) {
-		t_dev_err(dev, "abnormal device status %08Xh\n", status);
+		t_dev_err(dev, "[%d] abnormal device status %08Xh\n",
+			irq, status);
 		ret = -ERESTART;
 	} else if (status & INT_DEV_ABNORMAL_STATUS) {
-		t_dev_err(dev, "abnormal device status %08Xh\n", status);
+		t_dev_err(dev, "[%d] abnormal device status %08Xh\n",
+			irq, status);
 		ret = -ERESTART;
 	}
 
 	if (ic_status & INT_IC_ABNORMAL_STATUS) {
-		t_dev_err(dev, "abnormal ic status %08Xh\n", ic_status);
+		t_dev_err(dev, "[%d] abnormal ic status %08Xh\n",
+			irq, ic_status);
 		ret = -ERESTART;
 	}
 
 	return ret;
 }
 
-static int siw_hal_check_status(struct device *dev)
+static int siw_hal_do_check_status(struct device *dev,
+				u32 status, u32 ic_status, int irq)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
-	u32 status = chip->info.device_status;
-	u32 ic_status = chip->info.ic_status;
 	u32 reset_clr_bit = INT_RESET_CLR_BIT;
 	u32 logging_clr_bit = INT_LOGGING_CLR_BIT;
 	u32 int_norm_mask = INT_NORMAL_MASK;
@@ -4100,25 +4104,28 @@ static int siw_hal_check_status(struct device *dev)
 
 	status_mask = status ^ int_norm_mask;
 
-	t_dev_dbg_trace(dev, "h/w:%Xh, f/w:%Xh(%Xh)\n", ic_status, status, status_mask);
+	t_dev_dbg_trace(dev, "[%d] h/w:%Xh, f/w:%Xh(%Xh)\n",
+			irq, ic_status, status, status_mask);
 
 	if (status_mask & reset_clr_bit) {
-		t_dev_err(dev, "need reset : status %08Xh, ic_status %08Xh, chk %08Xh (%08Xh)\n",
-			status, ic_status, status_mask & reset_clr_bit, reset_clr_bit);
+		t_dev_err(dev,
+			"[%d] need reset : status %08Xh, ic_status %08Xh, chk %08Xh (%08Xh)\n",
+			irq, status, ic_status, status_mask & reset_clr_bit, reset_clr_bit);
 		ret_pre = -ERESTART;
 	} else if (status_mask & logging_clr_bit) {
-		t_dev_err(dev, "need logging : status %08Xh, ic_status %08Xh, chk %08Xh (%08Xh)\n",
-			status, ic_status, status_mask & logging_clr_bit, logging_clr_bit);
+		t_dev_err(dev,
+			"[%d] need logging : status %08Xh, ic_status %08Xh, chk %08Xh (%08Xh)\n",
+			irq, status, ic_status, status_mask & logging_clr_bit, logging_clr_bit);
 		ret_pre = -ERANGE;
 	}
 
 	switch(touch_chip_type(ts)) {
 	case CHIP_LG4895:
 	case CHIP_LG4946:
-		ret = siw_hal_check_status_type_1(dev, status, ic_status);
+		ret = siw_hal_check_status_type_1(dev, status, ic_status, irq);
 		break;
 	default:
-		ret = siw_hal_check_status_default(dev, status, ic_status);
+		ret = siw_hal_check_status_default(dev, status, ic_status, irq);
 		break;
 	}
 	if (ret_pre) {
@@ -4128,6 +4135,16 @@ static int siw_hal_check_status(struct device *dev)
 	}
 
 	return ret;
+}
+
+static int siw_hal_check_status(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+//	struct siw_ts *ts = chip->ts;
+	u32 ic_status = chip->info.ic_status;
+	u32 status = chip->info.device_status;
+
+	return siw_hal_do_check_status(dev, status, ic_status, 1);
 }
 
 static int siw_hal_irq_abs_data(struct device *dev)
@@ -4878,6 +4895,38 @@ static int siw_hal_get(struct device *dev, u32 cmd, void *buf)
 	return ret;
 }
 
+static int siw_hal_mon_handler_chk_status(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+//	struct siw_ts *ts = chip->ts;
+	struct siw_hal_reg *reg = chip->reg;
+	u32 ic_status;
+	u32 status;
+	int ret = 0;
+
+	ret = siw_hal_reg_read(dev,
+				reg->tc_ic_status,
+				(void *)&ic_status, sizeof(ic_status));
+	if (ret < 0){
+		goto out;
+	}
+
+	ret = siw_hal_reg_read(dev,
+				reg->tc_status,
+				(void *)&status, sizeof(status));
+	if (ret < 0){
+		goto out;
+	}
+
+	status |= 0x8000;	//Valid IRQ
+	ret = siw_hal_do_check_status(dev, status, ic_status, 0);
+	if (ret < 0) {
+		goto out;
+	}
+
+out:
+	return ret;
+}
 
 static int siw_hal_mon_handler_chk_id(struct device *dev)
 {
@@ -4923,6 +4972,7 @@ struct siw_mon_hanlder_op {
 
 static const struct siw_mon_hanlder_op siw_mon_hanlder_ops[] = {
 	SIW_MON_HANDLER_OP_SET(0, 10, 3, "id", siw_hal_mon_handler_chk_id),
+	SIW_MON_HANDLER_OP_SET(1, 10, 3, "status", siw_hal_mon_handler_chk_status),
 };
 
 static int siw_hal_mon_hanlder_do_op(struct device *dev,
