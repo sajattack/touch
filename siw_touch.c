@@ -919,49 +919,48 @@ static int __used siw_touch_init_thread(struct siw_ts *ts)
 	int interval;
 	int ret = 0;
 
-	if (touch_flags(ts) & TOUCH_USE_MON_THREAD) {
-		ts_thread = &ts->mon_thread;
-
-		if (fquirks->mon_handler) {
-			handler = fquirks->mon_handler;
-			interval = fquirks->mon_interval;
-		} else {
-			handler = ts->ops->mon_handler;
-			interval = ts->ops->mon_interval;
-		}
-
-		if (!handler) {
-			t_dev_warn(dev, "No mon_handler defined!\n");
-			goto mon_skip;
-		}
-
-		if (!interval) {
-			t_dev_warn(dev, "mon_interval is zero!\n");
-			goto mon_skip;
-		}
-
-		do {
-			touch_msleep(100);
-		} while (atomic_read(&ts->state.core) != CORE_NORMAL);
-
-		atomic_set(&ts_thread->state, TS_THREAD_OFF);
-		ts_thread->interval = interval;
-		ts_thread->handler = handler;
-
-		thread = siw_touch_kthread_run(dev,
-						siw_touch_mon_thread, ts,
-						"siw_touch-%d", MINOR(dev->devt));
-		if (IS_ERR(thread)) {
-			ret = PTR_ERR(thread);
-			goto out;
-		}
-		ts_thread->thread = thread;
-		t_dev_info(dev, "mon thread[%s, %d] begins\n",
-				thread->comm, ts->ops->mon_interval);
+	if (!(touch_flags(ts) & TOUCH_USE_MON_THREAD)) {
+		goto out;
 	}
-mon_skip:
 
-	return 0;
+	ts_thread = &ts->mon_thread;
+
+	if (fquirks->mon_handler) {
+		handler = fquirks->mon_handler;
+		interval = fquirks->mon_interval;
+	} else {
+		handler = ts->ops->mon_handler;
+		interval = ts->ops->mon_interval;
+	}
+
+	if (!handler) {
+		t_dev_warn(dev, "No mon_handler defined!\n");
+		goto out;
+	}
+
+	if (!interval) {
+		t_dev_warn(dev, "mon_interval is zero!\n");
+		goto out;
+	}
+
+	do {
+		touch_msleep(10);
+	} while (atomic_read(&ts->state.core) != CORE_NORMAL);
+
+	atomic_set(&ts_thread->state, TS_THREAD_OFF);
+	ts_thread->interval = interval;
+	ts_thread->handler = handler;
+
+	thread = siw_touch_kthread_run(dev,
+					siw_touch_mon_thread, ts,
+					"siw_touch-%d", MINOR(dev->devt));
+	if (IS_ERR(thread)) {
+		ret = PTR_ERR(thread);
+		goto out;
+	}
+	ts_thread->thread = thread;
+	t_dev_info(dev, "mon thread[%s, %d] begins\n",
+			thread->comm, ts->ops->mon_interval);
 
 out:
 	return ret;
@@ -969,29 +968,24 @@ out:
 
 static void __used siw_touch_free_thread(struct siw_ts *ts)
 {
-	struct device *dev = ts->dev;
+//	struct device *dev = ts->dev;
 	struct siw_ts_thread *ts_thread = NULL;
+	char comm[TASK_COMM_LEN] = { 0, };
 
-	if (touch_flags(ts) & TOUCH_USE_MON_THREAD) {
-		ts_thread = &ts->mon_thread;
-
-		if (ts_thread->thread) {
-			char comm[TASK_COMM_LEN];
-
-			memcpy(comm, ts_thread->thread->comm, TASK_COMM_LEN);
-			kthread_stop(ts_thread->thread);
-
-			while (1) {
-				touch_msleep(10);
-				if (atomic_read(&ts_thread->state) == TS_THREAD_OFF)
-					break;
-				t_dev_info(dev,
-					"waiting for killing mon thread[%s]\n", comm);
-			};
-
-			ts_thread->thread = NULL;
-		}
+	if (!(touch_flags(ts) & TOUCH_USE_MON_THREAD)) {
+		return;
 	}
+
+	ts_thread = &ts->mon_thread;
+
+	if (ts_thread->thread == NULL) {
+		return;
+	}
+
+	memcpy(comm, ts_thread->thread->comm, TASK_COMM_LEN);
+	kthread_stop(ts_thread->thread);
+
+	ts_thread->thread = NULL;
 }
 
 static int __used siw_touch_init_works(struct siw_ts *ts)
