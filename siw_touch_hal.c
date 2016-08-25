@@ -4921,7 +4921,10 @@ static int siw_hal_mon_handler_chk_status(struct device *dev)
 	status |= 0x8000;	//Valid IRQ
 	ret = siw_hal_do_check_status(dev, status, ic_status, 0);
 	if (ret < 0) {
-		goto out;
+		if (ret == -ERESTART) {
+			goto out;
+		}
+		ret = 0;
 	}
 
 out:
