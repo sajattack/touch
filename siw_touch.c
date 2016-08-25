@@ -858,7 +858,7 @@ static int siw_touch_mon_thread(void *d)
 	struct siw_ts *ts = d;
 	struct siw_ts_thread *ts_thread = &ts->mon_thread;
 	struct device *dev = ts->dev;
-	int (*handler)(struct device *dev);
+	siw_mon_handler_t handler;
 	unsigned long timeout;
 	int ret = 0;
 
@@ -888,7 +888,7 @@ static int siw_touch_mon_thread(void *d)
 			continue;
 		}
 
-		ret = handler(dev);
+		ret = handler(dev, 0);
 	}
 
 	atomic_set(&ts_thread->state, TS_THREAD_OFF);
@@ -915,7 +915,7 @@ static int __used siw_touch_init_thread(struct siw_ts *ts)
 	struct device *dev = ts->dev;
 	struct siw_ts_thread *ts_thread = NULL;
 	struct task_struct *thread;
-	int (*handler)(struct device *dev);
+	siw_mon_handler_t handler;
 	int interval;
 	int ret = 0;
 

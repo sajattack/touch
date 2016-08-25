@@ -4990,13 +4990,13 @@ static int siw_hal_mon_hanlder_do_op(struct device *dev,
 		ret = op->func(dev);
 		if (ret >= 0) {
 			t_dev_dbg_trace(dev,
-				"mon %s : [%d] %s check done\n",
+				"%s : [%d] %s check done\n",
 				p_name, op->step, op->name);
 			break;
 		}
 
 		t_dev_err(dev,
-			"mon %s : [%d] %s check failed(%d), %d (%d)\n",
+			"%s : [%d] %s check failed(%d), %d (%d)\n",
 			p_name, op->step, op->name, i, ret, op->delay);
 
 		touch_msleep(delay);
@@ -5005,12 +5005,13 @@ static int siw_hal_mon_hanlder_do_op(struct device *dev,
 	return ret;
 }
 
-static void siw_hal_mon_handler_self_reset(struct device *dev)
+static void siw_hal_mon_handler_self_reset(struct device *dev, char *title)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
 	const struct siw_mon_hanlder_op *ops = siw_mon_hanlder_ops;
 	unsigned int ops_num = ARRAY_SIZE(siw_mon_hanlder_ops);
+	char name[32];
 	int step;
 	int ret = 0;
 
@@ -5024,6 +5025,8 @@ static void siw_hal_mon_handler_self_reset(struct device *dev)
 
 	mutex_lock(&ts->lock);
 
+	snprintf(name, sizeof(name), "%s self-reset", title);
+
 	for (step = 0 ; step<ops_num ; step++, ops++) {
 		if ((ops->step >= ops_num) ||
 			(ops->name == NULL) ||
@@ -5031,30 +5034,48 @@ static void siw_hal_mon_handler_self_reset(struct device *dev)
 			break;
 		}
 
-		ret = siw_hal_mon_hanlder_do_op(dev, ops, "self-reset");
+		ret = siw_hal_mon_hanlder_do_op(dev, ops, name);
 		if (ret < 0){
 			break;
 		}
 	}
 
 	if (ret < 0) {
-		t_dev_err(dev, "mon self-reset : recovery begins(hw reset)\n");
+		t_dev_err(dev,
+			"%s : recovery begins(hw reset)\n",
+			name);
 
 		siw_hal_reset_ctrl(dev, HW_RESET_ASYNC);
 	} else {
-		t_dev_dbg_trace(dev, "mon self-reset : check ok\n");
+		t_dev_dbg_trace(dev,
+			"%s : check ok\n",
+			name);
 	}
 
 	mutex_unlock(&ts->lock);
 }
 
-static int siw_hal_mon_handler(struct device *dev)
+static int siw_hal_mon_handler(struct device *dev, u32 opt)
 {
-	t_dev_dbg_trace(dev, "mon handler begins\n");
+	char *name;
 
-	siw_hal_mon_handler_self_reset(dev);
+	name = (opt & MON_FLAG_RST_ONLY) ? "reset cond" : "mon handler";
 
-	t_dev_dbg_trace(dev, "mon handler ends\n");
+	t_dev_dbg_trace(dev, "%s begins\n", name);
+
+	siw_hal_mon_handler_self_reset(dev, name);
+
+	if (opt & MON_FLAG_RST_ONLY) {
+		goto out;
+	}
+
+	/*
+	 * For other controls
+	 */
+
+out:
+	t_dev_dbg_trace(dev, "%s ends\n", name);
+
 	return 0;
 }
 

@@ -462,6 +462,8 @@ struct asc_info {
 	u32	high_delta_thres;
 };
 
+typedef int (*siw_mon_handler_t)(struct device *dev, u32 opt);
+
 struct siw_touch_operations {
 	/* Register Map */
 	void *reg;
@@ -489,12 +491,16 @@ struct siw_touch_operations {
 	/* */
 	int (*sysfs)(struct device *dev, int on_off);
 	/* */
-	int (*mon_handler)(struct device *dev);
+	siw_mon_handler_t mon_handler;
 	int mon_interval;
 	/* */
 	int (*abt_sysfs)(struct device *dev, int on_off);
 	int (*prd_sysfs)(struct device *dev, int on_off);
 	int (*watch_sysfs)(struct device *dev, int on_off);
+};
+
+enum {
+	MON_FLAG_RST_ONLY	= (1<<8),
 };
 
 struct siw_touch_bus_info {
@@ -537,7 +543,7 @@ struct siw_touch_fquirks {	//function quirks
 	/* */
 	int (*fwup_check)(struct device *dev, u8 *fw_buf);
 	/* */
-	int (*mon_handler)(struct device *dev);
+	int (*mon_handler)(struct device *dev, u32 opt);
 	int mon_interval;
 };
 
@@ -862,7 +868,7 @@ struct siw_ts_thread {
 	struct task_struct *thread;
 	atomic_t state;
 	int interval;
-	int (*handler)(struct device *dev);
+	siw_mon_handler_t handler;
 };
 
 enum {
