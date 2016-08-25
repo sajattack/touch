@@ -82,6 +82,8 @@ enum {
 	SW_RESET = 0,
 	HW_RESET_ASYNC,
 	HW_RESET_SYNC,
+	//
+	HW_RESET_COND = 0x5A,
 };
 
 enum {

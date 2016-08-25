@@ -414,6 +414,10 @@ static ssize_t _show_reset_ctrl(struct device *dev, char *buf)
 				" HW Reset(Sync)  : echo %d > hal_reset_ctrl\n",
 				HW_RESET_SYNC);
 
+	size += siw_snprintf(buf, size,
+				" HW Reset(Cond)  : echo 0x%X > hal_reset_ctrl\n",
+				HW_RESET_COND);
+
 	return size;
 }
 
@@ -422,8 +426,14 @@ static ssize_t _store_reset_xxx(struct device *dev, int type)
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
 
+	if (type == HW_RESET_COND) {
+		siw_ops_mon_handler(ts, MON_FLAG_RST_ONLY);
+		goto out;
+	}
+
 	siw_ops_reset(ts, type);
 
+out:
 	return 0;
 }
 
@@ -432,7 +442,7 @@ static ssize_t _store_reset_ctrl(struct device *dev,
 {
 	int value = 0;
 
-	if (sscanf(buf, "%d", &value) <= 0) {
+	if (sscanf(buf, "%X", &value) <= 0) {
 		siw_hal_sysfs_err_invalid_param(dev);
 		return count;
 	}
