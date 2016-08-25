@@ -862,6 +862,7 @@ static inline struct siw_touch_fw_bin *pdata_fw_bin(
 enum {
 	TS_THREAD_OFF = 0,
 	TS_THREAD_ON,
+	TS_THREAD_PAUSE,
 };
 
 struct siw_ts_thread {
@@ -869,6 +870,7 @@ struct siw_ts_thread {
 	atomic_t state;
 	int interval;
 	siw_mon_handler_t handler;
+	struct mutex lock;
 };
 
 enum {
@@ -1585,6 +1587,9 @@ extern int siw_touch_init_notify(struct siw_ts *ts);
 extern void siw_touch_free_notify(struct siw_ts *ts);
 
 extern void siw_touch_atomic_notifer_work_func(struct work_struct *work);
+
+extern void siw_touch_mon_pause(struct device *dev);
+extern void siw_touch_mon_resume(struct device *dev);
 
 extern int siw_touch_probe(struct siw_ts *ts);
 extern int siw_touch_remove(struct siw_ts *ts);

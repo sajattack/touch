@@ -885,15 +885,74 @@ static int siw_touch_mon_thread(void *d)
 		}
 
 		if (atomic_read(&ts->state.mon_ignore)) {
+			atomic_set(&ts_thread->state, TS_THREAD_PAUSE);
 			continue;
 		}
 
+		atomic_set(&ts_thread->state, TS_THREAD_ON);
+
 		ret = handler(dev, 0);
+
+		if (atomic_read(&ts->state.mon_ignore)) {
+			atomic_set(&ts_thread->state, TS_THREAD_PAUSE);
+		}
 	}
 
 	atomic_set(&ts_thread->state, TS_THREAD_OFF);
 
 	return 0;
+}
+
+static void siw_touch_mon_hold(struct device *dev, int pause)
+{
+	struct siw_ts *ts = to_touch_core(dev);
+	struct siw_ts_thread *ts_thread = &ts->mon_thread;
+	char *name = (pause) ? "pause" : "resume";
+	int prev_state = (pause) ? TS_THREAD_ON : TS_THREAD_PAUSE;
+	int new_state = (pause) ? TS_THREAD_PAUSE : TS_THREAD_ON;
+
+	if (!(touch_flags(ts) & TOUCH_USE_MON_THREAD)) {
+		return;
+	}
+
+	mutex_lock(&ts_thread->lock);
+
+	if (ts_thread->thread == NULL) {
+		goto out;
+	}
+
+	if (atomic_read(&ts_thread->state) != prev_state) {
+		goto out;
+	}
+
+	t_dev_info(dev,
+			"mon thread %s\n", name);
+
+	atomic_set(&ts->state.mon_ignore, !!pause);
+
+	wake_up_process(ts_thread->thread);
+
+	while (1) {
+		touch_msleep(1);
+		if (atomic_read(&ts_thread->state) == new_state)
+			break;
+
+		t_dev_info(dev,
+			"waiting for mon thread %s\n", name);
+	}
+
+out:
+	mutex_unlock(&ts_thread->lock);
+}
+
+void siw_touch_mon_pause(struct device *dev)
+{
+	siw_touch_mon_hold(dev, 1);
+}
+
+void siw_touch_mon_resume(struct device *dev)
+{
+	siw_touch_mon_hold(dev, 0);
 }
 
 #define siw_touch_kthread_run(__dev, __threadfn, __data, __namefmt, args...) \
@@ -924,6 +983,8 @@ static int __used siw_touch_init_thread(struct siw_ts *ts)
 	}
 
 	ts_thread = &ts->mon_thread;
+
+	mutex_init(&ts_thread->lock);
 
 	if (fquirks->mon_handler) {
 		handler = fquirks->mon_handler;
@@ -986,6 +1047,8 @@ static void __used siw_touch_free_thread(struct siw_ts *ts)
 	kthread_stop(ts_thread->thread);
 
 	ts_thread->thread = NULL;
+
+	mutex_destroy(&ts_thread->lock);
 }
 
 static int __used siw_touch_init_works(struct siw_ts *ts)
