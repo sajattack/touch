@@ -595,7 +595,7 @@ static ssize_t _show_debug_bus(struct device *dev, char *buf)
 		t_dev_info(dev, "SPI bus freq: %d MHz\n", bus_freq / 1000000);
 	}
 
-	atomic_set(&ts->state.mon_ignore, 1);
+	siw_touch_mon_pause(dev);
 
 #if defined(__SIW_SUPPORT_WAKE_LOCK)
 	wake_lock_timeout(&ts->lpwg_wake_lock, msecs_to_jiffies(1000));
@@ -613,7 +613,7 @@ static ssize_t _show_debug_bus(struct device *dev, char *buf)
 
 	mutex_unlock(&ts->lock);
 
-	atomic_set(&ts->state.mon_ignore, 0);
+	siw_touch_mon_resume(dev);
 
 	t_dev_info(dev, "%s bus test(%d) %s, %d\n",
 		bus_str, tcnt, (ret < 0) ? "failed" : "done", lcnt);
