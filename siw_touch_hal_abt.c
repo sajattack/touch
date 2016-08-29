@@ -1175,6 +1175,8 @@ static void abt_ksocket_exit(struct siw_hal_abt_data *abt)
 	abt_ksocket_exit_kill(abt);
 
 	t_abt_dbg_base(abt, "socket exit\n");
+
+	siw_touch_mon_resume(abt->dev);
 }
 
 
@@ -1670,6 +1672,8 @@ static int abt_ksocket_init(struct siw_hal_abt_data *abt,
 
 	abt_comm->thread = thread;
 	abt_comm->sock_listener = listener;
+
+	siw_touch_mon_pause(abt->dev);
 
 	return 0;
 }
