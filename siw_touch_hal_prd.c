@@ -2695,6 +2695,8 @@ static ssize_t prd_show_sd(struct device *dev, char *buf)
 		goto out;
 	}
 
+	siw_touch_mon_pause(dev);
+
 	/* file create , time log */
 	prd_write_file(prd, "\nShow_sd Test Start", TIME_INFO_SKIP);
 	prd_write_file(prd, "\n", TIME_INFO_WRITE);
@@ -2705,7 +2707,7 @@ static ssize_t prd_show_sd(struct device *dev, char *buf)
 	size = prd_ic_exception_check(prd, buf);
 	if (size > 0) {
 		t_prd_err(prd, "ic exception detected, test canceled\n");
-		goto out;
+		goto out_sd;
 	}
 
 	prd_firmware_version_log(prd);
@@ -2719,6 +2721,9 @@ static ssize_t prd_show_sd(struct device *dev, char *buf)
 	prd_log_file_size_check(prd);
 
 	t_prd_info(prd, "show_sd test terminated\n");
+
+out_sd:
+	siw_touch_mon_resume(dev);
 
 out:
 	return (ssize_t)size;
@@ -3285,7 +3290,9 @@ static ssize_t prd_show_get_data_common(struct device *dev, char *buf, int type)
 	int size = 0;
 	int ret = 0;
 
+	siw_touch_mon_pause(dev);
 	ret = prd_show_prd_get_data(dev, type);
+	siw_touch_mon_resume(dev);
 	if (ret < 0){
 		t_prd_err(prd, "prd_show_prd_get_data(%d) failed, %d\n",
 			type, ret);
@@ -3438,6 +3445,8 @@ static ssize_t prd_show_lpwg_sd(struct device *dev, char *buf)
 		goto out;
 	}
 
+	siw_touch_mon_pause(dev);
+
 	/* file create , time log */
 	prd_write_file(prd, "\nShow_lpwg_sd Test Start", TIME_INFO_SKIP);
 	prd_write_file(prd, "\n", TIME_INFO_WRITE);
@@ -3455,6 +3464,8 @@ static ssize_t prd_show_lpwg_sd(struct device *dev, char *buf)
 	prd_log_file_size_check(prd);
 
 	t_prd_info(prd, "show_lpwg_sd test terminated\n");
+
+	siw_touch_mon_resume(dev);
 
 out:
 	return (ssize_t)size;
@@ -3665,8 +3676,12 @@ static ssize_t prd_show_app_operator(struct device *dev, char *buf, int mode)
 			}
 		}
 		size = 1;
+
+		siw_touch_mon_resume(dev);
 		goto out;
 	}
+
+	siw_touch_mon_pause(dev);
 
 	prd->prd_app_mode = mode;
 
