@@ -14,6 +14,17 @@
 
 #include <linux/notifier.h>
 
+enum {
+	LCD_MODE_U0	= 0,
+	LCD_MODE_U2_UNBLANK,
+	LCD_MODE_U2,
+	LCD_MODE_U3,
+	LCD_MODE_U3_PARTIAL,
+	LCD_MODE_U3_QUICKCOVER,
+	LCD_MODE_STOP,
+	LCD_MODE_MAX,
+};
+
 /* the dsv on */
 #define LCD_EVENT_TOUCH_LPWG_ON					0x01
 #define LCD_EVENT_TOUCH_LPWG_OFF				0x02
