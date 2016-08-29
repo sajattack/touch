@@ -200,6 +200,8 @@ static int siw_misc_open(struct inode *inode, struct file *filp)
 			}
 		}
 
+		siw_touch_irq_control(dev, INTERRUPT_DISABLE);
+
 		siw_touch_mon_pause(dev);
 	}
 
@@ -236,6 +238,8 @@ static int siw_misc_release(struct inode *inode, struct file *filp)
 		}
 
 		siw_touch_mon_resume(dev);
+
+		siw_touch_irq_control(dev, INTERRUPT_ENABLE);
 	}
 
 out:
