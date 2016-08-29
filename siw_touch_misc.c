@@ -190,13 +190,17 @@ static int siw_misc_open(struct inode *inode, struct file *filp)
 
 	dev = misc_data->dev;
 
-	if (!misc_data->buf) {
-		misc_data->buf = kmalloc(SIW_MISC_BUF_SZ, GFP_KERNEL);
+	if (!misc_data->users) {
 		if (!misc_data->buf) {
-			t_dev_err(dev, "open ENOMEM\n");
-			ret = -ENOMEM;
-			goto out;
+			misc_data->buf = kmalloc(SIW_MISC_BUF_SZ, GFP_KERNEL);
+			if (!misc_data->buf) {
+				t_dev_err(dev, "open ENOMEM\n");
+				ret = -ENOMEM;
+				goto out;
+			}
 		}
+
+		siw_touch_mon_pause(dev);
 	}
 
 	misc_data->users++;
@@ -209,16 +213,32 @@ out:
 static int siw_misc_release(struct inode *inode, struct file *filp)
 {
 	struct siw_misc_data *misc_data = __siw_misc_data;
+	struct device *dev;
 	int ret = 0;
+
+	if (misc_data == NULL) {
+		return -ENOENT;
+	}
 
 	mutex_lock(&siw_misc_lock);
 
-	misc_data->users--;
+	dev = misc_data->dev;
+
 	if (!misc_data->users) {
-		kfree(misc_data->buf);
-		misc_data->buf = NULL;
+		goto out;
 	}
 
+	misc_data->users--;
+	if (!misc_data->users) {
+		if (misc_data->buf) {
+			kfree(misc_data->buf);
+			misc_data->buf = NULL;
+		}
+
+		siw_touch_mon_resume(dev);
+	}
+
+out:
 	mutex_unlock(&siw_misc_lock);
 
 	return ret;
