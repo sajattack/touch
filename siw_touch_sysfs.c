@@ -560,6 +560,21 @@ static ssize_t _store_irq_state(struct device *dev,
 	return (ssize_t)count;
 }
 
+static ssize_t _show_irq_level(struct device *dev, char *buf)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	int irq_level = gpio_get_value(touch_irq_pin(ts));
+	int size = 0;
+
+//	t_dev_dbg_base(dev, "irq_level : %d\n", irq_level);
+	size = siw_snprintf(buf, size,
+				"%d\n",
+				irq_level);
+
+	return size;
+}
+
 static ssize_t _show_debug_tool_state(struct device *dev, char *buf)
 {
 	struct siw_ts *ts = to_touch_core(dev);
@@ -1008,6 +1023,8 @@ static SIW_TOUCH_ATTR(sp_link_touch_off,
 static SIW_TOUCH_ATTR(irq_state,
 						_show_irq_state,
 						_store_irq_state);
+static SIW_TOUCH_ATTR(irq_level,
+						_show_irq_level, NULL);
 static SIW_TOUCH_ATTR(debug_tool,
 						_show_debug_tool_state,
 						_store_debug_tool_state);
@@ -1062,6 +1079,7 @@ static struct attribute *siw_touch_attribute_list[] = {
 	&_SIW_TOUCH_ATTR_T(mfts_lpwg).attr,
 	&_SIW_TOUCH_ATTR_T(sp_link_touch_off).attr,
 	&_SIW_TOUCH_ATTR_T(irq_state).attr,
+	&_SIW_TOUCH_ATTR_T(irq_level).attr,
 	&_SIW_TOUCH_ATTR_T(debug_tool).attr,
 	&_SIW_TOUCH_ATTR_T(debug_tool_t).attr,
 	&_SIW_TOUCH_ATTR_T(debug_option).attr,
