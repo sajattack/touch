@@ -82,6 +82,7 @@
 #define CHIP_TX_DUMMY_SZ			I2C_BUS_TX_DUMMY_SZ
 #define CHIP_RX_DUMMY_SZ			I2C_BUS_RX_DUMMY_SZ
 
+#define CHIP_SENSELESS_MARGIN		(0x21)	//33 pixel : 3mm
 
 #if !defined(__SIW_CONFIG_OF)	//See siw_touch_cfg.h
 enum CHIP_CAPABILITY {
@@ -199,6 +200,7 @@ static const struct siw_touch_pdata chip_pdata = {
 	.watch_win			= NULL,
 	//See 'siw_setup_operations' [siw_touch.c]
 	.reg_quirks			= NULL,
+	.senseless_margin	= CHIP_SENSELESS_MARGIN,
 };
 
 static struct siw_touch_chip_data chip_data = {
