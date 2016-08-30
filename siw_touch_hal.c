@@ -898,6 +898,58 @@ const struct tci_info siw_hal_tci_info_default[2] = {
 	},
 };
 
+#if defined(__SIW_CONFIG_SHOW_TCI_INIT_VAL)
+#define t_dev_dbg_tci	t_dev_info
+#else
+#define t_dev_dbg_tci	t_dev_dbg_base
+#endif
+
+#define siw_prt_tci_info(_dev, _idx, _info)	\
+	do {	\
+		t_dev_dbg_tci(_dev,	\
+			"tci info[%s] tap_count %d, min_intertap %d, max_intertap %d\n",	\
+			_idx, _info->tap_count, _info->min_intertap, _info->max_intertap);	\
+		t_dev_dbg_tci(_dev,	\
+			"tci info[%s] touch_slop %d, tap_distance %d, intr_delay %d\n",	\
+			_idx, _info->touch_slop, _info->tap_distance, _info->intr_delay);	\
+	} while(0)
+
+static void siw_hal_prt_tci_info(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	struct tci_ctrl *tci = &ts->tci;
+	struct tci_info *info;
+	struct active_area *area;
+	struct reset_area *rst_area;
+	struct reset_area *tci_qcover;
+
+	info = &tci->info[TCI_1];
+	siw_prt_tci_info(dev, "TCI_1", info);
+	info = &tci->info[TCI_2];
+	siw_prt_tci_info(dev, "TCI_2", info);
+
+	rst_area = &ts->tci.rst_area;
+	t_dev_dbg_tci(dev,
+		"tci rst area     %Xh %Xh %Xh %Xh\n",
+		rst_area->x1, rst_area->y1, rst_area->x2, rst_area->y2);
+
+	area = &ts->tci.area;
+	t_dev_dbg_tci(dev,
+		"tci active area  %Xh %Xh %Xh %Xh\n",
+		area->x1, area->y1, area->x2, area->y2);
+
+	tci_qcover = &ts->tci.qcover_open;
+	t_dev_dbg_tci(dev,
+		"tci qcover_open  %Xh %Xh %Xh %Xh\n",
+		tci_qcover->x1, tci_qcover->y1, tci_qcover->x2, tci_qcover->y2);
+
+	tci_qcover = &ts->tci.qcover_close;
+	t_dev_dbg_tci(dev,
+		"tci qcover_close %Xh %Xh %Xh %Xh\n",
+		tci_qcover->x1, tci_qcover->y1, tci_qcover->x2, tci_qcover->y2);
+}
+
 static void siw_hal_get_tci_info(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
@@ -934,9 +986,6 @@ static void siw_hal_get_tci_info(struct device *dev)
 	} else {
 		memcpy(&ts->tci.qcover_open, tci_qcover, sizeof(struct reset_area));
 	}
-	tci_qcover = &ts->tci.qcover_open;
-	t_dev_dbg_base(dev, "qcover_open : %Xh %Xh %Xh %Xh\n",
-			tci_qcover->x1, tci_qcover->y1, tci_qcover->x2, tci_qcover->y2);
 
 	tci_qcover = pdata_tci_qcover_close(ts->pdata);
 	if (!tci_qcover) {
@@ -944,9 +993,8 @@ static void siw_hal_get_tci_info(struct device *dev)
 	} else {
 		memcpy(&ts->tci.qcover_close, tci_qcover, sizeof(struct reset_area));
 	}
-	tci_qcover = &ts->tci.qcover_close;
-	t_dev_dbg_base(dev, "qcover_close: %Xh %Xh %Xh %Xh\n",
-			tci_qcover->x1, tci_qcover->y1, tci_qcover->x2, tci_qcover->y2);
+
+	siw_hal_prt_tci_info(dev);
 }
 
 const struct siw_hal_swipe_ctrl siw_hal_swipe_info_default = {
@@ -979,6 +1027,39 @@ const struct siw_hal_swipe_ctrl siw_hal_swipe_info_default = {
 	},
 };
 
+#if defined(__SIW_CONFIG_SHOW_SWIPE_INIT_VAL)
+#define t_dev_dbg_swipe		t_dev_info
+#else
+#define t_dev_dbg_swipe		t_dev_dbg_base
+#endif
+
+#define siw_prt_swipe_info(_dev, _idx, _info)	\
+	do {	\
+		t_dev_dbg_swipe(_dev,	\
+			"swipe info[%s] distance %d, ratio_thres %d, ratio_distance %d\n",	\
+			_idx, _info->distance, _info->ratio_thres, _info->ratio_distance);	\
+		t_dev_dbg_swipe(_dev,	\
+			"swipe info[%s] ratio_period %d, min_time %d, max_time %d\n",	\
+			_idx, _info->ratio_period, _info->min_time, _info->max_time);	\
+		t_dev_dbg_swipe(_dev,	\
+			"swipe info[%s] area_x1 %d, area_y1 %d, area_x2 %d, area_y2 %d\n",	\
+			_idx, _info->area.x1, _info->area.y1, _info->area.x2, _info->area.y2);	\
+	} while(0)
+
+static void siw_hal_prt_swipe_info(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+//	struct siw_ts *ts = chip->ts;
+	struct siw_hal_swipe_ctrl *swipe = &chip->swipe;
+	struct siw_hal_swipe_info *info;
+
+	t_dev_dbg_base(dev, "swipe mode %08Xh\n", swipe->mode);
+	info = &swipe->info[SWIPE_R];
+	siw_prt_swipe_info(dev, "SWIPE_R", info);
+	info = &swipe->info[SWIPE_L];
+	siw_prt_swipe_info(dev, "SWIPE_L", info);
+}
+
 static void siw_hal_get_swipe_info(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
@@ -990,6 +1071,8 @@ static void siw_hal_get_swipe_info(struct device *dev)
 		swipe_src = (void *)&siw_hal_swipe_info_default;
 
 	memcpy(&chip->swipe, swipe_src, sizeof(struct siw_hal_swipe_ctrl));
+
+	siw_hal_prt_swipe_info(dev);
 }
 
 static const char *siw_hal_pwr_name[] = {
