@@ -898,13 +898,6 @@ const struct tci_info siw_hal_tci_info_default[2] = {
 	},
 };
 
-static const struct reset_area siw_hal_tci_reset_area_default = {
-	.x1	= ((65<<16) | 65),
-	.y1 = ((1374<<16) | 1374),
-	.x2 = ((65<<16) | 65),
-	.y2 = ((2494<<16) | 2494),
-};
-
 static void siw_hal_get_tci_info(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
@@ -914,15 +907,26 @@ static void siw_hal_get_tci_info(struct device *dev)
 	struct reset_area *tci_qcover;
 
 	tci_src = pdata_tci_info(ts->pdata);
-	if (!tci_src)
+	if (tci_src == NULL) {
 		tci_src = (void *)siw_hal_tci_info_default;
+	}
+	memcpy(ts->tci.info, tci_src, sizeof(siw_hal_tci_info_default));
 
 	tci_reset_area = pdata_tci_reset_area(ts->pdata);
-	if (!tci_reset_area)
-		tci_reset_area = (void *)&siw_hal_tci_reset_area_default;
+	if (tci_reset_area == NULL) {
+		ts->tci.rst_area.x1 = 0;
+		ts->tci.rst_area.y1 = 0;
+		ts->tci.rst_area.x2 = ts->caps.max_x | (ts->caps.max_x<<16);
+		ts->tci.rst_area.y2 = ts->caps.max_y | (ts->caps.max_y<<16);
+	} else {
+		memcpy(&ts->tci.rst_area, tci_reset_area, sizeof(struct reset_area));
+	}
 
-	memcpy(ts->tci.info, tci_src, sizeof(siw_hal_tci_info_default));
-	memcpy(&ts->tci.rst_area, tci_reset_area, sizeof(siw_hal_tci_reset_area_default));
+	//Set default
+	ts->tci.area.x1 = 0;
+	ts->tci.area.y1 = 0;
+	ts->tci.area.x2 = ts->caps.max_x;
+	ts->tci.area.y2 = ts->caps.max_y;
 
 	tci_qcover = pdata_tci_qcover_open(ts->pdata);
 	if (!tci_qcover) {
