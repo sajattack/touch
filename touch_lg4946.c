@@ -125,6 +125,13 @@ static const struct tci_info chip_tci_info[2] = {
 	},
 };
 
+static const struct reset_area chip_tci_reset_area = {
+	.x1	= ((65<<16) | 65),
+	.y1 = ((1374<<16) | 1374),
+	.x2 = ((65<<16) | 65),
+	.y2 = ((2494<<16) | 2494),
+};
+
 static struct reset_area chip_qcover_open = {
 	.x1	= 80,
 	.y1	= 0,
@@ -140,9 +147,9 @@ static struct reset_area chip_qcover_close = {
 };
 
 static const struct siw_hal_swipe_ctrl chip_swipe_info = {
-	.mode	= SWIPE_LEFT_BIT | SWIPE_RIGHT_BIT,
+	.mode	= 0,	//SWIPE_LEFT_BIT | SWIPE_RIGHT_BIT,
 	.info = {
-		[SWIPE_R] = {
+		[SWIPE_R] = {	//SWIPE_D
 			.distance		= 10,
 			.ratio_thres	= 100,
 			.ratio_distance	= 2,
@@ -154,7 +161,7 @@ static const struct siw_hal_swipe_ctrl chip_swipe_info = {
 			.area.x2		= 1019,
 			.area.y2		= 679,
 		},
-		[SWIPE_L] = {
+		[SWIPE_L] = {	//SWIPE_U
 			.distance		= 10,
 			.ratio_thres	= 100,
 			.ratio_distance	= 2,
@@ -267,7 +274,7 @@ static const struct siw_touch_pdata chip_pdata = {
 	/* */
 	//See 'siw_hal_get_tci_info' [siw_touch_hal.c]
 	.tci_info			= (void *)chip_tci_info,
-	.tci_reset_area		= NULL,
+	.tci_reset_area		= (void *)&chip_tci_reset_area,
 	.tci_qcover_open	= (void *)&chip_qcover_open,
 	.tci_qcover_close	= (void *)&chip_qcover_close,
 	//See 'siw_hal_get_swipe_info' [siw_touch_hal.c]
