@@ -631,6 +631,8 @@ struct siw_touch_pdata {
 	void *uevent_ctrl;
 
 	void *fw_bin;
+
+	int senseless_margin;
 };
 
 struct siw_touch_chip_data {
@@ -858,6 +860,10 @@ static inline struct siw_touch_fw_bin *pdata_fw_bin(
 	return pdata->fw_bin;
 }
 
+static inline int pdata_senseless_margin(struct siw_touch_pdata *pdata)
+{
+	return pdata->senseless_margin;
+}
 
 enum {
 	TS_THREAD_OFF = 0,
@@ -1332,6 +1338,11 @@ static inline struct siw_touch_fw_bin *touch_fw_bin(
 								struct siw_ts *ts)
 {
 	return pdata_fw_bin(ts->pdata);
+}
+
+static inline int touch_senseless_margin(struct siw_ts *ts)
+{
+	return pdata_senseless_margin(ts->pdata);
 }
 
 
