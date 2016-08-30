@@ -2879,7 +2879,7 @@ static int siw_hal_tci_password(struct device *dev)
 	return siw_hal_tci_knock(dev);
 }
 
-static int siw_hal_tci_active_area(struct device *dev,
+static int siw_hal_do_tci_active_area(struct device *dev,
 		u32 x1, u32 y1, u32 x2, u32 y2)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
@@ -2916,6 +2916,35 @@ out:
 	return ret;
 }
 
+static int siw_hal_tci_active_area(struct device *dev,
+		u32 x1, u32 y1, u32 x2, u32 y2, int type)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+//	struct siw_hal_reg *reg = chip->reg;
+	int margin = touch_senseless_margin(ts);
+	u32 area[4] = { 0, };
+	int i;
+
+	t_dev_info(dev, "tci_active_area[%d]: x1[%Xh], y1[%Xh], x2[%Xh], y2[%Xh]\n",
+		type, x1, y1, x2, y2);
+
+	if (type == ACTIVE_AREA_RESET_CTRL) {
+		return siw_hal_do_tci_active_area(dev, x1, y1, x2, y2);
+	}
+
+	area[0] = (x1 + margin) & 0xFFFF;
+	area[1] = (y1 + margin) & 0xFFFF;
+	area[2] = (x2 - margin) & 0xFFFF;
+	area[3] = (y2 - margin) & 0xFFFF;
+
+	for (i = 0; i < ARRAY_SIZE(area); i++) {
+		area[i] = (area[i]) | (area[i]<<16);
+	}
+
+	return siw_hal_do_tci_active_area(dev, area[0], area[1], area[2], area[3]);
+}
+
 static int siw_hal_tci_area_set(struct device *dev, int cover_status)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
@@ -2935,7 +2964,8 @@ static int siw_hal_tci_area_set(struct device *dev, int cover_status)
 	if (qcover->x1 != ~0) {
 		siw_hal_tci_active_area(dev,
 				qcover->x1, qcover->y1,
-				qcover->x2, qcover->y2);
+				qcover->x2, qcover->y2,
+				0);
 		t_dev_info(dev, "lpwg active area - qcover %s\n", msg);
 	}
 
@@ -2995,13 +3025,15 @@ static int siw_hal_tci_control(struct device *dev, int type)
 	case ACTIVE_AREA_CTRL:
 		ret = siw_hal_tci_active_area(dev,
 					area->x1, area->y1,
-					area->x2, area->y2);
+					area->x2, area->y2,
+					type);
 		break;
 
 	case ACTIVE_AREA_RESET_CTRL:
 		ret = siw_hal_tci_active_area(dev,
 					rst_area->x1, rst_area->y1,
-					rst_area->x2, rst_area->y2);
+					rst_area->x2, rst_area->y2,
+					type);
 		break;
 
 	default:
@@ -3030,6 +3062,13 @@ static int siw_hal_lpwg_control(struct device *dev, int mode)
 		info1->intr_delay = 0;
 		info1->tap_distance = 10;
 
+		if (touch_senseless_margin(ts)) {
+			ret = siw_hal_tci_control(dev, ACTIVE_AREA_CTRL);
+			if (ret < 0) {
+				break;
+			}
+		}
+
 		ret = siw_hal_tci_knock(dev);
 		break;
 
@@ -3037,6 +3076,13 @@ static int siw_hal_lpwg_control(struct device *dev, int mode)
 		ts->tci.mode = 0x01 | (0x01 << 16);
 		info1->intr_delay = ts->tci.double_tap_check ? 68 : 0;
 		info1->tap_distance = 7;
+
+		if (touch_senseless_margin(ts)) {
+			ret = siw_hal_tci_control(dev, ACTIVE_AREA_CTRL);
+			if (ret < 0) {
+				break;
+			}
+		}
 
 		ret = siw_hal_tci_password(dev);
 		break;
