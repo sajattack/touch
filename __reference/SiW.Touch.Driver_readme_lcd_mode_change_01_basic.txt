@@ -1,0 +1,142 @@
+
+###################################################################################################
+# Preview                                                                                         #
+###################################################################################################
+
+The SiW AIT touch module basically consists of display and touch block
+and these two parts area related to each other for mode mngt.
+So, display driver and touch driver shall be connected and
+touch driver supports notifer chain for this mode control
+
+Rule 1. The display mode setup shall precede touch mode setup
+Rule 2. The mode status of two drivers shall be synchronized with each other
+
+
+###################################################################################################
+# Definitions                                                                                     #
+###################################################################################################
+
+enum {
+	LCD_MODE_U0 = 0,
+	LCD_MODE_U2_UNBLANK,
+	LCD_MODE_U2,
+	LCD_MODE_U3,
+	LCD_MODE_U3_PARTIAL,
+	LCD_MODE_U3_QUICKCOVER,
+	LCD_MODE_STOP,
+	LCD_MODE_MAX,
+};
+
+
+###################################################################################################
+# Procedure - Default                                                                             #
+###################################################################################################
+[Initial default : U3 mode]
+* In system booting, display probe shall precede touch probe
+
+Step-1. Initialize display mode (U3)
+
+Step-2. Initialize touch mode (U3)
+
+        <Log example>
+        ...
+        [...] siw_touch spi5.0: current driving mode is U3
+        [...] siw_touch spi5.0: DDI Display Mode[0021h] = 0x00000003
+        [...] siw_touch spi5.0: TC Driving[0C03h] wr 0x00000185
+        [...] siw_touch spi5.0: lpwg resume(1, 0): lcd_mode 3, driving_mode 3
+        ...
+
+* LPWG area set
+        In android framework, set lpwg active area via lpwg_notify sysfs attr
+        : echo 3 0 0 720 1280 > lpwg_notify -> siw_hal_lpwg
+               | | |  |   y2
+               | | |  x2
+               | | y1
+               | x1
+               code : 3 = LPWG_ACTIVE_AREA
+
+        <Log example>
+        ...
+        [...] siw_touch spi5.0: LPWG_ACTIVE_AREA: x1[0], y1[0], x2[720], y2[1280]
+        ...
+
+###################################################################################################
+# Procedure - U3 <-> U0                                                                           #
+###################################################################################################
+[Change to display off mode : U3 -> U0]
+
+Step-1. In android framework, set lpwg mode via lpwg_notify sysfs attr
+        : echo 9 1 0 1 0 > lpwg_notify -> siw_hal_lpwg (See Driver.Reg.Access.Table_yy.mm.dd.pdf)
+               | | | | qcover
+               | | | sensor
+               | | screen
+               | mode : 1 = (LPWG_DOUBLE_TAP)
+               code : 9 = LPWG_UPDATE_ALL
+
+        <Log example>
+        ...
+        [...] siw_touch spi5.0: LPWG_UPDATE_ALL: mode[1], screen[OFF], sensor[FAR], qcover[OPEN]
+        [...] siw_touch spi5.0: lpwg resume: mode 1, screen 0
+        ...
+
+Step-2. Set display mode to U0 in LCD driver
+
+Step-3. In LCD driver, Send U0 mode event to touch driver via notifier function
+        : touch_notifier_call_chain(LCD_EVENT_LCD_MODE, LCD_MODE_U0) --> siw_hal_notify
+
+        <Log example>
+        ...
+        [...] siw_touch 5-0028: notify: lcd_event: lcd mode
+        [...] siw_touch 5-0028: lcd_mode: 0 (prev: 3)
+        [...] siw_touch 5-0028: U0 mode change
+        ...
+        [...] siw_touch 5-0028: FB_BLANK
+        [...] siw_touch 5-0028: notify: event FB(Eh), value 1h
+        //siw_touch_suspend
+        [...] siw_touch 5-0028: touch core pm suspend start
+        [...] siw_touch 5-0028: lpwg suspend: mode 1, screen 0
+        [...] siw_touch 5-0028: TCI1-type:4
+        [...] siw_touch 5-0028: swipe disable
+        [...] siw_touch 5-0028: current driving mode is U0
+        [...] siw_touch 5-0028: DDI Display Mode[0021h] = 0x00000000
+        [...] siw_touch 5-0028: TC Driving[0C03h] wr 0x00000001
+        [...] siw_touch 5-0028: lpwg suspend(1, 0): lcd_mode 0, driving_mode 0
+        [...] siw_touch 5-0028: touch core pm suspend end(0)
+
+---------------------------------------------------------------------------------------------------
+[Change to display on mode : U0 -> U3]
+
+Step-1. Set display mode to U3 in LCD driver
+
+Step-2. In LCD driver, send U3 mode event to touch driver via notifier function
+        : touch_notifier_call_chain(LCD_EVENT_LCD_MODE, LCD_MODE_U3) --> siw_hal_notify
+
+        <Log example>
+        ...
+        [...] siw_touch 5-0028: notify: lcd_event: lcd mode
+        [...] siw_touch 5-0028: lcd_mode: 3 (prev: 0)
+        [...] siw_touch 5-0028: U3 mode change
+        ...
+        //siw_touch_resume
+        [...] siw_touch 5-0028: touch core pm resume start
+        [...] siw_touch 5-0028: touch core pm resume end(0)
+        //siw_touch_resume -> init_work
+        [...] siw_touch 5-0028: [T] chip id 4894, version v0.48 (0x040800030, 0x09)
+        [...] siw_touch 5-0028: [T] product id L0W53K6P, flash boot idle(done), crc ok (0x00000044)
+        [...] siw_touch 5-0028: lpwg resume: mode 1, screen 1
+        [...] siw_touch 5-0028: lpwg resume: screen
+        [...] siw_touch 5-0028: current driving mode is U3
+        [...] siw_touch 5-0028: DDI Display Mode[0021h] = 0x00000003
+        [...] siw_touch 5-0028: TC Driving[0C03h] wr 0x00000185
+        [...] siw_touch 5-0028: lpwg resume(1, 0): lcd_mode 3, driving_mode 3
+        [...] siw_touch 5-0028: LG4894 init done
+        ...
+
+---------------------------------------------------------------------------------------------------
+
+---------------------------------------------------------------------------------------------------
+
+---------------------------------------------------------------------------------------------------
+
+
+

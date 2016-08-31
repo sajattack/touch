@@ -1,0 +1,265 @@
+
+###################################################################################################
+# Preview                                                                                         #
+###################################################################################################
+
+The SiW AIT touch module basically consists of display and touch block
+and these two parts area related to each other for mode mngt.
+So, display driver and touch driver shall be connected and
+touch driver supports notifer chain for this mode control
+
+Rule 1. The display mode setup shall precede touch mode setup
+Rule 2. The mode status of two drivers shall be synchronized with each other
+
+
+###################################################################################################
+# Definitions                                                                                     #
+###################################################################################################
+
+enum {
+	LCD_MODE_U0 = 0,
+	LCD_MODE_U2_UNBLANK,
+	LCD_MODE_U2,
+	LCD_MODE_U3,
+	LCD_MODE_U3_PARTIAL,
+	LCD_MODE_U3_QUICKCOVER,
+	LCD_MODE_STOP,
+	LCD_MODE_MAX,
+};
+
+
+###################################################################################################
+# Procedure - Default                                                                             #
+###################################################################################################
+[Initial default : U3 mode]
+* In system booting, display probe shall precede touch probe
+
+Step-1. Initialize display mode (U3)
+
+Step-2. Initialize touch mode (U3)
+
+        <Log example>
+        ...
+        [...] siw_touch spi5.0: current driving mode is U3
+        [...] siw_touch spi5.0: DDI Display Mode[0021h] = 0x00000003
+        [...] siw_touch spi5.0: TC Driving[0C03h] wr 0x00000185
+        [...] siw_touch spi5.0: lpwg resume(1, 0): lcd_mode 3, driving_mode 3
+        ...
+
+* LPWG area set
+        In android framework, set lpwg active area via lpwg_notify sysfs attr
+        : echo 3 0 0 720 1280 > lpwg_notify -> siw_hal_lpwg
+               | | |  |   y2
+               | | |  x2
+               | | y1
+               | x1
+               code : 3 = LPWG_ACTIVE_AREA
+
+###################################################################################################
+# Procedure - U3 <-> U2(2nd screen)                                                               #
+###################################################################################################
+* Font download via watch layer shall be completed during system initialization
+  <Log example>
+  [...] siw_touch spi5.0: watch: font dn work: begins
+  [...] siw_touch spi5.0: watch: font dn work: id 0, size 5048
+  [...] siw_touch spi5.0: watch: font dn work: width_num 24, width_colon 12, height 50
+  [...] siw_touch spi5.0: watch: font dn work: input magic code 3EEAFEEBh[addr 000004EEh]
+  [...] siw_touch spi5.0: watch: font dn work: input crc 00000000h[addr 000004EFh]
+  [...] siw_touch spi5.0: watch: font dn work: result crc 2637E5B3h
+  [...] siw_touch spi5.0: watch: fotn dn work: font magic return check : 3EEAFEEBh
+  [...] siw_touch spi5.0: watch: fotn dn work: font crc return check : 2637E5B3h
+  [...] siw_touch spi5.0: watch: font dn work: done(5056)
+  ...
+
+[Change to main display off & 2nd screen on mode : U3 -> U3_PARTIAL -> U2]
+
+Step-1. In android framework, set lpwg mode via lpwg_notify sysfs attr
+        : echo 9 1 0 1 0 > lpwg_notify -> siw_hal_lpwg (See Driver.Reg.Access.Table_yy.mm.dd.pdf)
+               | | | | qcover
+               | | | sensor
+               | | screen
+               | mode : 1 = (LPWG_DOUBLE_TAP)
+               code : 9 = LPWG_UPDATE_ALL
+
+        <Log example>
+        ...
+        [...] siw_touch spi5.0: LPWG_UPDATE_ALL: mode[1], screen[OFF], sensor[FAR], qcover[OPEN]
+        [...] siw_touch spi5.0: lpwg resume: mode 1, screen 0
+        [...] siw_touch spi5.0: lpwg resume: partial
+        [...] siw_touch spi5.0: TCI1-type:4
+        [...] siw_touch spi5.0: current driving mode is U3_PARTIAL
+                                                        ~~~~~~~~~~
+        [...] siw_touch spi5.0: DDI Display Mode[0021h] = 0x00000003
+        [...] siw_touch spi5.0: TC Driving[0C03h] wr 0x00000385
+        [...] siw_touch spi5.0: lpwg resume(1, 0): lcd_mode 3, driving_mode 4
+        ...
+
+Step-2. Setup for 2nd screen via watch layer
+
+        <Log example>
+        ...
+        [...] siw_touch spi5.0: watch: time sync
+        [...] siw_touch spi5.0: watch: rtc off
+        [...] siw_touch spi5.0: watch: set time : 15:39:33, clk[32764 Hz], cnt 129
+        [...] siw_touch spi5.0: watch: rtc on
+        [...] siw_touch spi5.0: watch: state[0270h, 0087h] display 00:00:00, rtc 15:39:33
+        [...] siw_touch spi5.0: watch: display[0C1Bh] : on
+        ...
+
+Step-3. Set display mode to U2 in LCD driver
+
+Step-4. In LCD driver, send U2 mode event to touch driver via notifier function
+        : touch_notifier_call_chain(LCD_EVENT_LCD_MODE, LCD_MODE_U2) --> siw_hal_notify
+
+        <Log example>
+        ...
+        [...] siw_touch spi5.0: notify: lcd_event: lcd mode
+        [...] siw_touch spi5.0: lcd_mode: 2 (prev: 3)
+        [...] siw_touch spi5.0: U2 mode change
+        ...
+        [...] siw_touch spi5.0: FB_BLANK
+        [...] siw_touch spi5.0: notify: event FB(Eh), value 1h
+        //siw_touch_suspend
+        [...] siw_touch spi5.0: touch core pm suspend start
+        [...] siw_touch spi5.0: watch: state[0270h, 0087h] display 04:02:41, rtc 04:02:41
+        [...] siw_touch spi5.0: lpwg suspend: mode 1, screen 0
+        [...] siw_touch spi5.0: TCI1-type:4
+        [...] siw_touch spi5.0: swipe enabled
+        [...] siw_touch spi5.0: current driving mode is U2
+        [...] siw_touch spi5.0: DDI Display Mode[0021h] = 0x00000002
+        [...] siw_touch spi5.0: TC Driving[0C03h] wr 0x00000101
+        [...] siw_touch spi5.0: lpwg suspend(1, 0): lcd_mode 2, driving_mode 2
+        [...] siw_touch spi5.0: touch core pm suspend end(0)
+        ...
+
+---------------------------------------------------------------------------------------------------
+[Change to main display off & 2nd screen on mode : U2 -> U3]
+* when knock-on detected
+  [...] siw_touch spi5.0: LPWG: TOUCH_IRQ_KNOCK
+  [...] siw_touch spi5.0: LPWG data 423, 584
+  [...] siw_touch spi5.0: LPWG data 462, 570
+  [...] siw_touch spi5.0: TOUCH_GESTURE_WAKEUP=WAKEUP
+
+
+Step-1. In android framework, set lpwg mode via lpwg_notify sysfs attr
+        : echo 9 1 1 1 0 > lpwg_notify -> siw_hal_lpwg
+
+        <Log example>
+        ...
+        [...] siw_touch spi5.0: LPWG_UPDATE_ALL: mode[1], screen[ON], sensor[FAR], qcover[OPEN]
+        [...] siw_touch spi5.0: lpwg suspend: mode 1, screen 1
+        [...] siw_touch spi5.0: lpwg suspend: skip lpwg_mode
+        [...] siw_touch spi5.0: lpwg suspend(0, 0): lcd_mode 2, driving_mode 2
+        ...
+
+Step-2. In LCD driver, send U3 mode event to touch driver via notifier function
+        : touch_notifier_call_chain(LCD_EVENT_LCD_MODE, LCD_MODE_U3) --> siw_hal_notify
+
+        <Log example>
+        ...	
+        [...] siw_touch spi5.0: notify: lcd_event: lcd mode
+        [...] siw_touch spi5.0: lcd_mode: 3 (prev: 2)
+        [...] siw_touch spi5.0: U3 mode change
+        ...
+        //siw_touch_resume
+        [...] siw_touch spi5.0: watch: state[0270h, 0087h] display 00:00:00, rtc 00:00:00
+        [...] siw_touch spi5.0: touch core pm resume start
+        [...] siw_touch spi5.0: touch core pm resume end(0)
+        //siw_touch_resume -> init_work
+        [...] siw_touch spi5.0: [T] chip id 4895, version v1.11 (0x0408010B, 0x02)
+        [...] siw_touch spi5.0: [T] product id L0W49K5, flash boot idle(done), crc ok (0x00000044)
+        [...] siw_touch spi5.0: lpwg resume: mode 1, screen 1
+        [...] siw_touch spi5.0: lpwg resume: screen
+        [...] siw_touch spi5.0: current driving mode is U3
+        [...] siw_touch spi5.0: DDI Display Mode[0021h] = 0x00000003
+        [...] siw_touch spi5.0: TC Driving[0C03h] wr 0x00000185
+        [...] siw_touch spi5.0: lpwg resume(1, 0): lcd_mode 3, driving_mode 3
+        [...] siw_touch spi5.0: watch: init
+        [...] siw_touch spi5.0: watch: set mode: done
+        [...] siw_touch spi5.0: watch: set position: done
+        [...] siw_touch spi5.0: watch: display[0C1Bh] : on
+        [...] siw_touch spi5.0: watch: crc ok
+        [...] siw_touch spi5.0: LG4895 init done
+        ...
+
+###################################################################################################
+# Watch-related log example                                                                       #
+###################################################################################################
+
+//Initial
+[    0.644753] siw_touch spi5.0: watch name : ext_watch
+[    0.649897] siw_touch spi5.0: watch: font_preload: watch_font_image not defined, skip
+...
+[   27.958480] siw_touch spi5.0: watch: skip font property
+[   27.973879] lgd_lg4895_panel_watch_ctl_cmd_send : send lut info. through mipi command [39(29)]
+[   27.973950] lgd_lg4895_panel_watch_ctl_cmd_send : LUT[0] = 010101
+[   27.973966] lgd_lg4895_panel_watch_ctl_cmd_send : LUT[1] = 333333lgd_lg4895_panel_watch_ctl_cmd_send : LUT[2] = 686868
+[   27.974018] lgd_lg4895_panel_watch_ctl_cmd_send : LUT[3] = 9a9a9algd_lg4895_panel_watch_ctl_cmd_send : LUT[4] = f0f0f0
+[   27.974039] lgd_lg4895_panel_watch_ctl_cmd_send : LUT[5] = fffffflgd_lg4895_panel_watch_ctl_cmd_send : LUT[6] = cdcdcd
+[   28.154733] siw_touch spi5.0: watch: font dn work(0): begins
+[   28.154763] siw_touch spi5.0: watch: font dn work(0): id 0, size 5048
+[   28.154778] siw_touch spi5.0: watch: font dn work(0): width_num 24, width_colon 12, height 50
+[   28.154794] siw_touch spi5.0: watch: font dn work(0): input magic code 3EEAFEEBh[addr 000013B8h]
+[   28.154808] siw_touch spi5.0: watch: font dn work(0): input crc 00000000h[addr 000013BCh]
+[   28.154875] siw_touch spi5.0: watch: font dn work(0): result crc 2637E5B3h
+[   28.163104] siw_touch spi5.0: watch: font dn work(0): font magic return check : 3EEAFEEBh
+[   28.163320] siw_touch spi5.0: watch: font dn work(0): font crc return check : 2637E5B3h
+[   28.163430] siw_touch spi5.0: watch: font dn work(0): done(5056)
+
+//First display off & 2nd screen on (sleep)
+[   77.274966] siw_touch spi5.0: LPWG_UPDATE_ALL: mode[1], screen[OFF], sensor[FAR], qcover[OPEN]
+[   77.274995] siw_touch spi5.0: lpwg resume: mode 1, screen 0
+[   77.275013] siw_touch spi5.0: lpwg resume: partial
+[   77.275031] siw_touch spi5.0: TCI1-type:4
+[   77.276208] siw_touch spi5.0: lpwg_control mode = 1
+[   77.276317] siw_touch spi5.0: current driving mode is U3_PARTIAL
+[   77.276425] siw_touch spi5.0: DDI Display Mode[0021h] = 0x00000003
+[   77.276521] siw_touch spi5.0: TC Driving[0C03h] wr 0x00000385
+[   77.304707] siw_touch spi5.0: lpwg resume(1, 0): lcd_mode 3, driving_mode 4
+[   77.324839] siw_touch spi5.0: watch: time sync
+[   77.325249] siw_touch spi5.0: watch: rtc off
+[   77.325955] siw_touch spi5.0: watch: set time : 15:54:41, clk[32764 Hz], cnt 932
+[   77.326279] siw_touch spi5.0: watch: rtc on
+[   77.326779] siw_touch spi5.0: watch: state[0270h, 0087h] display 00:00:00, rtc 15:54:41
+[   77.327395] siw_touch spi5.0: watch: display[0C1Bh] : off
+[   77.540293] siw_touch spi5.0: watch: watch area: sx 522, ex 630, sy 9, ey 59
+[   77.540321] siw_touch spi5.0: watch: watch position: h10x 0, h1x 24, m10x 60, m1x 84, c1x 48
+[   77.557211] lgd_lg4895_panel_watch_ctl_cmd_send : send watch position(322,9) through mipi command [39(25)]
+[   77.558974] siw_touch spi5.0: watch: 24h mode off, zero dispaly off, HH:MM type, 12:00 mode
+[   77.559017] siw_touch spi5.0: watch: blink area [0 , 12] period off, watch display off
+[   77.559822] siw_touch spi5.0: watch: 24h mode off, zero dispaly off, HH:MM type, 12:00 mode
+[   77.559848] siw_touch spi5.0: watch: blink area [0 , 12] period off, watch display off
+[   77.560793] siw_touch spi5.0: watch: 24h mode off, zero dispaly off, HH:MM type, 12:00 mode
+[   77.560819] siw_touch spi5.0: watch: blink area [0 , 12] period off, watch display off
+[   77.562443] siw_touch spi5.0: watch: skip font property
+[   77.574532] lgd_lg4895_panel_watch_ctl_cmd_send : send lut info. through mipi command [39(29)]
+[   77.574558] lgd_lg4895_panel_watch_ctl_cmd_send : LUT[0] = 010101
+[   77.574573] lgd_lg4895_panel_watch_ctl_cmd_send : LUT[1] = 333333lgd_lg4895_panel_watch_ctl_cmd_send : LUT[2] = 686868
+[   77.574604] lgd_lg4895_panel_watch_ctl_cmd_send : LUT[3] = 9a9a9algd_lg4895_panel_watch_ctl_cmd_send : LUT[4] = f0f0f0
+[   77.574629] lgd_lg4895_panel_watch_ctl_cmd_send : LUT[5] = fffffflgd_lg4895_panel_watch_ctl_cmd_send : LUT[6] = cdcdcd
+[   77.575618] siw_touch spi5.0: watch: time sync
+[   77.575774] siw_touch spi5.0: watch: rtc off
+[   77.575998] siw_touch spi5.0: watch: set time : 03:54:42, clk[32764 Hz], cnt 308
+[   77.576096] siw_touch spi5.0: watch: rtc on
+[   77.576256] siw_touch spi5.0: watch: state[0270h, 0087h] display 15:54:42, rtc 15:54:42
+[   77.576365] siw_touch spi5.0: watch: display[0C1Bh] : off
+[   77.592276] siw_touch spi5.0: watch: skip font property
+[   77.607488] lgd_lg4895_panel_watch_ctl_cmd_send : send lut info. through mipi command [39(29)]
+[   77.607509] lgd_lg4895_panel_watch_ctl_cmd_send : LUT[0] = 010101
+[   77.607521] lgd_lg4895_panel_watch_ctl_cmd_send : LUT[1] = 333333lgd_lg4895_panel_watch_ctl_cmd_send : LUT[2] = 686868
+[   77.607542] lgd_lg4895_panel_watch_ctl_cmd_send : LUT[3] = 9a9a9algd_lg4895_panel_watch_ctl_cmd_send : LUT[4] = f0f0f0
+[   77.607564] lgd_lg4895_panel_watch_ctl_cmd_send : LUT[5] = fffffflgd_lg4895_panel_watch_ctl_cmd_send : LUT[6] = cdcdcd
+[   77.608600] siw_touch spi5.0: watch: set mode: done
+[   77.608698] siw_touch spi5.0: watch: set position: done
+[   77.608782] siw_touch spi5.0: watch: display[0C1Bh] : on
+[   77.608798] siw_touch spi5.0: watch: Power ON(1)
+[   78.444701] siw_touch spi5.0: watch: state[0270h, 0087h] display 15:54:42, rtc 15:54:42
+
+---------------------------------------------------------------------------------------------------
+
+---------------------------------------------------------------------------------------------------
+
+---------------------------------------------------------------------------------------------------
+
+
+
