@@ -3649,7 +3649,28 @@ static const char *prd_app_mode_str[] = {
 	[REPORT_BASE]		= "BASE",
 	[REPORT_LABEL]		= "LABEL",
 	[REPORT_DELTA]		= "DELTA",
+	[REPORT_DEBUG_BUF]	= "DEBUG_BUF",
 };
+
+static ssize_t prd_show_app_op_end(struct device *dev, char *buf, int prev_mode)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	struct siw_hal_prd_data *prd = (struct siw_hal_prd_data *)ts->prd;
+	int ret = 0;
+
+	buf[0] = REPORT_END_RS_OK;
+	if (prev_mode != REPORT_OFF) {
+		prd->prd_app_mode = REPORT_OFF;
+		ret = prd_start_firmware(prd);
+		if (ret < 0) {
+			t_prd_err(prd, "prd_start_firmware failed, %d\n", ret);
+			buf[0] = REPORT_END_RS_NG;
+		}
+	}
+
+	return 1;
+}
 
 static ssize_t prd_show_app_operator(struct device *dev, char *buf, int mode)
 {
@@ -3659,31 +3680,24 @@ static ssize_t prd_show_app_operator(struct device *dev, char *buf, int mode)
 	u8 *pbuf = (u8 *)prd->m2_buf_odd_rawdata;
 	int size = (PRD_M2_ROW_COL_SIZE<<1);
 	int flag = PRD_SHOW_FLAG_DISABLE_PRT_RAW;
-	int ret = 0;
+	int prev_mode = prd->prd_app_mode;
+//	int ret = 0;
 
-	t_prd_info(prd, "show app mode : %s(%d), 0x%X\n",
-			prd_app_mode_str[mode], mode, flag);
+	if (mode < REPORT_MAX) {
+		t_prd_info(prd, "show app mode : %s(%d), 0x%X\n",
+				prd_app_mode_str[mode], mode, flag);
+	}
 
 	if (mode == REPORT_OFF) {
-		if (prd->prd_app_mode != REPORT_OFF) {
-			prd->prd_app_mode = REPORT_OFF;
-			ret = prd_start_firmware(prd);
-			if (ret < 0) {
-				t_prd_err(prd, "prd_start_firmware failed, %d\n", ret);
-				buf[0] = REPORT_END_RS_NG;
-			} else {
-				buf[0] = REPORT_END_RS_OK;
-			}
-		}
-		size = 1;
-
+		size = prd_show_app_op_end(dev, buf, prev_mode);
 		siw_touch_mon_resume(dev);
 		goto out;
 	}
 
-	siw_touch_mon_pause(dev);
-
-	prd->prd_app_mode = mode;
+	if (mode < REPORT_MAX) {
+		siw_touch_mon_pause(dev);
+		prd->prd_app_mode = mode;
+	}
 
 	switch (mode) {
 	case REPORT_RAW:
@@ -3706,8 +3720,11 @@ static ssize_t prd_show_app_operator(struct device *dev, char *buf, int mode)
 		prd_show_prd_get_data_do_debug_buf(dev, pbuf, size, flag);
 		break;
 	default:
-		prd->prd_app_mode = REPORT_OFF;
 		t_prd_err(prd, "unknown mode, %d\n", mode);
+		if (prev_mode != REPORT_OFF) {
+			prd_show_app_op_end(dev, buf, prev_mode);
+			siw_touch_mon_resume(dev);
+		}
 		size = 0;
 		break;
 	}
