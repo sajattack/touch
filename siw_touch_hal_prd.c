@@ -3771,6 +3771,16 @@ static ssize_t prd_show_app_end(struct device *dev, char *buf)
 	return prd_show_app_operator(dev, buf, REPORT_OFF);
 }
 
+static ssize_t prd_show_app_info(struct device *dev, char *buf)
+{
+	memset(buf, 0, 8);
+
+	buf[0] = PRD_ROW_SIZE;
+	buf[1] = PRD_COL_SIZE;
+
+	return 8;
+}
+
 
 #if defined(__SIW_ATTR_PERMISSION_ALL)
 #define __TOUCH_PRD_PERM	(S_IRUGO | S_IWUGO)
@@ -3801,6 +3811,7 @@ static SIW_TOUCH_HAL_PRD_ATTR(prd_app_label, prd_show_app_label, NULL);
 static SIW_TOUCH_HAL_PRD_ATTR(prd_app_delta, prd_show_app_delta, NULL);
 static SIW_TOUCH_HAL_PRD_ATTR(prd_app_debug_buf, prd_show_app_debug_buf, NULL);
 static SIW_TOUCH_HAL_PRD_ATTR(prd_app_end, prd_show_app_end, NULL);
+static SIW_TOUCH_HAL_PRD_ATTR(prd_app_info, prd_show_app_info, NULL);
 
 static struct attribute *siw_hal_prd_attribute_list[] = {
 	&_SIW_TOUCH_HAL_PRD_T(sd).attr,
@@ -3819,6 +3830,7 @@ static struct attribute *siw_hal_prd_attribute_list[] = {
 	&_SIW_TOUCH_HAL_PRD_T(prd_app_delta).attr,
 	&_SIW_TOUCH_HAL_PRD_T(prd_app_debug_buf).attr,
 	&_SIW_TOUCH_HAL_PRD_T(prd_app_end).attr,
+	&_SIW_TOUCH_HAL_PRD_T(prd_app_info).attr,
 	NULL,
 };
 
