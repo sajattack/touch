@@ -2606,7 +2606,9 @@ static int ext_watch_create_sysfs(struct device *dev)
 		watch->type = WATCH_TYPE_1;
 		break;
 	case CHIP_LG4895:
-		watch->flag = WATCH_FLAG_SKIP_GET_MODE | WATCH_FLAG_SKIP_LUT_UPDATE;
+		watch->flag = WATCH_FLAG_SKIP_GET_MODE |	\
+					WATCH_FLAG_SKIP_SET_MODE |	\
+					WATCH_FLAG_SKIP_LUT_UPDATE;
 		break;
 	}
 
