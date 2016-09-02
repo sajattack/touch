@@ -571,6 +571,7 @@ static int ext_watch_get_position(struct device *dev, char *buf, int *len)
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
 	struct siw_hal_reg *reg = chip->reg;
+	struct touch_xfer_msg *xfer = ts->xfer;
 	struct watch_data *watch = (struct watch_data *)chip->watch;
 	struct ext_watch_cfg_position *position_r = &watch->state.position_r;
 	struct ext_watch_cfg_status *status_r = &watch->state.status_r;
@@ -590,20 +591,17 @@ static int ext_watch_get_position(struct device *dev, char *buf, int *len)
 	if (len)
 		buflen = *len;
 
-	{
-		struct touch_xfer_msg *xfer = ts->xfer;
+	siw_hal_xfer_init(dev, xfer);
 
-		siw_hal_xfer_init(dev, xfer);
+	siw_hal_xfer_add_rx(xfer,
+			reg->ext_watch_position_r,
+			(void *)position_r, sizeof(u32)*3);
 
-		siw_hal_xfer_add_rx(xfer,
-				reg->ext_watch_position_r,
-				(void *)position_r, sizeof(u32)*3);
+	siw_hal_xfer_add_rx(xfer,
+			reg->ext_watch_state,
+			(void *)status_r, sizeof(u32));
 
-		siw_hal_xfer_add_rx(xfer,
-				reg->ext_watch_state,
-				(void *)status_r, sizeof(u32));
-	}
-	ret = siw_hal_xfer_msg(dev, ts->xfer);
+	ret = siw_hal_xfer_msg(dev, xfer);
 	if (ret < 0) {
 		goto out;
 	}
@@ -661,6 +659,7 @@ static int ext_watch_get_curr_time(struct device *dev, char *buf, int *len)
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
 	struct siw_hal_reg *reg = chip->reg;
+	struct touch_xfer_msg *xfer = ts->xfer;
 	struct watch_data *watch = (struct watch_data *)chip->watch;
 	struct ext_watch_bits_time *rtc_ctst = &watch->ext_wdata.time.rtc_ctst;
 	struct ext_watch_cfg_status status = {0, 0};
@@ -680,20 +679,17 @@ static int ext_watch_get_curr_time(struct device *dev, char *buf, int *len)
 	if (len)
 		buflen = *len;
 
-	{
-		struct touch_xfer_msg *xfer = ts->xfer;
+	siw_hal_xfer_init(dev, xfer);
 
-		siw_hal_xfer_init(dev, xfer);
+	siw_hal_xfer_add_rx(xfer,
+			reg->ext_watch_state,
+			(void *)&status, sizeof(u32));
 
-		siw_hal_xfer_add_rx(xfer,
-				reg->ext_watch_state,
-				(void *)&status, sizeof(u32));
+	siw_hal_xfer_add_rx(xfer,
+			reg->ext_watch_rtc_ctst,
+			(void *)rtc_ctst, sizeof(u32));
 
-		siw_hal_xfer_add_rx(xfer,
-				reg->ext_watch_rtc_ctst,
-				(void *)rtc_ctst, sizeof(u32));
-	}
-	ret = siw_hal_xfer_msg(dev, ts->xfer);
+	ret = siw_hal_xfer_msg(dev, xfer);
 	if (ret < 0) {
 		goto out;
 	}
@@ -847,6 +843,7 @@ static int ext_watch_set_curr_time(struct device *dev)
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
 	struct siw_hal_reg *reg = chip->reg;
+	struct touch_xfer_msg *xfer = ts->xfer;
 	struct watch_data *watch = (struct watch_data *)chip->watch;
 	struct ext_watch_cfg_time *time = &watch->ext_wdata.time;
 //	struct ext_watch_cfg_status status = {0, 0};
@@ -864,24 +861,21 @@ static int ext_watch_set_curr_time(struct device *dev)
 		goto out;
 	}
 
-	{
-		struct touch_xfer_msg *xfer = ts->xfer;
+	siw_hal_xfer_init(dev, xfer);
 
-		siw_hal_xfer_init(dev, xfer);
+	siw_hal_xfer_add_tx(xfer,
+			reg->ext_watch_rtc_sct,
+			(void *)&time->rtc_sct, sizeof(u32));
 
-		siw_hal_xfer_add_tx(xfer,
-				reg->ext_watch_rtc_sct,
-				(void *)&time->rtc_sct, sizeof(u32));
+	siw_hal_xfer_add_tx(xfer,
+			reg->ext_watch_rtc_sctcnt,
+			(void *)&rtc_sctcnt, sizeof(u32));
 
-		siw_hal_xfer_add_tx(xfer,
-				reg->ext_watch_rtc_sctcnt,
-				(void *)&rtc_sctcnt, sizeof(u32));
+	siw_hal_xfer_add_tx(xfer,
+			reg->ext_watch_rtc_ecnt,
+			(void *)&rtc_ctrl, sizeof(u32));
 
-		siw_hal_xfer_add_tx(xfer,
-				reg->ext_watch_rtc_ecnt,
-				(void *)&rtc_ctrl, sizeof(u32));
-	}
-	ret = siw_hal_xfer_msg(dev, ts->xfer);
+	ret = siw_hal_xfer_msg(dev, xfer);
 	if (ret < 0) {
 		goto out;
 	}
