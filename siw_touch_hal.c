@@ -1636,31 +1636,29 @@ static void siw_hal_lcd_event_read_reg(struct device *dev)
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
 	struct siw_hal_reg *reg = chip->reg;
+	struct touch_xfer_msg *xfer = ts->xfer;
 	u32 rdata[5] = {0, 0};
 	int ret = 0;
 
-	{
-		struct touch_xfer_msg *xfer = ts->xfer;
+	siw_hal_xfer_init(dev, xfer);
 
-		siw_hal_xfer_init(dev, xfer);
+	siw_hal_xfer_add_rx(xfer,
+			reg->tc_ic_status,
+			(void *)&rdata[0], sizeof(rdata[0]));
+	siw_hal_xfer_add_rx(xfer,
+			reg->tc_status,
+			(void *)&rdata[1], sizeof(rdata[1]));
+	siw_hal_xfer_add_rx(xfer,
+			reg->spr_subdisp_status,
+			(void *)&rdata[2], sizeof(rdata[2]));
+	siw_hal_xfer_add_rx(xfer,
+			reg->tc_version,
+			(void *)&rdata[3], sizeof(rdata[3]));
+	siw_hal_xfer_add_rx(xfer,
+			reg->spr_chip_id,
+			(void *)&rdata[4], sizeof(rdata[4]));
 
-		siw_hal_xfer_add_rx(xfer,
-				reg->tc_ic_status,
-				(void *)&rdata[0], sizeof(rdata[0]));
-		siw_hal_xfer_add_rx(xfer,
-				reg->tc_status,
-				(void *)&rdata[1], sizeof(rdata[1]));
-		siw_hal_xfer_add_rx(xfer,
-				reg->spr_subdisp_status,
-				(void *)&rdata[2], sizeof(rdata[2]));
-		siw_hal_xfer_add_rx(xfer,
-				reg->tc_version,
-				(void *)&rdata[3], sizeof(rdata[3]));
-		siw_hal_xfer_add_rx(xfer,
-				reg->spr_chip_id,
-				(void *)&rdata[4], sizeof(rdata[4]));
-	}
-	ret = siw_hal_xfer_msg(dev, ts->xfer);
+	ret = siw_hal_xfer_msg(dev, xfer);
 	if (ret < 0) {
 		t_dev_err(dev, "xfer failed, %d\n", ret);
 		return;
