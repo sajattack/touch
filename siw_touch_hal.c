@@ -623,19 +623,6 @@ static int __used __siw_hal_do_xfer_msg(struct device *dev, struct touch_xfer_ms
 	return ret;
 }
 
-static int __used __siw_hal_xfer_msg(struct device *dev, struct touch_xfer_msg *xfer)
-{
-	struct siw_touch_chip *chip = to_touch_chip(dev);
-	int ret = 0;
-
-	mutex_lock(&chip->bus_lock);
-	ret = __siw_hal_do_xfer_msg(dev, xfer);
-	mutex_unlock(&chip->bus_lock);
-
-	return ret;
-}
-
-
 int siw_hal_read_value(struct device *dev, u32 addr, u32 *value)
 {
 	int ret = __siw_hal_reg_read(dev, addr, value, sizeof(u32));
@@ -680,7 +667,19 @@ void siw_hal_xfer_init(struct device *dev, void *xfer_data)
 	mutex_lock(&chip->bus_lock);
 	xfer->bits_per_word = 8;
 	xfer->msg_count = 0;
+//	mutex_unlock(&chip->bus_lock);
+}
+
+int siw_hal_xfer_msg(struct device *dev, struct touch_xfer_msg *xfer)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	int ret = 0;
+
+//	mutex_lock(&chip->bus_lock);
+	ret = __siw_hal_do_xfer_msg(dev, xfer);
 	mutex_unlock(&chip->bus_lock);
+
+	return ret;
 }
 
 void siw_hal_xfer_add_rx(void *xfer_data, u32 reg, void *buf, u32 size)
@@ -749,11 +748,6 @@ void siw_hal_xfer_add_tx_seq(void *xfer_data, u32 reg, u32 *data, int cnt)
 				reg + i,
 				(void *)&(data[i]), sizeof(u32));
 	}
-}
-
-int siw_hal_xfer_msg(struct device *dev, struct touch_xfer_msg *xfer)
-{
-	return __siw_hal_xfer_msg(dev, xfer);
 }
 
 int siw_hal_xfer_rx_seq(struct device *dev, u32 reg, u32 *data, int cnt)
