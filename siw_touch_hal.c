@@ -689,7 +689,7 @@ void siw_hal_xfer_add_rx(void *xfer_data, u32 reg, void *buf, u32 size)
 	struct touch_xfer_data_t *tx = &xfer->data[xfer->msg_count].tx;
 
 	if (xfer->msg_count >= SIW_TOUCH_MAX_XFER_COUNT) {
-		t_pr_err("msg_count overflow\n");
+		t_pr_err("touch xfer msg_count overflow (rx)\n");
 		return;
 	}
 
@@ -704,18 +704,6 @@ void siw_hal_xfer_add_rx(void *xfer_data, u32 reg, void *buf, u32 size)
 	xfer->msg_count++;
 }
 
-void siw_hal_xfer_add_rx_seq(void *xfer_data, u32 reg, u32 *data, int cnt)
-{
-	struct touch_xfer_msg *xfer = xfer_data;
-	int i;
-
-	for (i = 0; i < cnt; i++) {
-		siw_hal_xfer_add_rx(xfer,
-				reg + i,
-				(void *)&(data[i]), sizeof(u32));
-	}
-}
-
 void siw_hal_xfer_add_tx(void *xfer_data, u32 reg, void *buf, u32 size)
 {
 	struct touch_xfer_msg *xfer = xfer_data;
@@ -723,7 +711,7 @@ void siw_hal_xfer_add_tx(void *xfer_data, u32 reg, void *buf, u32 size)
 	struct touch_xfer_data_t *tx = &xfer->data[xfer->msg_count].tx;
 
 	if (xfer->msg_count >= SIW_TOUCH_MAX_XFER_COUNT) {
-		t_pr_err("msg_count overflow\n");
+		t_pr_err("touch xfer msg_count overflow (tx)\n");
 		return;
 	}
 
@@ -736,38 +724,6 @@ void siw_hal_xfer_add_tx(void *xfer_data, u32 reg, void *buf, u32 size)
 	tx->size = size;
 
 	xfer->msg_count++;
-}
-
-void siw_hal_xfer_add_tx_seq(void *xfer_data, u32 reg, u32 *data, int cnt)
-{
-	struct touch_xfer_msg *xfer = xfer_data;
-	int i;
-
-	for (i = 0; i < cnt; i++) {
-		siw_hal_xfer_add_tx(xfer,
-				reg + i,
-				(void *)&(data[i]), sizeof(u32));
-	}
-}
-
-int siw_hal_xfer_rx_seq(struct device *dev, u32 reg, u32 *data, int cnt)
-{
-	struct siw_ts *ts = to_touch_core(dev);
-	struct touch_xfer_msg *xfer = ts->xfer;
-
-	siw_hal_xfer_init(dev, xfer);
-	siw_hal_xfer_add_rx_seq(xfer, reg, data, cnt);
-	return siw_hal_xfer_msg(dev, xfer);
-}
-
-int siw_hal_xfer_tx_seq(struct device *dev, u32 reg, u32 *data, int cnt)
-{
-	struct siw_ts *ts = to_touch_core(dev);
-	struct touch_xfer_msg *xfer = ts->xfer;
-
-	siw_hal_xfer_init(dev, xfer);
-	siw_hal_xfer_add_tx_seq(xfer, reg, data, cnt);
-	return siw_hal_xfer_msg(dev, xfer);
 }
 
 static int siw_hal_cmd_write(struct device *dev, u8 cmd)
@@ -2893,15 +2849,9 @@ static void siw_hal_set_debug_reason(struct device *dev, int type)
 	wdata[1] = TCI_DEBUG_ALL;
 	t_dev_info(dev, "TCI%d-type:%d\n", type + 1, wdata[0]);
 
-#if 1
-	siw_hal_xfer_tx_seq(dev,
-			reg->tci_fail_debug_w,
-			(u32 *)wdata, ARRAY_SIZE(wdata));
-#else
 	siw_hal_reg_write(dev,
 			reg->tci_fail_debug_w,
 			(void *)wdata, sizeof(wdata));
-#endif
 }
 
 static int siw_hal_tci_knock(struct device *dev)
@@ -2932,15 +2882,9 @@ static int siw_hal_tci_knock(struct device *dev)
 	t_dev_dbg_base(dev, "lpwg_data[5] : %08Xh\n", lpwg_data[5]);
 	t_dev_dbg_base(dev, "lpwg_data[6] : %08Xh\n", lpwg_data[6]);
 
-#if 1
-	ret = siw_hal_xfer_tx_seq(dev,
-				reg->tci_enable_w,
-				(u32 *)lpwg_data, ARRAY_SIZE(lpwg_data));
-#else
 	ret = siw_hal_reg_write(dev,
 				reg->tci_enable_w,
 				(void *)lpwg_data, sizeof(lpwg_data));
-#endif
 
 	return ret;
 }
@@ -3239,15 +3183,9 @@ static int siw_hal_swipe_active_area(struct device *dev)
 	active_area[2] = (right->area.x2) | (left->area.x2 << 16);
 	active_area[3] = (right->area.y2) | (left->area.y2 << 16);
 
-#if 1
-	ret = siw_hal_xfer_tx_seq(dev,
-				reg->swipe_act_area_x1_w,
-				(u32 *)active_area, ARRAY_SIZE(active_area));
-#else
 	ret = siw_hal_reg_write(dev,
 				reg->swipe_act_area_x1_w,
 				(void *)active_area, sizeof(active_area));
-#endif
 
 	return ret;
 }
@@ -3340,15 +3278,9 @@ static int siw_hal_swipe_mode(struct device *dev, int mode)
 	swipe_data[9] = (right->area.x2) | (left->area.x2 << 16);
 	swipe_data[10] = (right->area.y2) | (left->area.y2 << 16);
 
-#if 1
-	ret = siw_hal_xfer_tx_seq(dev,
-				reg->swipe_enable_w,
-				(u32 *)swipe_data, ARRAY_SIZE(swipe_data));
-#else
 	ret = siw_hal_reg_write(dev,
 				reg->swipe_enable_w,
 				(void *)swipe_data, sizeof(swipe_data));
-#endif
 	if (ret >= 0) {
 		t_dev_info(dev, "swipe enabled\n");
 	}
