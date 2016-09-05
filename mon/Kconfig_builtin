@@ -1,4 +1,5 @@
 menu "SiW Touch Monitor"
+	depends on TOUCHSCREEN_SIW
 
 config TOUCHSCREEN_SIWMON
 	bool "Silicon Works Touch Driver Monitor"
