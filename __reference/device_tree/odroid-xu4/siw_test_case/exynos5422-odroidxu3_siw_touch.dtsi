@@ -173,7 +173,7 @@
 
 		// Caps
 		max_x = <720>;
-		max_y = <1280>;
+		max_y = <1360>;				// 1280 + 80(top-side 2nd scr)
 		max_pressure = <0xff>;
 		max_width = <15>;
 		max_orientation = <1>;

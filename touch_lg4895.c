@@ -93,7 +93,7 @@
 #if !defined(__SIW_CONFIG_OF)	//See siw_touch_cfg.h
 enum CHIP_CAPABILITY {
 	CHIP_MAX_X			= 720,
-	CHIP_MAX_Y			= 1280,
+	CHIP_MAX_Y			= 1360,		//1280 + 80(top-side 2nd scr)
 	CHIP_MAX_PRESSURE	= 255,
 	CHIP_MAX_WIDTH		= 15,
 	CHIP_MAX_ORI		= 1,
