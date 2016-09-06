@@ -145,6 +145,73 @@ enum {
 #define __PRD_COL_SIZE		1
 #endif
 
+#if defined(CONFIG_TOUCHSCREEN_SIW_SW1828)
+#define __PRD_APP_DEBUG_BUF 	0
+#else
+#define __PRD_APP_DEBUG_BUF 	1
+#endif
+
+enum {
+	PRD_SYS_EN_IDX_SD = 0,
+	PRD_SYS_EN_IDX_DELTA,
+	PRD_SYS_EN_IDX_LABEL,
+	PRD_SYS_EN_IDX_RAWDATA_PRD,
+	PRD_SYS_EN_IDX_RAWDATA_TCM,
+	PRD_SYS_EN_IDX_RAWDATA_AIT,
+	PRD_SYS_EN_IDX_BASE,
+	PRD_SYS_EN_IDX_DEBUG_BUF,
+	PRD_SYS_EN_IDX_LPWG_SD,
+	PRD_SYS_EN_IDX_FILE_TEST,
+	PRD_SYS_EN_IDX_APP_RAW,
+	PRD_SYS_EN_IDX_APP_BASE,
+	PRD_SYS_EN_IDX_APP_LABEL,
+	PRD_SYS_EN_IDX_APP_DELTA,
+	PRD_SYS_EN_IDX_APP_DEBUG_BUF,
+	PRD_SYS_EN_IDX_APP_END,
+	PRD_SYS_EN_IDX_APP_INFO,
+	//
+	PRD_SYS_ATTR_MAX,
+};
+
+enum {
+	PRD_SYS_EN_SD					= (1<<PRD_SYS_EN_IDX_SD),
+	PRD_SYS_EN_DELTA				= (1<<PRD_SYS_EN_IDX_DELTA),
+	PRD_SYS_EN_LABEL				= (1<<PRD_SYS_EN_IDX_LABEL),
+	PRD_SYS_EN_RAWDATA_PRD			= (1<<PRD_SYS_EN_IDX_RAWDATA_PRD),
+	PRD_SYS_EN_RAWDATA_TCM			= (1<<PRD_SYS_EN_IDX_RAWDATA_TCM),
+	PRD_SYS_EN_RAWDATA_AIT			= (1<<PRD_SYS_EN_IDX_RAWDATA_AIT),
+	PRD_SYS_EN_BASE					= (1<<PRD_SYS_EN_IDX_BASE),
+	PRD_SYS_EN_DEBUG_BUF			= (__PRD_APP_DEBUG_BUF<<PRD_SYS_EN_IDX_DEBUG_BUF),
+	PRD_SYS_EN_LPWG_SD				= (1<<PRD_SYS_EN_IDX_LPWG_SD),
+	PRD_SYS_EN_FILE_TEST			= (1<<PRD_SYS_EN_IDX_FILE_TEST),
+	PRD_SYS_EN_APP_RAW				= (1<<PRD_SYS_EN_IDX_APP_RAW),
+	PRD_SYS_EN_APP_BASE				= (1<<PRD_SYS_EN_IDX_APP_BASE),
+	PRD_SYS_EN_APP_LABEL			= (1<<PRD_SYS_EN_IDX_APP_LABEL),
+	PRD_SYS_EN_APP_DELTA			= (1<<PRD_SYS_EN_IDX_APP_DELTA),
+	PRD_SYS_EN_APP_DEBUG_BUF		= (__PRD_APP_DEBUG_BUF<<PRD_SYS_EN_IDX_APP_DEBUG_BUF),
+	PRD_SYS_EN_APP_END				= (1<<PRD_SYS_EN_IDX_APP_END),
+	PRD_SYS_EN_APP_INFO				= (1<<PRD_SYS_EN_IDX_APP_INFO),
+};
+
+#define PRD_SYS_ATTR_EN_FLAG 		(0 |	\
+									PRD_SYS_EN_SD |	\
+									PRD_SYS_EN_DELTA |	\
+									PRD_SYS_EN_LABEL |	\
+									PRD_SYS_EN_RAWDATA_PRD |	\
+									PRD_SYS_EN_RAWDATA_TCM |	\
+									PRD_SYS_EN_RAWDATA_AIT |	\
+									PRD_SYS_EN_BASE |	\
+									PRD_SYS_EN_DEBUG_BUF |	\
+									PRD_SYS_EN_LPWG_SD |	\
+									PRD_SYS_EN_FILE_TEST |	\
+									PRD_SYS_EN_APP_RAW |	\
+									PRD_SYS_EN_APP_BASE |	\
+									PRD_SYS_EN_APP_LABEL |	\
+									PRD_SYS_EN_APP_DELTA | 	\
+									PRD_SYS_EN_APP_DEBUG_BUF |	\
+									PRD_SYS_EN_APP_END |	\
+									PRD_SYS_EN_APP_INFO |	\
+									0)
 /*
  * define M1_M2_RAWDATA_TEST_CNT
  * if you have odd/even frame setting num 2
@@ -3773,10 +3840,17 @@ static ssize_t prd_show_app_end(struct device *dev, char *buf)
 
 static ssize_t prd_show_app_info(struct device *dev, char *buf)
 {
+	u32 temp = PRD_SYS_ATTR_EN_FLAG;
+
 	memset(buf, 0, 8);
 
 	buf[0] = PRD_ROW_SIZE;
 	buf[1] = PRD_COL_SIZE;
+
+	buf[4] = (temp & 0xff);
+	buf[5] = ((temp >> 8) & 0xff);
+	buf[6] = ((temp >> 16) & 0xff);
+	buf[7] = ((temp >> 24) & 0xff);
 
 	return 8;
 }
@@ -3813,7 +3887,11 @@ static SIW_TOUCH_HAL_PRD_ATTR(prd_app_debug_buf, prd_show_app_debug_buf, NULL);
 static SIW_TOUCH_HAL_PRD_ATTR(prd_app_end, prd_show_app_end, NULL);
 static SIW_TOUCH_HAL_PRD_ATTR(prd_app_info, prd_show_app_info, NULL);
 
-static struct attribute *siw_hal_prd_attribute_list[] = {
+static struct attribute *siw_hal_prd_attribute_list_all[] = {
+	/*
+	 * [Caution]
+	 * Do not touch this ordering
+	 */
 	&_SIW_TOUCH_HAL_PRD_T(sd).attr,
 	&_SIW_TOUCH_HAL_PRD_T(delta).attr,
 	&_SIW_TOUCH_HAL_PRD_T(label).attr,
@@ -3834,9 +3912,50 @@ static struct attribute *siw_hal_prd_attribute_list[] = {
 	NULL,
 };
 
+static struct attribute *siw_hal_prd_attribute_list[PRD_SYS_ATTR_MAX + 1];
+
 static const struct attribute_group __used siw_hal_prd_attribute_group = {
 	.attrs = siw_hal_prd_attribute_list,
 };
+
+static int siw_hal_prd_create_group(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	struct kobject *kobj = &ts->kobj;
+	struct attribute **attr_total = siw_hal_prd_attribute_list_all;
+	struct attribute **attr_actual = siw_hal_prd_attribute_list;
+	int sysfs_flag = PRD_SYS_ATTR_EN_FLAG;
+	int i = 0;
+	int j = 0;
+	int ret = 0;
+
+	memset(siw_hal_prd_attribute_list, 0, sizeof(siw_hal_prd_attribute_list));
+
+	for(i = 0; i < PRD_SYS_ATTR_MAX; i++){
+		if (sysfs_flag & 0x1){
+			attr_actual[j] = attr_total[i];
+			j++;
+		} else {
+			t_dev_dbg_base(dev, "prd sysfs %d(%s) not supported\n",
+				i, attr_total[i]->name);
+		}
+		sysfs_flag >>= 1;
+	}
+
+	ret = sysfs_create_group(kobj, &siw_hal_prd_attribute_group);
+
+	return ret;
+}
+
+static void siw_hal_prd_remove_group(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	struct kobject *kobj = &ts->kobj;
+
+	sysfs_remove_group(kobj, &siw_hal_prd_attribute_group);
+}
 
 static struct siw_hal_prd_data *siw_hal_prd_alloc(struct device *dev)
 {
@@ -3898,7 +4017,7 @@ static int siw_hal_prd_create_sysfs(struct device *dev)
 		goto out;
 	}
 
-	ret = sysfs_create_group(kobj, &siw_hal_prd_attribute_group);
+	ret = siw_hal_prd_create_group(dev);
 	if (ret < 0) {
 		t_dev_err(dev, "%s prd sysfs register failed, %d\n",
 				touch_chip_name(ts), ret);
@@ -3932,7 +4051,7 @@ static void siw_hal_prd_remove_sysfs(struct device *dev)
 		return;
 	}
 
-	sysfs_remove_group(kobj, &siw_hal_prd_attribute_group);
+	siw_hal_prd_remove_group(dev);
 
 	siw_hal_prd_free(dev);
 
