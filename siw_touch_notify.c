@@ -214,8 +214,7 @@ static int _siw_touch_do_notify(struct siw_ts *ts,
 	return ret;
 }
 
-static int siw_touch_notify(struct siw_ts *ts,
-				   unsigned long event, void *data)
+int siw_touch_notify(struct siw_ts *ts, unsigned long event, void *data)
 {
 	int ret = 0;
 

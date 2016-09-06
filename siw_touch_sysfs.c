@@ -984,6 +984,31 @@ out:
 	return count;
 }
 
+extern int siw_touch_notify(struct siw_ts *ts, unsigned long event, void *data);
+
+static ssize_t _store_dbg_notify(struct device *dev,
+				const char *buf, size_t count)
+{
+	struct siw_ts *ts = to_touch_core(dev);
+	int value[3] = { 0, };
+
+	if (sscanf(buf, "%X %X %X",
+			&value[0], &value[1], &value[2]) <= 0) {
+		siw_sysfs_err_invalid_param(dev);
+		return count;
+	}
+
+	if (value[0] != 0x5A) {	//magic code
+		goto out;
+	}
+
+	siw_touch_notify(ts,
+		(unsigned long)value[1], (void *)&value[2]);
+
+out:
+	return count;
+}
+
 
 #define SIW_TOUCH_ATTR(_name, _show, _store)	\
 		TOUCH_ATTR(_name, _show, _store)
@@ -1070,6 +1095,9 @@ static SIW_TOUCH_ATTR(irq_flag,
 						_store_irq_flag);
 static SIW_TOUCH_ATTR(init_late, NULL,
 						_store_init_late);
+static SIW_TOUCH_ATTR(dbg_notify, NULL,
+						_store_dbg_notify);
+
 
 static struct attribute *siw_touch_attribute_list[] = {
 	&_SIW_TOUCH_ATTR_T(platform_data).attr,
@@ -1105,6 +1133,7 @@ static struct attribute *siw_touch_attribute_list[] = {
 	&_SIW_TOUCH_ATTR_T(dbg_flag).attr,
 	&_SIW_TOUCH_ATTR_T(irq_flag).attr,
 	&_SIW_TOUCH_ATTR_T(init_late).attr,
+	&_SIW_TOUCH_ATTR_T(dbg_notify).attr,
 	NULL,
 };
 
