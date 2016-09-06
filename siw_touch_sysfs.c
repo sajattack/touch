@@ -275,14 +275,26 @@ static ssize_t _store_lpwg_notify(struct device *dev,
 		8 knockcode double tap check
 		9 update_all
 	*/
-	if (code == 1 || code == 2 || code == 5 ||
-		code == 6 || code == 7)
-		return count;
+	switch (code) {
+	case LPWG_ENABLE:
+	case LPWG_LCD:
+	case LPWG_LENGTH_BETWEEN_TAP:
+	case LPWG_EARLY_SUSPEND:
+	case LPWG_SENSOR_STATUS:
+		goto out;
+	default:
+		if (code > LPWG_REPLY) {
+			t_dev_err(dev, "unknown code, %d\n", code);
+			goto out;
+		}
+		break;
+	}
 
 	mutex_lock(&ts->lock);
 	siw_ops_lpwg(ts, code, param);
 	mutex_unlock(&ts->lock);
 
+out:
 	return count;
 }
 
