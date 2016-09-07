@@ -289,9 +289,24 @@ enum {
 	PRD_DEBUG_BUF_SIZE		= (336),
 };
 
+struct siw_hal_prd_img_cmd {
+	int raw;
+	int baseline_even;
+	int baseline_odd;
+	int delta;
+	int label;
+	int f_delta;
+	int debug;
+};
+
 struct siw_hal_prd_data {
 	struct device *dev;
 	char name[PRD_DATA_NAME_SZ];
+	/* */
+	atomic_t setup_done;
+	struct siw_hal_prd_img_cmd img_cmd;
+	int m2_rawdata_test_cnt;
+	int m1_rawdata_test_cnt;
 	/* */
 	int prd_app_mode;
 	/* */
@@ -420,8 +435,7 @@ enum {
 enum {
 	IT_IMAGE_NONE = 0,
 	IT_IMAGE_RAW,
-	IT_IMAGE_BASELINE_EVEN,
-	IT_IMAGE_BASELINE_ODD,
+	IT_IMAGE_BASELINE,
 	IT_IMAGE_DELTA,
 	IT_IMAGE_LABEL,
 	IT_IMAGE_FILTERED_DELTA,
@@ -532,6 +546,42 @@ enum {
 
 #define siw_prd_sysfs_err_invalid_param(_prd)	\
 		t_prd_err(_prd, "Invalid param\n");
+
+
+static void prd_cmd_setup(struct device *dev, int old_type)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	struct siw_hal_prd_data *prd = (struct siw_hal_prd_data *)ts->prd;
+	struct siw_hal_prd_img_cmd *img_cmd = &prd->img_cmd;
+
+	if (old_type) {
+		img_cmd->raw = IT_IMAGE_RAW;
+		img_cmd->baseline_even = IT_IMAGE_BASELINE;
+		img_cmd->baseline_odd = IT_IMAGE_BASELINE + 1;
+		img_cmd->delta = IT_IMAGE_DELTA + 1;
+		img_cmd->label = IT_IMAGE_LABEL + 1;
+		img_cmd->f_delta = IT_IMAGE_FILTERED_DELTA + 1;
+		img_cmd->debug = IT_IMAGE_DEBUG + 1;
+
+		prd->m2_rawdata_test_cnt = M2_RAWDATA_TEST_CNT;
+		prd->m1_rawdata_test_cnt = M1_RAWDATA_TEST_CNT;
+
+		t_dev_info(dev, "prd cmd setup re-defined\n");
+		return;
+	}
+
+	img_cmd->raw = IT_IMAGE_RAW;
+	img_cmd->baseline_even = IT_IMAGE_BASELINE;
+	img_cmd->baseline_odd = IT_IMAGE_BASELINE;
+	img_cmd->delta = IT_IMAGE_DELTA;
+	img_cmd->label = IT_IMAGE_LABEL;
+	img_cmd->f_delta = IT_IMAGE_FILTERED_DELTA;
+	img_cmd->debug = IT_IMAGE_DEBUG;
+
+	prd->m2_rawdata_test_cnt = 1;
+	prd->m1_rawdata_test_cnt = 1;
+}
 
 static int prd_chip_reset(struct device *dev)
 {
@@ -1969,7 +2019,7 @@ static int prd_compare_rawdata(struct siw_hal_prd_data *prd, int type)
 	case U3_M2_RAWDATA_TEST:
 		/* fall through */
 	case U3_BLU_JITTER_TEST:
-		test_cnt = M2_RAWDATA_TEST_CNT;
+		test_cnt = prd->m2_rawdata_test_cnt;
 		break;
 
 	case U0_M1_RAWDATA_TEST:
@@ -1977,7 +2027,7 @@ static int prd_compare_rawdata(struct siw_hal_prd_data *prd, int type)
 		row_size = PRD_ROW_SIZE;
 		rawdata_buf[0] = prd->m1_buf_odd_rawdata;
 		rawdata_buf[1] = prd->m1_buf_even_rawdata;
-		test_cnt = M1_RAWDATA_TEST_CNT;
+		test_cnt = prd->m1_rawdata_test_cnt;
 		opt = 0;
 		break;
 	}
@@ -2157,7 +2207,7 @@ static int prd_read_rawdata(struct siw_hal_prd_data *prd, int type)
 	case U3_M2_RAWDATA_TEST:
 		/* fall through */
 	case U0_M2_RAWDATA_TEST:
-		for (i = 0; i < M2_RAWDATA_TEST_CNT; i++) {
+		for (i = 0; i < prd->m2_rawdata_test_cnt; i++) {
 			/* raw data offset write */
 			ret = siw_hal_write_value(dev,
 						reg->serial_data_offset,
@@ -2182,7 +2232,7 @@ static int prd_read_rawdata(struct siw_hal_prd_data *prd, int type)
 		buf_rawdata[0] = prd->m1_buf_odd_rawdata;
 		buf_rawdata[1] = prd->m1_buf_even_rawdata;
 
-		for (i = 0; i < M1_RAWDATA_TEST_CNT; i++) {
+		for (i = 0; i < prd->m1_rawdata_test_cnt; i++) {
 			raw_buf = buf_rawdata[i];
 
 			/* raw data offset write */
@@ -2396,23 +2446,23 @@ static int prd_conrtol_rawdata_result(struct siw_hal_prd_data *prd, int type, in
 	case U3_M2_RAWDATA_TEST:
 		print_type[0] = M2_ODD_DATA;
 		print_type[1] = M2_EVEN_DATA;
-		test_cnt = M2_RAWDATA_TEST_CNT;
+		test_cnt = prd->m2_rawdata_test_cnt;
 		break;
 	case U0_M2_RAWDATA_TEST:
 		print_type[0] = M2_ODD_DATA;
 		print_type[1] = M2_EVEN_DATA;
-		test_cnt = M2_RAWDATA_TEST_CNT;
+		test_cnt = prd->m2_rawdata_test_cnt;
 		break;
 	case U3_BLU_JITTER_TEST:
 		print_type[0] = M2_ODD_DATA;
 		print_type[1] = M2_EVEN_DATA;
-		test_cnt = M2_RAWDATA_TEST_CNT;
+		test_cnt = prd->m2_rawdata_test_cnt;
 		break;
 
 	case U0_M1_RAWDATA_TEST:
 		print_type[0] = M1_ODD_DATA;
 		print_type[1] = M1_EVEN_DATA;
-		test_cnt = M1_RAWDATA_TEST_CNT;
+		test_cnt = prd->m1_rawdata_test_cnt;
 		opt = 0;
 		break;
 
@@ -2948,7 +2998,7 @@ static int prd_show_prd_get_data_do_raw_ait(struct device *dev, u8*buf, int siz
 	u8 *pbuf = (buf) ? buf : (u8 *)prd->m2_buf_odd_rawdata;
 
 	return prd_show_prd_get_data_raw_core(dev, pbuf, size,
-				IT_IMAGE_RAW, AIT_RAW_DATA_OFFSET, flag);
+				prd->img_cmd.raw, AIT_RAW_DATA_OFFSET, flag);
 }
 
 static int prd_show_prd_get_data_raw_ait(struct device *dev)
@@ -2988,8 +3038,8 @@ static int prd_show_prd_get_data_do_ait_basedata(struct device *dev,
 	struct siw_ts *ts = chip->ts;
 //	struct siw_hal_reg *reg = chip->reg;
 	struct siw_hal_prd_data *prd = (struct siw_hal_prd_data *)ts->prd;
-	u32 ait_cmd[MAX_TEST_CNT] = {IT_IMAGE_BASELINE_ODD, \
-								IT_IMAGE_BASELINE_EVEN};
+	u32 ait_cmd[MAX_TEST_CNT] = {prd->img_cmd.baseline_odd, \
+								prd->img_cmd.baseline_even};
 	u32 ait_offset[MAX_TEST_CNT] = {AIT_BASE_DATA_ODD_OFFSET, \
 									AIT_BASE_DATA_EVEN_OFFSET};
 	int16_t *buf_rawdata[MAX_TEST_CNT] = { \
@@ -3016,7 +3066,7 @@ static int prd_show_prd_get_data_ait_basedata(struct device *dev)
 
 	t_prd_info(prd, "======== CMD_AIT_BASEDATA ========\n");
 
-	for (i = 0; i < M2_RAWDATA_TEST_CNT; i++) {
+	for (i = 0; i < prd->m2_rawdata_test_cnt; i++) {
 		ret = prd_show_prd_get_data_do_ait_basedata(dev,
 					NULL,
 					size,
@@ -3051,7 +3101,7 @@ static int prd_show_prd_get_data_do_filtered_deltadata(struct device *dev, u8 *b
 	int ret = 0;
 
 	ret = prd_show_prd_get_data_raw_core(dev, (u8 *)prd->buf_delta, size_rd,
-				IT_IMAGE_FILTERED_DELTA, FILTERED_DELTA_DATA_OFFSET, flag);
+				prd->img_cmd.f_delta, FILTERED_DELTA_DATA_OFFSET, flag);
 	if (ret < 0) {
 		goto out;
 	}
@@ -3111,7 +3161,7 @@ static int prd_show_prd_get_data_do_deltadata(struct device *dev, u8 *buf, int s
 	int ret = 0;
 
 	ret = prd_show_prd_get_data_raw_core(dev, (u8 *)prd->buf_delta, size_rd,
-				IT_IMAGE_DELTA, DELTA_DATA_OFFSET, flag);
+				prd->img_cmd.delta, DELTA_DATA_OFFSET, flag);
 	if (ret < 0) {
 		goto out;
 	}
@@ -3172,7 +3222,7 @@ static int prd_show_prd_get_data_do_labeldata(struct device *dev, u8 *buf, int s
 	int ret = 0;
 
 	ret = prd_show_prd_get_data_raw_core(dev, (u8 *)prd->buf_label_tmp, size_rd,
-				IT_IMAGE_LABEL, LABLE_DATA_OFFSET, flag);
+				prd->img_cmd.label, LABLE_DATA_OFFSET, flag);
 	if (ret < 0) {
 		goto out;
 	}
@@ -3978,6 +4028,8 @@ static struct siw_hal_prd_data *siw_hal_prd_alloc(struct device *dev)
 	prd->dev = ts->dev;
 
 	ts->prd = prd;
+
+	prd_cmd_setup(dev, 0);
 
 out:
 	return prd;
