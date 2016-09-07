@@ -90,14 +90,14 @@ enum {
 #if defined(__PRD_TYPE_S1)
 #define __M1_RAWDATA_TEST_CNT	1
 #define __M2_RAWDATA_TEST_CNT	1
-#define __PRD_ROW_SIZE			32
-#define __PRD_COL_SIZE			20
+#define __PRD_ROW_SIZE			20
+#define __PRD_COL_SIZE			32
 #define __PRD_COL_ADD			0
 #define __TC_TOTAL_CH_SIZE		32
 enum {
-	__DELTA_DATA_OFFSET			= 0xD95,
-	__LABLE_DATA_OFFSET			= 0xE83,
-	__AIT_RAW_DATA_OFFSET		= 0xA8C,
+	__DELTA_DATA_OFFSET			= 0xD4F,
+	__LABLE_DATA_OFFSET			= 0xEC5,
+	__AIT_RAW_DATA_OFFSET		= 0xACF,
 	__AIT_BASE_DATA_ODD_OFFSET	= 0xC0F,
 };
 #elif defined(__PRD_TYPE_L3)
