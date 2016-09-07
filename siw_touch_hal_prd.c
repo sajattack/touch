@@ -583,6 +583,50 @@ static void prd_cmd_setup(struct device *dev, int old_type)
 	prd->m1_rawdata_test_cnt = 1;
 }
 
+struct siw_hal_prd_cmd_old {
+	int chip_type;
+	char *name;
+};
+
+static const struct siw_hal_prd_cmd_old prd_cmd_old_types[] = {
+	{ CHIP_LG4894, "L0W53K6P" },
+	{ CHIP_LG4895, "L0W49K5" },
+	{ CHIP_LG4946, "L0W53P1" },
+	{ 0, NULL },
+};
+
+static void prd_cmd_tune(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	struct siw_hal_fw_info *fw = &chip->fw;
+	struct siw_hal_prd_data *prd = (struct siw_hal_prd_data *)ts->prd;
+	struct siw_hal_prd_cmd_old *prd_cmd_old = (struct siw_hal_prd_cmd_old *)prd_cmd_old_types;
+	int len;
+
+	if (atomic_read(&prd->setup_done))
+		return;
+
+	while (1) {
+		if (!prd_cmd_old->chip_type ||
+			(prd_cmd_old->name == NULL)) {
+			break;
+		}
+
+		if (prd_cmd_old->chip_type == touch_chip_type(ts)) {
+			len = strlen(prd_cmd_old->name);
+			if (!strncmp(fw->product_id, prd_cmd_old->name, len)) {
+				prd_cmd_setup(dev, 1);
+				break;
+			}
+		}
+
+		prd_cmd_old++;
+	}
+
+	atomic_set(&prd->setup_done, 1);
+}
+
 static int prd_chip_reset(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
@@ -2805,6 +2849,8 @@ static ssize_t prd_show_sd(struct device *dev, char *buf)
 	struct siw_hal_prd_data *prd = (struct siw_hal_prd_data *)ts->prd;
 	int size = 0;
 
+	prd_cmd_tune(dev);
+
 	/* LCD mode check */
 	if (chip->lcd_mode != LCD_MODE_U3) {
 		size += siw_snprintf(buf, size,
@@ -3362,6 +3408,8 @@ static ssize_t prd_show_prd_get_data(struct device *dev, int type)
 	struct siw_hal_prd_data *prd = (struct siw_hal_prd_data *)ts->prd;
 	int ret = 0;
 
+	prd_cmd_tune(dev);
+
 	switch (type) {
 	case CMD_RAWDATA_PRD:
 		ret = prd_show_prd_get_data_raw_prd(dev);
@@ -3554,6 +3602,8 @@ static ssize_t prd_show_lpwg_sd(struct device *dev, char *buf)
 	struct siw_ts *ts = chip->ts;
 	struct siw_hal_prd_data *prd = (struct siw_hal_prd_data *)ts->prd;
 	int size = 0;
+
+	prd_cmd_tune(dev);
 
 	/* LCD mode check */
 	if (chip->lcd_mode != LCD_MODE_U0) {
@@ -3799,6 +3849,8 @@ static ssize_t prd_show_app_operator(struct device *dev, char *buf, int mode)
 	int flag = PRD_SHOW_FLAG_DISABLE_PRT_RAW;
 	int prev_mode = prd->prd_app_mode;
 //	int ret = 0;
+
+	prd_cmd_tune(dev);
 
 	if (mode < REPORT_MAX) {
 		t_prd_info(prd, "show app mode : %s(%d), 0x%X\n",
