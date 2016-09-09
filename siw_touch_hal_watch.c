@@ -2809,19 +2809,26 @@ void siw_hal_watch_set_rtc_clear(struct device *dev)
 		atomic_set(&watch->state.rtc_status, RTC_CLEAR);
 }
 
-#if 0
 void siw_hal_watch_rtc_on(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct watch_data *watch = (struct watch_data *)chip->watch;
+	int rtc_on = 0;
 
-	if (watch) {
+	switch (touch_chip_type(chip->ts)) {
+	case CHIP_LG4946:
+		rtc_on = 1;
+		break;
+	default:
+		break;
+	}
+
+	if (watch && rtc_on) {
 		if (atomic_read(&watch->state.rtc_status) == RTC_CLEAR) {
 			ext_watch_rtc_start(dev, EXT_WATCH_RTC_START);
 		}
 	}
 }
-#endif
 
 void siw_hal_watch_set_font_empty(struct device *dev)
 {
