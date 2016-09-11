@@ -137,7 +137,7 @@ int __weak siw_hal_watch_is_rtc_run(struct device *dev)
 	t_warn_weak_watch(dev, "%s\n", __func__);
 	return 0;
 }
-void __used siw_hal_watch_set_rtc_run(struct device *dev)
+void __weak siw_hal_watch_set_rtc_run(struct device *dev)
 {
 	t_warn_weak_watch(dev, "%s\n", __func__);
 }
@@ -150,6 +150,10 @@ void __weak siw_hal_watch_set_font_empty(struct device *dev)
 	t_warn_weak_watch(dev, "%s\n", __func__);
 }
 void __weak siw_hal_watch_set_cfg_blocked(struct device *dev)
+{
+	t_warn_weak_watch(dev, "%s\n", __func__);
+}
+void __weak siw_hal_watch_rtc_on(struct device *dev)
 {
 	t_warn_weak_watch(dev, "%s\n", __func__);
 }
@@ -1710,6 +1714,8 @@ static int siw_hal_init(struct device *dev)
 	}
 
 	siw_hal_init_reg_set(dev);
+
+	siw_hal_watch_rtc_on(dev);
 
 	atomic_set(&chip->init, IC_INIT_DONE);
 	atomic_set(&ts->state.sleep, IC_NORMAL);
