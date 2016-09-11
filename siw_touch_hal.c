@@ -44,6 +44,9 @@
 #include "siw_touch_irq.h"
 #include "siw_touch_sys.h"
 
+#ifndef __weak
+#define __weak __attribute__((weak))
+#endif
 
 //#define __FW_VERIFY_TEST
 
@@ -61,65 +64,95 @@ struct lpwg_mode_ctrl {
 
 extern int siw_hal_sysfs(struct device *dev, int on_off);
 
-#if defined(__SIW_SUPPORT_ABT)	//See siw_touch_cfg.h
-extern int siw_hal_abt_init(struct device *dev);
-extern int siw_hal_abt_sysfs(struct device *dev, int on_off);
-#else
-static int siw_hal_abt_init(struct device *dev){ return 0; }
-static int siw_hal_abt_sysfs(struct device *dev, int on_off)
+/*
+ * weak(dummy) function for ABT control
+ * These are deactivated by enabling __SIW_SUPPORT_ABT
+ * and the actual functions can be found in siw_touch_hal_abt.c
+ */
+int __weak siw_hal_abt_init(struct device *dev)
 {
-	if (on_off)
-		t_dev_info(dev, "ABT disabled\n");
-
+	t_dev_warn(dev, "ABT disabled\n");
 	return 0;
 }
-#endif	/* __SIW_SUPPORT_ABT */
-
-#if defined(__SIW_SUPPORT_PRD)	//See siw_touch_cfg.h
-extern int siw_hal_prd_sysfs(struct device *dev, int on_off);
-#else
-static int siw_hal_prd_sysfs(struct device *dev, int on_off)
+int __weak siw_hal_abt_sysfs(struct device *dev, int on_off)
 {
-	if (on_off)
-		t_dev_info(dev, "PRD disabled\n");
-
+	t_dev_warn(dev, "ABT disabled\n");
 	return 0;
 }
-#endif	/* __SIW_SUPPORT_PRD */
 
-#if defined(__SIW_SUPPORT_WATCH)	//See siw_touch_cfg.h
-extern int siw_hal_watch_sysfs(struct device *dev, int on_off);
-extern int siw_hal_watch_init(struct device *dev);
-extern int siw_hal_watch_chk_font_status(struct device *dev);
-extern int siw_hal_watch_get_curr_time(struct device *dev, char *buf, int *len);
-extern int siw_hal_watch_display_off(struct device *dev);
-extern int siw_hal_watch_is_disp_waton(struct device *dev);
-extern int siw_hal_watch_is_rtc_run(struct device *dev);
-extern void siw_hal_watch_set_rtc_run(struct device *dev);
-extern void siw_hal_watch_set_rtc_clear(struct device *dev);
-extern void siw_hal_watch_set_font_empty(struct device *dev);
-extern void siw_hal_watch_set_cfg_blocked(struct device *dev);
-#else	/* __SIW_SUPPORT_WATCH */
-static int __used siw_hal_watch_sysfs(struct device *dev, int on_off)
+/*
+ * weak(dummy) function for PRD control
+ * These are deactivated by enabling __SIW_SUPPORT_PRD
+ * and the actual functions can be found in siw_touch_hal_prd.c
+ */
+int __weak siw_hal_prd_sysfs(struct device *dev, int on_off)
 {
-#if defined(CONFIG_TOUCHSCREEN_SIW_LG4895) || defined(CONFIG_TOUCHSCREEN_SIW_LG4946)
-	if (on_off)
-		t_dev_warn(dev, "WATCH disabled\n");
+	t_dev_warn(dev, "PRD disabled\n");
+	return 0;
+}
+
+#if defined(__SIW_SUPPORT_WATCH)
+#define t_warn_weak_watch(_dev, fmt, args...)	\
+		t_dev_warn(_dev, "Watch disabled: "fmt, ##args)
+#else
+#define t_warn_weak_watch(_dev, fmt, args...)	do { }while(0)
 #endif
-
+/*
+ * weak(dummy) function for Watch control
+ * These are deactivated by enabling __SIW_SUPPORT_WATCH
+ * and the actual functions can be found in siw_touch_hal_watch.c
+ */
+int __weak siw_hal_watch_sysfs(struct device *dev, int on_off)
+{
+	t_warn_weak_watch(dev, "%s\n", __func__);
 	return 0;
 }
-static int __used siw_hal_watch_init(struct device *dev){ return 0; }
-static int __used siw_hal_watch_chk_font_status(struct device *dev){ return 0; }
-static int __used siw_hal_watch_get_curr_time(struct device *dev, char *buf, int *len){ return 0; }
-static int __used siw_hal_watch_display_off(struct device *dev){ return 0; }
-static int __used siw_hal_watch_is_disp_waton(struct device *dev){ return 0; }
-static int __used siw_hal_watch_is_rtc_run(struct device *dev){ return 0; }
-extern void __used siw_hal_watch_set_rtc_run(struct device *dev){ }
-extern void __used siw_hal_watch_set_rtc_clear(struct device *dev){ }
-extern void __used siw_hal_watch_set_font_empty(struct device *dev){ }
-extern void __used siw_hal_watch_set_cfg_blocked(struct device *dev){ }
-#endif	/* __SIW_SUPPORT_WATCH */
+int __weak siw_hal_watch_init(struct device *dev)
+{
+	t_warn_weak_watch(dev, "%s\n", __func__);
+	return 0;
+}
+int __weak siw_hal_watch_chk_font_status(struct device *dev)
+{
+	t_warn_weak_watch(dev, "%s\n", __func__);
+	return 0;
+}
+int __weak siw_hal_watch_get_curr_time(struct device *dev, char *buf, int *len)
+{
+	t_warn_weak_watch(dev, "%s\n", __func__);
+	return 0;
+}
+int __weak siw_hal_watch_display_off(struct device *dev)
+{
+	t_warn_weak_watch(dev, "%s\n", __func__);
+	return 0;
+}
+int __weak siw_hal_watch_is_disp_waton(struct device *dev)
+{
+	t_warn_weak_watch(dev, "%s\n", __func__);
+	return 0;
+}
+int __weak siw_hal_watch_is_rtc_run(struct device *dev)
+{
+	t_warn_weak_watch(dev, "%s\n", __func__);
+	return 0;
+}
+void __used siw_hal_watch_set_rtc_run(struct device *dev)
+{
+	t_warn_weak_watch(dev, "%s\n", __func__);
+}
+void __weak siw_hal_watch_set_rtc_clear(struct device *dev)
+{
+	t_warn_weak_watch(dev, "%s\n", __func__);
+}
+void __weak siw_hal_watch_set_font_empty(struct device *dev)
+{
+	t_warn_weak_watch(dev, "%s\n", __func__);
+}
+void __weak siw_hal_watch_set_cfg_blocked(struct device *dev)
+{
+	t_warn_weak_watch(dev, "%s\n", __func__);
+}
 
 
 static int siw_hal_reset_ctrl(struct device *dev, int ctrl);
