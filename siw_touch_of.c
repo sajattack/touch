@@ -32,6 +32,11 @@
 
 #include "siw_touch.h"
 
+#ifndef __weak
+#define __weak __attribute__((weak))
+#endif
+
+
 #if defined(__SIW_CONFIG_OF)	//See siw_touch_cfg.h
 static int siw_touch_of_gpio(struct device *dev, void *np,
 					void *string, enum of_gpio_flags *flags)
@@ -152,13 +157,17 @@ out:
 	return 0;
 }
 
-#if defined(__SIW_SUPPORT_PRD)
-extern int siw_hal_set_prd_file(struct device *dev, const char *path, int idx);
-#else	/* __SIW_SUPPORT_PRD */
-static inline int siw_hal_set_prd_file(struct device *dev, const char *path, int idx){ return 0; }
-#endif	/* __SIW_SUPPORT_PRD */
+/*
+ * weak(dummy) function for PRD control
+ * These are deactivated by enabling __SIW_SUPPORT_PRD
+ * and the actual functions can be found in siw_touch_hal_prd.c
+ */
+int __weak siw_hal_set_prd_file(struct device *dev, const char *path, int idx)
+{
+	t_dev_warn(dev, "PRD disabled\n");
+	return 0;
+}
 
-/* __SIW_SUPPORT_PRD */
 static int siw_touch_parse_dts_prd(struct siw_ts *ts)
 {
 	struct device *dev = ts->dev;
