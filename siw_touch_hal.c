@@ -4685,7 +4685,7 @@ static int siw_hal_earjack_status(struct device *dev, u32 onoff)
 }
 
 #if defined(__SIW_SUPPORT_ABT)
-extern int siw_hal_switch_to_abt_irq_handler(struct siw_ts *ts);
+extern void siw_hal_switch_to_abt_irq_handler(struct siw_ts *ts);
 
 static int siw_hal_debug_tool(struct device *dev, u32 value)
 {
