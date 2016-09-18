@@ -1126,7 +1126,7 @@ static void siw_hal_ic_info_abnormal(struct device *dev)
 	u32 vchip = fw->v.version.chip;
 	u32 vproto = fw->v.version.protocol;
 
-	t_dev_info(dev, "[%s] FW is in abnormal state: %d, %d\n",
+	t_dev_err(dev, "[%s] IC info is abnormal: %d, %d\n",
 			touch_chip_name(ts), vchip, vproto);
 
 #if 0
@@ -1140,49 +1140,54 @@ static void siw_hal_ic_info_abnormal(struct device *dev)
 #endif
 }
 
+struct siw_ic_info_chip_proto {
+	int chip_type;
+	int vchip;
+	int vproto;
+};
+
+static const struct siw_ic_info_chip_proto siw_ic_info_chip_protos[] = {
+	{ CHIP_LG4894, 4, 4 },
+	{ CHIP_LG4895, 8, 4 },
+	{ CHIP_LG4946, 7, 4 },
+	{ CHIP_SW1828, 9, 4 },
+	{ CHIP_NONE, 0, 0 },	//End mark
+};
+
 static int siw_hal_ic_info_ver_check(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
 	struct siw_hal_fw_info *fw = &chip->fw;
+	struct siw_ic_info_chip_proto *chip_proto;
 //	u32 version = fw->v.version_raw;
 	u32 vchip = fw->v.version.chip;
 	u32 vproto = fw->v.version.protocol;
-	u32 vchip_chk = 0;
-	u32 vproto_chk = 0;
-	int ret = 0;
+//	int ret = 0;
 
-	vproto_chk = 4;
-	switch (touch_chip_type(ts)) {
-	case CHIP_LG4894 :
-		vchip_chk = 4;
-		break;
-	case CHIP_LG4895 :
-		vchip_chk = 8;
-		break;
-	case CHIP_LG4946 :
-		vchip_chk = 7;
-		break;
-	case CHIP_SW1828 :
-		vchip_chk = 9;
-		break;
+	chip_proto = (struct siw_ic_info_chip_proto *)siw_ic_info_chip_protos;
+	while (1) {
+		if (chip_proto->chip_type == CHIP_NONE) {
+			break;
+		}
+
+		if (touch_chip_type(ts) == chip_proto->chip_type) {
+			if ((chip_proto->vchip != vchip) ||
+				(chip_proto->vproto != vproto)) {
+				break;
+			}
+
+			t_dev_info(dev, "[%s] IC info is good: %d, %d\n",
+					touch_chip_name(ts), vchip, vproto);
+
+			return 0;
+		}
+
+		chip_proto++;
 	}
 
-	if (!vchip_chk) {
-		t_dev_err(dev, "[%s] abnormal chip type\n",
-				touch_chip_name(ts));
-		ret = -EINVAL;
-		goto out;
-	}
-
-	if ((vchip != vchip_chk) || (vproto != vproto_chk)) {
-		siw_hal_ic_info_abnormal(dev);
-		ret = -EFAULT;
-		goto out;
-	}
-
-out:
-	return ret;
+	siw_hal_ic_info_abnormal(dev);
+	return -EINVAL;
 }
 
 static int siw_hal_do_ic_info(struct device *dev, int prt_on)
