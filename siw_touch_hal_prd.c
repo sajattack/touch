@@ -96,7 +96,7 @@ enum {
 #define __TC_TOTAL_CH_SIZE		32
 enum {
 	__DELTA_DATA_OFFSET			= 0xD4F,
-	__LABLE_DATA_OFFSET			= 0xEC5,
+	__LABEL_DATA_OFFSET			= 0xEC5,
 	__AIT_RAW_DATA_OFFSET		= 0xACF,
 	__AIT_BASE_DATA_ODD_OFFSET	= 0xC0F,
 };
@@ -109,7 +109,7 @@ enum {
 #define __TC_TOTAL_CH_SIZE		34
 enum {
 	__DELTA_DATA_OFFSET			= 0xDC2,
-	__LABLE_DATA_OFFSET			= 0xF16,
+	__LABEL_DATA_OFFSET			= 0xF16,
 	__AIT_RAW_DATA_OFFSET		= 0xB82,
 	__AIT_BASE_DATA_ODD_OFFSET	= 0xCA2,
 };
@@ -122,7 +122,7 @@ enum {
 #define __TC_TOTAL_CH_SIZE		34
 enum {
 	__DELTA_DATA_OFFSET			= 0xF80,
-	__LABLE_DATA_OFFSET			= 0x10E8,
+	__LABEL_DATA_OFFSET			= 0x10E8,
 	__AIT_RAW_DATA_OFFSET		= 0xD1C,
 	__AIT_BASE_DATA_ODD_OFFSET	= 0xE4E,
 };
@@ -135,7 +135,7 @@ enum {
 #define __TC_TOTAL_CH_SIZE		32
 enum {
 	__DELTA_DATA_OFFSET			= 0xD95,
-	__LABLE_DATA_OFFSET			= 0xE83,
+	__LABEL_DATA_OFFSET			= 0xE83,
 	__AIT_RAW_DATA_OFFSET		= 0xA8C,
 	__AIT_BASE_DATA_ODD_OFFSET	= 0xC0F,
 };
@@ -225,7 +225,7 @@ enum {
 
 enum {
 	DELTA_DATA_OFFSET			= __DELTA_DATA_OFFSET,
-	LABLE_DATA_OFFSET			= __LABLE_DATA_OFFSET,
+	LABEL_DATA_OFFSET			= __LABEL_DATA_OFFSET,
 	AIT_RAW_DATA_OFFSET			= __AIT_RAW_DATA_OFFSET,
 	AIT_BASE_DATA_ODD_OFFSET	= __AIT_BASE_DATA_ODD_OFFSET,
 	AIT_BASE_DATA_EVEN_OFFSET	= 0xCD2,
@@ -290,13 +290,35 @@ enum {
 };
 
 struct siw_hal_prd_img_cmd {
-	int raw;
-	int baseline_even;
-	int baseline_odd;
-	int delta;
-	int label;
-	int f_delta;
-	int debug;
+	u32 raw;
+	u32 baseline_even;
+	u32 baseline_odd;
+	u32 delta;
+	u32 label;
+	u32 f_delta;
+	u32 debug;
+};
+
+struct siw_hal_prd_img_offset {
+	u32 raw;
+	u32 baseline_even;
+	u32 baseline_odd;
+	u32 delta;
+	u32 label;
+	u32 f_delta;
+	u32 debug;
+};
+
+enum {
+	IMG_OFFSET_IDX_NONE = 0,
+	IMG_OFFSET_IDX_RAW,
+	IMG_OFFSET_IDX_BASELINE_EVEN,
+	IMG_OFFSET_IDX_BASELINE_ODD,
+	IMG_OFFSET_IDX_DELTA,
+	IMG_OFFSET_IDX_LABEL,
+	IMG_OFFSET_IDX_F_DELTA,
+	IMG_OFFSET_IDX_DEBUG,
+	IMG_OFFSET_IDX_MAX,
 };
 
 struct siw_hal_prd_data {
@@ -305,6 +327,7 @@ struct siw_hal_prd_data {
 	/* */
 	atomic_t setup_done;
 	struct siw_hal_prd_img_cmd img_cmd;
+	struct siw_hal_prd_img_offset img_offset;
 	int m2_rawdata_test_cnt;
 	int m1_rawdata_test_cnt;
 	/* */
@@ -554,6 +577,7 @@ static void prd_cmd_setup(struct device *dev, int old_type)
 	struct siw_ts *ts = chip->ts;
 	struct siw_hal_prd_data *prd = (struct siw_hal_prd_data *)ts->prd;
 	struct siw_hal_prd_img_cmd *img_cmd = &prd->img_cmd;
+	struct siw_hal_prd_img_offset *img_offset = &prd->img_offset;
 
 	if (old_type) {
 		img_cmd->raw = IT_IMAGE_RAW;
@@ -579,50 +603,163 @@ static void prd_cmd_setup(struct device *dev, int old_type)
 	img_cmd->f_delta = IT_IMAGE_FILTERED_DELTA;
 	img_cmd->debug = IT_IMAGE_DEBUG;
 
+	img_offset->raw = AIT_RAW_DATA_OFFSET;
+	img_offset->baseline_even = AIT_BASE_DATA_EVEN_OFFSET;
+	img_offset->baseline_odd = AIT_BASE_DATA_ODD_OFFSET;
+	img_offset->delta = DELTA_DATA_OFFSET;
+	img_offset->label = LABEL_DATA_OFFSET;
+	img_offset->f_delta = FILTERED_DELTA_DATA_OFFSET;
+	img_offset->debug = AIT_DEBUG_BUF_DATA_OFFSET;
+
 	prd->m2_rawdata_test_cnt = 1;
 	prd->m1_rawdata_test_cnt = 1;
 }
 
-struct siw_hal_prd_cmd_old {
+struct siw_hal_prd_cmd_quirk {
 	int chip_type;
 	char *name;
 };
 
-static const struct siw_hal_prd_cmd_old prd_cmd_old_types[] = {
+static const struct siw_hal_prd_cmd_quirk prd_cmd_quirks[] = {
 	{ CHIP_LG4894, "L0W53K6P" },
 	{ CHIP_LG4895, "L0W49K5" },
 	{ CHIP_LG4946, "L0W53P1" },
 	{ 0, NULL },
 };
 
-static void prd_cmd_tune(struct device *dev)
+static void prd_do_cmd_tune(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
 	struct siw_hal_fw_info *fw = &chip->fw;
-	struct siw_hal_prd_data *prd = (struct siw_hal_prd_data *)ts->prd;
-	struct siw_hal_prd_cmd_old *prd_cmd_old = (struct siw_hal_prd_cmd_old *)prd_cmd_old_types;
+	struct siw_hal_prd_cmd_quirk *quirk = (struct siw_hal_prd_cmd_quirk *)prd_cmd_quirks;
 	int len;
 
-	if (atomic_read(&prd->setup_done))
-		return;
-
 	while (1) {
-		if (!prd_cmd_old->chip_type ||
-			(prd_cmd_old->name == NULL)) {
+		if (!quirk->chip_type ||
+			(quirk->name == NULL)) {
 			break;
 		}
 
-		if (prd_cmd_old->chip_type == touch_chip_type(ts)) {
-			len = strlen(prd_cmd_old->name);
-			if (!strncmp(fw->product_id, prd_cmd_old->name, len)) {
+		if (quirk->chip_type == touch_chip_type(ts)) {
+			len = strlen(quirk->name);
+			if (!strncmp(fw->product_id, quirk->name, len)) {
 				prd_cmd_setup(dev, 1);
 				break;
 			}
 		}
 
-		prd_cmd_old++;
+		quirk++;
 	}
+}
+
+struct siw_hal_prd_offset_quirk {
+	int chip_type;
+	char *name;
+	u32 addr[IMG_OFFSET_IDX_MAX];
+};
+
+#define PRD_OFFSET_QUIRK_SET(_idx, _offset)		(((_idx)<<24) | ((_offset) & 0x00FFFFFF))
+#define PRD_OFFSET_QUIRK_GET_IDX(_addr)			((_addr) >> 24)
+#define PRD_OFFSET_QUIRK_GET_OFFSET(_addr)		((_addr) & 0x00FFFFFF)
+
+static const struct siw_hal_prd_offset_quirk prd_offset_quirks[] = {
+	/* Example */
+	{ 0xFFFFFFFF, "EXAMPLE",
+		{PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_RAW, 0x1234),
+		PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_DEBUG, 0x5678), 0, }},
+	{ 0, },
+};
+
+static void prd_do_offset_tune(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	struct siw_hal_fw_info *fw = &chip->fw;
+	struct siw_hal_prd_data *prd = (struct siw_hal_prd_data *)ts->prd;
+	struct siw_hal_prd_offset_quirk *quirk = (struct siw_hal_prd_offset_quirk *)prd_offset_quirks;
+	u32 idx, addr, old_addr, flag;
+	int len;
+	int i;
+
+	while (1) {
+		if (!quirk->chip_type) {
+			break;
+		}
+
+		if (quirk->chip_type == touch_chip_type(ts)) {
+			len = strlen(quirk->name);
+			if (!strncmp(fw->product_id, quirk->name, len)) {
+				flag = 0;
+				for (i = 0; i < IMG_OFFSET_IDX_MAX ; i++) {
+					idx = PRD_OFFSET_QUIRK_GET_IDX(quirk->addr[i]);
+					addr = PRD_OFFSET_QUIRK_GET_OFFSET(quirk->addr[i]);
+
+					if (flag & (1<<idx)) {
+						t_dev_warn(dev, "dupliacted: %Xh (%d)\n", addr, idx);
+						continue;
+					}
+					flag |= (1<<idx);
+
+					switch (idx) {
+					case IMG_OFFSET_IDX_RAW:
+						old_addr = prd->img_offset.raw;
+						prd->img_offset.raw = addr;
+						break;
+					case IMG_OFFSET_IDX_BASELINE_EVEN:
+						old_addr = prd->img_offset.baseline_even;
+						prd->img_offset.baseline_even = addr;
+						break;
+					case IMG_OFFSET_IDX_BASELINE_ODD:
+						old_addr = prd->img_offset.baseline_odd;
+						prd->img_offset.baseline_odd = addr;
+						break;
+					case IMG_OFFSET_IDX_DELTA:
+						old_addr = prd->img_offset.delta;
+						prd->img_offset.delta = addr;
+						break;
+					case IMG_OFFSET_IDX_LABEL:
+						old_addr = prd->img_offset.label;
+						prd->img_offset.label = addr;
+						break;
+					case IMG_OFFSET_IDX_F_DELTA:
+						old_addr = prd->img_offset.f_delta;
+						prd->img_offset.f_delta = addr;
+						break;
+					case IMG_OFFSET_IDX_DEBUG:
+						old_addr = prd->img_offset.debug;
+						prd->img_offset.debug = addr;
+						break;
+					default:
+						old_addr = 0;
+						t_dev_info(dev, "unknown idx: %Xh (%d)\n", addr, idx);
+						break;
+					}
+					if (old_addr) {
+						t_dev_info(dev,
+							"prd offset replaced: %Xh -> %Xh (%d)\n",
+							old_addr, addr, idx);
+					}
+				}
+				break;
+			}
+		}
+
+		quirk++;
+	}
+}
+
+static void prd_cmd_tune(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	struct siw_hal_prd_data *prd = (struct siw_hal_prd_data *)ts->prd;
+
+	if (atomic_read(&prd->setup_done))
+		return;
+
+	prd_do_cmd_tune(dev);
+	prd_do_offset_tune(dev);
 
 	atomic_set(&prd->setup_done, 1);
 }
@@ -3044,7 +3181,7 @@ static int prd_show_prd_get_data_do_raw_ait(struct device *dev, u8*buf, int siz
 	u8 *pbuf = (buf) ? buf : (u8 *)prd->m2_buf_odd_rawdata;
 
 	return prd_show_prd_get_data_raw_core(dev, pbuf, size,
-				prd->img_cmd.raw, AIT_RAW_DATA_OFFSET, flag);
+				prd->img_cmd.raw, prd->img_offset.raw, flag);
 }
 
 static int prd_show_prd_get_data_raw_ait(struct device *dev)
@@ -3086,8 +3223,8 @@ static int prd_show_prd_get_data_do_ait_basedata(struct device *dev,
 	struct siw_hal_prd_data *prd = (struct siw_hal_prd_data *)ts->prd;
 	u32 ait_cmd[MAX_TEST_CNT] = {prd->img_cmd.baseline_odd, \
 								prd->img_cmd.baseline_even};
-	u32 ait_offset[MAX_TEST_CNT] = {AIT_BASE_DATA_ODD_OFFSET, \
-									AIT_BASE_DATA_EVEN_OFFSET};
+	u32 ait_offset[MAX_TEST_CNT] = {prd->img_offset.baseline_odd, \
+									prd->img_offset.baseline_even};
 	int16_t *buf_rawdata[MAX_TEST_CNT] = { \
 		[0] = prd->m2_buf_odd_rawdata, \
 		[1] = prd->m2_buf_even_rawdata, \
@@ -3147,7 +3284,7 @@ static int prd_show_prd_get_data_do_filtered_deltadata(struct device *dev, u8 *b
 	int ret = 0;
 
 	ret = prd_show_prd_get_data_raw_core(dev, (u8 *)prd->buf_delta, size_rd,
-				prd->img_cmd.f_delta, FILTERED_DELTA_DATA_OFFSET, flag);
+				prd->img_cmd.f_delta, prd->img_offset.f_delta, flag);
 	if (ret < 0) {
 		goto out;
 	}
@@ -3207,7 +3344,7 @@ static int prd_show_prd_get_data_do_deltadata(struct device *dev, u8 *buf, int s
 	int ret = 0;
 
 	ret = prd_show_prd_get_data_raw_core(dev, (u8 *)prd->buf_delta, size_rd,
-				prd->img_cmd.delta, DELTA_DATA_OFFSET, flag);
+				prd->img_cmd.delta, prd->img_offset.delta, flag);
 	if (ret < 0) {
 		goto out;
 	}
@@ -3268,7 +3405,7 @@ static int prd_show_prd_get_data_do_labeldata(struct device *dev, u8 *buf, int s
 	int ret = 0;
 
 	ret = prd_show_prd_get_data_raw_core(dev, (u8 *)prd->buf_label_tmp, size_rd,
-				prd->img_cmd.label, LABLE_DATA_OFFSET, flag);
+				prd->img_cmd.label, prd->img_offset.label, flag);
 	if (ret < 0) {
 		goto out;
 	}
@@ -3295,7 +3432,7 @@ static int prd_show_prd_get_data_do_debug_buf(struct device *dev, u8 *buf, int s
 	u8 *pbuf = (buf) ? buf : (u8 *)prd->buf_debug;
 
 	return prd_show_prd_get_data_raw_core(dev, pbuf, size,
-				IT_DONT_USE_CMD, AIT_DEBUG_BUF_DATA_OFFSET, flag);
+				IT_DONT_USE_CMD, prd->img_offset.debug, flag);
 }
 
 static int prd_show_prd_get_data_labeldata(struct device *dev)
