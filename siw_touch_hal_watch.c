@@ -2676,6 +2676,10 @@ static void ext_watch_remove_sysfs(struct device *dev)
 	//Caution : not ts->kobj
 	struct kobject *kobj = &chip->kobj;
 
+	if (chip->watch == NULL) {
+		return;
+	}
+
 	cancel_delayed_work(&chip->font_download_work);
 
 	ext_watch_fontdata_attr_free(dev);
@@ -2684,10 +2688,8 @@ static void ext_watch_remove_sysfs(struct device *dev)
 
 	kobject_del(kobj);
 
-	if (chip->watch) {
-		touch_kfree(dev, chip->watch);
-		chip->watch = NULL;
-	}
+	touch_kfree(dev, chip->watch);
+	chip->watch = NULL;
 
 	t_dev_dbg_base(dev, "%s watch sysfs unregistered\n",
 			touch_chip_name(ts));
