@@ -2346,6 +2346,10 @@ static void siw_hal_abt_remove_sysfs(struct device *dev)
 		return;
 	}
 
+	if (ts->abt == NULL) {
+		return;
+	}
+
 	sysfs_remove_group(kobj, &siw_hal_abt_attribute_group);
 
 	siw_hal_abt_free(dev);
