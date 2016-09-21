@@ -1118,28 +1118,6 @@ static int siw_hal_power(struct device *dev, int ctrl)
 	return 0;
 }
 
-static void siw_hal_ic_info_abnormal(struct device *dev)
-{
-	struct siw_touch_chip *chip = to_touch_chip(dev);
-	struct siw_ts *ts = chip->ts;
-	struct siw_hal_fw_info *fw = &chip->fw;
-	u32 vchip = fw->v.version.chip;
-	u32 vproto = fw->v.version.protocol;
-
-	t_dev_err(dev, "[%s] IC info is abnormal: %d, %d\n",
-			touch_chip_name(ts), vchip, vproto);
-
-#if 0
-#if 1
-	siw_hal_reset_ctrl(dev, HW_RESET_ASYNC);
-#else
-	siw_hal_power(dev, POWER_OFF);
-	siw_hal_power(dev, POWER_ON);
-	touch_msleep(ts->caps.hw_reset_delay);
-#endif
-#endif
-}
-
 struct siw_ic_info_chip_proto {
 	int chip_type;
 	int vchip;
@@ -1186,7 +1164,9 @@ static int siw_hal_ic_info_ver_check(struct device *dev)
 		chip_proto++;
 	}
 
-	siw_hal_ic_info_abnormal(dev);
+	t_dev_err(dev, "[%s] IC info is abnormal: %d, %d\n",
+			touch_chip_name(ts), vchip, vproto);
+
 	return -EINVAL;
 }
 
@@ -1320,73 +1300,25 @@ static int siw_hal_do_ic_info(struct device *dev, int prt_on)
 		return -EINVAL;
 	}
 
-	return siw_hal_ic_info_ver_check(dev);
+	ret = siw_hal_ic_info_ver_check(dev);
+	if (ret < 0) {
+#if 0
+#if 1
+	siw_hal_reset_ctrl(dev, HW_RESET_ASYNC);
+#else
+	siw_hal_power(dev, POWER_OFF);
+	siw_hal_power(dev, POWER_ON);
+	touch_msleep(ts->caps.hw_reset_delay);
+#endif
+#endif
+	}
+
+	return ret;
 }
 
 static int siw_hal_ic_info(struct device *dev)
 {
 	return siw_hal_do_ic_info(dev, 1);
-}
-
-int siw_hal_ic_test_unit(struct device *dev, u32 data)
-{
-	struct siw_touch_chip *chip = to_touch_chip(dev);
-//	struct siw_ts *ts = chip->ts;
-	struct siw_hal_reg *reg = chip->reg;
-	u32 data_rd;
-	int ret;
-
-	ret = siw_hal_write_value(dev,
-				reg->spr_chip_test,
-				data);
-	if (ret < 0) {
-		t_dev_err(dev, "ic test wr err, %0x08X, %d\n", data, ret);
-		goto out;
-	}
-
-	ret = siw_hal_read_value(dev,
-				reg->spr_chip_test,
-				&data_rd);
-	if (ret < 0) {
-		t_dev_err(dev, "ic test rd err: %0x08X, %d\n", data, ret);
-		goto out;
-	}
-
-	if (data != data_rd) {
-		t_dev_err(dev, "ic test cmp err, %0x08X, %0x08X\n", data, data_rd);
-		ret = -EFAULT;
-		goto out;
-	}
-
-out:
-	return ret;
-}
-
-static int siw_hal_ic_test(struct device *dev)
-{
-	u32 data[] = {
-		0x5A5A5A5A,
-		0xA5A5A5A5,
-		0xF0F0F0F0,
-		0x0F0F0F0F,
-		0xFF00FF00,
-		0x00FF00FF,
-		0xFFFF0000,
-		0x0000FFFF,
-		0xFFFFFFFF,
-		0x00000000,
-	};
-	int i;
-	int ret = 0;
-
-	for (i = 0; i < ARRAY_SIZE(data); i++) {
-		ret = siw_hal_ic_test_unit(dev, data[i]);
-		if (ret < 0) {
-			break;
-		}
-	}
-
-	return ret;
 }
 
 #if defined(__SIW_CONFIG_FB)
@@ -1688,11 +1620,6 @@ static int siw_hal_init(struct device *dev)
 
 	if (atomic_read(&ts->state.core) == CORE_PROBE) {
 		siw_hal_fb_notifier_init(dev);
-
-		ret = siw_hal_ic_test(dev);
-		if (ret < 0) {
-			goto out;
-		}
 	}
 
 	t_dev_dbg_base(dev, "charger_state = 0x%02X\n", chip->charger);
@@ -5194,6 +5121,158 @@ static int siw_hal_early_probe(struct device *dev)
 	return 0;
 }
 
+enum {
+	IC_TEST_ADDR_NOT_VALID = 0x8000,
+};
+
+int siw_hal_ic_test_unit(struct device *dev, u32 data)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+//	struct siw_ts *ts = chip->ts;
+	struct siw_hal_reg *reg = chip->reg;
+	u32 data_rd;
+	int ret;
+
+	if (!reg->spr_chip_test) {
+		t_dev_warn(dev, "ic test addr not valid, skip\n");
+		return IC_TEST_ADDR_NOT_VALID;
+	}
+
+	ret = siw_hal_write_value(dev,
+				reg->spr_chip_test,
+				data);
+	if (ret < 0) {
+		t_dev_err(dev, "ic test wr err, %08Xh, %d\n", data, ret);
+		goto out;
+	}
+
+	ret = siw_hal_read_value(dev,
+				reg->spr_chip_test,
+				&data_rd);
+	if (ret < 0) {
+		t_dev_err(dev, "ic test rd err: %08Xh, %d\n", data, ret);
+		goto out;
+	}
+
+	if (data != data_rd) {
+		t_dev_err(dev, "ic test cmp err, %08Xh, %08Xh\n", data, data_rd);
+		ret = -EFAULT;
+		goto out;
+	}
+
+out:
+	return ret;
+}
+
+static int siw_hal_ic_test(struct device *dev)
+{
+	u32 data[] = {
+		0x5A5A5A5A,
+		0xA5A5A5A5,
+		0xF0F0F0F0,
+		0x0F0F0F0F,
+		0xFF00FF00,
+		0x00FF00FF,
+		0xFFFF0000,
+		0x0000FFFF,
+		0xFFFFFFFF,
+		0x00000000,
+	};
+	int i;
+	int ret = 0;
+
+	for (i = 0; i < ARRAY_SIZE(data); i++) {
+		ret = siw_hal_ic_test_unit(dev, data[i]);
+		if ((ret == IC_TEST_ADDR_NOT_VALID) || (ret < 0)) {
+			break;
+		}
+	}
+
+	if (ret >= 0) {
+		t_dev_dbg_base(dev, "ic bus r/w test done\n");
+	}
+
+	return ret;
+}
+
+
+static int siw_hal_get_product_id(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+//	struct siw_ts *ts = chip->ts;
+	struct siw_hal_reg *reg = chip->reg;
+	struct siw_hal_fw_info *fw = &chip->fw;
+	u8 product[2][8];
+	u8 *product_id;
+	int err_case = 0;
+	int i;
+	int ret;
+
+	memset((void *)product, 0, sizeof(product));
+
+	/*
+	 * Read multiple
+	 */
+	for (i = 0; i < 4; i++) {
+		product_id = product[!!i];	/* [0] : 1st read, [1] last read */
+		ret = siw_hal_reg_read(dev,
+					reg->tc_product_id1,
+					(void *)product_id, sizeof(product[0]));
+		if (ret < 0) {
+			t_dev_err(dev,
+				"failed to read product id(%d), %d\n",
+				i, ret);
+			return ret;
+		}
+	}
+
+	if (!product[0][0] || !product[1][0]) {	/* validity */
+		err_case = 1;
+	} else if (strncmp(product[0], product[1], 8)) {	/* comparison */
+		err_case = 2;
+	}
+
+	if (err_case) {
+		t_dev_err(dev,
+			"product id not %s: %s, %s\n",
+			(err_case == 2) ? "verified" : "valid",
+			(char *)product[0], (char *)product[1]);
+		return -EFAULT;
+	}
+
+	siw_hal_fw_set_prod_id(fw, (u8 *)product[0], sizeof(product[0]));
+
+	t_dev_dbg_base(dev, "product id - %s\n", fw->product_id);
+
+	return 0;
+}
+
+static int siw_hal_chipset_check(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	int ret;
+
+	touch_msleep(ts->caps.hw_reset_delay);
+
+	ret = siw_hal_ic_test(dev);
+	if (ret < 0) {
+		goto out;
+	}
+
+	/*
+	 * Preceding process
+	 * : get reference value to cope with product variation
+	 */
+	ret = siw_hal_get_product_id(dev);
+	if (ret < 0) {
+		goto out;
+	}
+
+out:
+	return ret;
+}
+
 static int siw_hal_probe(struct device *dev)
 {
 	struct siw_ts *ts = to_touch_core(dev);
@@ -5246,6 +5325,11 @@ static int siw_hal_probe(struct device *dev)
 				PM_QOS_DEFAULT_VALUE);
 #endif
 
+	ret = siw_hal_chipset_check(dev);
+	if (ret < 0) {
+		goto out;
+	}
+
 	chip->lcd_mode = LCD_MODE_U3;
 	chip->tci_debug_type = 1;
 
@@ -5255,6 +5339,7 @@ static int siw_hal_probe(struct device *dev)
 	siwmon_submit_ops_step_chip_wh_name(dev, "%s probe done",
 			touch_chip_name(ts), 0);
 
+out:
 	return ret;
 }
 
