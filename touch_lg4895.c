@@ -167,11 +167,6 @@ static const struct siw_hal_reg_quirk chip_reg_quirks[] = {
 	{ .old_addr = ~0, .new_addr = ~0 },		// End signal
 };
 
-static const struct siw_touch_second_screen chip_2nd_scr = {
-	.bound_i = 1,
-	.bound_j = 4,
-};
-
 #if defined(__SIW_CONFIG_OF)
 /*
  * of_device_is_compatible(dev->of_node, CHIP_COMPATIBLE_NAME)
@@ -278,8 +273,6 @@ static const struct siw_touch_pdata chip_pdata = {
 	.watch_win			= NULL,
 	//See 'siw_setup_operations' [siw_touch.c]
 	.reg_quirks			= (void *)chip_reg_quirks,
-	/* */
-	.second_screen		= (void *)&chip_2nd_scr,
 };
 
 static struct siw_touch_chip_data chip_data = {

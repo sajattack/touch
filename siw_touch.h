@@ -626,8 +626,6 @@ struct siw_touch_pdata {
 
 	struct siw_touch_fquirks fquirks;
 
-	void *second_screen;
-
 	void *uevent_ctrl;
 
 	void *fw_bin;
@@ -840,12 +838,6 @@ static inline struct siw_touch_fquirks *pdata_fquirks(
 							struct siw_touch_pdata *pdata)
 {
 	return &pdata->fquirks;
-}
-
-static inline struct siw_touch_second_screen *pdata_second_screen(
-								struct siw_touch_pdata *pdata)
-{
-	return pdata->second_screen;
 }
 
 static inline struct siw_touch_uevent_ctrl *pdata_uevent_ctrl(
@@ -1320,12 +1312,6 @@ static inline int touch_xfer_allowed(struct siw_ts *ts)
 static inline struct siw_touch_fquirks *touch_fquirks(struct siw_ts *ts)
 {
 	return pdata_fquirks(ts->pdata);
-}
-
-static inline struct siw_touch_second_screen *touch_second_screen(
-								struct siw_ts *ts)
-{
-	return pdata_second_screen(ts->pdata);
 }
 
 static inline struct siw_touch_uevent_ctrl *touch_uevent_ctrl(

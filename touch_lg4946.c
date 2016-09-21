@@ -283,8 +283,6 @@ static const struct siw_touch_pdata chip_pdata = {
 	.watch_win			= NULL,
 	//See 'siw_setup_operations' [siw_touch.c]
 	.reg_quirks			= NULL,
-	/* */
-	.second_screen		= NULL,
 };
 
 static struct siw_touch_chip_data chip_data = {
