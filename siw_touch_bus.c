@@ -208,20 +208,23 @@ static void *__buffer_alloc(struct device *dev, size_t size,
 		gfp &= ~GFP_DMA;
 		buf = dma_alloc_coherent(NULL, size, &_dma, gfp);
 		if (!buf || !_dma) {
-			t_dev_err(dev, "failed to allocate dma buffer %s, %pK %zXh\n",
+			t_dev_err(dev, "failed to allocate dma buffer %s, %p %zxh\n",
 				name, buf, (size_t)_dma);
 			return NULL;
 		}
+
+		t_dev_dbg_base(dev, "alloc %s: buf %p, phy %zxh, size %zxh\n",
+					name, buf, (size_t)_dma, size);
 	} else {
 		buf = kmalloc(size, gfp);
 		if (!buf) {
 			t_dev_err(dev, "failed to allocate %s\n", name);
 			return NULL;
 		}
-	}
 
-	t_dev_dbg_base(dev, "alloc %s: buf %pK, phy %zXh, size %zXh\n",
-				name, buf, (size_t)_dma, size);
+		t_dev_dbg_base(dev, "alloc %s: buf %p, size %zxh\n",
+					name, buf, size);
+	}
 
 	if (dma_handle)
 		*dma_handle = _dma;
@@ -237,13 +240,13 @@ static void __buffer_free(struct device *dev, size_t size,
 		return;
 
 	if (siw_touch_sys_bus_use_dma(dev) && dma_handle) {
-		t_dev_dbg_base(dev, "free %s: buf %pK, phy %zXh, size %zXh\n",
+		t_dev_dbg_base(dev, "free %s: buf %p, phy %zxh, size %zxh\n",
 					name, buf, (size_t)dma_handle, size);
 		dma_free_coherent(NULL, size, buf, dma_handle);
 		return;
 	}
 
-	t_dev_dbg_base(dev, "free %s: buf %pK, size %zXh\n",
+	t_dev_dbg_base(dev, "free %s: buf %p, size %zxh\n",
 					name, buf, size);
 	kfree(buf);
 }
@@ -365,8 +368,8 @@ int siw_touch_bus_free_buffer(struct siw_ts *ts)
 		ts->xfer = NULL;
 	}
 
-	siw_touch_buf_alloc(ts, 0);
-	siw_touch_buf_alloc(ts, 1);
+	siw_touch_buf_free(ts, 0);
+	siw_touch_buf_free(ts, 1);
 
 	return 0;
 }
