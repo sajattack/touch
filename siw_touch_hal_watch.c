@@ -2460,21 +2460,90 @@ static void ext_watch_fontdata_attr_free(struct device *dev)
 	watch->font_written_size = 0;
 }
 
+static int ext_watch_fontdata_read(struct device *dev,
+			const char *name, u8 *buf, u32 max_size)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	struct siw_touch_font_bin *font_bin = NULL;
+	struct file *filp = NULL;
+	u8 *font_buf = NULL;
+	u32 font_size = 0;
+	loff_t fsize;
+	int rd_size;
+	int ret = 0;
+
+	if (touch_flags(ts) & TOUCH_USE_FONT_BINARY) {
+		t_watch_info(dev, "font_preload: font info - binary\n");
+
+		font_bin = touch_font_bin(ts);
+		if (font_bin == NULL) {
+			t_watch_err(dev, "font_preload: empty font info\n");
+			return -ENOMEM;
+		}
+
+		font_buf = font_bin->font_data;
+		font_size = font_bin->font_size;
+
+		if ((font_buf == NULL) || !font_size) {
+			t_watch_err(dev, "font_preload: invalid font info\n");
+			return -ENOMEM;
+		}
+
+		if (font_size > max_size) {
+			t_watch_err(dev, "font_preload: size overflow, %d > %d\n",
+				font_size, max_size);
+			return -EOVERFLOW;
+		}
+
+		memcpy(buf, font_buf, font_size);
+		return font_size;
+	}
+
+	t_watch_info(dev, "font_preload: font info - file\n");
+
+	if (!name) {
+		t_watch_info(dev, "font_preload: watch_font_image not defined\n");
+		return -EFAULT;
+	}
+
+	filp = filp_open(name, O_RDONLY, 0);
+	if (IS_ERR(filp)) {
+		t_watch_err(dev, "font_preload: font_image open failed\n");
+		return (int)PTR_ERR(filp);
+	}
+
+	fsize = vfs_llseek(filp, 0, SEEK_END);
+	if ((u32)fsize > max_size) {
+		t_watch_err(dev, "font_preload: size overflow, %d > %d\n",
+			(int)fsize, max_size);
+		ret = -EOVERFLOW;
+		goto out;
+	}
+
+	rd_size = kernel_read(filp, 0, (char *)buf, (unsigned long)fsize);
+	if (rd_size != (int)fsize) {
+		t_watch_err(dev, "font_preload: failed to read[%d], %d\n",
+			(int)fsize, rd_size);
+		memset(buf, 0, max_size);
+		ret = (rd_size < 0) ? rd_size : -EFAULT;
+		goto out;
+	}
+
+	ret = rd_size;
+
+out:
+	filp_close(filp, 0);
+	return ret;
+}
+
 static int ext_watch_fontdata_preload(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
 	struct watch_data *watch = chip->watch;
-	struct file *filp = NULL;
-	char *buf;
-	loff_t size;
-	int rd_size;
-	int ret = 0;
-
-	if (!ts->watch_font_image) {
-		t_watch_info(dev, "font_preload: watch_font_image not defined, skip\n");
-		return 0;
-	}
+	u8 *buf;
+	int size = 0;
 
 	if (!watch->ext_wdata.font_data) {
 		t_watch_info(dev, "font_preload: no font data buffer! check!\n");
@@ -2482,28 +2551,16 @@ static int ext_watch_fontdata_preload(struct device *dev)
 	}
 	buf = watch->ext_wdata.font_data;
 
-	filp = filp_open(ts->watch_font_image, O_RDONLY, 0);
-	if (IS_ERR(filp)) {
-		return (int)PTR_ERR(filp);
-	}
-
-	size = vfs_llseek(filp, 0, SEEK_END);
-	if (size > watch->font_max_size)	 {
-		t_watch_warn(dev, "font_preload: size overflow, %d > %d\n",
-			(int)size, SIW_MAX_FONT_SIZE);
-		ret = -EOVERFLOW;
-		goto out;
-	}
-
-	rd_size = kernel_read(filp, 0,
-				(char *)buf,
-				(unsigned long)size);
-	if (rd_size != (int)size) {
-		t_watch_warn(dev, "font_preload: failed to read[%d], %d\n",
-			(int)size, (int)rd_size);
-		memset(watch->ext_wdata.font_data, 0, watch->font_max_size);
-		ret = (rd_size < 0) ? rd_size : -EFAULT;
-		goto out;
+	size = ext_watch_fontdata_read(dev,
+				ts->watch_font_image,
+				buf,
+				watch->font_max_size);
+	if (size < 0) {
+	#if 1	/* Just skip */
+		return 0;
+	#else
+		return size;
+	#endif
 	}
 
 	watch->font_written_size = (u32)size;
@@ -2520,10 +2577,7 @@ static int ext_watch_fontdata_preload(struct device *dev)
 			buf[0], buf[1], buf[2], buf[3],
 			buf[4], buf[5], buf[6], buf[7]);
 
-out:
-	filp_close(filp, 0);
-
-	return ret;
+	return 0;
 }
 
 

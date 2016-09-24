@@ -569,6 +569,11 @@ struct siw_touch_fw_bin {
 	int fw_size;
 };
 
+struct siw_touch_font_bin {
+	u8 *font_data;
+	int font_size;
+};
+
 struct siw_touch_pdata {
 	/* Config. */
 	char *chip_id;			//chip id(fixed)
@@ -629,6 +634,8 @@ struct siw_touch_pdata {
 	void *uevent_ctrl;
 
 	void *fw_bin;
+
+	void *font_bin;
 
 	int senseless_margin;
 };
@@ -852,6 +859,12 @@ static inline struct siw_touch_fw_bin *pdata_fw_bin(
 	return pdata->fw_bin;
 }
 
+static inline struct siw_touch_font_bin *pdata_font_bin(
+								struct siw_touch_pdata *pdata)
+{
+	return pdata->font_bin;
+}
+
 static inline int pdata_senseless_margin(struct siw_touch_pdata *pdata)
 {
 	return pdata->senseless_margin;
@@ -1004,6 +1017,7 @@ struct siw_ts {
 #define _TOUCH_USE_VIRT_DIR_WATCH	(1UL<<16)
 #define _TOUCH_USE_DRV_NAME_SYSFS	(1UL<<17)
 #define _TOUCH_USE_FW_BINARY		(1UL<<18)
+#define _TOUCH_USE_FONT_BINARY		(1UL<<19)
 
 #define _TOUCH_USE_PROBE_INIT_LATE	(1UL<<24)
 
@@ -1054,6 +1068,7 @@ enum {
 	TOUCH_USE_VIRT_DIR_WATCH	= _TOUCH_USE_VIRT_DIR_WATCH,
 	TOUCH_USE_DRV_NAME_SYSFS	= _TOUCH_USE_DRV_NAME_SYSFS,
 	TOUCH_USE_FW_BINARY			= _TOUCH_USE_FW_BINARY,
+	TOUCH_USE_FONT_BINARY		= _TOUCH_USE_FONT_BINARY,
 	/* */
 	TOUCH_USE_PROBE_INIT_LATE	= _TOUCH_USE_PROBE_INIT_LATE,
 	/* */
@@ -1324,6 +1339,12 @@ static inline struct siw_touch_fw_bin *touch_fw_bin(
 								struct siw_ts *ts)
 {
 	return pdata_fw_bin(ts->pdata);
+}
+
+static inline struct siw_touch_font_bin *touch_font_bin(
+								struct siw_ts *ts)
+{
+	return pdata_font_bin(ts->pdata);
 }
 
 static inline int touch_senseless_margin(struct siw_ts *ts)
