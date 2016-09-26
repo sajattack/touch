@@ -238,6 +238,7 @@ struct siw_hal_fw_info {
 	u32 sn;
 	u32 date;
 	u32 time;
+	u32 conf_index;
 };
 
 static inline void siw_hal_fw_set_chip_id(struct siw_hal_fw_info *fw, u32 chip_id)
