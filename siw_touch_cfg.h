@@ -21,7 +21,10 @@
 
 //#define __SIW_SUPPORT_ASC
 
+#if defined(CONFIG_NET)
 #define __SIW_SUPPORT_ABT
+#endif
+
 #define __SIW_SUPPORT_PRD
 
 #if defined(CONFIG_TOUCHSCREEN_SIW_LG4895) ||	\
@@ -76,10 +79,6 @@
 #define __SIW_CONFIG_EARLYSUSPEND
 #elif defined(CONFIG_FB)
 #define __SIW_CONFIG_FB
-#endif
-
-#if defined(CONFIG_NET)
-#define __SIW_CONFIG_NET
 #endif
 
 //#define __SIW_CONFIG_SHOW_TCI_INIT_VAL
