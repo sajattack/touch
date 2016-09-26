@@ -1,4 +1,45 @@
-[Last updated : 2016.08.31]
+[Last updated : 2016.09.26 AM 09:00]
+
+---------------------------------------------------------------------------------------------------
+
+* 73143a2 - input: touchscreen: siw: version fix - v2.15r (Mon Sep 26 09:02:20 2016 +0900) <Harrison Kim>
+* b633976 - input: touchscreen: siw: update Watch layer - add TOUCH_USE_FONT_BINARY option (Sat Sep 24 15:36:23 2016 +0900) <Harrison Kim>
+* 9264ea3 - input: touchscreen: siw: update Core layer - adjust second_screen option (Sat Sep 24 15:22:46 2016 +0900) <Harrison Kim>
+* 139fd41 - input: touchscreen: siw: update PRD layer - Full Refactoring (Sat Sep 24 15:20:48 2016 +0900) <Harrison Kim>
+* 1e407fb - input: touchscreen: siw: update HAL layer - add siw_hal_chipset_check (Sat Sep 24 15:18:39 2016 +0900) <Harrison Kim>
+* 66d4b8f - input: touchscreen: siw: update BUS layer - bug-fix for buffer release (Sat Sep 24 10:23:25 2016 +0900) <Harrison Kim>
+* 31ee06b - input: touchscreen: siw: update Watch layer - add NULL pointer check (Thu Sep 22 09:07:08 2016 +0900) <Harrison Kim>
+* f848138 - input: touchscreen: siw: update ABT layer - add NULL pointer check (Thu Sep 22 09:06:34 2016 +0900) <Harrison Kim>
+* 17b1713 - input: touchscreen: siw: update PRD layer - add dynamic debug-offset (Mon Sep 19 13:44:47 2016 +0900) <Harrison Kim>
+* d065353 - input: touchscreen: siw: update HAL layer - ic-info check (Mon Sep 19 09:51:23 2016 +0900) <Harrison Kim>
+* ffbf6d2 - input: touchscreen: siw: update Of(DTS) layer - add __weak control (Mon Sep 12 15:28:53 2016 +0900) <Harrison Kim>
+* eba81cf - input: touchscreen: siw: update HAL layer - bug-fix for ABT (Mon Sep 12 15:28:31 2016 +0900) <Harrison Kim>
+* 42bf06d - input: touchscreen: siw: update Watch layer - activate siw_hal_watch_rtc_on (Mon Sep 12 09:02:29 2016 +0900) <Harrison Kim>
+* d3fc376 - input: touchscreen: siw: update HAL layer - add siw_hal_watch_rtc_on (Mon Sep 12 09:02:11 2016 +0900) <Harrison Kim>
+* 9a90ec5 - input: touchscreen: siw: update HAL layer - add __weak control (Mon Sep 12 09:01:48 2016 +0900) <Harrison Kim>
+* f86735c - input: touchscreen: siw: include: update global header file & bug-fix (Fri Sep 9 16:22:12 2016 +0900) <Harrison Kim>
+* 92c0568 - input: touchscreen: siw: update PRD layer - adjust SW1828 params (Wed Sep 7 17:48:46 2016 +0900) <Sungyeal Park>
+* 33a0b2f - input: touchscreen: siw: update PRD layer - add debug-command tuning (Wed Sep 7 17:48:26 2016 +0900) <Sungyeal Park>
+* 2203d44 - input: touchscreen: siw: update PRD layer - add dynamic debug-command (Wed Sep 7 17:47:58 2016 +0900) <Sungyeal Park>
+* f5c4dd8 - input: touchscreen: siw: update PRD layer - add dynamic sysfs scheme (Wed Sep 7 17:47:15 2016 +0900) <Sungyeal Park>
+* 7b87c03 - input: touchscreen: siw: update Core(sysfs) layer - add dbg_notify (Tue Sep 6 15:05:11 2016 +0900) <Harrison Kim>
+* a6dc6b3 - input: touchscreen: siw: update Core(sysfs) layer - adjust lpwg_notify (Tue Sep 6 15:04:33 2016 +0900) <Harrison Kim>
+* d487c1c - input: touchscreen: siw: update SIWMON layer - modify kconfig (Mon Sep 5 16:46:43 2016 +0900) <Harrison Kim>
+* 3badd30 - input: touchscreen: siw: update HAL layer - update header file (Mon Sep 5 11:00:24 2016 +0900) <Harrison Kim>
+* e3ab8c5 - input: touchscreen: siw: update DTS ref. - add LG4946 setup example (Mon Sep 5 09:24:12 2016 +0900) <Harrison Kim>
+* c8f6cf8 - input: touchscreen: siw: update LG4895 control - screen size (Mon Sep 5 09:21:22 2016 +0900) <Harrison Kim>
+* 6454a04 - input: touchscreen: siw: update Watch layer - adjust xfer declaration (Mon Sep 5 09:20:36 2016 +0900) <Harrison Kim>
+* 764e49e - input: touchscreen: siw: update Watch layer - LG4895 option flag (Mon Sep 5 09:19:55 2016 +0900) <Harrison Kim>
+* 57c5073 - input: touchscreen: siw: update HAL layer - revise xfer usage & bug-fix (Mon Sep 5 09:14:19 2016 +0900) <Harrison Kim>
+* 2288c83 - input: touchscreen: siw: update HAL layer - adjust xfer declaration (Mon Sep 5 09:13:44 2016 +0900) <Harrison Kim>
+* 46065ab - input: touchscreen: siw: update HAL layer - revise xfer control (Mon Sep 5 09:12:48 2016 +0900) <Harrison Kim>
+* 0133d50 - input: touchscreen: siw: update HAL layer - add log (Mon Sep 5 09:11:41 2016 +0900) <Harrison Kim>
+* 14b2bd5 - input: touchscreen: siw: version 2.15b begins (Mon Sep 5 09:09:20 2016 +0900) <Harrison Kim>
+
+---------------------------------------------------------------------------------------------------
+
+* b362356 - input: touchscreen: siw: __reference: git-history document (Wed Aug 31 16:32:38 2016 +0900)(2 minutes ago) <Harrison Kim>
+* ffb38e2 - input: touchscreen: siw: __reference: guide document (Wed Aug 31 16:30:07 2016 +0900)(4 minutes ago) <Harrison Kim>
 
 ---------------------------------------------------------------------------------------------------
 
