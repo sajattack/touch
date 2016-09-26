@@ -384,7 +384,9 @@ static int __used __siw_hal_do_reg_read(struct device *dev, u32 addr, void *data
 	int bus_tx_hdr_size = touch_tx_hdr_size(ts);
 	int bus_rx_hdr_size = touch_rx_hdr_size(ts);
 //	int bus_tx_dummy_size = touch_tx_dummy_size(ts);
-	int bus_rx_dummy_size = touch_rx_dummy_size(ts);
+	int bus_rx_dummy_size = (touch_rx_dummy_size(ts) & 0xFFFF);
+	int bus_rx_dummy_flag = (touch_rx_dummy_size(ts) >> 16);
+	int bus_rd_hdr_flag = 0;
 	struct touch_bus_msg _msg = {0, };
 	struct touch_bus_msg *msg = &_msg;
 	int tx_size = bus_tx_hdr_size;
@@ -405,12 +407,56 @@ static int __used __siw_hal_do_reg_read(struct device *dev, u32 addr, void *data
 		return -EFAULT;
 	}
 
+#if defined(__SIW_I2C_TYPE_1)
+	if (touch_bus_type(ts) == BUS_IF_I2C) {
+		struct siw_hal_reg *reg = chip->reg;
+
+		/*
+		 * If 0x200 and burst, change to 0x201
+		 * If 0x201, change to 0x202
+		 */
+		if (addr == reg->tc_ic_status) {
+			addr += !!(size > 4);
+		} else {
+			addr += !!(addr == reg->tc_status);
+		}
+	}
+#endif
+
+#if defined(__SIW_SPI_TYPE_1)
+	/*
+	 * 0x10 : 128-bit dummy
+	 * size > 4 : burst
+	 */
+	if (bus_rx_dummy_flag & SPI_BUS_RX_DUMMY_FLAG_128BIT) {
+		/* Burst restriction under 128-bit dummy */
+		if (size > 4) {
+			switch (addr & 0xF00) {
+			case 0xC00:
+			case 0xD00:
+			case 0xE00:
+				break;
+			default:
+				bus_rx_dummy_flag &= ~SPI_BUS_RX_DUMMY_FLAG_128BIT;
+				bus_rx_hdr_size = SPI_BUS_RX_HDR_SZ_32BIT;
+				bus_rx_dummy_size = SPI_BUS_RX_DUMMY_SZ_32BIT;
+				break;
+			}
+		}
+	}
+	if (bus_rx_dummy_flag & SPI_BUS_RX_DUMMY_FLAG_128BIT) {
+		bus_rd_hdr_flag |= SPI_BUS_RX_DUMMY_FLAG_128BIT;
+	}
+#else
+	bus_rx_dummy_flag = 0;
+#endif
+
 //	t_dev_info(dev, "addr %04Xh, size %d\n", addr, size);
 
 	tx_buf = __siw_hal_get_curr_buf(ts, &tx_dma, 1);
 	rx_buf = __siw_hal_get_curr_buf(ts, &rx_dma, 0);
 
-	tx_buf[0] = ((size > 4) ? 0x20 : 0x00);
+	tx_buf[0] = bus_rd_hdr_flag | ((size > 4) ? 0x20 : 0x00);
 	tx_buf[0] |= ((addr >> 8) & 0x0f);
 	tx_buf[1] = (addr & 0xff);
 //	while (bus_tx_dummy_size--) {
@@ -570,7 +616,8 @@ static int __used __siw_hal_do_xfer_msg(struct device *dev, struct touch_xfer_ms
 	int bus_tx_hdr_size = touch_tx_hdr_size(ts);
 	int bus_rx_hdr_size = touch_rx_hdr_size(ts);
 //	int bus_tx_dummy_size = touch_tx_dummy_size(ts);
-	int bus_rx_dummy_size = touch_rx_dummy_size(ts);
+	int bus_rx_dummy_size = (touch_rx_dummy_size(ts) & 0xFFFF);
+	int bus_rx_dummy_flag = (touch_rx_dummy_size(ts) >> 16);
 	int bus_dummy;
 	int buf_size = touch_get_act_buf_size(ts);
 	int tx_size;
@@ -582,6 +629,19 @@ static int __used __siw_hal_do_xfer_msg(struct device *dev, struct touch_xfer_ms
 	}
 
 	t_dev_dbg_base(dev, "xfer: start\n");
+
+#if defined(__SIW_SPI_TYPE_1)
+	/*
+	 * 0x10 : 128-bit dummy
+	 * size > 4 : burst
+	 */
+	if (bus_rx_dummy_flag & SPI_BUS_RX_DUMMY_FLAG_128BIT) {
+		bus_rx_hdr_size = SPI_BUS_RX_HDR_SZ_32BIT;
+		bus_rx_dummy_size = SPI_BUS_RX_DUMMY_SZ_32BIT;
+	}
+#else
+	bus_rx_dummy_flag = 0;
+#endif
 
 	for (i = 0; i < xfer->msg_count; i++) {
 		tx = &xfer->data[i].tx;

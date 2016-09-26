@@ -52,12 +52,26 @@
 
 int siw_touch_bus_tr_data_init(struct siw_ts *ts)
 {
+	struct device *dev = ts->dev;
 	struct siw_touch_pdata *pdata = ts->pdata;
 
 	ts->bus_tx_hdr_size = pdata_tx_hdr_size(pdata);
 	ts->bus_rx_hdr_size = pdata_rx_hdr_size(pdata);
 	ts->bus_tx_dummy_size = pdata_tx_dummy_size(pdata);
 	ts->bus_rx_dummy_size = pdata_rx_dummy_size(pdata);
+
+#if defined(__SIW_SPI_TYPE_1)
+	if (touch_bus_type(ts) == BUS_IF_SPI) {
+		if (ts->bus_rx_dummy_size == SPI_BUS_RX_DUMMY_SZ_128BIT) {
+			ts->bus_rx_dummy_size |= (SPI_BUS_RX_DUMMY_FLAG_128BIT<<16);
+		}
+	}
+#endif
+
+	t_dev_dbg_base(dev, "bus_tx_hdr_size  : %Xh\n", ts->bus_tx_hdr_size);
+	t_dev_dbg_base(dev, "bus_rx_hdr_size  : %Xh\n", ts->bus_rx_hdr_size);
+	t_dev_dbg_base(dev, "bus_tx_dummy_size: %Xh\n", ts->bus_tx_dummy_size);
+	t_dev_dbg_base(dev, "bus_rx_dummy_size: %Xh\n", ts->bus_rx_dummy_size);
 
 	return 0;
 }

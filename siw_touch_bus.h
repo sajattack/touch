@@ -35,6 +35,21 @@ enum {
 	SPI_BUS_RX_DUMMY_SZ = 2,
 };
 
+/* __SIW_SPI_TYPE_1 */
+enum {
+	SPI_BUS_RX_HDR_SZ_32BIT = (4+2),
+	SPI_BUS_RX_DUMMY_SZ_32BIT = 4,
+	/* */
+	SPI_BUS_RX_HDR_SZ_128BIT = (16+2),
+	SPI_BUS_RX_DUMMY_SZ_128BIT = 16,
+};
+
+enum {
+	SPI_BUS_RX_DUMMY_FLAG_128BIT = 0x10,
+};
+
+/* __SIW_SPI_TYPE_1 */
+
 struct touch_bus_msg {
 	u8 *tx_buf;
 	int tx_size;
