@@ -337,6 +337,10 @@ static const char *prd_param_name_lg4946_g[] = {
 	"L0L53P1", "L0W53P1", NULL
 };
 
+static const char *prd_param_name_sw49407_h[] = {
+	"L1L57P1", NULL
+};
+
 static const struct siw_hal_prd_param prd_params[] = {
 	/*
 	 * LG4894 group
@@ -467,6 +471,93 @@ static const struct siw_hal_prd_param prd_params[] = {
 			0,
 		},
 		__PRD_PARAM_DIMESION(32, 18, 0, 32, PRD_M1_COL_SIZE, 1, 1),
+		__PRD_2ND_SCR(0, 0),
+		.flag = 0,
+	},
+	/*
+	 * SW49105 group (Not fixed)
+	 */
+	{	.chip_type = CHIP_SW49105,
+		.name = NULL,	//NULL meas 'Last & Default'
+		.cmd_type = PRD_CMD_TYPE_1,
+		.addr = {
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_RAW, 0xB85),
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_BASELINE_EVEN, 0xCA5),
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_DELTA, 0xDC5),
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_LABEL, 0xF19),
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_DEBUG, 0xB0F),
+			0,
+		},
+		__PRD_PARAM_DIMESION(30, 18, 0, 32, PRD_M1_COL_SIZE, 1, 1),
+		__PRD_2ND_SCR(0, 0),
+		.flag = 0,
+	},
+	/*
+	 * SW49406 group (Not fixed)
+	 */
+	{	.chip_type = CHIP_SW49406,
+		.name = NULL,	//NULL meas 'Last & Default'
+		.cmd_type = PRD_CMD_TYPE_1,
+		.addr = {
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_RAW, 0xB82),
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_BASELINE_EVEN, 0xCA2),
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_DELTA, 0xDC2),
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_LABEL, 0xF16),
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_DEBUG, 0xADA),
+			0,
+		},
+		__PRD_PARAM_DIMESION(32, 18, 0, 32, PRD_M1_COL_SIZE, 1, 1),
+		__PRD_2ND_SCR(0, 0),
+		.flag = 0,
+	},
+	/*
+	 * SW49407 group (Not fixed)
+	 */
+	{	.chip_type = CHIP_SW49407,
+		.name = prd_param_name_sw49407_h,
+		.cmd_type = PRD_CMD_TYPE_1,
+		.addr = {
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_RAW, 0xF1C),
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_BASELINE_EVEN, 0x104E),
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_DELTA, 0x1180),
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_LABEL, 0x12E8),
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_DEBUG, 0xCCF),
+			0,
+		},
+		__PRD_PARAM_DIMESION(32+2, 18, 0, 32+2, PRD_M1_COL_SIZE, 1, 1),
+		__PRD_2ND_SCR(1, 4),
+		.flag = 0,
+	},
+	{	.chip_type = CHIP_SW49407,
+		.name = NULL,	//NULL meas 'Last & Default'
+		.cmd_type = PRD_CMD_TYPE_1,
+		.addr = {
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_RAW, 0xF1C),
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_BASELINE_EVEN, 0x104E),
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_DELTA, 0x1180),
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_LABEL, 0x12E8),
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_DEBUG, 0xCCF),
+			0,
+		},
+		__PRD_PARAM_DIMESION(32, 18, 0, 32, PRD_M1_COL_SIZE, 1, 1),
+		__PRD_2ND_SCR(0, 0),
+		.flag = 0,
+	},
+	/*
+	 * SW49408 group (Not fixed)
+	 */
+	{	.chip_type = CHIP_SW49408,
+		.name = NULL,	//NULL meas 'Last & Default'
+		.cmd_type = PRD_CMD_TYPE_1,
+		.addr = {
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_RAW, 0xB85),
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_BASELINE_EVEN, 0xCA5),
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_DELTA, 0xDC5),
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_LABEL, 0xF19),
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_DEBUG, 0xB0F),
+			0,
+		},
+		__PRD_PARAM_DIMESION(30, 18, 0, 32, PRD_M1_COL_SIZE, 1, 1),
 		__PRD_2ND_SCR(0, 0),
 		.flag = 0,
 	},
