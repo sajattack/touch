@@ -42,6 +42,8 @@
 
 #include <linux/input/siw_touch_notify.h>
 
+#include "siw_touch_hal_reg.h"
+
 #include "siw_touch_dbg.h"
 
 
@@ -466,7 +468,7 @@ typedef int (*siw_mon_handler_t)(struct device *dev, u32 opt);
 
 struct siw_touch_operations {
 	/* Register Map */
-	void *reg;
+	struct siw_hal_reg *reg;
 	/* Func. */
 	int (*early_probe)(struct device *dev);
 	int (*probe)(struct device *dev);
@@ -1030,6 +1032,7 @@ struct siw_ts {
 	struct siw_touch_operations *ops_ext;
 	struct siw_touch_operations ops_in;
 	struct siw_touch_operations *ops;
+	struct siw_hal_reg __reg;
 
 	/* */
 	int (*bus_init)(struct device *dev);

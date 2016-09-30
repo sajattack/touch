@@ -211,38 +211,71 @@ int siw_setup_params(struct siw_ts *ts, struct siw_touch_pdata *pdata)
 static void siw_setup_reg_quirks(struct siw_ts *ts)
 {
 	if (ts->pdata->reg_quirks) {
+		struct device *dev = ts->dev;
 	//	struct siw_hal_reg *reg = siw_ops_reg(ts);
 		u32 *curr_reg;
 		u32 *copy_reg;
 		struct siw_hal_reg *reg_org;
 		struct siw_hal_reg_quirk *reg_quirks = ts->pdata->reg_quirks;
 		int cnt = sizeof(struct siw_hal_reg)>>2;
+		char *name = touch_chip_name(ts);
+		u32 new_addr, old_addr;
+		int total = 0;
+		int missing = 0;
+		int show_log = 1;
+		int found = 0;
 		int i;
 
 		reg_org = ts->ops_ext->reg;
 
 		while (1) {
-			if (!reg_quirks->old_addr ||
-				!reg_quirks->new_addr ||
-				(reg_quirks->old_addr == ~0) ||
-				(reg_quirks->new_addr == ~0))
-				break;
+			old_addr = reg_quirks->old_addr;
+			new_addr = reg_quirks->new_addr;
 
+			if (old_addr == (1<<31)) {
+				t_dev_info(dev, "%s reg quirks: ...\n",
+					name);
+				show_log = 0;
+				reg_quirks++;
+				continue;
+			}
+
+			if (!old_addr || !new_addr ||
+				(old_addr == ~0) || (new_addr == ~0)) {
+				break;
+			}
+
+			found = 0;
 			copy_reg = (u32 *)reg_org;
 			curr_reg = (u32 *)siw_ops_reg(ts);
 			for (i = 0; i < cnt; i++) {
-				if ((*copy_reg) == reg_quirks->old_addr) {
-					(*curr_reg) = reg_quirks->new_addr;
-					t_dev_info(ts->dev, "%s reg quirks: %Xh -> %Xh\n",
-						touch_chip_name(ts),
-						reg_quirks->old_addr, reg_quirks->new_addr);
+				if ((*copy_reg) == old_addr) {
+					(*curr_reg) = new_addr;
+					found = 1;
+
 					break;
 				}
 				copy_reg++;
 				curr_reg++;
 			}
+			if (found) {
+				if (show_log) {
+					t_dev_info(dev, "%s reg quirks: [%d] %04Xh -> %04Xh\n",
+						name, total,
+						old_addr, new_addr);
+				}
+			} else {
+				t_dev_warn(dev, "%s reg quirks: [%d] %04Xh not found\n",
+					name, total,
+					old_addr);
+				missing++;
+			}
+			total++;
+
 			reg_quirks++;
 		}
+		t_dev_info(dev, "%s reg quirks: t %d, m %d\n",
+			name, total, missing);
 	}
 }
 
@@ -253,13 +286,16 @@ void *siw_setup_operations(struct siw_ts *ts, struct siw_touch_operations *ops_e
 
 	ts->ops_ext = ops_ext;
 	memcpy(&ts->ops_in, ops_ext, sizeof(struct siw_touch_operations));
+
+	ts->ops_in.reg = &ts->__reg;
+	memcpy(ts->ops_in.reg, ops_ext->reg, sizeof(struct siw_hal_reg));
+
 	ts->ops = &ts->ops_in;
 
 	siw_setup_reg_quirks(ts);
 
 	return ts->ops;
 }
-
 
 /**
  * siw_touch_set() - set touch data
