@@ -102,6 +102,7 @@ enum {
 	PRD_DEBUG_BUF_SIZE	= (336),
 	/* */
 	PRD_BUF_DUMMY		= 128,		//dummy for avoiding memory panic
+	PRD_APP_INFO_SIZE	= 32,
 };
 
 enum {
@@ -4277,15 +4278,26 @@ static ssize_t prd_show_app_info(struct device *dev, char *buf)
 	struct siw_hal_prd_param *param = &prd->param;
 	int temp = prd->sysfs_flag;
 
-	memset(buf, 0, 8);
+	memset(buf, 0, PRD_APP_INFO_SIZE);
 
-	buf[0] = param->row;
-	buf[1] = param->col;
+	buf[0] = (temp & 0xff);
+	buf[1] = ((temp >> 8) & 0xff);
+	buf[2] = ((temp >> 16) & 0xff);
+	buf[3] = ((temp >> 24) & 0xff);
 
-	buf[4] = (temp & 0xff);
-	buf[5] = ((temp >> 8) & 0xff);
-	buf[6] = ((temp >> 16) & 0xff);
-	buf[7] = ((temp >> 24) & 0xff);
+	buf[8] = param->row;
+	buf[9] = param->col;
+	buf[10] = param->col_add;
+	buf[11] = param->ch;
+	buf[12] = param->m1_col;
+	buf[13] = param->cmd_type;
+	buf[14] = param->second_scr.bound_i;
+	buf[15] = param->second_scr.bound_j;
+
+	t_prd_info(prd,
+		"prd info: f %08Xh, r %d, c %d, ca %d, ch %d, m1 %d, cmd %d, bi %d, bj %d\n",
+		temp, param->row, param->col, param->col_add, param->ch, param->m1_col,
+		param->cmd_type, param->second_scr.bound_i, param->second_scr.bound_j);
 
 	if (prd->mon_flag) {
 		siw_touch_mon_resume(dev);
@@ -4294,7 +4306,7 @@ static ssize_t prd_show_app_info(struct device *dev, char *buf)
 	}
 	prd->mon_flag = !prd->mon_flag;
 
-	return 8;
+	return PRD_APP_INFO_SIZE;
 }
 
 
