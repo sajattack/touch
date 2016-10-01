@@ -1890,6 +1890,8 @@ static int siw_hal_reset_ctrl(struct device *dev, int ctrl)
 	t_dev_info(dev, "%s reset control(%d)\n",
 			touch_chip_name(ts), ctrl);
 
+	siw_hal_watch_set_rtc_clear(dev);
+
 	switch (ctrl) {
 	case SW_RESET:
 		ret = siw_hal_sw_reset(dev);
@@ -1904,8 +1906,6 @@ static int siw_hal_reset_ctrl(struct device *dev, int ctrl)
 		t_dev_err(dev, "unknown reset type, %d\n", ctrl);
 		break;
 	}
-
-	siw_hal_watch_set_rtc_clear(dev);
 
 	mutex_unlock(&ts->reset_lock);
 
