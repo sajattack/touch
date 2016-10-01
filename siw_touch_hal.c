@@ -1612,6 +1612,7 @@ static int siw_hal_check_mode(struct device *dev)
 	int ret = 0;
 
 	switch (touch_chip_type(ts)) {
+	case CHIP_SW49408:
 	case CHIP_LG4946:
 		ret = siw_hal_check_mode_type_1(dev,
 					chip->lcd_mode, chip->prev_lcd_mode);
@@ -4446,12 +4447,12 @@ static int siw_hal_do_check_status(struct device *dev,
 	}
 
 	switch(touch_chip_type(ts)) {
-	case CHIP_LG4895:
-	case CHIP_LG4946:
-		ret = siw_hal_check_status_type_1(dev, status, ic_status, irq);
+	case CHIP_SW1828:
+	case CHIP_LG4894:
+		ret = siw_hal_check_status_default(dev, status, ic_status, irq);
 		break;
 	default:
-		ret = siw_hal_check_status_default(dev, status, ic_status, irq);
+		ret = siw_hal_check_status_type_1(dev, status, ic_status, irq);
 		break;
 	}
 	if (ret_pre) {
@@ -4873,6 +4874,7 @@ static int siw_hal_lcd_mode(struct device *dev, u32 mode)
 	}
 
 	switch (touch_chip_type(ts)) {
+	case CHIP_SW49407:
 	case CHIP_LG4895:
 		if (mode == LCD_MODE_U2_UNBLANK)
 			mode = LCD_MODE_U2;
