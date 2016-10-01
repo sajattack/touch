@@ -4614,7 +4614,7 @@ static int siw_hal_get_swipe_data(struct device *dev)
 	memcpy(&rdata, chip->info.data, sizeof(u32) * 3);
 
 	t_dev_info(dev,
-			"Swipe Gesture: start(%4d,%4d) end(%4d,%4d) swipe_time(%dms)\n",
+			"Swipe Gesture: start(%4d, %4d) end(%4d, %4d) swipe_time(%dms)\n",
 			rdata[0] & 0xffff, rdata[0] >> 16,
 			rdata[1] & 0xffff, rdata[1] >> 16,
 			rdata[2] & 0xffff);
@@ -4629,60 +4629,74 @@ static int siw_hal_get_swipe_data(struct device *dev)
 	return 0;
 }
 
-static int siw_hal_irq_lpwg_knock_1(struct siw_ts *ts)
+static int siw_hal_irq_lpwg_base(struct siw_ts *ts, int type)
 {
 	struct device *dev = ts->dev;
+	int ret = 0;
 
-	if (ts->lpwg.mode == LPWG_NONE) {
-		goto out;
+	switch (type) {
+	case KNOCK_1:
+		if (ts->lpwg.mode == LPWG_NONE) {
+			break;
+		}
+		t_dev_info(dev, "LPWG: TOUCH_IRQ_KNOCK\n");
+		siw_hal_get_tci_data(dev,
+			ts->tci.info[TCI_1].tap_count);
+		ts->intr_status = TOUCH_IRQ_KNOCK;
+		break;
+	case KNOCK_2:
+		if (ts->lpwg.mode != LPWG_PASSWORD) {
+			break;
+		}
+		t_dev_info(dev, "LPWG: TOUCH_IRQ_PASSWD\n");
+		siw_hal_get_tci_data(dev,
+			ts->tci.info[TCI_2].tap_count);
+		ts->intr_status = TOUCH_IRQ_PASSWD;
+		break;
+	case SWIPE_RIGHT:
+		t_dev_info(dev, "LPWG: SWIPE_RIGHT\n");
+		siw_hal_get_swipe_data(dev);
+		ts->intr_status = TOUCH_IRQ_SWIPE_RIGHT;
+		break;
+	case SWIPE_LEFT:
+		t_dev_info(dev, "LPWG: SWIPE_LEFT\n");
+		siw_hal_get_swipe_data(dev);
+		ts->intr_status = TOUCH_IRQ_SWIPE_LEFT;
+		break;
+	default:
+	//	t_dev_warn(dev, "unkown lpwg: %d\n", type);
+		break;
 	}
 
-	t_dev_info(dev, "LPWG: TOUCH_IRQ_KNOCK\n");
-	siw_hal_get_tci_data(dev,
-		ts->tci.info[TCI_1].tap_count);
-	ts->intr_status = TOUCH_IRQ_KNOCK;
-
-out:
-	return 0;
+	return ret;
 }
 
-static int siw_hal_irq_lpwg_knock_2(struct siw_ts *ts)
+static int siw_hal_irq_lpwg_gesture(struct siw_ts *ts, int type)
 {
 	struct device *dev = ts->dev;
+	int index = 0;
+	int ret = 0;
 
-	if (ts->lpwg.mode != LPWG_PASSWORD) {
-		goto out;
-	}
+	t_dev_info(dev, "lpwg gesture: %d\n", type);
 
-	t_dev_info(dev, "LPWG: TOUCH_IRQ_PASSWD\n");
-	siw_hal_get_tci_data(dev,
-		ts->tci.info[TCI_2].tap_count);
-	ts->intr_status = TOUCH_IRQ_PASSWD;
+	ts->intr_status = TOUCH_IRQ_GESTURE;
+	ts->intr_gesture = TOUCH_UEVENT_GESTURE_C + index;
 
-out:
-	return 0;
+	return ret;
 }
 
-static int siw_hal_irq_lpwg_swipe_right(struct siw_ts *ts)
+static int siw_hal_irq_lpwg_dir(struct siw_ts *ts, int type)
 {
 	struct device *dev = ts->dev;
+	int index = 0;
+	int ret = 0;
 
-	t_dev_info(dev, "LPWG: SWIPE_RIGHT\n");
-	siw_hal_get_swipe_data(dev);
-	ts->intr_status = TOUCH_IRQ_SWIPE_RIGHT;
+	t_dev_info(dev, "lpwg dir: %d\n", type);
 
-	return 0;
-}
+	ts->intr_status = TOUCH_IRQ_GESTURE;
+	ts->intr_gesture = TOUCH_UEVENT_GESTURE_DIR_RIGHT + index;
 
-static int siw_hal_irq_lpwg_swipe_left(struct siw_ts *ts)
-{
-	struct device *dev = ts->dev;
-
-	t_dev_info(dev, "LPWG: SWIPE_LEFT\n");
-	siw_hal_get_swipe_data(dev);
-	ts->intr_status = TOUCH_IRQ_SWIPE_LEFT;
-
-	return 0;
+	return ret;
 }
 
 static int siw_hal_irq_lpwg_custom_debug(struct siw_ts *ts)
@@ -4708,18 +4722,6 @@ static int siw_hal_irq_lpwg_knock_overtap(struct siw_ts *ts)
 	return 0;
 }
 
-static int (*__siw_hal_irq_lpwg_func_grp1[])(struct siw_ts *ts) = {
-	[KNOCK_1] 		= siw_hal_irq_lpwg_knock_1,
-	[KNOCK_2]		= siw_hal_irq_lpwg_knock_2,
-	[SWIPE_RIGHT]	= siw_hal_irq_lpwg_swipe_right,
-	[SWIPE_LEFT]	= siw_hal_irq_lpwg_swipe_left,
-};
-
-static int (*__siw_hal_irq_lpwg_func_grp2[])(struct siw_ts *ts) = {
-	[0] = siw_hal_irq_lpwg_custom_debug,
-	[KNOCK_OVERTAP - CUSTOM_DEBUG]	= siw_hal_irq_lpwg_knock_overtap,
-};
-
 static int siw_hal_irq_lpwg(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
@@ -4731,15 +4733,21 @@ static int siw_hal_irq_lpwg(struct device *dev)
 		goto out;
 	}
 
-	if (type <= SWIPE_LEFT) {
-		ret = (*__siw_hal_irq_lpwg_func_grp1[type])(ts);
-		return ret;
+	if (type == CUSTOM_DEBUG) {
+		ret = siw_hal_irq_lpwg_custom_debug(ts);
+	} else if (type == KNOCK_OVERTAP) {
+		ret = siw_hal_irq_lpwg_knock_overtap(ts);
+	} else if (type <= SWIPE_LEFT) {
+		ret = siw_hal_irq_lpwg_base(ts, type);
+	} else if (type <= GESTURE_Z) {
+		ret = siw_hal_irq_lpwg_gesture(ts, type);
+	} else if ((type >= GESTURE_DIR_RIGHT) || (type <= GESTURE_DIR_UP)) {
+		ret = siw_hal_irq_lpwg_dir(ts, type);
+	} else {
+		goto out;
 	}
 
-	if (type >= CUSTOM_DEBUG) {
-		ret = (*__siw_hal_irq_lpwg_func_grp2[type - CUSTOM_DEBUG])(ts);
-		return ret;
-	}
+	return ret;
 
 out:
 	t_dev_err(dev, "LPWG: unknown type, %d\n", type);

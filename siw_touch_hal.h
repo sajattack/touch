@@ -94,17 +94,6 @@ enum {
 };
 
 enum {
-	ABS_MODE = 0,
-	KNOCK_1,
-	KNOCK_2,
-	SWIPE_RIGHT,
-	SWIPE_LEFT,
-	/* */
-	CUSTOM_DEBUG = 200,
-	KNOCK_OVERTAP,
-};
-
-enum {
 	LCD_MODE_U0	= 0,
 	LCD_MODE_U2_UNBLANK,
 	LCD_MODE_U2,

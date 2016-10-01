@@ -1202,6 +1202,9 @@ static int _siw_touch_do_irq_thread(struct siw_ts *ts)
 	if (ts->intr_status & TOUCH_IRQ_SWIPE_LEFT)
 		siw_touch_send_uevent(ts, TOUCH_UEVENT_SWIPE_LEFT);
 
+	if (ts->intr_status & TOUCH_IRQ_GESTURE)
+		siw_touch_send_uevent(ts, ts->intr_gesture);
+
 out:
 	return ret;
 }
