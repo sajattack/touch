@@ -18,7 +18,7 @@ parksy5@siliconworks.co.kr
 
 List of supported devices
 
-: LG4894, LG4895, LG4946, SW1828
+: LG4894, LG4895, LG4946, SW1828, SW49407
 
 
 # for Built-in
@@ -32,7 +32,7 @@ Add this 1 line into {kernel top}/input/touchscreen/Kconfig
 
 : source "drivers/input/touchscreen/siw/Kconfig"
 
-Add this 1 line into {kernel top}/input/touchscreen/Makefil
+Add this 1 line into {kernel top}/input/touchscreen/Makefile
 
 : obj-$(CONFIG_TOUCHSCREEN_SIW) += siw/
 
@@ -53,6 +53,13 @@ CONFIG_TOUCHSCREEN_SIW_LG4895=n
 CONFIG_TOUCHSCREEN_SIW_LG4946=n
 
 CONFIG_TOUCHSCREEN_SIW_SW1828=n
+
+CONFIG_TOUCHSCREEN_SIW_SW49407=n
+
+
+# for DTS
+
+See '_reference / device_tree'
 
 
 # git
