@@ -75,6 +75,38 @@ static const char *siw_onhand_str[] = {
 #define _plat_data_snprintf(_buf, _size, args...)	\
 		siw_snprintf(_buf, _size, " %-25s = %d\n", ##args)
 
+static void siw_touch_sysfs_gen_symlink(struct siw_ts *ts, char *name)
+{
+	struct device *dev = ts->dev;
+	struct kobject *kobj = &ts->kobj;
+	int ret = 0;
+
+	if (!name || !strlen(name)) {
+		return;
+	}
+
+	if (strcmp(kobj->name, name) != 0) {
+		ret = sysfs_create_link(kobj->parent, kobj, name);
+		if (ret >= 0) {
+			t_dev_info(dev, "symlink generated, %s\n", name);
+		}
+	}
+}
+
+static void siw_touch_sysfs_del_symlink(struct siw_ts *ts, char *name)
+{
+	struct kobject *kobj = &ts->kobj;
+
+	if (!name || !strlen(name)) {
+		return;
+	}
+
+	if (strcmp(kobj->name, name) != 0) {
+		sysfs_remove_link(kobj->parent, name);
+	}
+}
+
+
 static ssize_t _show_do_plat_data(struct device *dev, char *buf)
 {
 	struct siw_ts *ts = to_touch_core(dev);
@@ -990,24 +1022,66 @@ static ssize_t _store_dbg_notify(struct device *dev,
 				const char *buf, size_t count)
 {
 	struct siw_ts *ts = to_touch_core(dev);
-	int value[3] = { 0, };
+	int magic = 0;
+	int event = 0;
+	int data = 0;
 
 	if (sscanf(buf, "%X %X %X",
-			&value[0], &value[1], &value[2]) <= 0) {
+			&magic, &event, &data) <= 0) {
 		siw_sysfs_err_invalid_param(dev);
 		return count;
 	}
 
-	if (value[0] != 0x5A) {	//magic code
+	if (magic != 0x5A) {	//magic code
 		goto out;
 	}
 
 	siw_touch_notify(ts,
-		(unsigned long)value[1], (void *)&value[2]);
+		(unsigned long)event, (void *)&data);
 
 out:
 	return count;
 }
+
+enum {
+	SYSFS_DBG_TEST_NONE = 0,
+	SYSFS_DBG_TEST_SYMLINK,
+};
+
+static ssize_t _store_dbg_test(struct device *dev,
+				const char *buf, size_t count)
+{
+	struct siw_ts *ts = to_touch_core(dev);
+	char name[16+1] = {0, };
+	int magic = 0;
+	int code = 0;
+	int value = 0;
+
+	if (sscanf(buf, "%X %X %X %16s",
+			&magic, &code, &value, name) <= 0) {
+		siw_sysfs_err_invalid_param(dev);
+		return count;
+	}
+
+	if (magic != 0x5A) {	//magic code
+		goto out;
+	}
+
+	switch (code) {
+	case SYSFS_DBG_TEST_SYMLINK :
+		siw_touch_sysfs_del_symlink(ts, name);
+		if (value) {
+			siw_touch_sysfs_gen_symlink(ts, name);
+		}
+		break;
+	default :
+		break;
+	}
+
+out:
+	return count;
+}
+
 
 
 #define SIW_TOUCH_ATTR(_name, _show, _store)	\
@@ -1097,6 +1171,8 @@ static SIW_TOUCH_ATTR(init_late, NULL,
 						_store_init_late);
 static SIW_TOUCH_ATTR(dbg_notify, NULL,
 						_store_dbg_notify);
+static SIW_TOUCH_ATTR(dbg_test, NULL,
+						_store_dbg_test);
 
 
 static struct attribute *siw_touch_attribute_list[] = {
@@ -1134,6 +1210,7 @@ static struct attribute *siw_touch_attribute_list[] = {
 	&_SIW_TOUCH_ATTR_T(irq_flag).attr,
 	&_SIW_TOUCH_ATTR_T(init_late).attr,
 	&_SIW_TOUCH_ATTR_T(dbg_notify).attr,
+	&_SIW_TOUCH_ATTR_T(dbg_test).attr,
 	NULL,
 };
 
@@ -1183,13 +1260,15 @@ static struct kobj_type siw_touch_kobj_type = {
 	.sysfs_ops = &siw_touch_sysfs_ops,
 };
 
-#if defined(__SIW_SUPPORT_MISC)
-extern int siw_touch_misc_init(struct device *dev);
-extern void siw_touch_misc_free(struct device *dev);
-#else
-static int siw_touch_misc_init(struct device *dev){ return 0; };
-static void siw_touch_misc_free(struct device *dev){ };
-#endif
+int __weak siw_touch_misc_init(struct device *dev)
+{
+	return 0;
+}
+
+void __weak siw_touch_misc_free(struct device *dev)
+{
+
+}
 
 int siw_touch_init_sysfs(struct siw_ts *ts)
 {
