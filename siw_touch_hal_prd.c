@@ -3044,6 +3044,8 @@ out:
 	return ret;
 }
 
+#define __PRD_LOG_VIA_SHELL
+
 static int prd_show_do_sd(struct siw_hal_prd_data *prd, char *buf)
 {
 	struct device *dev = prd->dev;
@@ -3308,6 +3310,7 @@ static int prd_show_prd_get_data_raw_tcm(struct device *dev)
 	int __m2_frame_size = ctrl->m2_frame_size;
 	void *buf = prd->m2_buf_even_rawdata;
 	int buf_size = prd->ctrl.m2_row_col_buf_size;
+	int log_size = 0;
 	int ret = 0;
 
 	/* 	LCD mode check 	*/
@@ -3318,7 +3321,13 @@ static int prd_show_prd_get_data_raw_tcm(struct device *dev)
 	}
 #endif
 
+#if defined(__PRD_LOG_VIA_SHELL)
+	t_prd_info(prd, "======== rawdata(tcm) ========\n");
+	log_size += siw_prd_buf_snprintf(prd->buf_write, log_size,
+					"======== rawdata(tcm) ========\n");
+#else
 	t_prd_info(prd, "======== CMD_RAWDATA_TCM ========\n");
+#endif
 
 	if (buf == NULL) {
 		t_prd_err(prd, "getting raw tcm failed: NULL buf\n");
@@ -3351,7 +3360,7 @@ static int prd_show_prd_get_data_raw_tcm(struct device *dev)
 	}
 
 	/*	Print RawData Buffer	*/
-	prd_print_rawdata(prd, prd->buf_write, M2_EVEN_DATA, 0, 0);
+	prd_print_rawdata(prd, prd->buf_write, M2_EVEN_DATA, log_size, 0);
 
 out:
 	return ret;
@@ -3377,9 +3386,16 @@ static int prd_show_prd_get_data_raw_ait(struct device *dev)
 	struct siw_hal_prd_data *prd = (struct siw_hal_prd_data *)ts->prd;
 	struct siw_hal_prd_ctrl *ctrl = &prd->ctrl;
 	int size = (ctrl->m2_row_col_size<<PRD_RAWDATA_SZ_POW);
+	int log_size = 0;
 	int ret = 0;
 
+#if defined(__PRD_LOG_VIA_SHELL)
+	t_prd_info(prd, "======== rawdata ========\n");
+	log_size += siw_prd_buf_snprintf(prd->buf_write, log_size,
+					"======== rawdata ========\n");
+#else
 	t_prd_info(prd, "======== CMD_RAWDATA_AIT ========\n");
+#endif
 
 	ret = prd_show_prd_get_data_do_raw_ait(dev,
 				(u8 *)prd->m2_buf_even_rawdata,
@@ -3389,7 +3405,7 @@ static int prd_show_prd_get_data_raw_ait(struct device *dev)
 		goto out;
 	}
 
-	prd_print_rawdata(prd, prd->buf_write, M2_EVEN_DATA, 0, 0);
+	prd_print_rawdata(prd, prd->buf_write, M2_EVEN_DATA, log_size, 0);
 
 	ret = prd_start_firmware(prd);
 	if (ret < 0) {
@@ -3431,10 +3447,17 @@ static int prd_show_prd_get_data_ait_basedata(struct device *dev)
 	struct siw_hal_prd_ctrl *ctrl = &prd->ctrl;
 	u32 buf_type[MAX_TEST_CNT] = {M2_EVEN_DATA, M2_ODD_DATA};
 	int size = (ctrl->m2_row_col_size<<PRD_RAWDATA_SZ_POW);
+	int log_size = 0;
 	int i = 0;
 	int ret = 0;
 
+#if defined(__PRD_LOG_VIA_SHELL)
+	t_prd_info(prd, "======== basedata ========\n");
+	log_size += siw_prd_buf_snprintf(prd->buf_write, log_size,
+					"======== basedata ========\n");
+#else
 	t_prd_info(prd, "======== CMD_AIT_BASEDATA ========\n");
+#endif
 
 	for (i = 0; i < param->m2_cnt; i++) {
 		ret = prd_show_prd_get_data_do_ait_basedata(dev,
@@ -3446,7 +3469,10 @@ static int prd_show_prd_get_data_ait_basedata(struct device *dev)
 			goto out;
 		}
 
-		prd_print_rawdata(prd, prd->buf_write, buf_type[i], 0, 0);
+		log_size = prd_print_rawdata(prd, prd->buf_write, buf_type[i], log_size, 0);
+	#if !defined(__PRD_LOG_VIA_SHELL)
+		log_size = 0;
+	#endif
 
 		ret = prd_start_firmware(prd);
 		if (ret < 0) {
@@ -3499,9 +3525,16 @@ static int prd_show_prd_get_data_filtered_deltadata(struct device *dev)
 	struct siw_hal_prd_data *prd = (struct siw_hal_prd_data *)ts->prd;
 	struct siw_hal_prd_ctrl *ctrl = &prd->ctrl;
 	int size = (ctrl->m2_row_col_size<<PRD_RAWDATA_SZ_POW);
+	int log_size = 0;
 	int ret = 0;
 
+#if defined(__PRD_LOG_VIA_SHELL)
+	t_prd_info(prd, "======== filtered deltadata ========\n");
+	log_size += siw_prd_buf_snprintf(prd->buf_write, log_size,
+					"======== filtered deltadata ========\n");
+#else
 	t_prd_info(prd, "======== CMD_FILTERED_DELTADATA ========\n");
+#endif
 
 	ret = prd_show_prd_get_data_do_filtered_deltadata(dev,
 				(u8 *)prd->m2_buf_even_rawdata,
@@ -3511,7 +3544,7 @@ static int prd_show_prd_get_data_filtered_deltadata(struct device *dev)
 		goto out;
 	}
 
-	prd_print_rawdata(prd, prd->buf_write, M2_EVEN_DATA, 0, 0);
+	prd_print_rawdata(prd, prd->buf_write, M2_EVEN_DATA, log_size, 0);
 
 	ret = prd_start_firmware(prd);
 	if (ret < 0) {
@@ -3563,9 +3596,16 @@ static int prd_show_prd_get_data_deltadata(struct device *dev)
 	struct siw_hal_prd_data *prd = (struct siw_hal_prd_data *)ts->prd;
 	struct siw_hal_prd_ctrl *ctrl = &prd->ctrl;
 	int size = (ctrl->m2_row_col_size<<PRD_RAWDATA_SZ_POW);
+	int log_size = 0;
 	int ret = 0;
 
+#if defined(__PRD_LOG_VIA_SHELL)
+	t_prd_info(prd, "======== deltadata ========\n");
+	log_size += siw_prd_buf_snprintf(prd->buf_write, log_size,
+					"======== deltadata ========\n");
+#else
 	t_prd_info(prd, "======== CMD_DELTADATA ========\n");
+#endif
 
 	ret = prd_show_prd_get_data_do_deltadata(dev,
 				(u8 *)prd->m2_buf_even_rawdata,
@@ -3575,7 +3615,7 @@ static int prd_show_prd_get_data_deltadata(struct device *dev)
 		goto out;
 	}
 
-	prd_print_rawdata(prd, prd->buf_write, M2_EVEN_DATA, 0, 0);
+	prd_print_rawdata(prd, prd->buf_write, M2_EVEN_DATA, log_size, 0);
 
 	ret = prd_start_firmware(prd);
 	if (ret < 0) {
@@ -3629,9 +3669,16 @@ static int prd_show_prd_get_data_labeldata(struct device *dev)
 	struct siw_hal_prd_data *prd = (struct siw_hal_prd_data *)ts->prd;
 	struct siw_hal_prd_ctrl *ctrl = &prd->ctrl;
 	int size = ctrl->m2_row_col_size;
+	int log_size = 0;
 	int ret = 0;
 
+#if defined(__PRD_LOG_VIA_SHELL)
+	t_prd_info(prd, "======== labeldata ========\n");
+	log_size += siw_prd_buf_snprintf(prd->buf_write, log_size,
+					"======== labeldata ========\n");
+#else
 	t_prd_info(prd, "======== CMD_LABELDATA ========\n");
+#endif
 
 	ret = prd_show_prd_get_data_do_labeldata(dev,
 				(u8 *)prd->buf_label,
@@ -3641,7 +3688,7 @@ static int prd_show_prd_get_data_labeldata(struct device *dev)
 		goto out;
 	}
 
-	prd_print_rawdata(prd, prd->buf_write, LABEL_DATA, 0, 0);
+	prd_print_rawdata(prd, prd->buf_write, LABEL_DATA, log_size, 0);
 
 	ret = prd_start_firmware(prd);
 	if (ret < 0) {
@@ -3719,9 +3766,16 @@ static int prd_show_prd_get_data_debug_buf(struct device *dev)
 	struct siw_hal_prd_data *prd = (struct siw_hal_prd_data *)ts->prd;
 	struct siw_hal_prd_ctrl *ctrl = &prd->ctrl;
 	int size = (ctrl->debug_buf_size<<PRD_RAWDATA_SZ_POW);
+	int log_size = 0;
 	int ret = 0;
 
+#if defined(__PRD_LOG_VIA_SHELL)
+	t_prd_info(prd, "======== debugdata ========\n");
+	log_size += siw_prd_buf_snprintf(prd->buf_write, log_size,
+					"======== debugdata ========\n");
+#else
 	t_prd_info(prd, "======== CMD_DEBUGDATA ========\n");
+#endif
 
 	ret = prd_show_prd_get_data_do_debug_buf(dev,
 				(u8 *)prd->buf_debug,
@@ -3731,7 +3785,7 @@ static int prd_show_prd_get_data_debug_buf(struct device *dev)
 		goto out;
 	}
 
-	prd_print_rawdata(prd, prd->buf_write, DEBUG_DATA, 0, 0);
+	prd_print_rawdata(prd, prd->buf_write, DEBUG_DATA, log_size, 0);
 
 out:
 	return ret;
@@ -3801,6 +3855,16 @@ static ssize_t prd_show_get_data_common(struct device *dev, char *buf, int type)
 	/*
 	 * to prepare the response for APP I/F (not fixed)
 	 */
+#if defined(__PRD_LOG_VIA_SHELL)
+	switch (type) {
+	case CMD_RAWDATA_PRD:
+	case CMD_BLU_JITTER:
+		break;
+	default:
+		size += siw_snprintf(buf, size, "%s\n", prd->buf_write);
+		break;
+	}
+#endif
 	size += siw_snprintf(buf, size, "Get Data[%s] result:\n",
 				prd_get_data_cmd_name[type]);
 	size += siw_snprintf(buf, size, "%s\n",
@@ -4327,7 +4391,7 @@ static SIW_TOUCH_HAL_PRD_ATTR(delta, prd_show_delta, NULL);
 static SIW_TOUCH_HAL_PRD_ATTR(label, prd_show_label, NULL);
 static SIW_TOUCH_HAL_PRD_ATTR(rawdata_prd, prd_show_rawdata_prd, NULL);
 static SIW_TOUCH_HAL_PRD_ATTR(rawdata_tcm, prd_show_rawdata_tcm, NULL);
-static SIW_TOUCH_HAL_PRD_ATTR(rawdata_ait, prd_show_rawdata_ait, NULL);
+static SIW_TOUCH_HAL_PRD_ATTR(rawdata, prd_show_rawdata_ait, NULL);
 static SIW_TOUCH_HAL_PRD_ATTR(base, prd_show_basedata, NULL);
 static SIW_TOUCH_HAL_PRD_ATTR(debug_buf, prd_show_debug_buf, NULL);
 static SIW_TOUCH_HAL_PRD_ATTR(lpwg_sd, prd_show_lpwg_sd, NULL);
@@ -4351,7 +4415,7 @@ static struct attribute *siw_hal_prd_attribute_list_all[] = {
 	&_SIW_TOUCH_HAL_PRD_T(label).attr,
 	&_SIW_TOUCH_HAL_PRD_T(rawdata_prd).attr,
 	&_SIW_TOUCH_HAL_PRD_T(rawdata_tcm).attr,
-	&_SIW_TOUCH_HAL_PRD_T(rawdata_ait).attr,
+	&_SIW_TOUCH_HAL_PRD_T(rawdata).attr,
 	&_SIW_TOUCH_HAL_PRD_T(base).attr,
 	&_SIW_TOUCH_HAL_PRD_T(debug_buf).attr,
 	&_SIW_TOUCH_HAL_PRD_T(lpwg_sd).attr,
