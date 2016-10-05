@@ -216,13 +216,13 @@ static ssize_t _show_reg_ctrl(struct device *dev, char *buf)
 
 	if (fw->version_ext) {
 		size += siw_snprintf(buf, size,
-					">> version	: %08X, chip : %u, protocol : %u\n",
+					">> version    : %08X, chip : %u, protocol : %u\n",
 					fw->version_ext,
 					fw->v.version.chip,
 					fw->v.version.protocol);
 	} else {
 		size += siw_snprintf(buf, size,
-					">> version	: v%u.%02u, chip : %u, protocol : %u\n",
+					">> version    : v%u.%02u, chip : %u, protocol : %u\n",
 					fw->v.version.major,
 					fw->v.version.minor,
 					fw->v.version.chip,
@@ -230,7 +230,7 @@ static ssize_t _show_reg_ctrl(struct device *dev, char *buf)
 	}
 
 	size += siw_snprintf(buf, size,
-				">> revision	: %d\n", chip->fw.revision);
+				">> revision   : %d\n", chip->fw.revision);
 
 	size += siw_snprintf(buf, size,
 				">> product id : %s\n",
@@ -287,11 +287,9 @@ static ssize_t _store_reg_ctrl(struct device *dev,
 		goto out;
 	}
 
-	t_dev_dbg_base(dev, "[Usage]\n");
-	t_dev_dbg_base(dev,
-		" echo wr 0x1234 {value} > /sys/devices/virtual/input/siw_touch_input/reg_ctrl\n");
-	t_dev_dbg_base(dev,
-		" echo rd 0x1234 > /sys/devices/virtual/input/siw_touch_input/reg_ctrl\n");
+	t_dev_info(dev, "[Usage]\n");
+	t_dev_info(dev, " echo wr 0x1234 {value} > reg_ctrl\n");
+	t_dev_info(dev, " echo rd 0x1234 > reg_ctrl\n");
 
 out:
 	return count;

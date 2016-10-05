@@ -3740,7 +3740,7 @@ static int siw_hal_tc_driving(struct device *dev, int mode)
 
 static void siw_hal_deep_sleep(struct device *dev)
 {
-	t_dev_info(dev, "deel sleep\n");
+	t_dev_info(dev, "deep sleep\n");
 
 	siw_hal_tc_driving(dev, LCD_MODE_STOP);
 	siw_hal_clock(dev, 0);
