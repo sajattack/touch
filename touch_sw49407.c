@@ -232,6 +232,8 @@ static const struct siw_hal_reg_quirk chip_reg_quirks[] = {
 	/* */
 	{ .old_addr = (1<<31), .new_addr = 0, },	/* switch : don't show log */
 	/* */
+	{ .old_addr = CMD_RAW_DATA_REPORT_MODE_READ, .new_addr = 0x088, },
+	{ .old_addr = CMD_RAW_DATA_REPORT_MODE_WRITE, .new_addr = 0xC59, },
 	{ .old_addr = CODE_ACCESS_ADDR, .new_addr = 0xFD0, },
 	{ .old_addr = SERIAL_DATA_OFFSET, .new_addr = 0x082, },
 	{ .old_addr = DATA_I2CBASE_ADDR, .new_addr = 0xFD1, },
@@ -291,6 +293,15 @@ static const struct siw_hal_reg_quirk chip_reg_quirks[] = {
 	{ .old_addr = SWIPE_ACT_AREA_X2_W, .new_addr = 0xC49, },
 	{ .old_addr = SWIPE_ACT_AREA_Y2_W, .new_addr = 0xC4A, },
 	{ .old_addr = SWIPE_FAIL_DEBUG_W, .new_addr = 0xC4B, },
+	{ .old_addr = SWIPE_FAIL_DEBUG_R, .new_addr = 0x06C, },
+	{ .old_addr = SWIPE_DEBUG_R, .new_addr = 0x0D0, },
+	/* */
+	{ .old_addr = SPR_CHARGER_STS, .new_addr = 0xC60, },
+	{ .old_addr = IME_STATE, .new_addr = 0xC61, },
+	{ .old_addr = MAX_DELTA, .new_addr = 0x0AC, },
+	{ .old_addr = TOUCH_MAX_R, .new_addr = 0x07C, },
+	{ .old_addr = TOUCH_MAX_W, .new_addr = 0xC63, },
+	{ .old_addr = CALL_STATE, .new_addr = 0xC64, },
 	/* */
 	{ .old_addr = ~0, .new_addr = ~0, },		// End signal
 };
