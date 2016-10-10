@@ -91,7 +91,6 @@
 #define CHIP_TX_DUMMY_SZ			SPI_BUS_TX_DUMMY_SZ
 #define CHIP_RX_DUMMY_SZ			SPI_BUS_RX_DUMMY_SZ
 
-
 #if !defined(__SIW_CONFIG_OF)	//See siw_touch_cfg.h
 enum CHIP_CAPABILITY {
 	CHIP_MAX_X			= 1440,
@@ -176,6 +175,10 @@ static const struct siw_hal_swipe_ctrl chip_swipe_info = {
 	},
 };
 
+static const struct siw_hal_reg_quirk chip_reg_quirks[] = {
+	{ .old_addr = TC_CONFDN_BASE_ADDR, .new_addr = 0x290 },
+	{ .old_addr = ~0, .new_addr = ~0 },		// End signal
+};
 
 #if defined(__SIW_CONFIG_OF)
 /*
@@ -282,7 +285,7 @@ static const struct siw_touch_pdata chip_pdata = {
 	//See 'store_ext_watch_config_font_position' [siw_touch_hal_watch.c]
 	.watch_win			= NULL,
 	//See 'siw_setup_operations' [siw_touch.c]
-	.reg_quirks			= NULL,
+	.reg_quirks			= (void *)chip_reg_quirks,
 };
 
 static struct siw_touch_chip_data chip_data = {
