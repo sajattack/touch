@@ -466,8 +466,13 @@ static void siw_mon_submit_bus_slice(struct siw_mon_data *smdata, void *data)
 	int tx_len, rx_len, cur;
 	int bus_cnt, tx_cnt, rx_cnt;
 	int buf_max, prt_max;
+	int bus_priv = bus->priv & MASK_BIT16;
 //	int tx_s_only, rx_s_only;
 	int i, inc_cnt = 1;
+
+	if (bus_priv) {	//delay for xfer case
+		usleep_range(1000, 1000);
+	}
 
 	buf_max = siw_mon_buf_max();
 	prt_max = siw_mon_prt_max();
