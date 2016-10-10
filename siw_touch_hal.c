@@ -1151,8 +1151,6 @@ static int siw_hal_power(struct device *dev, int ctrl)
 		siw_hal_power_vio(dev, 0);
 		siw_hal_power_vdd(dev, 0);
 		touch_msleep(1);
-
-		siw_hal_watch_set_font_empty(dev);
 		break;
 
 	case POWER_ON:
