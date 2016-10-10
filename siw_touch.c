@@ -764,13 +764,13 @@ static void siw_touch_upgrade_work_func(struct work_struct *work)
 
 	if (ret < 0) {
 		if (ret == -EPERM) {
-			t_dev_info(dev, "FW upgrade skipped\n");
+			t_dev_err(dev, "FW upgrade skipped\n");
 		} else {
-			t_dev_info(dev, "FW upgrade halted, %d\n", ret);
+			t_dev_err(dev, "FW upgrade halted, %d\n", ret);
 		}
-		siw_touch_qd_init_work_now(ts);
+	//	siw_touch_qd_init_work_now(ts);
 	//	atomic_set(&ts->state.core, CORE_NORMAL);
-		return;
+	//	return;
 	}
 
 #if 1
