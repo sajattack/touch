@@ -162,7 +162,11 @@ static const struct siw_hal_swipe_ctrl chip_swipe_info = {
 };
 
 static const struct siw_hal_reg_quirk chip_reg_quirks[] = {
-	{ .old_addr = TC_CONFDN_BASE_ADDR, .new_addr = 0x290 },
+	{ .old_addr = TC_CONFDN_BASE_ADDR, .new_addr = 0x290, },
+	{ .old_addr = PRD_M1_M2_RAW_OFFSET, .new_addr = 0x292, },
+	{ .old_addr = PRD_TUNE_RESULT_OFFSET, .new_addr = 0x295, },
+	{ .old_addr = PRD_OPEN3_SHORT_OFFSET, .new_addr = 0x294, },
+	{ .old_addr = EXT_WATCH_FONT_OFFSET, .new_addr = 0x28E, },
 	{ .old_addr = ~0, .new_addr = ~0 },		// End signal
 };
 
