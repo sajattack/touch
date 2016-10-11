@@ -126,7 +126,7 @@
 #define CHIP_RX_HDR_SZ				I2C_BUS_RX_HDR_SZ
 #define CHIP_TX_DUMMY_SZ			I2C_BUS_TX_DUMMY_SZ
 #define CHIP_RX_DUMMY_SZ			I2C_BUS_RX_DUMMY_SZ
-#else
+#else	/* __CHIP_SINGLE_SCR */
 #define CHIP_BUS_TYPE				BUS_IF_SPI
 #define	CHIP_BUF_SIZE				0
 #define CHIP_SPI_MODE				SPI_MODE_0
@@ -147,21 +147,7 @@
 #define CHIP_RX_DUMMY_SZ			SPI_BUS_RX_DUMMY_SZ_32BIT
 #endif
 
-#endif
-
-#if !defined(__SIW_CONFIG_OF)	//See siw_touch_cfg.h
-enum CHIP_CAPABILITY {
-	CHIP_MAX_X			= 1440,	//(17:9)
-	CHIP_MAX_Y			= (2560 + __CHIP_MAX_Y_2ND),
-	CHIP_MAX_PRESSURE	= 255,
-	CHIP_MAX_WIDTH		= 15,
-	CHIP_MAX_ORI		= 1,
-	CHIP_MAX_ID			= 10,
-	/* */
-	CHIP_HW_RST_DELAY	= 210,
-	CHIP_SW_RST_DELAY	= 90,
-};
-#endif
+#endif	/* __CHIP_SINGLE_SCR */
 
 #if defined(__CHIP_SINGLE_SCR)
 #define __CHIP_TCI_INFO			NULL
@@ -315,6 +301,18 @@ static const struct of_device_id chip_match_ids[] = {
 	{ },
 };
 #else
+enum CHIP_CAPABILITY {
+	CHIP_MAX_X			= 1440,	//(17:9)
+	CHIP_MAX_Y			= (2560 + __CHIP_MAX_Y_2ND),
+	CHIP_MAX_PRESSURE	= 255,
+	CHIP_MAX_WIDTH		= 15,
+	CHIP_MAX_ORI		= 1,
+	CHIP_MAX_ID			= 10,
+	/* */
+	CHIP_HW_RST_DELAY	= 210,
+	CHIP_SW_RST_DELAY	= 90,
+};
+
 #define CHIP_PIN_RESET			0
 #define CHIP_PIN_IRQ			0
 #define CHIP_PIN_MAKER			-1
