@@ -338,10 +338,6 @@ static const char *prd_param_name_lg4946_g[] = {
 	"L0L53P1", "L0W53P1", NULL
 };
 
-static const char *prd_param_name_sw49407_h[] = {
-	"L1L57P1", NULL
-};
-
 static const struct siw_hal_prd_param prd_params[] = {
 	/*
 	 * LG4894 group
@@ -512,23 +508,8 @@ static const struct siw_hal_prd_param prd_params[] = {
 		.flag = 0,
 	},
 	/*
-	 * SW49407 group (Not fixed)
+	 * SW49407 group
 	 */
-	{	.chip_type = CHIP_SW49407,
-		.name = prd_param_name_sw49407_h,
-		.cmd_type = PRD_CMD_TYPE_1,
-		.addr = {
-			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_RAW, 0xF1C),
-			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_BASELINE_EVEN, 0x104E),
-			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_DELTA, 0x1180),
-			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_LABEL, 0x12E8),
-			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_DEBUG, 0xCCF),
-			0,
-		},
-		__PRD_PARAM_DIMESION(32+2, 18, 0, 32+2, PRD_M1_COL_SIZE, 1, 1),
-		__PRD_2ND_SCR(1, 4),
-		.flag = 0,
-	},
 	{	.chip_type = CHIP_SW49407,
 		.name = NULL,	//NULL meas 'Last & Default'
 		.cmd_type = PRD_CMD_TYPE_1,
@@ -540,8 +521,8 @@ static const struct siw_hal_prd_param prd_params[] = {
 			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_DEBUG, 0xCCF),
 			0,
 		},
-		__PRD_PARAM_DIMESION(32, 18, 0, 32, PRD_M1_COL_SIZE, 1, 1),
-		__PRD_2ND_SCR(0, 0),
+		__PRD_PARAM_DIMESION(32+2, 18, 0, 32+2, PRD_M1_COL_SIZE, 1, 1),
+		__PRD_2ND_SCR(1, 4),
 		.flag = 0,
 	},
 	/*
