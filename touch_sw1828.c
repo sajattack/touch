@@ -83,21 +83,6 @@
 #define CHIP_TX_DUMMY_SZ			I2C_BUS_TX_DUMMY_SZ
 #define CHIP_RX_DUMMY_SZ			I2C_BUS_RX_DUMMY_SZ
 
-
-#if !defined(__SIW_CONFIG_OF)	//See siw_touch_cfg.h
-enum CHIP_CAPABILITY {
-	CHIP_MAX_X			= 800,
-	CHIP_MAX_Y			= 480,
-	CHIP_MAX_PRESSURE	= 255,
-	CHIP_MAX_WIDTH		= 15,
-	CHIP_MAX_ORI		= 1,
-	CHIP_MAX_ID			= 10,
-	/* */
-	CHIP_HW_RST_DELAY	= 210,
-	CHIP_SW_RST_DELAY	= 90,
-};
-#endif
-
 static const struct siw_hal_reg_quirk chip_reg_quirks[] = {
 	{ .old_addr = TC_CONFDN_BASE_ADDR, .new_addr = 0x284 },
 	{ .old_addr = ~0, .new_addr = ~0 },		// End signal
@@ -112,6 +97,18 @@ static const struct of_device_id chip_match_ids[] = {
 	{ },
 };
 #else
+enum CHIP_CAPABILITY {
+	CHIP_MAX_X			= 800,
+	CHIP_MAX_Y			= 480,
+	CHIP_MAX_PRESSURE	= 255,
+	CHIP_MAX_WIDTH		= 15,
+	CHIP_MAX_ORI		= 1,
+	CHIP_MAX_ID			= 10,
+	/* */
+	CHIP_HW_RST_DELAY	= 210,
+	CHIP_SW_RST_DELAY	= 90,
+};
+
 #define CHIP_PIN_RESET			0
 #define CHIP_PIN_IRQ			0
 #define CHIP_PIN_MAKER			-1
