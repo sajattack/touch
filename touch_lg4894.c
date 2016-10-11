@@ -84,7 +84,15 @@
 
 #define CHIP_SENSELESS_MARGIN		(0x21)	//33 pixel : 3mm
 
-#if !defined(__SIW_CONFIG_OF)	//See siw_touch_cfg.h
+#if defined(__SIW_CONFIG_OF)
+/*
+ * of_device_is_compatible(dev->of_node, CHIP_COMPATIBLE_NAME)
+ */
+static const struct of_device_id chip_match_ids[] = {
+	{ .compatible = CHIP_COMPATIBLE_NAME },
+	{ },
+};
+#else
 enum CHIP_CAPABILITY {
 	CHIP_MAX_X			= 720,
 	CHIP_MAX_Y			= 1280,
@@ -96,18 +104,7 @@ enum CHIP_CAPABILITY {
 	CHIP_HW_RST_DELAY	= 210,
 	CHIP_SW_RST_DELAY	= 90,
 };
-#endif
 
-
-#if defined(__SIW_CONFIG_OF)
-/*
- * of_device_is_compatible(dev->of_node, CHIP_COMPATIBLE_NAME)
- */
-static const struct of_device_id chip_match_ids[] = {
-	{ .compatible = CHIP_COMPATIBLE_NAME },
-	{ },
-};
-#else
 #define CHIP_PIN_RESET			0
 #define CHIP_PIN_IRQ			0
 #define CHIP_PIN_MAKER			-1
