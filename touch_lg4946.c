@@ -91,20 +91,6 @@
 #define CHIP_TX_DUMMY_SZ			SPI_BUS_TX_DUMMY_SZ
 #define CHIP_RX_DUMMY_SZ			SPI_BUS_RX_DUMMY_SZ
 
-#if !defined(__SIW_CONFIG_OF)	//See siw_touch_cfg.h
-enum CHIP_CAPABILITY {
-	CHIP_MAX_X			= 1440,
-	CHIP_MAX_Y			= 2560,
-	CHIP_MAX_PRESSURE	= 255,
-	CHIP_MAX_WIDTH		= 15,
-	CHIP_MAX_ORI		= 1,
-	CHIP_MAX_ID			= 10,
-	/* */
-	CHIP_HW_RST_DELAY	= 210,
-	CHIP_SW_RST_DELAY	= 90,
-};
-#endif
-
 static const struct tci_info chip_tci_info[2] = {
 	[TCI_1] = {
 		.tap_count		= 2,
@@ -189,6 +175,18 @@ static const struct of_device_id chip_match_ids[] = {
 	{ },
 };
 #else
+enum CHIP_CAPABILITY {
+	CHIP_MAX_X			= 1440,
+	CHIP_MAX_Y			= 2560,
+	CHIP_MAX_PRESSURE	= 255,
+	CHIP_MAX_WIDTH		= 15,
+	CHIP_MAX_ORI		= 1,
+	CHIP_MAX_ID			= 10,
+	/* */
+	CHIP_HW_RST_DELAY	= 210,
+	CHIP_SW_RST_DELAY	= 90,
+};
+
 #define CHIP_PIN_RESET			0
 #define CHIP_PIN_IRQ			0
 #define CHIP_PIN_MAKER			-1
