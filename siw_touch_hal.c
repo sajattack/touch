@@ -2178,6 +2178,8 @@ out:
 	return ret;
 }
 
+#define S_CFG_DBG_IDX		0
+
 static int siw_hal_fw_size_check(struct device *dev, int fw_size)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
@@ -2186,8 +2188,8 @@ static int siw_hal_fw_size_check(struct device *dev, int fw_size)
 	int size_min = (fw_size_max + (NUM_C_CONF<<POW_C_CONF) + (MIN_S_CONF<<POW_S_CONF));
 	int size_max = (fw_size_max + (NUM_C_CONF<<POW_C_CONF) + (MAX_S_CONF<<POW_S_CONF));
 	int required_size;
-	u32 index;
-	int ret;
+	u32 index = 0;
+	int ret = 0;
 
 	chip->fw.conf_index = 0;
 
@@ -2200,7 +2202,12 @@ static int siw_hal_fw_size_check(struct device *dev, int fw_size)
 		return -EFAULT;
 	}
 
+#if (S_CFG_DBG_IDX != 0)
+	index =  S_CFG_DBG_IDX;
+	t_dev_warn(dev, "FW upgrade: conf_index fixed for debugging: %d\n", index);
+#else
 	ret = siw_hal_read_value(dev, FW_S_CONF_IDX_ADDR, &index);
+#endif
 	if (ret < 0) {
 		t_dev_err(dev, "FW upgrade: failed - conf_index(%04Xh) read, %d\n",
 			FW_S_CONF_IDX_ADDR, ret);
