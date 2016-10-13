@@ -3688,56 +3688,55 @@ static int siw_hal_tc_driving(struct device *dev, int mode)
 	t_dev_dbg_base(dev, "waiting %d msecs\n", HAL_TC_DRIVING_DELAY);
 
 	if (siw_touch_boot_mode_tc_check(dev)) {
-		atomic_set(&ts->recur_chk, 0);
-		return 0;
+		goto out;
 	}
 
 	if (mode == LCD_MODE_U3_PARTIAL) {
-		atomic_set(&ts->recur_chk, 0);
-		return 0;
-	}
-
-	if (atomic_read(&ts->recur_chk)) {
-		t_dev_info(dev, "running status is already checked\n");
-		atomic_set(&ts->recur_chk, 0);
-		return 0;
+		goto out;
 	}
 
 	ret = siw_hal_read_value(dev,
 				reg->tc_status,
 				&running_status);
 	if (ret < 0) {
-		t_dev_err(dev, "check module\n");
+		t_dev_err(dev, "failed to get tc_status\n");
 		atomic_set(&ts->recur_chk, 0);
 		return ret;
 	}
 
-	t_dev_dbg_base(dev, "running_status : %Xh\n", running_status);
 	running_status &= 0x1F;
 
 	re_init = 0;
-	if (mode != LCD_MODE_STOP) {
+	if (mode == LCD_MODE_STOP) {
+		re_init = !!running_status;
+	} else {
 		if (!running_status ||
 			(running_status == 0x10) ||
 			(running_status == 0x0F)){
 			re_init = 1;
 		}
-	} else {
-		re_init = !!running_status;
 	}
 
 	if (re_init) {
-		t_dev_err(dev, "command missed: mode %d, status %Xh\n",
+		if (atomic_read(&ts->recur_chk)) {
+			t_dev_err(dev, "command failed: mode %d, running_status %Xh\n",
+				mode, running_status);
+			atomic_set(&ts->recur_chk, 0);
+			return -EFAULT;
+		}
+
+		t_dev_err(dev, "command missed: mode %d, running_status %Xh\n",
 			mode, running_status);
 
 		atomic_set(&ts->recur_chk, 1);
 
 		siw_hal_reinit(dev, 1, 100, 1, siw_hal_init);
 	} else {
-		t_dev_dbg_base(dev, "command done: mode %d, status %Xh\n",
+		t_dev_info(dev, "command done: mode %d, running_status %Xh\n",
 			mode, running_status);
 	}
 
+out:
 	atomic_set(&ts->recur_chk, 0);
 
 	return 0;
