@@ -3564,6 +3564,33 @@ out:
 	return ret;
 }
 
+static void siw_hal_check_debug_info(struct device *dev,
+				u32 status, u32 debug_info, u32 *debug_data)
+{
+	u32 debug_mask = (status >> 16) & 0xFF;
+	u32 debug_len = 0;
+	u32 debug_type = 0;
+
+	/*
+	 * 0x03 : Error report
+	 * 0x04 : Debug report
+	 */
+	if ((debug_mask == 0x03) ||
+		(debug_mask == 0x04)) {
+		debug_len = ((debug_info>>24) & 0xFF);
+		debug_type = (debug_info & ((1<<24)-1));
+
+		t_dev_err(dev,
+				"ic debug: mask %Xh, len %d, type %d\n",
+				debug_mask, debug_len, debug_type);
+		if (debug_data != NULL) {
+			t_dev_err(dev,
+				"ic debug: log %08Xh %08Xh %08Xh\n",
+				debug_data[0], debug_data[1], debug_data[2]);
+		}
+	}
+}
+
 
 #define HAL_TC_DRIVING_DELAY	20
 
@@ -3609,6 +3636,7 @@ static int siw_hal_tc_driving(struct device *dev, int mode)
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
 	struct siw_hal_reg *reg = chip->reg;
+	u32 tc_status = 0;
 	u32 running_status = 0;
 	u32 ctrl = 0;
 	u32 rdata;
@@ -3697,14 +3725,20 @@ static int siw_hal_tc_driving(struct device *dev, int mode)
 
 	ret = siw_hal_read_value(dev,
 				reg->tc_status,
-				&running_status);
+				&tc_status);
 	if (ret < 0) {
 		t_dev_err(dev, "failed to get tc_status\n");
 		atomic_set(&ts->recur_chk, 0);
 		return ret;
 	}
 
-	running_status &= 0x1F;
+	if (1) {
+		u32 ic_debug[4];
+		siw_hal_reg_read(dev, 0x23E, ic_debug, sizeof(ic_debug));
+		siw_hal_check_debug_info(dev, tc_status, ic_debug[3], ic_debug);
+	}
+
+	running_status = tc_status & 0x1F;
 
 	re_init = 0;
 	if (mode == LCD_MODE_STOP) {
@@ -3719,20 +3753,20 @@ static int siw_hal_tc_driving(struct device *dev, int mode)
 
 	if (re_init) {
 		if (atomic_read(&ts->recur_chk)) {
-			t_dev_err(dev, "command failed: mode %d, running_status %Xh\n",
-				mode, running_status);
+			t_dev_err(dev, "command failed: mode %d, tc_status %08Xh\n",
+				mode, tc_status);
 			atomic_set(&ts->recur_chk, 0);
 			return -EFAULT;
 		}
 
-		t_dev_err(dev, "command missed: mode %d, running_status %Xh\n",
-			mode, running_status);
+		t_dev_err(dev, "command missed: mode %d, tc_status %08Xh\n",
+			mode, tc_status);
 
 		atomic_set(&ts->recur_chk, 1);
 
 		siw_hal_reinit(dev, 1, 100, 1, siw_hal_init);
 	} else {
-		t_dev_info(dev, "command done: mode %d, running_status %Xh\n",
+		t_dev_info(dev, "command done: mode %d, running_sts %02Xh\n",
 			mode, running_status);
 	}
 
