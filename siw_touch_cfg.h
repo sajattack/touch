@@ -81,6 +81,9 @@
 #define __SIW_CONFIG_FB
 #endif
 
+#define __SIW_CONFIG_PROX_ON_SUSPEND
+#define __SIW_CONFIG_PROX_ON_RESUME
+
 //#define __SIW_CONFIG_SHOW_TCI_INIT_VAL
 //#define __SIW_CONFIG_SHOW_SWIPE_INIT_VAL
 

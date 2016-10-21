@@ -3988,6 +3988,14 @@ static int siw_hal_lpwg_mode_suspend(struct device *dev)
 		goto out;
 	}
 
+#if defined(__SIW_CONFIG_PROX_ON_SUSPEND)
+	if (ts->lpwg.sensor == PROX_NEAR) {
+		t_dev_info(dev, "lpwg suspend: (ts->lpwg.sensor == PROX_NEAR)\n");
+		siw_hal_deep_sleep(dev);
+		goto out;
+	}
+#endif
+
 	if (ts->lpwg.qcover == HOLE_NEAR) {
 		/* knock on/code disable */
 		ctrl.clk = 1;
@@ -4030,6 +4038,15 @@ static int siw_hal_lpwg_mode_resume(struct device *dev)
 
 	siw_touch_report_all_event(ts);		//clear (?)
 
+#if defined(__SIW_CONFIG_PROX_ON_RESUME)
+	if (ts->lpwg.sensor == PROX_NEAR) {
+		t_dev_info(dev, "lpwg resume: (ts->lpwg.sensor == PROX_NEAR)\n");
+
+		ctrl.lcd = LCD_MODE_STOP;
+		goto out_con;
+	}
+#endif
+
 	if (ts->lpwg.screen) {
 		int mode = chip->lcd_mode;
 
@@ -4043,15 +4060,6 @@ static int siw_hal_lpwg_mode_resume(struct device *dev)
 
 		ctrl.lpwg = LPWG_NONE;
 		ctrl.lcd = mode;
-		goto out_con;
-	}
-
-	if (ts->lpwg.mode == LPWG_NONE) {
-		/* wake up */
-		t_dev_info(dev, "lpwg resume: (ts->lpwg.mode == LPWG_NONE)\n");
-
-	//	ctrl.lpwg = LPWG_NONE;
-		ctrl.lcd = LCD_MODE_STOP;
 		goto out_con;
 	}
 
