@@ -282,7 +282,7 @@ static const struct siw_hal_reg_quirk chip_reg_quirks[] = {
 	{ .old_addr = SWIPE_FAIL_DEBUG_R, .new_addr = 0x06C, },
 	{ .old_addr = SWIPE_DEBUG_R, .new_addr = 0x0D0, },
 	/* */
-	{ .old_addr = SPR_CHARGER_STS, .new_addr = 0xC60, },
+	{ .old_addr = SPR_CHARGER_STS, .new_addr = 0xF20, },
 	{ .old_addr = IME_STATE, .new_addr = 0xC61, },
 	{ .old_addr = MAX_DELTA, .new_addr = 0x0AC, },
 	{ .old_addr = TOUCH_MAX_R, .new_addr = 0x07C, },
