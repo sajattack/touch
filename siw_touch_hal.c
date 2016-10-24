@@ -4407,8 +4407,9 @@ static int siw_hal_check_status_type_1(struct device *dev,
 	dbg_mask = ((status>>16) & 0xF);
 	switch (dbg_mask) {
 		case 0x2 :
-		//	t_dev_dbg_irq(dev, "[%d] TC_Driving OK\n", irq);
-			/* fall through */
+			t_dev_info(dev, "[%d] TC Driving OK\n", irq);
+			ret = -ERANGE;
+			break;
 		case 0x3 :
 			/* fall through */
 		case 0x4 :
