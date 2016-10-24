@@ -3565,9 +3565,10 @@ out:
 }
 
 static void siw_hal_check_debug_info(struct device *dev,
-				u32 status, u32 debug_info, u32 *debug_data)
+				u32 status, u32 debug_info, u32 *debug_data,
+				int irq)
 {
-	u32 debug_mask = (status >> 16) & 0xFF;
+	u32 debug_mask = (status >> 16) & 0x0F;
 	u32 debug_len = 0;
 	u32 debug_type = 0;
 
@@ -3580,13 +3581,13 @@ static void siw_hal_check_debug_info(struct device *dev,
 		debug_len = ((debug_info>>24) & 0xFF);
 		debug_type = (debug_info & ((1<<24)-1));
 
-		t_dev_err(dev,
-				"ic debug: mask %Xh, len %d, type %d\n",
-				debug_mask, debug_len, debug_type);
+		t_dev_info(dev,
+				"[%d] ic debug: s %08Xh / m %Xh, l %Xh, t %Xh (%08Xh)\n",
+				irq, status, debug_mask, debug_len, debug_type, debug_info);
 		if (debug_data != NULL) {
-			t_dev_err(dev,
-				"ic debug: log %08Xh %08Xh %08Xh\n",
-				debug_data[0], debug_data[1], debug_data[2]);
+			t_dev_info(dev,
+				"[%d] ic debug: log %08Xh %08Xh %08Xh\n",
+				irq, debug_data[0], debug_data[1], debug_data[2]);
 		}
 	}
 }
@@ -3735,7 +3736,7 @@ static int siw_hal_tc_driving(struct device *dev, int mode)
 	if (1) {
 		u32 ic_debug[4];
 		siw_hal_reg_read(dev, 0x23E, ic_debug, sizeof(ic_debug));
-		siw_hal_check_debug_info(dev, tc_status, ic_debug[3], ic_debug);
+		siw_hal_check_debug_info(dev, tc_status, ic_debug[3], ic_debug, 0);
 	}
 
 	running_status = tc_status & 0x1F;
