@@ -2223,6 +2223,7 @@ static int siw_hal_fw_size_check(struct device *dev, int fw_size)
 	if (fw_size < required_size) {
 		t_dev_err(dev, "FW upgrade: wrong file size - %Xh < %Xh,\n",
 			fw_size, required_size);
+		return -EFAULT;
 	}
 
 	chip->fw.conf_index = index;
