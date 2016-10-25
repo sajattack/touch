@@ -3632,6 +3632,23 @@ static inline int siw_hal_tc_driving_stop(struct device *dev)
 	return TC_DRIVE_CTL_STOP;
 }
 
+static void siw_hal_tc_driving_chk_dbg(struct device *dev, u32 tc_status)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	u32 ic_debug[4];
+
+	switch (touch_chip_type(ts)) {
+	case CHIP_SW49407:
+		break;
+	default:
+		return;
+	}
+
+	siw_hal_reg_read(dev, 0x23E, ic_debug, sizeof(ic_debug));
+	siw_hal_check_debug_info(dev, tc_status, ic_debug[3], ic_debug, 0);
+}
+
 static int siw_hal_tc_driving(struct device *dev, int mode)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
@@ -3733,11 +3750,7 @@ static int siw_hal_tc_driving(struct device *dev, int mode)
 		return ret;
 	}
 
-	if (1) {
-		u32 ic_debug[4];
-		siw_hal_reg_read(dev, 0x23E, ic_debug, sizeof(ic_debug));
-		siw_hal_check_debug_info(dev, tc_status, ic_debug[3], ic_debug, 0);
-	}
+	siw_hal_tc_driving_chk_dbg(dev, tc_status);
 
 	running_status = tc_status & 0x1F;
 
