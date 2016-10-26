@@ -3612,6 +3612,9 @@ static inline int __used siw_hal_tc_driving_u3(struct device *dev)
 	struct siw_ts *ts = chip->ts;
 	int ctrl = (TC_DRIVE_CTL_DISP_U3 | TC_DRIVE_CTL_MODE_6LHB | TC_DRIVE_CTL_START);
 
+	if (touch_flags(ts) & TOUCH_USE_VBLANK)
+		ctrl &= ~TC_DRIVE_CTL_MODE_6LHB;
+
 	if (atomic_read(&ts->state.debug_option_mask) & DEBUG_OPTION_1)
 		ctrl &= ~TC_DRIVE_CTL_MODE_6LHB;
 
