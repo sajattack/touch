@@ -26,7 +26,7 @@
 		interrupts = <6 0x02>;		// index 6(0~7) in gpx1 external interrupts
 		irqflags = <0x2002>;		// IRQF_ONESHOT(0x2000) | IRQF_TRIGGER_FALLING(0x2)
 
-		chip_flags = <0>;
+		chip_flags = <0x1000>;		// TOUCH_USE_VBLANK
 
 		reset-gpio = <&gpx1 7 GPIO_ACTIVE_LOW>;	// index 7 in gpx1
 		irq-gpio = <&gpx1 6 GPIO_ACTIVE_LOW>;	// index 6 in gpx1
