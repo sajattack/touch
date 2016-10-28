@@ -2437,8 +2437,20 @@ static int siw_hal_fw_compare(struct device *dev, u8 *fw_buf)
 	}
 
 	if (ts->force_fwup) {
+		if (memcmp(pid, fw->product_id, 8)) {
+			t_dev_warn(dev,
+				"FW compare: bin-pid[%s] != dev-pid[%s] (warning)\n",
+				pid, fw->product_id);
+		}
 		update |= (1<<0);
 	} else {
+		if (memcmp(pid, fw->product_id, 8)) {
+			t_dev_err(dev,
+				"FW compare: bin-pid[%s] != dev-pid[%s], halted\n",
+				pid, fw->product_id);
+			return -EINVAL;
+		}
+
 		if (bin_major > dev_major) {
 			update |= (1<<1);
 		} else if (bin_major == dev_major) {
