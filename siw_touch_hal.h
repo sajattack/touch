@@ -24,7 +24,7 @@
 struct siw_hal_touch_data {
 	u8 tool_type:4;
 	u8 event:4;
-	s8 track_id;
+	u8 track_id;
 	u16 x;
 	u16 y;
 	u8 pressure;
