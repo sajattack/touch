@@ -1082,6 +1082,88 @@ out:
 	return count;
 }
 
+static ssize_t __show_g_state(struct device *dev, char *buf,
+					int value, const char *name)
+{
+	int size = 0;
+
+	size += siw_snprintf(buf, size, "%s chk: %s(%08Xh)\n",
+				name, (value % 0x1) ? "ON" : "OFF", value);
+
+	return (ssize_t)size;
+}
+
+static ssize_t __store_g_state(struct device *dev,
+				const char *buf, size_t count,
+				int *val, const char *name)
+{
+	int value = 0;
+
+	if (sscanf(buf, "%X", &value) <= 0) {
+		siw_sysfs_err_invalid_param(dev);
+		return count;
+	}
+
+	t_dev_dbg_base(dev, "%s set: %s(%08Xh)\n",
+			name, (value & 0x1) ? "ON" : "OFF", value);
+
+	if (val != NULL)
+		*val = value;
+
+	return count;
+}
+
+static ssize_t _show_glove_state(struct device *dev, char *buf)
+{
+	struct siw_ts *ts = to_touch_core(dev);
+	int value = atomic_read(&ts->state.glove);
+
+	return __show_g_state(dev, buf, value, "Glove");
+}
+
+static ssize_t _store_glove_state(struct device *dev,
+				const char *buf, size_t count)
+{
+	struct siw_ts *ts = to_touch_core(dev);
+	int value = 0;
+	int ret = 0;
+
+	ret = __store_g_state(dev, buf, count, &value, "Glove");
+	if (ret >= 0) {
+		mutex_lock(&ts->lock);
+		atomic_set(&ts->state.glove, value);
+		siw_ops_tc_con(ts, TCON_GLOVE, NULL);
+		mutex_unlock(&ts->lock);
+	}
+
+	return (ssize_t)ret;
+}
+
+static ssize_t _show_grab_state(struct device *dev, char *buf)
+{
+	struct siw_ts *ts = to_touch_core(dev);
+	int value = atomic_read(&ts->state.grab);
+
+	return __show_g_state(dev, buf, value, "Grab");
+}
+
+static ssize_t _store_grab_state(struct device *dev,
+				const char *buf, size_t count)
+{
+	struct siw_ts *ts = to_touch_core(dev);
+	int value = 0;
+	int ret = 0;
+
+	ret = __store_g_state(dev, buf, count, &value, "Grab");
+	if (ret >= 0) {
+		mutex_lock(&ts->lock);
+		atomic_set(&ts->state.grab, value);
+		siw_ops_tc_con(ts, TCON_GRAB, NULL);
+		mutex_unlock(&ts->lock);
+	}
+
+	return (ssize_t)ret;
+}
 
 
 #define SIW_TOUCH_ATTR(_name, _show, _store)	\
@@ -1173,6 +1255,12 @@ static SIW_TOUCH_ATTR(dbg_notify, NULL,
 						_store_dbg_notify);
 static SIW_TOUCH_ATTR(dbg_test, NULL,
 						_store_dbg_test);
+static SIW_TOUCH_ATTR(glove_status,
+						_show_glove_state,
+						_store_glove_state);
+static SIW_TOUCH_ATTR(grab_status,
+						_show_grab_state,
+						_store_grab_state);
 
 
 static struct attribute *siw_touch_attribute_list[] = {
@@ -1211,6 +1299,8 @@ static struct attribute *siw_touch_attribute_list[] = {
 	&_SIW_TOUCH_ATTR_T(init_late).attr,
 	&_SIW_TOUCH_ATTR_T(dbg_notify).attr,
 	&_SIW_TOUCH_ATTR_T(dbg_test).attr,
+	&_SIW_TOUCH_ATTR_T(glove_status).attr,
+	&_SIW_TOUCH_ATTR_T(grab_status).attr,
 	NULL,
 };
 

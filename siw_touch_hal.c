@@ -3605,6 +3605,74 @@ static void siw_hal_check_debug_info(struct device *dev,
 	}
 }
 
+static int siw_hal_tc_con_glove(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	struct siw_hal_reg *reg = chip->reg;
+	int value = atomic_read(&ts->state.glove);
+	int ret = 0;
+
+	switch (touch_chip_type(ts)) {
+	case CHIP_SW49407:
+		ret = siw_hal_write_value(dev, reg->glove_en, value);
+		if (ret < 0) {
+			t_dev_err(dev, "failed to set glove_en, %d\n", ret);
+			break;
+		}
+		t_dev_info(dev, "glove_en: %s(%08Xh)\n",
+			(value & 0x1) ? "ON" : "OFF", value);
+		break;
+	default:
+		break;
+	}
+
+	return ret;
+}
+
+static int siw_hal_tc_con_grab(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	struct siw_hal_reg *reg = chip->reg;
+	int value = atomic_read(&ts->state.grab);
+	int ret = 0;
+
+	switch (touch_chip_type(ts)) {
+	case CHIP_SW49407:
+		ret = siw_hal_write_value(dev, reg->grab_en, value);
+		if (ret < 0) {
+			t_dev_err(dev, "failed to set grab_en, %d\n", ret);
+			break;
+		}
+		t_dev_info(dev, "grab_en: %s(%08Xh)\n",
+			(value & 0x1) ? "ON" : "OFF", value);
+		break;
+	default:
+		break;
+	}
+
+	return ret;
+}
+
+static int siw_hal_tc_con(struct device *dev, u32 code, void *param)
+{
+//	struct siw_touch_chip *chip = to_touch_chip(dev);
+//	struct siw_ts *ts = chip->ts;
+	int ret = 0;
+
+	switch (code) {
+	case TCON_GLOVE:
+		ret = siw_hal_tc_con_glove(dev);
+		break;
+	case TCON_GRAB:
+		ret = siw_hal_tc_con_grab(dev);
+		break;
+	}
+
+	return ret;
+}
+
 
 #define HAL_TC_DRIVING_DELAY	20
 
@@ -3801,6 +3869,9 @@ static int siw_hal_tc_driving(struct device *dev, int mode)
 	}
 
 out:
+	siw_hal_tc_con_glove(dev);
+	siw_hal_tc_con_grab(dev);
+
 	atomic_set(&ts->recur_chk, 0);
 
 	return 0;
@@ -5911,7 +5982,6 @@ static const struct siw_hal_reg siw_touch_default_reg = {
 	.raw_data_ctl_read			= RAW_DATA_CTL_READ,
 	.raw_data_ctl_write			= RAW_DATA_CTL_WRITE,
 	.serial_data_offset			= SERIAL_DATA_OFFSET,
-	/* */
 	/* __SIW_SUPPORT_WATCH */
 	.ext_watch_font_offset		= EXT_WATCH_FONT_OFFSET,
 	.ext_watch_font_addr		= EXT_WATCH_FONT_ADDR,
@@ -5938,7 +6008,6 @@ static const struct siw_hal_reg siw_touch_default_reg = {
 	.ext_watch_position_r		= EXT_WATCH_POSITION_R,
 	.ext_watch_state			= EXT_WATCH_STATE,
 	.sys_dispmode_status		= SYS_DISPMODE_STATUS,
-	/* */
 	/* __SIW_SUPPORT_PRD */
 	.prd_serial_tcm_offset		= PRD_SERIAL_TCM_OFFSET,
 	.prd_tc_mem_sel				= PRD_TC_MEM_SEL,
@@ -5948,6 +6017,9 @@ static const struct siw_hal_reg siw_touch_default_reg = {
 	.prd_open3_short_offset		= PRD_OPEN3_SHORT_OFFSET,
 	.prd_ic_ait_start_reg		= PRD_IC_AIT_START_REG,
 	.prd_ic_ait_data_readystatus= PRD_IC_AIT_DATA_READYSTATUS,
+	/* */
+	.glove_en					= GLOVE_EN,
+	.grab_en					= GRAB_EN,
 };
 
 enum {
@@ -5966,6 +6038,7 @@ static const struct siw_touch_operations siw_touch_default_ops = {
 	.init				= siw_hal_init,
 	.reset				= siw_hal_reset_ctrl,
 	.ic_info			= siw_hal_ic_info,
+	.tc_con				= siw_hal_tc_con,
 	.tc_driving			= siw_hal_tc_driving,
 	.chk_status			= siw_hal_check_status,
 	.irq_handler		= siw_hal_irq_handler,

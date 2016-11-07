@@ -173,6 +173,11 @@ enum {
 };
 
 enum {
+	TCON_GLOVE = 1,
+	TCON_GRAB,
+};
+
+enum {
 	LOCKSCREEN_UNLOCK = 0,
 	LOCKSCREEN_LOCK,
 };
@@ -334,6 +339,8 @@ struct state_info {
 	atomic_t onhand;
 	atomic_t hw_reset;
 	atomic_t mon_ignore;
+	atomic_t glove;
+	atomic_t grab;
 };
 
 struct touch_pins {
@@ -468,6 +475,7 @@ struct siw_touch_operations {
 	int (*init)(struct device *dev);
 	int (*reset)(struct device *dev, int ctrl);
 	int (*ic_info)(struct device *dev);
+	int (*tc_con)(struct device *dev,	u32 code, void *param);
 	int (*tc_driving)(struct device *dev, int mode);
 	int (*chk_status)(struct device *dev);
 	int (*irq_handler)(struct device *dev);
@@ -1524,6 +1532,7 @@ static inline void siw_ops_restore_irq_handler(struct siw_ts *ts)
 #define siw_ops_init(_ts, args...)			siw_ops_xxx(init, -ESRCH, _ts, ##args)
 #define siw_ops_reset(_ts, args...)			siw_ops_xxx(reset, -ESRCH, _ts, ##args)
 #define siw_ops_ic_info(_ts, args...)		siw_ops_xxx(ic_info, -ESRCH, _ts, ##args)
+#define siw_ops_tc_con(_ts, args...)		siw_ops_xxx(tc_con, 0, _ts, ##args)
 #define siw_ops_tc_driving(_ts, args...)	siw_ops_xxx(tc_driving, -ESRCH, _ts, ##args)
 #define siw_ops_chk_status(_ts, args...)	siw_ops_xxx(chk_status, -ESRCH, _ts, ##args)
 #define siw_ops_irq_handler(_ts, args...)	siw_ops_xxx(irq_handler, -ESRCH, _ts, ##args)

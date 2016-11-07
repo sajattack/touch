@@ -166,6 +166,8 @@
 #define PRD_IC_AIT_START_REG		(0xC6C) //AIT Algorithm Engine HandShake Reg
 #define PRD_IC_AIT_DATA_READYSTATUS	(0xC64)
 
+#define GLOVE_EN					(0xF22)
+#define GRAB_EN						(0xF24)
 
 /* __SIW_SUPPORT_PRD */
 
@@ -252,7 +254,6 @@ struct siw_hal_reg {
 	u32 raw_data_ctl_read;
 	u32 raw_data_ctl_write;
 	u32 serial_data_offset;
-	/* */
 	/* __SIW_SUPPORT_WATCH */
 	u32 ext_watch_font_offset;
 	u32 ext_watch_font_addr;
@@ -279,7 +280,6 @@ struct siw_hal_reg {
 	u32 ext_watch_position_r;
 	u32 ext_watch_state;
 	u32 sys_dispmode_status;
-	/* */
 	/* __SIW_SUPPORT_PRD */
 	u32 prd_serial_tcm_offset;
 	u32 prd_tc_mem_sel;
@@ -289,6 +289,9 @@ struct siw_hal_reg {
 	u32 prd_open3_short_offset;
 	u32 prd_ic_ait_start_reg;
 	u32 prd_ic_ait_data_readystatus;
+	/* */
+	u32 glove_en;
+	u32 grab_en;
 };
 
 #define cmd_abt_ocd_on_write			cmd_raw_data_report_mode_write
