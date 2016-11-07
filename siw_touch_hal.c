@@ -4967,6 +4967,18 @@ static void siw_hal_connect(struct device *dev)
 	int charger_state = atomic_read(&ts->state.connect);
 	int wireless_state = atomic_read(&ts->state.wireless);
 
+#if 1
+	if (wireless_state) {
+		chip->charger = CONNECT_WIRELESS;
+	} else {
+		if ((charger_state < 0) ||
+			(charger_state > CONNECT_OTG)) {
+			t_dev_err(dev, "invalid charger status, %d\n", charger_state);
+			return;
+		}
+		chip->charger = charger_state;
+	}
+#else
 	chip->charger = 0;
 	switch (charger_state) {
 	case CONNECT_INVALID:
@@ -4995,16 +5007,22 @@ static void siw_hal_connect(struct device *dev)
 
 	/* wireless */
 	chip->charger |= (wireless_state) ? CONNECT_WIRELESS : 0;
+#endif
 
-	t_dev_info(dev, "write charger_state = 0x%02X\n", chip->charger);
+	t_dev_info(dev,
+		"charger_state = %Xh (%Xh, %Xh)\n",
+		chip->charger, charger_state, wireless_state);
+
 	if (atomic_read(&ts->state.pm) > DEV_PM_RESUME) {
-		t_dev_info(dev, "DEV_PM_SUSPEND - Don't try SPI\n");
+		t_dev_warn(dev, "DEV_PM_SUSPEND - Don't try SPI\n");
 		return;
 	}
 
 	siw_hal_write_value(dev,
 			reg->spr_charger_status,
 			chip->charger);
+
+	t_dev_info(dev, "charger_state set done\n");
 }
 
 static int siw_hal_lcd_mode(struct device *dev, u32 mode)

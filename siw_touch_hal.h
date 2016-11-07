@@ -74,9 +74,9 @@ enum {
 
 #define CONNECT_NONE			(0x00)
 #define CONNECT_USB				(0x01)
-#define CONNECT_TA				(0x02)
+#define CONNECT_DC				(0x02)
 #define CONNECT_OTG				(0x03)
-#define CONNECT_WIRELESS		(0x10)
+#define CONNECT_WIRELESS		(0x04)
 
 enum {
 	SW_RESET = 0,
