@@ -183,6 +183,13 @@ int siw_touch_sys_get_panel_bl(struct device *dev)
 
 int siw_touch_sys_set_panel_bl(struct device *dev, int level)
 {
+	if (level == 0){
+		t_dev_info(dev, "BLU control OFF\n");
+		/* To Do : screen off */
+	} else {
+		t_dev_info(dev, "BLU control ON (level:%d)\n", level);
+		/* To Do : screen on with level */
+	}
 	return 0;
 }
 
