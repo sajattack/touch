@@ -1176,6 +1176,76 @@ static int siw_hal_power(struct device *dev, int ctrl)
 	return 0;
 }
 
+static int siw_hal_chk_boot_mode(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+//	struct siw_ts *ts = chip->ts;
+	struct siw_hal_reg *reg = chip->reg;
+	u32 bootmode = 0;
+	int ret = 0;
+
+	ret = siw_hal_read_value(dev,
+			reg->spr_boot_status,
+			&bootmode);
+	if (ret < 0) {
+		return ret;
+	}
+
+	if ((bootmode >> 3) & 0x1) {
+		return 0x1;
+	}
+
+	return 0;
+}
+
+static int siw_hal_chk_boot_status(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+//	struct siw_ts *ts = chip->ts;
+	struct siw_hal_reg *reg = chip->reg;
+	u32 boot_failed = 0;
+	u32 tc_status = 0;
+	u32 tc_valid_chk1 = (1<<7);
+	u32 tc_valid_chk2 = (1<<6);
+	int ret = 0;
+
+	ret = siw_hal_read_value(dev,
+			reg->tc_status,
+			&tc_status);
+	if (ret < 0) {
+		return ret;
+	}
+
+	if (!(tc_status & tc_valid_chk1)) {
+		boot_failed |= (1<<5);
+	}
+	if (!(tc_status & tc_valid_chk2)) {
+		boot_failed |= (1<<4);
+	}
+
+	return boot_failed;
+}
+
+static int siw_hal_chk_boot(struct device *dev)
+{
+	u32 boot_failed = 0;
+	int ret = 0;
+
+	ret = siw_hal_chk_boot_mode(dev);
+	if (ret < 0) {
+		return ret;
+	}
+	boot_failed |= ret;
+
+	ret = siw_hal_chk_boot_status(dev);
+	if (ret < 0) {
+		return ret;
+	}
+	boot_failed |= ret;
+
+	return boot_failed;
+}
+
 struct siw_ic_info_chip_proto {
 	int chip_type;
 	int vchip;
@@ -1337,10 +1407,23 @@ static int siw_hal_do_ic_info(struct device *dev, int prt_on)
 	t_dev_info_sel(dev, prt_on,
 			"[T] product id %s, flash boot %s(%s), crc %s (0x%08X)\n",
 			fw->product_id,
-			(bootmode >> 1 & 0x1) ? "BUSY" : "idle",
-			(bootmode >> 2 & 0x1) ? "done" : "booting",
-			(bootmode >> 3 & 0x1) ? "ERROR" : "ok",
+			((bootmode >> 1) & 0x1) ? "BUSY" : "idle",
+			((bootmode >> 2) & 0x1) ? "done" : "booting",
+			((bootmode >> 3) & 0x1) ? "ERROR" : "ok",
 			bootmode);
+
+	if (atomic_read(&ts->state.core) == CORE_PROBE) {
+		ret = siw_hal_chk_boot(dev);
+		if (ret < 0) {
+			return ret;
+		}
+		if (ret) {
+			t_dev_err(dev, "Boot fail detected - %02Xh\n", ret);
+			atomic_set(&chip->boot, IC_BOOT_FAIL);
+			/* return special flag to let the core layer know */
+			return -(ENOMEDIUM<<3);
+		}
+	}
 
 	switch (touch_chip_type(ts)) {
 	case CHIP_LG4946:
@@ -1681,6 +1764,8 @@ static int siw_hal_init(struct device *dev)
 	int i;
 	int ret = 0;
 
+	atomic_set(&chip->boot, IC_BOOT_DONE);
+
 	if (atomic_read(&ts->state.core) == CORE_PROBE) {
 		siw_hal_fb_notifier_init(dev);
 	}
@@ -1694,6 +1779,10 @@ static int siw_hal_init(struct device *dev)
 	for (i = 0; i < CHIP_INIT_RETRY_MAX; i++) {
 		ret = siw_hal_ic_info(dev);
 		if (ret >= 0) {
+			break;
+		}
+		if (ret == -(ENOMEDIUM<<3)) {
+			/* boot fail detected */
 			break;
 		}
 
@@ -2187,13 +2276,9 @@ static int siw_hal_fw_size_check(struct device *dev, int fw_size)
 	int fw_size_max = touch_fw_size(ts);
 	int size_min = (fw_size_max + (NUM_C_CONF<<POW_C_CONF) + (MIN_S_CONF<<POW_S_CONF));
 	int size_max = (fw_size_max + (NUM_C_CONF<<POW_C_CONF) + (MAX_S_CONF<<POW_S_CONF));
-	int required_size;
-	u32 index = 0;
-	int ret = 0;
 
 	chip->fw.conf_index = 0;
 
-	/* Dynamic CONF structure */
 	if ((fw_size < size_min) || (fw_size > size_max)) {
 		t_dev_err(dev, "FW upgrade: wrong file size - %Xh,\n",
 			fw_size);
@@ -2201,6 +2286,18 @@ static int siw_hal_fw_size_check(struct device *dev, int fw_size)
 			size_min, size_max);
 		return -EFAULT;
 	}
+
+	return 0;
+}
+
+static int siw_hal_fw_size_check_post(struct device *dev, int fw_size)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	int fw_size_max = touch_fw_size(ts);
+	int required_size;
+	u32 index = 0;
+	int ret = 0;
 
 #if (S_CFG_DBG_IDX != 0)
 	index =  S_CFG_DBG_IDX;
@@ -2298,6 +2395,11 @@ static int siw_hal_fw_size_check(struct device *dev, int fw_size)
 
 	return 0;
 }
+
+static int siw_hal_fw_size_check_post(struct device *dev, int fw_size)
+{
+	return 0;
+}
 #endif	/* __FW_TYPE_1 */
 
 enum {
@@ -2345,6 +2447,11 @@ static int siw_hal_fw_compare(struct device *dev, u8 *fw_buf)
 	} else {
 		dev_major = fw->v.version.major;
 		dev_minor = fw->v.version.minor;
+	}
+
+	if (atomic_read(&chip->boot) == IC_BOOT_FAIL) {
+		update |= (1<<7);
+		goto out;
 	}
 
 	if (!dev_major && !dev_minor){
@@ -2566,7 +2673,7 @@ out:
 	return ret;
 }
 
-static int siw_hal_fw_upgrade_fw_post(struct device *dev)
+static int siw_hal_fw_upgrade_fw_post(struct device *dev, int fw_size)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
@@ -2581,6 +2688,11 @@ static int siw_hal_fw_upgrade_fw_post(struct device *dev)
 	}
 
 	ret = siw_hal_fw_upgrade_fw_post_quirk(dev);
+	if (ret < 0) {
+		goto out;
+	}
+
+	ret = siw_hal_fw_size_check_post(dev, fw_size);
 	if (ret < 0) {
 		goto out;
 	}
@@ -2647,7 +2759,7 @@ static int siw_hal_fw_upgrade_fw(struct device *dev,
 	/*
 	 * Stage 1-2: upgrade code data
 	 */
-	ret = siw_hal_fw_upgrade_fw_post(dev);
+	ret = siw_hal_fw_upgrade_fw_post(dev, fw_size);
 	if (ret < 0) {
 		goto out;
 	}
@@ -5694,13 +5806,22 @@ static int siw_hal_chipset_check(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
-	int ret;
+	int ret = 0;
 
 	touch_msleep(ts->caps.hw_reset_delay);
 
 	ret = siw_hal_ic_test(dev);
 	if (ret < 0) {
 		goto out;
+	}
+
+	ret = siw_hal_chk_boot(dev);
+	if (ret < 0) {
+		goto out;
+	}
+	if (ret) {
+		t_dev_err(dev, "Boot fail detected\n");
+		return 0;
 	}
 
 	/*

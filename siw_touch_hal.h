@@ -166,6 +166,11 @@ enum {
 	IC_INIT_DONE,
 };
 
+enum {
+	IC_BOOT_DONE = 0,
+	IC_BOOT_FAIL,
+};
+
 #define MAX_RW_SIZE_POW			(10)
 #define MAX_RW_SIZE				__SIZE_POW(MAX_RW_SIZE_POW)		//1K
 #define FLASH_CONF_SIZE_POWER	(10)
@@ -342,13 +347,14 @@ struct siw_touch_chip {
 	u8 swipe_debug_type;
 	atomic_t block_watch_cfg;
 	atomic_t init;
+	atomic_t boot;
 #if defined(__SIW_SUPPORT_PM_QOS)
 	struct pm_qos_request pm_qos_req;
 #endif
 };
 
 enum {
-	CHIP_INIT_RETRY_MAX = 5,
+	CHIP_INIT_RETRY_MAX = 2,
 };
 
 #define TCI_MAX_NUM					2
