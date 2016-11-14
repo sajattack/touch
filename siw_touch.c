@@ -684,7 +684,7 @@ static void siw_touch_init_work_func(struct work_struct *work)
 			container_of(to_delayed_work(work),
 						struct siw_ts, init_work);
 	struct device *dev = ts->dev;
-	int ret;
+	int ret = 0;
 
 	t_dev_dbg_base(dev, "init work start\n");
 
@@ -695,7 +695,9 @@ static void siw_touch_init_work_func(struct work_struct *work)
 		siw_touch_irq_control(dev, INTERRUPT_ENABLE);
 	}
 	mutex_unlock(&ts->lock);
-	if (ret < 0) {
+	if (ret == -(ENOMEDIUM<<3)) {
+		/* boot fail detected */
+	} else if (ret < 0) {
 		if (atomic_read(&ts->state.core) == CORE_PROBE) {
 			t_dev_err(dev, "%s init work failed(%d), try again\n",
 				touch_chip_name(ts), ret);
