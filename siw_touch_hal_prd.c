@@ -74,10 +74,6 @@ struct siw_hal_prd_test_off_info {
 #define TSP_REPORT						(0x2A30)
 
 enum {
-	LINE_FILTER_OPTION	= (0x40000),
-};
-
-enum {
 	PRD_DATA_NAME_SZ	= 128,
 	/* */
 	PRD_LINE_NUM		= (1<<10),
@@ -618,12 +614,31 @@ enum {
 	OPEN_SHORT_ALL_TEST,
 	OPEN_NODE_TEST,
 	SHORT_NODE_TEST,
-	U3_M2_RAWDATA_TEST = 5,
+	U3_M2_RAWDATA_TEST,
 	U3_M1_RAWDATA_TEST,
 	U0_M2_RAWDATA_TEST,
 	U0_M1_RAWDATA_TEST,
-	U3_BLU_JITTER_TEST = 12,
+	U3_BLU_JITTER_TEST,
 	UX_INVALID,
+};
+
+enum {
+	U3_TEST_PRE_CMD = 0x3,
+	U0_TEST_PRE_CMD = 0x0,
+};
+
+enum {
+	NO_TEST_POST_CMD = 0,
+	OPEN_SHORT_ALL_TEST_POST_CMD,
+	OPEN_NODE_TEST_POST_CMD,
+	SHORT_NODE_TEST_POST_CMD,
+	M2_RAWDATA_TEST_POST_CMD = 5,
+	M1_RAWDATA_TEST_POST_CMD,
+	JITTER_TEST_POST_CMD = 12,
+};
+
+enum {
+	LINE_FILTER_OPTION	= (0x40000),
 };
 
 static const char *prd_cmp_tool_str[][2] = {
@@ -1465,14 +1480,37 @@ static int prd_write_file(struct siw_hal_prd_data *prd, char *data, int write_ti
 	return ret;
 }
 
+/*
+ * Conrtol LCD Backlightness
+ */
+static int prd_set_blu(struct device *dev)
+{
+	int backlightness;
+
+//	LCD brightness ON 742ms -> LCD brightness OFF 278mms -> LCD brightness ON 278ms
+
+	backlightness = siw_touch_sys_get_panel_bl(dev);
+
+	touch_msleep(742);
+
+	siw_touch_sys_set_panel_bl(dev, 0);
+
+	touch_msleep(278);
+
+	siw_touch_sys_set_panel_bl(dev, backlightness);
+
+	touch_msleep(278);
+
+	return 0;
+}
+
 static int prd_write_test_mode(struct siw_hal_prd_data *prd, u8 type)
 {
 	struct device *dev = prd->dev;
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_hal_reg *reg = chip->reg;
 	u32 testmode = 0;
-	u8 disp_mode = 0x3;
-	int retry = 20;
+	int retry = 40;
 	u32 rdata = 0x01;
 	int waiting_time = 400;
 	int addr = reg->tc_tsp_test_ctl;
@@ -1480,26 +1518,25 @@ static int prd_write_test_mode(struct siw_hal_prd_data *prd, u8 type)
 
 	switch (type) {
 	case OPEN_NODE_TEST:
-		testmode = (disp_mode << 8) + type;
+		testmode = (U3_TEST_PRE_CMD << 8) + OPEN_NODE_TEST_POST_CMD;
 		waiting_time = 10;
 		break;
 	case SHORT_NODE_TEST:
-		testmode = (disp_mode << 8) + type;
+		testmode = (U3_TEST_PRE_CMD << 8) + SHORT_NODE_TEST_POST_CMD;
 		waiting_time = 1000;
 		break;
 	case U3_M2_RAWDATA_TEST:
-		testmode = (disp_mode << 8) + type;
+		testmode = (U3_TEST_PRE_CMD << 8) + M2_RAWDATA_TEST_POST_CMD;
 		break;
 	case U3_BLU_JITTER_TEST:
-		testmode = ((disp_mode << 8) + type) | LINE_FILTER_OPTION;
+		testmode = ((U3_TEST_PRE_CMD << 8) + JITTER_TEST_POST_CMD) | LINE_FILTER_OPTION;
+		waiting_time = 10;
 		break;
 	case U0_M1_RAWDATA_TEST:
-		type = 0x6;
-		testmode = type;
+		testmode = (U0_TEST_PRE_CMD << 8) + M1_RAWDATA_TEST_POST_CMD;
 		break;
 	case U0_M2_RAWDATA_TEST:
-		type = 0x5;
-		testmode = type;
+		testmode = (U0_TEST_PRE_CMD << 8) + M2_RAWDATA_TEST_POST_CMD;
 		break;
 	}
 
@@ -1512,10 +1549,14 @@ static int prd_write_test_mode(struct siw_hal_prd_data *prd, u8 type)
 		addr, testmode);
 	touch_msleep(waiting_time);
 
+	if(type == U3_BLU_JITTER_TEST) {
+		prd_set_blu(dev);
+	}
+
 	/* Check Test Result - wait until 0 is written */
 	addr = reg->tc_tsp_test_status;
 	do {
-		touch_msleep(100);
+		touch_msleep(50);
 		ret = siw_hal_read_value(dev, addr, &rdata);
 		if (ret < 0) {
 			return ret;
@@ -2397,30 +2438,6 @@ out:
 	return ret;
 }
 
-/*
- * Conrtol LCD Backlightness
- */
-static int prd_set_blu(struct device *dev)
-{
-	int backlightness;
-
-//	LCD brightness ON 742ms -> LCD brightness OFF 278mms -> LCD brightness ON 278ms
-
-	backlightness = siw_touch_sys_get_panel_bl(dev);
-
-	touch_msleep(742);
-
-	siw_touch_sys_set_panel_bl(dev, 0);
-
-	touch_msleep(278);
-
-	siw_touch_sys_set_panel_bl(dev, backlightness);
-
-	touch_msleep(278);
-
-	return 0;
-}
-
 #define RAW_OFFSET_EVEN(_addr)		(((_addr) >> 16) & 0xFFFF)
 #define RAW_OFFSET_ODD(_addr)		((_addr) & 0xFFFF)
 
@@ -2464,7 +2481,6 @@ static int prd_read_rawdata(struct siw_hal_prd_data *prd, int type)
 
 	switch (type) {
 	case U3_BLU_JITTER_TEST:
-		prd_set_blu(dev);
 		/* fall through */
 	case U3_M2_RAWDATA_TEST:
 		/* fall through */
