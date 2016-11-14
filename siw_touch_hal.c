@@ -5664,52 +5664,26 @@ static int siw_hal_ic_test(struct device *dev)
 	return ret;
 }
 
-
 static int siw_hal_get_product_id(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 //	struct siw_ts *ts = chip->ts;
 	struct siw_hal_reg *reg = chip->reg;
 	struct siw_hal_fw_info *fw = &chip->fw;
-	u8 product[2][8];
-	u8 *product_id;
-	int err_case = 0;
-	int i;
+	u8 product_id[8+4] = { 0, };	//dummy 4-byte
 	int ret;
 
-	memset((void *)product, 0, sizeof(product));
-
-	/*
-	 * Read multiple
-	 */
-	for (i = 0; i < 4; i++) {
-		product_id = product[!!i];	/* [0] : 1st read, [1] last read */
-		ret = siw_hal_reg_read(dev,
-					reg->tc_product_id1,
-					(void *)product_id, sizeof(product[0]));
-		if (ret < 0) {
-			t_dev_err(dev,
-				"failed to read product id(%d), %d\n",
-				i, ret);
-			return ret;
-		}
-	}
-
-	if (!product[0][0] || !product[1][0]) {	/* validity */
-		err_case = 1;
-	} else if (strncmp(product[0], product[1], 8)) {	/* comparison */
-		err_case = 2;
-	}
-
-	if (err_case) {
+	ret = siw_hal_reg_read(dev,
+				reg->tc_product_id1,
+				(void *)product_id, 8);
+	if (ret < 0) {
 		t_dev_err(dev,
-			"product id not %s: %s, %s\n",
-			(err_case == 2) ? "verified" : "valid",
-			(char *)product[0], (char *)product[1]);
-		return -EFAULT;
+			"failed to read product id, %d\n",
+			ret);
+		return ret;
 	}
 
-	siw_hal_fw_set_prod_id(fw, (u8 *)product[0], sizeof(product[0]));
+	siw_hal_fw_set_prod_id(fw, (u8 *)product_id, 8);
 
 	t_dev_dbg_base(dev, "product id - %s\n", fw->product_id);
 
