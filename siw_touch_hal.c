@@ -1331,9 +1331,13 @@ static int siw_hal_do_ic_info(struct device *dev, int prt_on)
 	siw_hal_xfer_add_rx(xfer,
 			reg->tc_product_id1,
 			(void *)&product[0], sizeof(product));
-	siw_hal_xfer_add_rx(xfer,
-			reg->tc_version_ext,
-			(void *)&version_ext, sizeof(version_ext));
+	switch (touch_chip_type(ts)) {
+	case CHIP_SW1828 :
+		siw_hal_xfer_add_rx(xfer,
+				reg->tc_version_ext,
+				(void *)&version_ext, sizeof(version_ext));
+		break;
+	}
 	siw_hal_xfer_add_rx(xfer,
 			reg->spr_boot_status,
 			(void *)&bootmode, sizeof(bootmode));
