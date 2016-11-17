@@ -3606,6 +3606,7 @@ static int siw_hal_swipe_control(struct device *dev, int type)
 		reg_w = reg->swipe_enable_w;
 		data = (type == SWIPE_ENABLE_CTRL) ?
 					chip->swipe.mode : 0;
+		break;
 	case SWIPE_DIST_CTRL:
 		reg_w = reg->swipe_dist_w;
 		data = (right->distance) | (left->distance << 16);
