@@ -1,3 +1,4 @@
+[Last updated : 2016.11.18]
 
 ###################################################################################################
 # Preview                                                                                         #
@@ -77,60 +78,113 @@ Step-1. In android framework, set lpwg mode via lpwg_notify sysfs attr
         ...
         [...] siw_touch spi5.0: LPWG_UPDATE_ALL: mode[1], screen[OFF], sensor[FAR], qcover[OPEN]
         [...] siw_touch spi5.0: lpwg resume: mode 1, screen 0
+        [...] siw_touch spi1.0: lpwg resume: partial
+        [...] siw_touch spi1.0: TCI1-type:4
+        [...] siw_touch spi1.0: lpwg_control mode = 1
+        [...] siw_touch spi1.0: current driving mode is U3_PARTIAL
+        [...] siw_touch spi1.0: DDI Display Mode[0021h] = 0x00000003
+        [...] siw_touch spi1.0: TC Driving[0C03h] wr 0x00000385
+        [...] siw_touch spi1.0: glove_en: OFF(00000000h)
+        [...] siw_touch spi1.0: grab_en: OFF(00000000h)
+        [...] siw_touch spi1.0: lpwg resume(1, 0): lcd_mode 3, driving_mode 4
         ...
 
 Step-2. Set display mode to U0 in LCD driver
 
-Step-3. In LCD driver, Send U0 mode event to touch driver via notifier function
-        : touch_notifier_call_chain(LCD_EVENT_LCD_MODE, LCD_MODE_U0) --> siw_hal_notify
+Step-3. Change lcd_mode
+        [via notifier]
+        In LCD driver, Send U0 mode event to touch driver via notifier function
+        : int panel_mode = LCD_EVENT_LCD_MODE_U0;
+          siw_touch_notifier_call_chain(LCD_EVENT_LCD_MODE, (void *)&panel_mode) --> siw_hal_notify
+        [via sysfs]
+        echo 0 > lcd_mode
 
         <Log example>
         ...
-        [...] siw_touch 5-0028: notify: lcd_event: lcd mode
-        [...] siw_touch 5-0028: lcd_mode: 0 (prev: 3)
-        [...] siw_touch 5-0028: U0 mode change
+        [...] siw_touch spi1.0: notify: lcd_event: lcd mode
+        [...] siw_touch spi1.0: lcd_mode: 0 (prev: 3)
+        [...] siw_touch spi1.0: U0 mode change
         ...
-        [...] siw_touch 5-0028: FB_BLANK
-        [...] siw_touch 5-0028: notify: event FB(Eh), value 1h
-        //siw_touch_suspend
-        [...] siw_touch 5-0028: touch core pm suspend start
-        [...] siw_touch 5-0028: lpwg suspend: mode 1, screen 0
-        [...] siw_touch 5-0028: TCI1-type:4
-        [...] siw_touch 5-0028: swipe disable
-        [...] siw_touch 5-0028: current driving mode is U0
-        [...] siw_touch 5-0028: DDI Display Mode[0021h] = 0x00000000
-        [...] siw_touch 5-0028: TC Driving[0C03h] wr 0x00000001
-        [...] siw_touch 5-0028: lpwg suspend(1, 0): lcd_mode 0, driving_mode 0
-        [...] siw_touch 5-0028: touch core pm suspend end(0)
+        [...] siw_touch spi1.0: touch core pm suspend start
+        [...] siw_touch spi1.0: lpwg suspend: mode 1, screen 0
+        [...] siw_touch spi1.0: TCI1-type:4
+        [...] siw_touch spi1.0: lpwg_control mode = 1
+        [...] siw_touch spi1.0: current driving mode is U0
+        [...] siw_touch spi1.0: DDI Display Mode[0021h] = 0x00000000
+        [...] siw_touch spi1.0: TC Driving[0C03h] wr 0x00000001
+        ...
+        [...] siw_touch spi1.0: command done: mode 0, running_sts 01h
+        ...
+        [...] siw_touch spi1.0: lpwg suspend(1, 0): lcd_mode 0, driving_mode 0
+        [...] siw_touch spi1.0: touch core pm suspend end(0)
+        [...] siw_touch spi1.0: [1] TC Driving OK
+        ...
 
 ---------------------------------------------------------------------------------------------------
 [Change to display on mode : U0 -> U3]
 
-Step-1. Set display mode to U3 in LCD driver
-
-Step-2. In LCD driver, send U3 mode event to touch driver via notifier function
-        : touch_notifier_call_chain(LCD_EVENT_LCD_MODE, LCD_MODE_U3) --> siw_hal_notify
+Step-1. In android framework, set lpwg mode via lpwg_notify sysfs attr
+        : echo 9 0 1 1 0 > lpwg_notify
 
         <Log example>
         ...
-        [...] siw_touch 5-0028: notify: lcd_event: lcd mode
-        [...] siw_touch 5-0028: lcd_mode: 3 (prev: 0)
-        [...] siw_touch 5-0028: U3 mode change
+        [...] siw_touch spi1.0: LPWG_UPDATE_ALL: mode[0], screen[ON], sensor[FAR], qcover[OPEN]
+        [...] siw_touch spi1.0: lpwg suspend: mode 0, screen 1
+        [...] siw_touch spi1.0: sleep state -> IC_NORMAL
+        [...] siw_touch spi1.0: lpwg suspend(0, 0): lcd_mode 0, driving_mode 0
         ...
-        //siw_touch_resume
-        [...] siw_touch 5-0028: touch core pm resume start
-        [...] siw_touch 5-0028: touch core pm resume end(0)
+
+Step-2. Set display mode to U3 in LCD driver
+
+Step-3. Set RESET notifier (ready for reset)
+        [via notifier]
+        In LCD driver, send RESET event
+        : siw_touch_notifier_call_chain(LCD_EVENT_HW_RESET, NULL) --> siw_hal_notify
+        [via sysfs]
+        echo 0x5A 0x13 0 > dbg_notify
+
+        <Log example>
+        ...
+        [...] siw_touch spi1.0: notify: reset
+        [...] siw_touch spi1.0: irq(512) wake disabled
+        [...] siw_touch spi1.0: irq(512) disabled
+        ...
+
+Step-4. Change lcd_mode
+        [via notifier]
+        In LCD driver, send U3 mode event to touch driver via notifier function
+        : int panel_mode = LCD_EVENT_LCD_MODE_U3;
+          siw_touch_notifier_call_chain(LCD_EVENT_LCD_MODE, (void *)&panel_mode) --> siw_hal_notify
+        [via sysfs]
+        echo 3 > lcd_mode
+
+        <Log example>
+        ...
+        [...] siw_touch spi1.0: notify: lcd_event: lcd mode
+        [...] siw_touch spi1.0: lcd_mode: 3 (prev: 0)
+        [...] siw_touch spi1.0: U3 mode change
+        ...
+        [...] siw_touch spi1.0: touch core pm resume start
+        [...] siw_touch spi1.0: touch core pm resume end(0)
         //siw_touch_resume -> init_work
-        [...] siw_touch 5-0028: [T] chip id 4894, version v0.48 (0x040800030, 0x09)
-        [...] siw_touch 5-0028: [T] product id L0W53K6P, flash boot idle(done), crc ok (0x00000044)
-        [...] siw_touch 5-0028: lpwg resume: mode 1, screen 1
-        [...] siw_touch 5-0028: lpwg resume: screen
-        [...] siw_touch 5-0028: current driving mode is U3
-        [...] siw_touch 5-0028: DDI Display Mode[0021h] = 0x00000003
-        [...] siw_touch 5-0028: TC Driving[0C03h] wr 0x00000185
-        [...] siw_touch 5-0028: lpwg resume(1, 0): lcd_mode 3, driving_mode 3
-        [...] siw_touch 5-0028: LG4894 init done
+        [...] siw_touch spi1.0: [T] chip id 4947, version v0.03 (0x04090003h, 0xFF)
+        [...] siw_touch spi1.0: [T] product id HTC57TMP, flash boot idle(done), crc ok (0x00000044)
+        [...] siw_touch spi1.0: [SW49407] IC info is good: 9, 4
+        [...] siw_touch spi1.0: lpwg resume: mode 0, screen 1
+        [...] siw_touch spi1.0: lpwg resume: screen
+        [...] siw_touch spi1.0: lpwg_control mode = 0
+        [...] siw_touch spi1.0: current driving mode is U3
+        [...] siw_touch spi1.0: DDI Display Mode[0021h] = 0x00000003
+        [...] siw_touch spi1.0: TC Driving[0C03h] wr 0x00000185
+        [...] siw_touch spi1.0: command done: mode 3, running_sts 04h
         ...
+        [...] siw_touch spi1.0: lpwg resume(1, 0): lcd_mode 3, driving_mode 3
+        ...
+        [...] siw_touch spi1.0: SW49407 init done
+        ...
+        [...] siw_touch spi1.0: clr IRQS_PENDING(512)
+        [...] siw_touch spi1.0: irq(512) enabled
+        [...] siw_touch spi1.0: irq(512) wake enabled
 
 ---------------------------------------------------------------------------------------------------
 
