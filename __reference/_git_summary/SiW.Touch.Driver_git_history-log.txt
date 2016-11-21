@@ -1,4 +1,89 @@
-[Last updated : 2016.09.26 AM 09:00]
+[Git branch status : 2016.12.02 PM 03:00]
+
+---------------------------------------------------------------------------------------------------
+
+* bd9aa25 - input: touchscreen: siw: version fix - v2.16r (Fri Dec 2 14:44:28 2016 +0900) <Harrison Kim>
+* 55dfb0d - input: touchscreen: siw: __reference: driver guide (Fri Dec 2 14:22:34 2016 +0900) <Harrison Kim>
+* 3b0c410 - input: touchscreen: siw: update PRD layer - update open & short test (Fri Dec 2 13:41:13 2016 +0900) <Harrison Kim>
+* 5fe93b6 - input: touchscreen: siw: update HAL layer - add reg. setup for spi_tattn_opt (Fri Dec 2 13:41:04 2016 +0900) <Harrison Kim>
+* b78da7b - input: touchscreen: siw: update HAL layer - update mon handler (Fri Dec 2 13:40:58 2016 +0900) <Harrison Kim>
+* bf6aab3 - input: touchscreen: siw: update HAL layer - re-organize status check (Thu Dec 1 16:30:59 2016 +0900) <Harrison Kim>
+* 6dcc0c7 - input: touchscreen: siw: update HAL layer - adjust init retry count (Thu Dec 1 16:30:54 2016 +0900) <Harrison Kim>
+* a07deb3 - input: touchscreen: siw: update HAL(sysfs) layer - update _store_reg_ctrl (Thu Dec 1 16:30:49 2016 +0900) <Harrison Kim>
+* 7b1428e - input: touchscreen: siw: update HAL layer - update debug report (Thu Dec 1 08:36:28 2016 +0900) <Harrison Kim>
+* 6149f52 - input: touchscreen: siw: update HAL layer - update siw_hal_get_cmd_version (Thu Dec 1 08:36:16 2016 +0900) <Harrison Kim>
+* a94edb0 - input: touchscreen: siw: update HAL layer - update siw_hal_do_ic_info (Thu Dec 1 08:36:06 2016 +0900) <Harrison Kim>
+* f803c2d - input: touchscreen: siw: update Core layer - bug-fix for sys_reset work (Wed Nov 30 13:25:11 2016 +0900) <Harrison Kim>
+* 4a3b27e - input: touchscreen: siw: __reference: add prd spec. files (Tue Nov 29 19:00:57 2016 +0900) <Harrison Kim>
+* c3d2dc1 - input: touchscreen: siw: update PRD layer - add siw_hal_prd_sd_cmd (Tue Nov 29 18:50:22 2016 +0900) <Harrison Kim>
+* b5a06c6 - input: touchscreen: siw: update PRD layer - update prd_dbg_mask sysfs (Tue Nov 29 18:50:11 2016 +0900) <Harrison Kim>
+* 4efbcd4 - input: touchscreen: siw: update PRD layer - update print control (Tue Nov 29 18:50:01 2016 +0900) <Harrison Kim>
+* e15e7e4 - input: touchscreen: siw: update PRD layer - update open & short test (Tue Nov 29 18:49:51 2016 +0900) <Harrison Kim>
+* 97b12c8 - input: touchscreen: siw: update HAL layer - bug-fix for mon handler (Mon Nov 28 18:23:09 2016 +0900) <Harrison Kim>
+* 46dc51a - input: touchscreen: siw: update Watch layer - update ext_watch_font_download (Fri Nov 25 17:06:13 2016 +0900) <Harrison Kim>
+* d9bca7e - input: touchscreen: siw: update Watch layer - usage of mod_delayed_work (Fri Nov 25 17:06:04 2016 +0900) <Harrison Kim>
+* af87ba0 - input: touchscreen: siw: update HAL layer - update mon handler (Fri Nov 25 10:48:07 2016 +0900) <Harrison Kim>
+* b852ad7 - input: touchscreen: siw: __reference: remove old docs (Mon Nov 21 11:26:47 2016 +0900) <Harrison Kim>
+* ac3bf44 - input: touchscreen: siw: update LG4946 entry - adjust reg_quirks table (Mon Nov 21 08:43:10 2016 +0900) <Harrison Kim>
+* bd47dde - input: touchscreen: siw: update LG4946 entry - adjust definition (Mon Nov 21 08:42:36 2016 +0900) <Harrison Kim>
+* c7868b0 - input: touchscreen: siw: update SW1828 entry - adjust definition (Mon Nov 21 08:42:27 2016 +0900) <Harrison Kim>
+* 8d61532 - input: touchscreen: siw: update LG4895 entry - adjust definition (Mon Nov 21 08:42:16 2016 +0900) <Harrison Kim>
+* 681043a - input: touchscreen: siw: update LG4894 entry - adjust definition (Mon Nov 21 08:42:06 2016 +0900) <Harrison Kim>
+* 28bb49f - input: touchscreen: siw: update SW49407 entry - update reg_quirks table (Mon Nov 21 08:41:48 2016 +0900) <Harrison Kim>
+* 25eb8b7 - input: touchscreen: siw: update SW49407 entry - adjust definition (Mon Nov 21 08:41:11 2016 +0900) <Harrison Kim>
+* 2f42269 - input: touchscreen: siw: __reference: update DTS example - LG4895 (Mon Nov 21 08:39:00 2016 +0900) <Harrison Kim>
+* 9b38c56 - input: touchscreen: siw: update Sys layer - add log for bl control (Sat Nov 19 10:32:08 2016 +0900) <Harrison Kim>
+* d7030aa - input: touchscreen: siw: update PRD layer - bug fix for U3_BLU_Jitter test (Sat Nov 19 10:31:58 2016 +0900) <Harrison Kim>
+* 85dbfae - input: touchscreen: siw: __reference: driver guide (Fri Nov 18 12:48:36 2016 +0900) <Harrison Kim>
+* 7d10d42 - input: touchscreen: siw: update HAL layer - bug fix for swipe control (Thu Nov 17 17:23:32 2016 +0900) <Harrison Kim>
+* 01df2dd - input: touchscreen: siw: update HAL layer - bug fix for version control (Tue Nov 15 13:02:58 2016 +0900) <Harrison Kim>
+* d9faf46 - input: touchscreen: siw: update Core layer - new feature for boot fail detection (Mon Nov 14 18:00:23 2016 +0900) <Harrison Kim>
+* 6eca1bc - input: touchscreen: siw: update HAL layer - new feature for boot fail detection (Mon Nov 14 18:00:14 2016 +0900) <Harrison Kim>
+* 4027ead - input: touchscreen: siw: update HAL layer - simplify initial product_id check (Mon Nov 14 18:00:05 2016 +0900) <Harrison Kim>
+* 05dee27 - input: touchscreen: siw: update HAL layer - update fw upgrade control (Mon Nov 14 17:59:55 2016 +0900) <Harrison Kim>
+* 65235bb - input: touchscreen: siw: update HAL layer - charger status setup (Mon Nov 7 17:13:11 2016 +0900) <Harrison Kim>
+* d3db3d1 - input: touchscreen: siw: update Core & HAL layer - add new feature (Mon Nov 7 17:12:51 2016 +0900) <Harrison Kim>
+* 3fcf9d2 - input: touchscreen: siw: update HAL layer - fix type of track_id (Thu Nov 3 10:40:58 2016 +0900) <Harrison Kim>
+* a7922f2 - input: touchscreen: siw: update HAL layer - update fw updrade control (Sat Oct 29 11:46:29 2016 +0900) <Harrison Kim>
+* 2d2085e - input: touchscreen: siw: update HAL layer - add tc_driving option (Wed Oct 26 18:42:59 2016 +0900) <Harrison Kim>
+* f89550b - input: touchscreen: siw: update HAL layer - fix fw upgrade sub-function (Wed Oct 26 09:17:47 2016 +0900) <Harrison Kim>
+* 1d713c4 - input: touchscreen: siw: update HAL layer - update debug trace function (Wed Oct 26 09:16:37 2016 +0900) <Harrison Kim>
+* ae54cf1 - input: touchscreen: siw: __reference: driver guide (pdf) (Wed Oct 26 09:15:20 2016 +0900) <Harrison Kim>
+* 76bfeb0 - input: touchscreen: siw: update HAL layer - add mode change log (Mon Oct 24 17:03:28 2016 +0900) <Harrison Kim>
+* 69c78e7 - input: touchscreen: siw: update HAL layer - update debug trace function (Mon Oct 24 17:03:19 2016 +0900) <Harrison Kim>
+* ff44061 - input: touchscreen: siw: update HAL layer - add 'proximity sensor input' control (Fri Oct 21 12:52:34 2016 +0900) <Harrison Kim>
+* 4da9113 - input: touchscreen: siw: update HAL layer - add debug trace function (Fri Oct 14 13:04:34 2016 +0900) <Harrison Kim>
+* dc4d745 - input: touchscreen: siw: update HAL layer - adjust retiral in siw_hal_init (Fri Oct 14 08:46:09 2016 +0900) <Harrison Kim>
+* 45a3bbb - input: touchscreen: siw: update HAL layer - add S_CFG_DBG_IDX for debugging (Thu Oct 13 08:35:20 2016 +0900) <Harrison Kim>
+* fbd7a3c - input: touchscreen: siw: update PRD layer - adjust log control (Wed Oct 12 09:41:40 2016 +0900) <Harrison Kim>
+* f7d2a24 - input: touchscreen: siw: update PRD layer - adjust prd_params for SW49407 (Wed Oct 12 09:41:14 2016 +0900) <Harrison Kim>
+* db7feb7 - input: touchscreen: siw: update HAL layer - update siw_hal_power (Tue Oct 11 09:17:36 2016 +0900) <Harrison Kim>
+* 7c06e12 - input: touchscreen: siw: update Core layer - fw upgrade work func (Tue Oct 11 09:17:28 2016 +0900) <Harrison Kim>
+* fcd957a - input: touchscreen: siw: update SIWMON layer - add delay (Tue Oct 11 09:17:19 2016 +0900) <Harrison Kim>
+* ee92907 - input: touchscreen: siw: update LG4946 entry - add reg_quirks table (Tue Oct 11 09:17:03 2016 +0900) <Harrison Kim>
+* 66350df - input: touchscreen: siw: update SW49407 entry - update reg_quirks table (Fri Oct 7 20:15:20 2016 +0900) <Harrison Kim>
+* efa358d - input: touchscreen: siw: update PRD layer - adjust log control (Fri Oct 7 09:55:54 2016 +0900) <Harrison Kim>
+* 7535ec3 - input: touchscreen: siw: update Core(sysfs) layer - add dbg_test (Thu Oct 6 08:15:09 2016 +0900) <Harrison Kim>
+* bcbf954 - input: touchscreen: siw: driver guide (pdf) (Wed Oct 5 16:36:58 2016 +0900) <Harrison Kim>
+* 1704451 - input: touchscreen: siw: __reference: kernel log example for SW49407 (Wed Oct 5 16:36:43 2016 +0900) <Harrison Kim>
+* 81498f0 - input: touchscreen: siw: __reference: update font data example (Wed Oct 5 16:36:35 2016 +0900) <Harrison Kim>
+* 643084e - input: touchscreen: siw: update DTS example - re-organize file structure (Wed Oct 5 16:36:27 2016 +0900) <Harrison Kim>
+* 94e1c5c - input: touchscreen: siw: update Config - add new chipset entry SW49407 (Wed Oct 5 16:36:17 2016 +0900) <Harrison Kim>
+* 15c5f7c - input: touchscreen: siw: update PRD layer - fix LG4895 config table (Wed Oct 5 15:07:11 2016 +0900) <Harrison Kim>
+* 590ed6a - input: touchscreen: siw: update PRD layer - update app interface (Wed Oct 5 15:06:51 2016 +0900) <Harrison Kim>
+* 93f2c2d - input: touchscreen: siw: update PRD layer - add new params (Wed Oct 5 15:06:16 2016 +0900) <Harrison Kim>
+* 5a33ef4 - input: touchscreen: siw: update Watch layer - wide re-organization (Wed Oct 5 15:04:04 2016 +0900) <Harrison Kim>
+* dc4c109 - input: touchscreen: siw: update ABT layer - re-arrange build option (Wed Oct 5 14:55:18 2016 +0900) <Harrison Kim>
+* b1efdc2 - input: touchscreen: siw: update HAL layer - minor log control (Wed Oct 5 14:54:21 2016 +0900) <Harrison Kim>
+* e78a265 - input: touchscreen: siw: update HAL layer - reset & watch(RTC) (Tue Oct 4 10:13:30 2016 +0900) <Harrison Kim>
+* 269dfae - input: touchscreen: siw: update HAL layer - adjust chip type branch (Tue Oct 4 10:13:12 2016 +0900) <Harrison Kim>
+* d5c1c8b - input: touchscreen: siw: update Core & Hal & Event layer - add gesture event (Tue Oct 4 10:12:53 2016 +0900) <Harrison Kim>
+* 03cc06f - input: touchscreen: siw: update HAL layer - re-organize fw upgrade control (Tue Oct 4 10:12:32 2016 +0900) <Harrison Kim>
+* b0ffa78 - input: touchscreen: siw: update HAL layer - add new chipset info (Tue Oct 4 10:12:15 2016 +0900) <Harrison Kim>
+* 545b175 - input: touchscreen: siw: update HAL & BUS layer - add new bus features (Tue Oct 4 10:10:50 2016 +0900) <Harrison Kim>
+* 0f4f495 - input: touchscreen: siw: update Core layer - vital bug-fix for reg_quirks (Tue Oct 4 10:09:17 2016 +0900) <Harrison Kim>
+* 18b10ed - input: touchscreen: siw: update Config - add SW49406/SW49407/SW49408 (Fri Sep 30 20:47:44 2016 +0900) <Harrison Kim>
+* 18d2af6 - input: touchscreen: siw: version 2.16b begins (Mon Sep 26 10:33:59 2016 +0900) <Harrison Kim>
 
 ---------------------------------------------------------------------------------------------------
 
