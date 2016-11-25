@@ -2715,10 +2715,12 @@ static ssize_t store_ext_watch_ctrl(struct device *dev,
 		watch->font_idx = value;
 		ret = ext_watch_fontdata_preload(dev);
 		if (ret >= 0) {
-			mod_delayed_work(ts->wq, &chip->font_download_work, 20);
+			mod_delayed_work(ts->wq, &chip->font_download_work,
+				msecs_to_jiffies(20));
 		}
 	} else if (!strcmp(command, "d")) {
-		mod_delayed_work(ts->wq, &chip->font_download_work, 20);
+		mod_delayed_work(ts->wq, &chip->font_download_work,
+			msecs_to_jiffies(20));
 	}
 
 	return count;
@@ -2915,7 +2917,8 @@ static ssize_t ext_watch_access_write(struct file *filp, struct kobject *kobj,
 
 	atomic_set(&watch->state.font_status, FONT_DOWNLOADING);
 
-	mod_delayed_work(ts->wq, &chip->font_download_work, 20);
+	mod_delayed_work(ts->wq, &chip->font_download_work,
+		msecs_to_jiffies(20));
 
 	ret = count;
 
