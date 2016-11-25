@@ -1750,6 +1750,7 @@ static void ext_watch_font_download(struct work_struct *font_download_work)
 	}
 
 	mutex_lock(&ts->lock);
+	mutex_lock(&ts->reset_lock);
 
 	if (chip->lcd_mode == LCD_MODE_U2) {
 		watch->ext_wdata.time.disp_waton = 0;
@@ -1774,6 +1775,7 @@ static void ext_watch_font_download(struct work_struct *font_download_work)
 	}
 
 out:
+	mutex_unlock(&ts->reset_lock);
 	mutex_unlock(&ts->lock);
 }
 
