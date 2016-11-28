@@ -2309,9 +2309,9 @@ static int prd_print_pre(struct siw_hal_prd_data *prd, char *buf,
 						log_size,  "   : ");
 
 	for (i = 0; i < col_size; i++) {
-		size += siw_prd_buf_snprintf(buf, size, " [%2d] ", i);
+		size += siw_prd_buf_snprintf(buf, size, "[%2d] ", i);
 		log_size += siw_prd_log_buf_snprintf(log_buf,
-						log_size,  " [%2d] ", i);
+						log_size,  "[%2d] ", i);
 	}
 	t_prd_info(prd, "%s\n", log_buf);
 
@@ -2374,7 +2374,7 @@ static int prd_print_xxx(struct siw_hal_prd_data *prd, char *buf,
 		log_size = 0;
 		memset(log_buf, 0, sizeof(prd->log_buf));
 		log_size += siw_prd_log_buf_snprintf(log_buf,
-						log_size,  "[%2d]  ", i);
+						log_size,  "[%2d] ", i);
 
 		if (type == PRD_PRT_TYPE_S16) {
 			rawdata_s16 = &((int16_t *)rawdata_buf)[col_i];
@@ -2389,11 +2389,11 @@ static int prd_print_xxx(struct siw_hal_prd_data *prd, char *buf,
 			}
 
 			size += siw_prd_buf_snprintf(buf, size,
-						"%5d ", curr_raw);
+						"%4d ", curr_raw);
 
 			log_size += siw_prd_buf_snprintf(log_buf,
 							log_size,
-							"%5d ", curr_raw);
+							"%4d ", curr_raw);
 
 			if (curr_raw && (curr_raw < min)) {
 				min = curr_raw;
