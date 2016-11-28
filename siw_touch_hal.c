@@ -5642,6 +5642,10 @@ static void siw_hal_mon_handler_self_reset(struct device *dev, char *title)
 		return;
 	}
 
+	if (atomic_read(&chip->init) == IC_INIT_NEED) {
+		return;
+	}
+
 	if (chip->lcd_mode < LCD_MODE_U3) {
 		return;
 	}
