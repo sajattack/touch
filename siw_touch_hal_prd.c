@@ -4823,7 +4823,9 @@ static ssize_t prd_show_dbg_mask(struct device *dev, char *buf)
 	size += siw_snprintf(buf, size,
 				"Usage:\n");
 	size += siw_snprintf(buf, size,
-				" prd_dbg_mask : echo {mask_value} > prd_dbg_mask\n");
+				" prd->dbg_mask  : echo 0 {mask_value} > prd_dbg_mask\n");
+	size += siw_snprintf(buf, size,
+				" t_prd_dbg_mask : echo 9 {mask_value} > prd_dbg_mask\n");
 
 	return (ssize_t)size;
 }
@@ -4834,7 +4836,8 @@ static void prd_store_dbg_mask_usage(struct device *dev)
 	struct siw_hal_prd_data *prd = (struct siw_hal_prd_data *)ts->prd;
 
 	t_prd_info(prd, "Usage:\n");
-	t_prd_info(prd, " prd->dbg_mask : echo {mask_value(hex)} > prd_dbg_mask\n");
+	t_prd_info(prd, " prd->dbg_mask  : echo 0 {mask_value(hex)} > prd_dbg_mask\n");
+	t_prd_info(prd, " t_prd_dbg_mask : echo 9 {mask_value(hex)} > prd_dbg_mask\n");
 }
 
 static ssize_t prd_store_dbg_mask(struct device *dev,
@@ -4842,18 +4845,32 @@ static ssize_t prd_store_dbg_mask(struct device *dev,
 {
 	struct siw_ts *ts = to_touch_core(dev);
 	struct siw_hal_prd_data *prd = (struct siw_hal_prd_data *)ts->prd;
+	int type = 0;
 	u32 old_value, new_value = 0;
 
-	if (sscanf(buf, "%X", &new_value) <= 0) {
+	if (sscanf(buf, "%d %X", &type, &new_value) <= 0) {
 		t_prd_err(prd, "Invalid param\n");
 		prd_store_dbg_mask_usage(dev);
 		return count;
 	}
 
-	old_value = prd->dbg_mask;
-	prd->dbg_mask = new_value;
-	t_prd_info(prd, "prd->dbg_mask changed : %08Xh -> %08xh\n",
-		old_value, new_value);
+	switch (type) {
+	case 0 :
+		old_value = prd->dbg_mask;
+		prd->dbg_mask = new_value;
+		t_prd_info(prd, "prd->dbg_mask changed : %08Xh -> %08xh\n",
+			old_value, new_value);
+		break;
+	case 9 :
+		old_value = t_prd_dbg_mask;
+		t_prd_dbg_mask = new_value;
+		t_dev_info(dev, "t_prd_dbg_mask changed : %08Xh -> %08xh\n",
+			old_value, new_value);
+		break;
+	default :
+		prd_store_dbg_mask_usage(dev);
+		break;
+	}
 
 	return count;
 }
