@@ -22,6 +22,14 @@ U0_M1_Upper = {
 	1400,
 }
 
+U3_Jitter_Lower = {
+	0,
+}
+
+U3_Jitter_Upper = {
+	49,
+}
+
 U3_Blu_Jitter_Lower = {
 	0,
 }
