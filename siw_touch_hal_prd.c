@@ -299,6 +299,14 @@ struct siw_hal_prd_tune {
 	u32 code_r_g3_oft_offset;
 };
 
+struct siw_hal_prd_sd_cmd {
+	u32 cmd_open_node;
+	u32 cmd_short_node;
+	u32 cmd_m2_rawdata;
+	u32 cmd_m1_rawdata;
+	u32 cmd_jitter;
+};
+
 enum _SIW_PRD_DBG_MASK_FLAG {
 	PRD_DBG_NONE				= 0,
 	PRD_DBG_OPEN_SHORT_DATA		= (1U<<0),
@@ -307,6 +315,7 @@ enum _SIW_PRD_DBG_MASK_FLAG {
 struct siw_hal_prd_data {
 	struct device *dev;
 	char name[PRD_DATA_NAME_SZ];
+	struct siw_hal_prd_sd_cmd sd_cmd;
 	u32 dbg_mask;
 	/* */
 	struct siw_hal_prd_param param;
@@ -1653,6 +1662,7 @@ static int prd_write_test_mode(struct siw_hal_prd_data *prd, int type)
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
 	struct siw_hal_reg *reg = chip->reg;
+	struct siw_hal_prd_sd_cmd *sd_cmd = &prd->sd_cmd;
 	u32 testmode = 0;
 	int retry = 40;
 	u32 rdata = 0x01;
@@ -1674,33 +1684,33 @@ static int prd_write_test_mode(struct siw_hal_prd_data *prd, int type)
 
 	switch (type) {
 	case U3_M2_RAWDATA_TEST:
-		testmode = (U3_TEST_PRE_CMD << 8) + M2_RAWDATA_TEST_POST_CMD;
+		testmode = (U3_TEST_PRE_CMD << 8) + sd_cmd->cmd_m2_rawdata;
 		break;
 	case U0_M2_RAWDATA_TEST:
-		testmode = (U0_TEST_PRE_CMD << 8) + M2_RAWDATA_TEST_POST_CMD;
+		testmode = (U0_TEST_PRE_CMD << 8) + sd_cmd->cmd_m2_rawdata;
 		break;
 	case U0_M1_RAWDATA_TEST:
-		testmode = (U0_TEST_PRE_CMD << 8) + M1_RAWDATA_TEST_POST_CMD;
+		testmode = (U0_TEST_PRE_CMD << 8) + sd_cmd->cmd_m1_rawdata;
 		break;
 	/* */
 	case OPEN_NODE_TEST:
-		testmode = (U3_TEST_PRE_CMD << 8) + OPEN_NODE_TEST_POST_CMD;
+		testmode = (U3_TEST_PRE_CMD << 8) + sd_cmd->cmd_open_node;
 		waiting_time = 10;
 		break;
 	case SHORT_NODE_TEST:
-		testmode = (U3_TEST_PRE_CMD << 8) + SHORT_NODE_TEST_POST_CMD;
+		testmode = (U3_TEST_PRE_CMD << 8) + sd_cmd->cmd_short_node;
 		waiting_time = 1000;
 		break;
 	/* */
 	case U3_BLU_JITTER_TEST:
-		testmode = ((U3_TEST_PRE_CMD << 8) + JITTER_TEST_POST_CMD) | line_filter_option;
+		testmode = ((U3_TEST_PRE_CMD << 8) + sd_cmd->cmd_jitter) | line_filter_option;
 		waiting_time = 10;
 		break;
 	case U3_JITTER_TEST:
-		testmode = ((U3_TEST_PRE_CMD << 8) + JITTER_TEST_POST_CMD) | line_filter_option;
+		testmode = ((U3_TEST_PRE_CMD << 8) + sd_cmd->cmd_jitter) | line_filter_option;
 		break;
 	case U0_JITTER_TEST:
-		testmode = ((U0_TEST_PRE_CMD << 8) + JITTER_TEST_POST_CMD) | line_filter_option;
+		testmode = ((U0_TEST_PRE_CMD << 8) + sd_cmd->cmd_jitter) | line_filter_option;
 		break;
 	default:
 		t_prd_err(prd, "unsupported test mode, %d\n", type);
@@ -5429,6 +5439,47 @@ static void siw_hal_prd_free_param(struct device *dev)
 	siw_hal_prd_free_buffer(dev);
 }
 
+static void siw_hal_prd_set_sd_cmd(struct siw_hal_prd_data *prd)
+{
+	struct device *dev = prd->dev;
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	struct siw_hal_prd_sd_cmd *sd_cmd = &prd->sd_cmd;
+
+	switch (touch_chip_type(ts)) {
+	case CHIP_SW49407:
+		sd_cmd->cmd_open_node = 1;
+		sd_cmd->cmd_short_node = 2;
+		sd_cmd->cmd_m2_rawdata = 5;
+		sd_cmd->cmd_m1_rawdata = 3;
+		sd_cmd->cmd_jitter = 10;
+		break;
+	default:
+		sd_cmd->cmd_open_node = OPEN_NODE_TEST_POST_CMD;
+		sd_cmd->cmd_short_node = SHORT_NODE_TEST_POST_CMD;
+		sd_cmd->cmd_m2_rawdata = M2_RAWDATA_TEST_POST_CMD;
+		sd_cmd->cmd_m1_rawdata = M1_RAWDATA_TEST_POST_CMD;
+		sd_cmd->cmd_jitter = JITTER_TEST_POST_CMD;
+		break;
+	};
+
+	t_prd_info(prd,
+		"cmd_open_node  : %d\n",
+		sd_cmd->cmd_open_node);
+	t_prd_info(prd,
+		"cmd_short_node : %d\n",
+		sd_cmd->cmd_short_node);
+	t_prd_info(prd,
+		"cmd_m2_rawdata : %d\n",
+		sd_cmd->cmd_m2_rawdata);
+	t_prd_info(prd,
+		"cmd_m1_rawdata : %d\n",
+		sd_cmd->cmd_m1_rawdata);
+	t_prd_info(prd,
+		"cmd_jitter     : %d\n",
+		sd_cmd->cmd_jitter);
+}
+
 static struct siw_hal_prd_data *siw_hal_prd_alloc(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
@@ -5450,6 +5501,8 @@ static struct siw_hal_prd_data *siw_hal_prd_alloc(struct device *dev)
 	prd->dev = ts->dev;
 
 	ts->prd = prd;
+
+	siw_hal_prd_set_sd_cmd(prd);
 
 	return prd;
 
