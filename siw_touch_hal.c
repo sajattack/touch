@@ -1445,7 +1445,8 @@ static int siw_hal_do_ic_info(struct device *dev, int prt_on)
 	}
 
 	if (strcmp(fw->chip_id, touch_chip_id(ts))) {
-		t_dev_err(dev, "Invalid chip id, shall be %s\n", ts->pdata->chip_id);
+		t_dev_err(dev, "Invalid chip id(%s), shall be %s\n",
+			fw->chip_id, touch_chip_id(ts));
 		return -EINVAL;
 	}
 
