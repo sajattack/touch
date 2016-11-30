@@ -3690,34 +3690,6 @@ out:
 	return ret;
 }
 
-static void siw_hal_check_debug_info(struct device *dev,
-				u32 status, u32 debug_info, u32 *debug_data,
-				int irq)
-{
-	u32 debug_mask = (status >> 16) & 0x0F;
-	u32 debug_len = 0;
-	u32 debug_type = 0;
-
-	/*
-	 * 0x03 : Error report
-	 * 0x04 : Debug report
-	 */
-	if ((debug_mask == 0x03) ||
-		(debug_mask == 0x04)) {
-		debug_len = ((debug_info>>24) & 0xFF);
-		debug_type = (debug_info & ((1<<24)-1));
-
-		t_dev_info(dev,
-				"[%d] ic debug: s %08Xh / m %Xh, l %Xh, t %Xh (%08Xh)\n",
-				irq, status, debug_mask, debug_len, debug_type, debug_info);
-		if (debug_data != NULL) {
-			t_dev_info(dev,
-				"[%d] ic debug: log %08Xh %08Xh %08Xh\n",
-				irq, debug_data[0], debug_data[1], debug_data[2]);
-		}
-	}
-}
-
 static int siw_hal_tc_con_glove(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
@@ -3829,21 +3801,53 @@ static inline int siw_hal_tc_driving_stop(struct device *dev)
 	return TC_DRIVE_CTL_STOP;
 }
 
-static void siw_hal_tc_driving_chk_dbg(struct device *dev, u32 tc_status)
+static void siw_hal_chk_dbg_report(struct device *dev, u32 status, int irq)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
+	u32 debug_mask = (status >> 16) & 0x0F;
 	u32 ic_debug[4];
+	u32 debug_info = 0;
+	u32 debug_len = 0;
+	u32 debug_type = 0;
+	int ret = 0;
 
 	switch (touch_chip_type(ts)) {
+	case CHIP_SW1828:
 	case CHIP_SW49407:
 		break;
 	default:
 		return;
 	}
 
-	siw_hal_reg_read(dev, 0x23E, ic_debug, sizeof(ic_debug));
-	siw_hal_check_debug_info(dev, tc_status, ic_debug[3], ic_debug, 0);
+	/*
+	 * 0x03 : Error report
+	 * 0x04 : Debug report
+	 */
+	switch (debug_mask) {
+	case 0x03:
+	case 0x04:
+		break;
+	default:
+		return;
+	}
+
+	ret = siw_hal_reg_read(dev, 0x23E, ic_debug, sizeof(ic_debug));
+	if (ret < 0) {
+		return;
+	}
+
+	debug_info = ic_debug[3];
+	debug_len = ((debug_info>>24) & 0xFF);
+	debug_type = (debug_info & ((1<<24)-1));
+
+	t_dev_info(dev,
+			"[%d] ic debug: s %08Xh / m %Xh, l %Xh, t %Xh (%08Xh)\n",
+			irq, status, debug_mask, debug_len, debug_type, debug_info);
+
+	t_dev_info(dev,
+		"[%d] ic debug: log %08Xh %08Xh %08Xh\n",
+		irq, ic_debug[0], ic_debug[1], ic_debug[2]);
 }
 
 static int siw_hal_tc_driving(struct device *dev, int mode)
@@ -3947,7 +3951,7 @@ static int siw_hal_tc_driving(struct device *dev, int mode)
 		return ret;
 	}
 
-	siw_hal_tc_driving_chk_dbg(dev, tc_status);
+	siw_hal_chk_dbg_report(dev, tc_status, 0);
 
 	running_status = tc_status & 0x1F;
 
@@ -4716,6 +4720,8 @@ static int siw_hal_do_check_status(struct device *dev,
 		ret = siw_hal_check_status_type_1(dev, status, ic_status, irq);
 		break;
 	}
+	siw_hal_chk_dbg_report(dev, status, irq);
+
 	if (ret_pre) {
 		if (ret != -ERESTART) {
 			ret = ret_pre;
