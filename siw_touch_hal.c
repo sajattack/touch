@@ -5416,17 +5416,10 @@ static int siw_hal_get_cmd_version(struct device *dev, char *buf, int flag)
 //	struct siw_hal_reg *reg = chip->reg;
 	struct siw_hal_fw_info *fw = &chip->fw;
 	int offset = 0;
-	int ret = 0;
+//	int ret = 0;
 
 	if (!flag)
 		return 0;
-
-	ret = siw_hal_do_ic_info(dev, 0);
-	if (ret < 0) {
-		offset += siw_snprintf(buf, offset, "-1\n");
-		offset += siw_snprintf(buf, offset, "Read Fail Touch IC Info\n");
-		return offset;
-	}
 
 	if (flag & SIW_GET_CHIP_NAME) {
 		offset += siw_snprintf(buf, offset,
