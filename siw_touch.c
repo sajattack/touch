@@ -722,8 +722,6 @@ static void siw_touch_init_work_func(struct work_struct *work)
 #if defined(__SIW_SUPPORT_ASC)
 	if (ts->asc.use_asc == ASC_ON) {
 		if (atomic_read(&ts->state.core) == CORE_UPGRADE) {
-			int ret;
-
 			mutex_lock(&ts->lock);
 			ret = siw_ops_asc(ts, ASC_GET_FW_SENSITIVITY, 0);
 			mutex_unlock(&ts->lock);
@@ -805,7 +803,7 @@ static void siw_touch_sys_reset_work_func(struct work_struct *work)
 {
 	struct siw_ts *ts =
 			container_of(to_delayed_work(work),
-				struct siw_ts, fb_work);
+				struct siw_ts, sys_reset_work);
 	struct device *dev = ts->dev;
 	int ret;
 
