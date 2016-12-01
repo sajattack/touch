@@ -1766,6 +1766,7 @@ static int siw_hal_init(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
+	int init_retry = CHIP_INIT_RETRY_MAX;
 	int i;
 	int ret = 0;
 
@@ -1773,6 +1774,7 @@ static int siw_hal_init(struct device *dev)
 
 	if (atomic_read(&ts->state.core) == CORE_PROBE) {
 		siw_hal_fb_notifier_init(dev);
+		init_retry = CHIP_INIT_RETRY_PROBE;
 	}
 
 	t_dev_dbg_base(dev, "charger_state = 0x%02X\n", chip->charger);
@@ -1781,7 +1783,7 @@ static int siw_hal_init(struct device *dev)
 		siw_hal_abt_init(dev);
 	}
 
-	for (i = 0; i < CHIP_INIT_RETRY_MAX; i++) {
+	for (i = 0; i < init_retry; i++) {
 		ret = siw_hal_ic_info(dev);
 		if (ret >= 0) {
 			break;
@@ -1791,7 +1793,7 @@ static int siw_hal_init(struct device *dev)
 			break;
 		}
 
-		t_dev_dbg_base(dev, "retry getting ic info\n");
+		t_dev_dbg_base(dev, "retry getting ic info (%d)\n", i);
 
 		siw_touch_irq_control(dev, INTERRUPT_DISABLE);
 		siw_hal_power(dev, POWER_OFF);

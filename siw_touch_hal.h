@@ -354,7 +354,8 @@ struct siw_touch_chip {
 };
 
 enum {
-	CHIP_INIT_RETRY_MAX = 2,
+	CHIP_INIT_RETRY_PROBE = 2,
+	CHIP_INIT_RETRY_MAX = 5,
 };
 
 #define TCI_MAX_NUM					2
