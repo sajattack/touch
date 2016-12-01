@@ -324,6 +324,73 @@ struct siw_hal_swipe_ctrl {
 	struct siw_hal_swipe_info info[2]; /* down is 0, up 1 - LG4894 use up */
 };
 
+enum {
+	CHIP_STATUS_NONE = 0,
+	CHIP_STATUS_TYPE_0,
+	CHIP_STATUS_TYPE_1,
+};
+
+enum {
+	STS_ID_NONE = 0,
+	STS_ID_VALID_DEV_CTL,
+	STS_ID_VALID_CODE_CRC,
+	STS_ID_VALID_CFG_CRC,
+	STS_ID_VALID_FONT_CRC,
+	STS_ID_ERROR_ABNORMAL,
+	STS_ID_ERROR_SYSTEM,
+	STS_ID_ERROR_MISMTACH,
+	STS_ID_VALID_IRQ_PIN,
+	STS_ID_VALID_IRQ_EN,
+	STS_ID_VALID_TC_DRV,
+};
+
+enum {
+	STS_POS_VALID_DEV_CTL			= 5,
+	STS_POS_VALID_CODE_CRC			= 6,
+	STS_POS_VALID_CFG_CRC			= 7,
+	STS_POS_VALID_FONT_CRC			= 8,
+	STS_POS_ERROR_ABNORMAL			= 9,
+	STS_POS_ERROR_SYSTEM			= 10,
+	STS_POS_ERROR_MISMTACH			= 13,
+	STS_POS_VALID_IRQ_PIN			= 15,
+	STS_POS_VALID_IRQ_EN			= 20,
+	STS_POS_VALID_TC_DRV			= 22,
+	/* */
+	STS_POS_VALID_CODE_CRC_TYPE_0	= 22,
+};
+
+struct siw_hal_status_mask_bit {
+	u32 valid_dev_ctl;
+	u32 valid_code_crc;
+	u32 valid_cfg_crc;
+	u32 error_abnormal;
+	u32 error_system;
+	u32 error_mismtach;
+	u32 valid_irq_pin;
+	u32 valid_irq_en;
+	u32 valid_tv_drv;
+};
+
+struct siw_hal_status_filter {
+	int id;
+	u32 width;
+	u32 pos;
+	u32 flag;
+#define _STS_FILTER_FLAG_TYPE_ERROR		(1<<0)
+#define _STS_FILTER_FLAG_ESD_SEND		(1<<16)
+#define _STS_FILTER_FLAG_CHK_FAULT		(1<<17)
+	const char *str;
+};
+
+#define _STS_FILTER(_id, _width, _pos, _flag, _str)	\
+		{ .id = _id, .width = _width, .pos = _pos, .flag = _flag, .str = _str, }
+
+enum {
+	STS_FILTER_FLAG_TYPE_ERROR		= _STS_FILTER_FLAG_TYPE_ERROR,
+	STS_FILTER_FLAG_ESD_SEND		= _STS_FILTER_FLAG_ESD_SEND,
+	STS_FILTER_FLAG_CHK_FAULT		= _STS_FILTER_FLAG_CHK_FAULT,
+};
+
 struct siw_touch_chip {
 	void *ts;			//struct siw_ts
 	struct siw_hal_reg *reg;
@@ -333,6 +400,16 @@ struct siw_touch_chip {
 	struct siw_hal_fw_info fw;
 	struct siw_hal_asc_info asc;
 	struct siw_hal_swipe_ctrl swipe;
+	/* */
+	int status_type;
+	u32 status_mask;
+	u32 status_mask_normal;
+	u32 status_mask_logging;
+	u32 status_mask_reset;
+	u32 status_mask_ic_abnormal;
+	struct siw_hal_status_mask_bit status_mask_bit;
+	struct siw_hal_status_filter *status_filter;
+	/* */
 	u8 prev_lcd_mode;
 	u8 lcd_mode;
 	u8 driving_mode;

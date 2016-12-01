@@ -214,6 +214,10 @@ static ssize_t _show_reg_ctrl(struct device *dev, char *buf)
 		return (ssize_t)ret;
 	}
 
+	size += __show_reg_list(dev, buf, size);
+
+	size += siw_snprintf(buf, size, "\n");
+
 	if (fw->version_ext) {
 		size += siw_snprintf(buf, size,
 					">> version    : %08X, chip : %u, protocol : %u\n",
@@ -230,19 +234,26 @@ static ssize_t _show_reg_ctrl(struct device *dev, char *buf)
 	}
 
 	size += siw_snprintf(buf, size,
-				">> revision   : %d\n", chip->fw.revision);
+				">> revision   : %d\n",
+				fw->revision);
 
 	size += siw_snprintf(buf, size,
 				">> product id : %s\n",
-				chip->fw.product_id);
+				fw->product_id);
 
 	size += siw_snprintf(buf, size,
-				">> flash boot : %s, %s, crc : %s\n",
+				">> flash boot : %s(%s), crc %s  (0x%08X)\n",
 				(bootmode >> 1 & 0x1) ? "BUSY" : "idle",
 				(bootmode >> 2 & 0x1) ? "done" : "booting",
-				(bootmode >> 3 & 0x1) ? "ERROR" : "ok");
+				(bootmode >> 3 & 0x1) ? "ERROR" : "ok",
+				bootmode);
 
-	size += __show_reg_list(dev, buf, size);
+	size += siw_snprintf(buf, size,
+				">> status     : type %d[%08Xh, %08Xh, %08Xh]\n",
+				chip->status_type,
+				chip->status_mask_normal,
+				chip->status_mask_logging,
+				chip->status_mask_reset);
 
 	size += siw_snprintf(buf, size, "\n");
 

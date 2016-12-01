@@ -1246,6 +1246,182 @@ static int siw_hal_chk_boot(struct device *dev)
 	return boot_failed;
 }
 
+enum {
+	IC_DEBUG_SIZE		= 16,	// byte
+	//
+	IC_CHK_LOG_MAX		= (1<<9),
+	//
+	INT_IC_ABNORMAL_STATUS	= ((1<<3) | (1<<0)),	//0x09
+};
+
+static const struct siw_hal_status_filter status_filter_type_0[] = {
+	_STS_FILTER(STS_ID_VALID_DEV_CTL, 1, STS_POS_VALID_DEV_CTL,
+		0, "device ctl not set"),
+	_STS_FILTER(STS_ID_VALID_CODE_CRC, 1, STS_POS_VALID_CODE_CRC_TYPE_0,
+		0, "code crc invalid"),
+	_STS_FILTER(STS_ID_ERROR_ABNORMAL, 1, STS_POS_ERROR_ABNORMAL,
+		STS_FILTER_FLAG_TYPE_ERROR | STS_FILTER_FLAG_CHK_FAULT,
+		"abnormal status detected"),
+	_STS_FILTER(STS_ID_ERROR_SYSTEM, 1, STS_POS_ERROR_SYSTEM,
+		STS_FILTER_FLAG_TYPE_ERROR | STS_FILTER_FLAG_ESD_SEND,
+		"system error detected"),
+	_STS_FILTER(STS_ID_ERROR_MISMTACH, 2, STS_POS_ERROR_MISMTACH,
+		STS_FILTER_FLAG_TYPE_ERROR,
+		"display mode mismatch"),
+	_STS_FILTER(STS_ID_VALID_IRQ_PIN, 1, STS_POS_VALID_IRQ_PIN,
+		0, "irq pin invalid"),
+	_STS_FILTER(STS_ID_VALID_IRQ_EN, 1, STS_POS_VALID_IRQ_EN,
+		0, "irq status invalid"),
+	/* end mask */
+	_STS_FILTER(STS_ID_NONE, 0, 0, 0, NULL),
+};
+
+static const struct siw_hal_status_filter status_filter_type_1[] = {
+	_STS_FILTER(STS_ID_VALID_DEV_CTL, 1, STS_POS_VALID_DEV_CTL,
+		0, "device ctl not set"),
+	_STS_FILTER(STS_ID_VALID_CODE_CRC, 1, STS_POS_VALID_CODE_CRC,
+		0, "code crc invalid"),
+	_STS_FILTER(STS_ID_VALID_CFG_CRC, 1, STS_POS_VALID_CFG_CRC,
+		0, "cfg crc invalid"),
+	_STS_FILTER(STS_ID_ERROR_ABNORMAL, 1, STS_POS_ERROR_ABNORMAL,
+		STS_FILTER_FLAG_TYPE_ERROR | STS_FILTER_FLAG_CHK_FAULT,
+		"abnormal status detected"),
+	_STS_FILTER(STS_ID_ERROR_SYSTEM, 1, STS_POS_ERROR_SYSTEM,
+		STS_FILTER_FLAG_TYPE_ERROR | STS_FILTER_FLAG_ESD_SEND,
+		"system error detected"),
+	_STS_FILTER(STS_ID_ERROR_MISMTACH, 1, STS_POS_ERROR_MISMTACH,
+		STS_FILTER_FLAG_TYPE_ERROR,
+		"display mode mismatch"),
+	_STS_FILTER(STS_ID_VALID_IRQ_PIN, 1, STS_POS_VALID_IRQ_PIN,
+		0, "irq pin invalid"),
+	_STS_FILTER(STS_ID_VALID_IRQ_EN, 1, STS_POS_VALID_IRQ_EN,
+		0, "irq status invalid"),
+	_STS_FILTER(STS_ID_VALID_TC_DRV, 1, STS_POS_VALID_TC_DRV,
+		0, "driving invalid"),
+	/* end mask */
+	_STS_FILTER(STS_ID_NONE, 0, 0, 0, NULL),
+};
+
+static u32 siw_hal_get_status_mask(struct device *dev, int id)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_hal_status_filter *filter = chip->status_filter;
+	u32 mask = 0;
+
+	if (filter == NULL)
+		goto out;
+
+	while (1) {
+		if (!filter->id || !filter->width) {
+			break;
+		}
+
+		if (filter->id == id) {
+			mask = ((1<<filter->width)-1)<<filter->pos;
+			break;
+		}
+		filter++;
+	}
+
+out:
+	return mask;
+}
+
+
+static int siw_hal_chk_status_type(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	struct siw_hal_fw_info *fw = &chip->fw;
+	struct siw_hal_status_mask_bit *mask_bit = &chip->status_mask_bit;
+
+	if (chip->status_type) {
+		return 0;
+	}
+
+	if (!fw->product_id[0]) {
+		return -EINVAL;
+	}
+
+	switch (touch_chip_type(ts)) {
+	case CHIP_LG4894:
+		if (!strncmp(fw->product_id, "L0W53K6P", 8)) {
+			chip->status_type = CHIP_STATUS_TYPE_0;
+		} else {
+			chip->status_type = CHIP_STATUS_TYPE_1;
+		}
+	default:
+		chip->status_type = CHIP_STATUS_TYPE_1;
+		break;
+	}
+
+	switch (chip->status_type) {
+	case CHIP_STATUS_TYPE_0:
+		chip->status_filter = (struct siw_hal_status_filter *)status_filter_type_0;
+		break;
+	default:
+		chip->status_filter = (struct siw_hal_status_filter *)status_filter_type_1;
+		break;
+	}
+
+	mask_bit->valid_dev_ctl = siw_hal_get_status_mask(dev, STS_ID_VALID_DEV_CTL);
+	mask_bit->valid_code_crc = siw_hal_get_status_mask(dev, STS_ID_VALID_CODE_CRC);
+	mask_bit->valid_cfg_crc = siw_hal_get_status_mask(dev, STS_ID_VALID_CFG_CRC);;
+	mask_bit->error_abnormal = siw_hal_get_status_mask(dev, STS_ID_ERROR_ABNORMAL);
+	mask_bit->error_system = siw_hal_get_status_mask(dev, STS_ID_ERROR_SYSTEM);
+	mask_bit->error_mismtach = siw_hal_get_status_mask(dev, STS_ID_ERROR_MISMTACH);
+	mask_bit->valid_irq_pin = siw_hal_get_status_mask(dev, STS_ID_VALID_IRQ_PIN);
+	mask_bit->valid_irq_en = siw_hal_get_status_mask(dev, STS_ID_VALID_IRQ_EN);
+	mask_bit->valid_tv_drv = siw_hal_get_status_mask(dev, STS_ID_VALID_TC_DRV);
+
+	t_dev_dbg_base(dev, "mask[v_dev]  : %08Xh\n", mask_bit->valid_dev_ctl);
+	t_dev_dbg_base(dev, "mask[v_code] : %08Xh\n", mask_bit->valid_code_crc);
+	t_dev_dbg_base(dev, "mask[v_cfg]  : %08Xh\n", mask_bit->valid_cfg_crc);
+	t_dev_dbg_base(dev, "mask[e_abn]  : %08Xh\n", mask_bit->error_abnormal);
+	t_dev_dbg_base(dev, "mask[e_sys]  : %08Xh\n", mask_bit->error_system);
+	t_dev_dbg_base(dev, "mask[e_mis]  : %08Xh\n", mask_bit->error_mismtach);
+	t_dev_dbg_base(dev, "mask[v_i_p]  : %08Xh\n", mask_bit->valid_irq_pin);
+	t_dev_dbg_base(dev, "mask[v_i_e]  : %08Xh\n", mask_bit->valid_irq_en);
+	t_dev_dbg_base(dev, "mask[v_tc]   : %08Xh\n", mask_bit->valid_tv_drv);
+
+	chip->status_mask_normal = mask_bit->valid_dev_ctl |
+						mask_bit->valid_code_crc |
+						mask_bit->valid_cfg_crc |
+						mask_bit->valid_irq_pin |
+						mask_bit->valid_irq_en |
+						mask_bit->valid_tv_drv |
+						0;
+
+	chip->status_mask_logging = mask_bit->valid_code_crc |
+						mask_bit->valid_cfg_crc |
+						mask_bit->error_mismtach |
+						mask_bit->valid_irq_pin |
+						mask_bit->valid_irq_en |
+						mask_bit->valid_tv_drv |
+						0;
+
+	chip->status_mask_reset = mask_bit->valid_dev_ctl |
+						mask_bit->error_abnormal |
+						mask_bit->error_system |
+						0;
+
+	chip->status_mask = chip->status_mask_normal |
+						chip->status_mask_logging |
+						chip->status_mask_reset |
+						0;
+
+	chip->status_mask_ic_abnormal = INT_IC_ABNORMAL_STATUS;
+
+	t_dev_info(dev, "status type  : %d\n", chip->status_type);
+	t_dev_info(dev, "status mask  : %08Xh\n", chip->status_mask);
+	t_dev_info(dev, " normal      : %08Xh\n", chip->status_mask_normal);
+	t_dev_info(dev, " logging     : %08Xh\n", chip->status_mask_logging);
+	t_dev_info(dev, " reset       : %08Xh\n", chip->status_mask_reset);
+	t_dev_info(dev, " ic abnormal : %08Xh\n", chip->status_mask_ic_abnormal);
+
+	return 0;
+}
+
 struct siw_ic_info_chip_proto {
 	int chip_type;
 	int vchip;
@@ -1386,6 +1562,8 @@ static int siw_hal_do_ic_info(struct device *dev, int prt_on)
 	siw_hal_fw_set_version(fw, version, version_ext);
 	siw_hal_fw_set_revision(fw, revision);
 	siw_hal_fw_set_prod_id(fw, (u8 *)product, sizeof(product));
+
+	siw_hal_chk_status_type(dev);
 
 	fw->wfr &= WAFER_TYPE_MASK;
 
@@ -4498,23 +4676,6 @@ static int siw_hal_asc(struct device *dev, u32 code, u32 value)
 }
 #endif	/* __SIW_SUPPORT_ASC */
 
-enum {
-	INT_RESET_CLR_BIT	= ((1<<10)|(1<<9)|(1<<5)),	// 0x620
-#if 1
-	INT_LOGGING_CLR_BIT	= ((1<<22)|(1<<20)|(1<<15)|(1<<13)|(1<<7)|(1<<6)),	//0x50A0C0
-	INT_NORMAL_MASK		= ((1<<22)|(1<<20)|(1<<15)|(1<<7)|(1<<6)|(1<<5)),	//0x5080E0
-#else
-	INT_LOGGING_CLR_BIT	= ((1<<22)|(1<<20)|(1<<13)|(1<<7)|(1<<6)),			//0x5020C0
-	INT_NORMAL_MASK		= ((1<<22)|(1<<20)|(1<<7)|(1<<6)|(1<<5)),			//0x5000E0
-#endif
-	//
-	IC_DEBUG_SIZE		= 16,	// byte
-	//
-	IC_CHK_LOG_MAX		= (1<<9),
-	//
-	INT_IC_ABNORMAL_STATUS	= ((1<<3) | (1<<0)),	//0x09
-	INT_DEV_ABNORMAL_STATUS = ((1<<10) | (1<<9)),	//0x600
-};
 
 #define siw_chk_sts_snprintf(_dev, _buf, _buf_max, _size, _fmt, _args...) \
 		({	\
@@ -4524,89 +4685,80 @@ enum {
 			_n_size;	\
 		})
 
-static int siw_hal_check_status_type_1(struct device *dev,
+static int siw_hal_check_fault_type(struct device *dev)
+{
+	return -1;
+}
+
+static int siw_hal_check_status_type_x(struct device *dev,
 				u32 status, u32 ic_status, int irq)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_hal_status_filter *filter = chip->status_filter;
+	u32 check_mask, detected;
+	int type_error, type_esd, type_fault;
 	u32 dbg_mask = 0;
-	int log_flag = 0;
+	u32 log_flag = 0;
+	u32 esd_send = 0;
 	int log_max = IC_CHK_LOG_MAX;
 	char log[IC_CHK_LOG_MAX] = {0, };
+	int fault_val;
 	int len = 0;
 	int ret = 0;
 
-	if (!(status & (1<<5))) {
-		log_flag = 1;
-		len += siw_chk_sts_snprintf(dev, log, log_max, len,
-					"[b5] device ctl not Set ");
+	if (filter == NULL) {
+		return -EINVAL;
 	}
-	if (!(status & (1<<6))) {
-		log_flag = 1;
-		len += siw_chk_sts_snprintf(dev, log, log_max, len,
-					"[b6] code crc invalid ");
-	}
-	if (!(status & (1<<7))) {
-		log_flag = 1;
-		len += siw_chk_sts_snprintf(dev, log, log_max, len,
-					"[b7] cfg crc invalid ");
-	}
-	if (status & (1<<9)) {
-		log_flag = 1;
-		len += siw_chk_sts_snprintf(dev, log, log_max, len,
-					"[b9] abnormal status detected ");
-	}
-	if (status & (1<<10)) {
-		t_dev_err(dev, "[%d] hw %Xh, fw %Xh\n",
-			irq, (ic_status&(1<<1)), (status&(1<<10)));
 
-		log_flag = 1;
-		len += siw_chk_sts_snprintf(dev, log, log_max, len,
-					"[b10] system error detected\n");
-
-		if (chip->lcd_mode == LCD_MODE_U0) {
-			ret = -ERESTART;
-		} else {
-		#if 1
-			int esd = 1;
-			ret = siw_touch_atomic_notifier_call(LCD_EVENT_TOUCH_ESD_DETECTED, (void *)&esd);
-			if (ret) {
-				t_dev_err(dev, "check the value, %d\n", ret);
-			}
-		#endif
+	while (1) {
+		if (!filter->id || !filter->width) {
+			break;
 		}
-	}
 
-	if (status & (1<<13)) {
-		log_flag = 1;
-		len += siw_chk_sts_snprintf(dev, log, log_max, len,
-					"[b13] display mode mismatch ");
-	}
-#if 1
-	if (!(status & (1<<15))) {
-		log_flag = 1;
-		len += siw_chk_sts_snprintf(dev, log, log_max, len,
-					"[b15] irq pin invalid ");
-	}
-#endif
-	if (!(status & (1<<20))) {
-		log_flag = 1;
-		len += siw_chk_sts_snprintf(dev, log, log_max, len,
-					"[b20] irq status invalid ");
-	}
-	if (!(status & (1<<22))) {
-		log_flag = 1;
-		len += siw_chk_sts_snprintf(dev, log, log_max, len,
-					"[b22] driving invalid ");
+		type_error = !!(filter->flag & STS_FILTER_FLAG_TYPE_ERROR);
+		type_esd = !!(filter->flag & STS_FILTER_FLAG_ESD_SEND);
+		type_fault = !!(filter->flag & STS_FILTER_FLAG_CHK_FAULT);
+
+		check_mask = ((1<<filter->width)-1)<<filter->pos;
+
+		detected = (type_error) ? (status & check_mask) : !(status & check_mask);
+
+		if (check_mask && detected) {
+			log_flag |= check_mask;
+			esd_send |= (type_esd) ? check_mask : 0;
+
+			fault_val = (type_fault) ? siw_hal_check_fault_type(dev) : -1;
+
+			if (type_fault && (fault_val >= 0)) {
+				len += siw_chk_sts_snprintf(dev, log, log_max, len,
+							"[b%d] %s(%Xh) ", filter->pos, filter->str, fault_val);
+			} else {
+				len += siw_chk_sts_snprintf(dev, log, log_max, len,
+							"[b%d] %s ", filter->pos, filter->str);
+			}
+		}
+
+		filter++;
 	}
 
 	if (log_flag) {
-		t_dev_err(dev, "[%d] status %Xh, ic_status %Xh : %s\n",
-			irq, status, ic_status, log);
+		t_dev_err(dev, "[%d] status %08Xh, ic_status %08Xh, (%08Xh) %s\n",
+			irq, status, ic_status, log_flag, log);
 	}
 
-	if ((ic_status&1) || (ic_status & (1<<3))) {
-		t_dev_err(dev, "[%d] watchdog exception - status %Xh, ic_status %Xh\n",
-			irq, status, ic_status);
+	if (ic_status & chip->status_mask_ic_abnormal) {
+		if (log_flag) {
+			t_dev_err(dev, "[%d] watchdog exception\n",
+				irq);
+		} else {
+			t_dev_err(dev, "[%d] watchdog exception - status %08Xh, ic_status %08Xh\n",
+				irq, status, ic_status);
+		}
+
+		esd_send |= chip->status_mask_ic_abnormal;
+	}
+
+	if (esd_send) {
 		if (chip->lcd_mode == LCD_MODE_U0) {
 			ret = -ERESTART;
 		} else {
@@ -4641,65 +4793,43 @@ static int siw_hal_check_status_type_1(struct device *dev,
 	return ret;
 }
 
-static int siw_hal_check_status_default(struct device *dev,
-				u32 status, u32 ic_status, int irq)
-{
-//	struct siw_touch_chip *chip = to_touch_chip(dev);
-	int ret = 0;
-
-	if (!(status & (1<<5))) {
-		t_dev_err(dev, "[%d] abnormal device status %08Xh\n",
-			irq, status);
-		ret = -ERESTART;
-	} else if (status & INT_DEV_ABNORMAL_STATUS) {
-		t_dev_err(dev, "[%d] abnormal device status %08Xh\n",
-			irq, status);
-		ret = -ERESTART;
-	}
-
-	if (ic_status & INT_IC_ABNORMAL_STATUS) {
-		t_dev_err(dev, "[%d] abnormal ic status %08Xh\n",
-			irq, ic_status);
-		ret = -ERESTART;
-	}
-
-	return ret;
-}
-
 static int siw_hal_do_check_status(struct device *dev,
 				u32 status, u32 ic_status, int irq)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
-	struct siw_ts *ts = chip->ts;
-	u32 reset_clr_bit = INT_RESET_CLR_BIT;
-	u32 logging_clr_bit = INT_LOGGING_CLR_BIT;
-	u32 int_norm_mask = INT_NORMAL_MASK;
+//	struct siw_ts *ts = chip->ts;
+	u32 reset_clr_bit = 0;
+	u32 logging_clr_bit = 0;
+	u32 int_norm_mask = 0;
 	u32 status_mask = 0;
 	int ret_pre = 0;
 	int ret = 0;
 
-	/*
-	 * (normal state)
-	 *                               [bit] 31   27   23   19   15   11   7    4
-	 * status              = 0x06D5_80E7 = 0000 0110 1101 0101 1000 0000 1110 0111
-	 *
-	 * INT_NORMAL_MASK     = 0x0050_80E0 = 0000 0000 0101 0000 1000 0000 1110 0000
-	 * status_mask         = 0x0685_0007 = 0000 0110 1000 0101 0000 0000 0000 0111
-	 * INT_RESET_CLR_BIT   = 0x0000_0620 = 0000 0000 0000 0000 0000 0110 0010 0000
-	 * INT_LOGGING_CLR_BIT = 0x0050_A0C0 = 0000 0000 0101 0000 1010 0000 1100 0000
-	 */
-
-#if 0
-	{
-		logging_clr_bit |= (1<<15);
-		int_norm_mask |= (1<<15);
+	if (!status && !ic_status) {
+		t_dev_err(dev, "all low detected\n");
+		return -ERESTART;
 	}
-#endif
+	if ((status == ~0) && (ic_status == ~0)) {
+		t_dev_err(dev, "all high detected\n");
+		return -ERESTART;
+	}
+
+	ret = siw_hal_chk_status_type(dev);
+	if (ret < 0) {
+		return ret;
+	}
+
+	reset_clr_bit = chip->status_mask_reset;
+	logging_clr_bit = chip->status_mask_logging;
+	int_norm_mask = chip->status_mask_normal;
 
 	status_mask = status ^ int_norm_mask;
 
-	t_dev_dbg_trace(dev, "[%d] h/w:%Xh, f/w:%Xh(%Xh)\n",
-			irq, ic_status, status, status_mask);
+	if (!(irq & 0x80)) {
+		t_dev_dbg_trace(dev, "[%d] h/w:%Xh, f/w:%Xh(%Xh)\n",
+				irq, ic_status, status, status_mask);
+	}
+	irq &= 0x01;
 
 	if (status_mask & reset_clr_bit) {
 		t_dev_err(dev,
@@ -4713,16 +4843,16 @@ static int siw_hal_do_check_status(struct device *dev,
 		ret_pre = -ERANGE;
 	}
 
-	switch(touch_chip_type(ts)) {
-	case CHIP_SW1828:
-	case CHIP_LG4894:
-		ret = siw_hal_check_status_default(dev, status, ic_status, irq);
+	switch (chip->status_type) {
+	case CHIP_STATUS_TYPE_1:
+	case CHIP_STATUS_TYPE_0:
+		ret = siw_hal_check_status_type_x(dev, status, ic_status, irq);
+		siw_hal_chk_dbg_report(dev, status, irq);
 		break;
 	default:
-		ret = siw_hal_check_status_type_1(dev, status, ic_status, irq);
+		t_dev_warn(dev, "unknown status type, %d\n", chip->status_type);
 		break;
 	}
-	siw_hal_chk_dbg_report(dev, status, irq);
 
 	if (ret_pre) {
 		if (ret != -ERESTART) {
