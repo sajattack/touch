@@ -256,7 +256,8 @@ static ssize_t _store_reg_ctrl(struct device *dev,
 	char command[6] = {0};
 	u32 reg = 0;
 	u32 data = 1;
-	u16 reg_addr;
+	u32 reg_addr;
+	int wr = -1;
 	int value = 0;
 	int ret = 0;
 
@@ -265,24 +266,35 @@ static ssize_t _store_reg_ctrl(struct device *dev,
 		return count;
 	}
 
+	if (!strcmp(command, "wr") ||
+		!strcmp(command, "write")) {
+		wr = 1;
+	}
+	if (!strcmp(command, "rd") ||
+		!strcmp(command, "read")) {
+		wr = 0;
+	}
+
 	reg_addr = reg;
-	if (!strcmp(command, "wr")) {
+	if (wr == 1) {
 		data = value;
 		ret = siw_hal_write_value(dev,
 					reg_addr,
 					data);
 		if (ret >= 0) {
-			t_dev_info(dev, "wr: reg[0x%04X] = 0x%08X\n", reg_addr, data);
+			t_dev_info(dev,
+				"wr: reg[0x%04X] = 0x%08X\n",
+				reg_addr, data);
 		}
 		goto out;
-	}
-
-	if (!strcmp(command, "rd")) {
+	} else if (!wr) {
 		ret = siw_hal_read_value(dev,
 					reg_addr,
 					&data);
 		if (ret >= 0) {
-			t_dev_info(dev, "rd: reg[0x%04X] = 0x%08X\n", reg_addr, data);
+			t_dev_info(dev,
+				"rd: reg[0x%04X] = 0x%08X\n",
+				reg_addr, data);
 		}
 		goto out;
 	}
