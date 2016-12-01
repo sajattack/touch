@@ -442,7 +442,6 @@ enum {
 							U3_M2_RAWDATA_TEST_FLAG |	\
 							OPEN_SHORT_NODE_TEST_FLAG |	\
 							U3_JITTER_TEST_FLAG |	\
-							OPEN_SHORT_RESULT_DATA_FLAG |	\
 							OPEN_SHORT_RESULT_RAWDATA_FLAG |	\
 							0),
 
@@ -452,7 +451,7 @@ enum {
 								U0_JITTER_TEST_FLAG |	\
 								0),
 
-	SD_FLAG_SW49105			= __SD_FLAG_SW49XXX,
+	SD_FLAG_SW49105			= __SD_FLAG_SW49XXX | OPEN_SHORT_RESULT_DATA_FLAG,
 	LPWG_SD_FLAG_SW49105	= __LPWG_SD_FLAG_SW49XXX,
 
 	SD_FLAG_SW49406			= __SD_FLAG_SW49XXX,
@@ -2036,7 +2035,7 @@ static int prd_os_result_data_get(struct siw_hal_prd_data *prd, int type)
 			TIME_INFO_SKIP);
 		t_prd_info(prd, "Short Node Data Offset = %x\n",
 			open_short_data_offset);
-		t_prd_info(prd, "[OPEN_NODE_TEST Result Data]\n");
+		t_prd_info(prd, "[SHORT_NODE_TEST Result Data]\n");
 
 		//offset write
 		ret = siw_hal_write_value(dev, reg->serial_data_offset,
@@ -2090,9 +2089,9 @@ static int prd_print_os_data(struct siw_hal_prd_data *prd, int type)
 
 	for (i = 0; i < col_size; i++) {
 		size += siw_prd_buf_snprintf(prd->buf_write,
-		size, " [%2d] ", i);
+		size, "[%2d] ", i);
 		log_size += siw_prd_log_buf_snprintf(log_buf,
-		log_size, " [%2d] ", i);
+		log_size, "[%2d] ", i);
 	}
 	t_prd_info(prd, "%s\n", log_buf);
 
@@ -2102,14 +2101,14 @@ static int prd_print_os_data(struct siw_hal_prd_data *prd, int type)
 		size += siw_prd_buf_snprintf(prd->buf_write,
 			size,  "\n[%2d] ", i);
 		log_size += siw_prd_log_buf_snprintf(log_buf,
-				log_size,  "[%2d]  ", i);
+				log_size,  "[%2d] ", i);
 		for (j = 0; j < col_size; j++) {
 			//if (j == param->col)
 			//	continue;
 			size += siw_prd_buf_snprintf(prd->buf_write,
-				size, "%5X ", os_buf[i * col_size + j]);
+				size, "%4X ", os_buf[i * col_size + j]);
 			log_size += siw_prd_log_buf_snprintf(log_buf,
-				log_size, "%5X ", os_buf[i * col_size + j]);
+				log_size, "%4X ", os_buf[i * col_size + j]);
 		}
 		t_prd_info(prd, "%s\n", log_buf);
 	}
@@ -2149,9 +2148,9 @@ static int prd_print_os_rawdata(struct siw_hal_prd_data *prd, u8 type)
 
 	for (i = 0; i < col_size; i++) {
 		size += siw_prd_buf_snprintf(prd->buf_write,
-		size, " [%2d] ", i);
+		size, "[%2d] ", i);
 		log_size += siw_prd_log_buf_snprintf(log_buf,
-		log_size, " [%2d] ", i);
+		log_size, "[%2d] ", i);
 	}
 	t_prd_info(prd, "%s\n", log_buf);
 
@@ -2175,14 +2174,14 @@ static int prd_print_os_rawdata(struct siw_hal_prd_data *prd, u8 type)
 		size += siw_prd_buf_snprintf(prd->buf_write,
 			size, "\n[%2d] ", i);
 		log_size += siw_prd_log_buf_snprintf(log_buf,
-				log_size, "[%2d]  ", i);
+				log_size, "[%2d] ", i);
 		for (j = 0; j < col_size; j++) {
 			if (j == param->col)
 				continue;
 			size += siw_prd_buf_snprintf(prd->buf_write,
-				size, "%5d ", os_buf[i * col_size + j]);
+				size, "%4d ", os_buf[i * col_size + j]);
 			log_size += siw_prd_log_buf_snprintf(log_buf,
-					log_size, "%5d ", os_buf[i * col_size + j]);
+					log_size, "%4d ", os_buf[i * col_size + j]);
 		}
 		t_prd_info(prd, "%s\n", log_buf);
 	}
