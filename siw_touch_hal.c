@@ -5650,11 +5650,42 @@ static int siw_hal_get(struct device *dev, u32 cmd, void *buf)
 	return ret;
 }
 
+u32 t_mon_dbg_mask = 0;
+
+/* usage
+ * (1) echo <value> > /sys/module/{Siw Touch Module Name}/parameters/mon_dbg_mask
+ * (2) insmod {Siw Touch Module Name}.ko mon_dbg_mask=<value>
+ */
+module_param_named(mon_dbg_mask, t_mon_dbg_mask, uint, S_IRUGO|S_IWUSR|S_IWGRP);
+
+#if 1
+#define t_mon_info(_dev, fmt, args...)		__t_dev_info(_dev, "mon: " fmt, ##args)
+#define t_mon_warn(_dev, fmt, args...)		__t_dev_warn(_dev, "mon: " fmt, ##args)
+#else
+#define t_mon_info(_dev, fmt, args...)		__t_dev_none()
+#define t_mon_warn(_dev, fmt, args...)		__t_dev_none()
+#endif
+
+#define t_mon_err(_dev, fmt, args...)		__t_dev_err(_dev, "mon: " fmt, ##args)
+
+#define t_mon_dbg(condition, _dev, fmt, args...)			\
+		do {							\
+			if (unlikely(t_mon_dbg_mask & (condition)))	\
+				__t_dev_info(_dev, "mon: " fmt, ##args);	\
+		} while (0)
+
+#define t_mon_dbg_base(_dev, fmt, args...)	\
+		t_mon_dbg(DBG_BASE, _dev, fmt, ##args)
+
+#define t_mon_dbg_trace(_dev, fmt, args...)	\
+		t_mon_dbg(DBG_TRACE, _dev, fmt, ##args)
+
 static int siw_hal_mon_handler_chk_status(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 //	struct siw_ts *ts = chip->ts;
 	struct siw_hal_reg *reg = chip->reg;
+	u32 dbg_mask = (t_mon_dbg_mask & DBG_TRACE) ? 0x80 : 0;
 	u32 ic_status;
 	u32 status;
 	int ret = 0;
@@ -5674,7 +5705,7 @@ static int siw_hal_mon_handler_chk_status(struct device *dev)
 	}
 
 	status |= 0x8000;	//Valid IRQ
-	ret = siw_hal_do_check_status(dev, status, ic_status, 0);
+	ret = siw_hal_do_check_status(dev, status, ic_status, dbg_mask);
 	if (ret < 0) {
 		if (ret == -ERESTART) {
 			goto out;
@@ -5744,13 +5775,13 @@ static int siw_hal_mon_hanlder_do_op(struct device *dev,
 	for (i = 0; i < retry; i++) {
 		ret = op->func(dev);
 		if (ret >= 0) {
-			t_dev_dbg_trace(dev,
+			t_mon_dbg_trace(dev,
 				"%s : [%d] %s check done\n",
 				p_name, op->step, op->name);
 			break;
 		}
 
-		t_dev_err(dev,
+		t_mon_err(dev,
 			"%s : [%d] %s check failed(%d), %d (%d)\n",
 			p_name, op->step, op->name, i, ret, op->delay);
 
@@ -5800,13 +5831,13 @@ static void siw_hal_mon_handler_self_reset(struct device *dev, char *title)
 	}
 
 	if (ret < 0) {
-		t_dev_err(dev,
+		t_mon_err(dev,
 			"%s : recovery begins(hw reset)\n",
 			name);
 
 		siw_hal_reset_ctrl(dev, HW_RESET_ASYNC);
 	} else {
-		t_dev_dbg_trace(dev,
+		t_mon_dbg_trace(dev,
 			"%s : check ok\n",
 			name);
 	}
@@ -5820,7 +5851,7 @@ static int siw_hal_mon_handler(struct device *dev, u32 opt)
 
 	name = (opt & MON_FLAG_RST_ONLY) ? "reset cond" : "mon handler";
 
-	t_dev_dbg_trace(dev, "%s begins\n", name);
+	t_mon_dbg_trace(dev, "%s begins\n", name);
 
 	siw_hal_mon_handler_self_reset(dev, name);
 
@@ -5833,7 +5864,7 @@ static int siw_hal_mon_handler(struct device *dev, u32 opt)
 	 */
 
 out:
-	t_dev_dbg_trace(dev, "%s ends\n", name);
+	t_mon_dbg_trace(dev, "%s ends\n", name);
 
 	return 0;
 }
