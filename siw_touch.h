@@ -47,7 +47,7 @@
 #include "siw_touch_dbg.h"
 
 
-#define SIW_DRV_VERSION		"v2.16b"
+#define SIW_DRV_VERSION		"v2.16r"
 
 
 enum {
