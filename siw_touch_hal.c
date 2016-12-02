@@ -1696,6 +1696,72 @@ static int siw_hal_fb_notifier_init(struct device *dev)
 }
 #endif	/* __SIW_CONFIG_FB */
 
+static int siw_hal_init_reg_verify(struct device *dev,
+				u32 addr, u32 data, int retry,
+				const char *name)
+{
+	u32 rdata = ~0;
+	int i;
+	int ret = 0;
+
+	for (i = 0; i < retry; i++) {
+		ret = siw_hal_write_value(dev, addr, data);
+		if (ret < 0) {
+			t_dev_err(dev, "failed to write %s, %d\n",
+				name, ret);
+			return ret;
+		}
+
+		ret = siw_hal_read_value(dev, addr, &rdata);
+		if (ret < 0) {
+			t_dev_err(dev, "failed to read %s, %d\n",
+				name, ret);
+			return ret;
+		}
+
+		if (data == rdata) {
+			t_dev_dbg_base(dev, "init reg done: %s(%08Xh)\n", name, rdata);
+			return 0;
+		}
+	}
+
+	t_dev_err(dev, "init reg failed: %08Xh, %08Xh\n", data, rdata);
+
+	return -EFAULT;
+}
+
+static int siw_hal_init_reg_set_pre(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	int ret = 0;
+
+	switch (touch_chip_type(ts)) {
+	case CHIP_SW49105:
+	case CHIP_SW49406:
+	case CHIP_SW49407:
+	case CHIP_SW49408:
+		ret = siw_hal_init_reg_verify(dev,
+				0xFF3, ABNORMAL_IC_DETECTION, 3,
+				"spi_tattn_opt");
+		if (ret < 0) {
+			t_dev_err(dev,
+				"failed to set spi_tattn_opt, %d\n",
+				ret);
+			goto out;
+		}
+		break;
+	}
+
+out:
+	return ret;
+}
+
+static int siw_hal_init_reg_set_post(struct device *dev)
+{
+	return 0;
+}
+
 static int siw_hal_init_reg_set(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
@@ -1703,6 +1769,8 @@ static int siw_hal_init_reg_set(struct device *dev)
 	struct siw_hal_reg *reg = chip->reg;
 	u32 data = 1;
 	int ret = 0;
+
+	siw_hal_init_reg_set_pre(dev);
 
 	ret = siw_hal_write_value(dev,
 				reg->tc_device_ctl,
@@ -1737,6 +1805,8 @@ static int siw_hal_init_reg_set(struct device *dev)
 	if (ret < 0) {
 		goto out;
 	}
+
+	siw_hal_init_reg_set_post(dev);
 
 out:
 	return ret;

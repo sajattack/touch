@@ -171,6 +171,14 @@ enum {
 	IC_BOOT_FAIL,
 };
 
+enum {
+	ATTN_ESD_EN				= (1U<<0),
+	ATTN_WDOG_EN			= (1U<<1),
+	ATTN_ABNORMAL_SPI_EN	= (1U<<2),
+	/* */
+	ABNORMAL_IC_DETECTION	= (ATTN_ESD_EN | ATTN_WDOG_EN),
+};
+
 #define MAX_RW_SIZE_POW			(10)
 #define MAX_RW_SIZE				__SIZE_POW(MAX_RW_SIZE_POW)		//1K
 #define FLASH_CONF_SIZE_POWER	(10)
