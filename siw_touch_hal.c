@@ -5755,7 +5755,7 @@ static int siw_hal_mon_handler_chk_status(struct device *dev)
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 //	struct siw_ts *ts = chip->ts;
 	struct siw_hal_reg *reg = chip->reg;
-	u32 dbg_mask = (t_mon_dbg_mask & DBG_TRACE) ? 0x80 : 0;
+	u32 dbg_mask = (t_mon_dbg_mask & DBG_TRACE) ? 0 : 0x80;
 	u32 ic_status;
 	u32 status;
 	int ret = 0;
