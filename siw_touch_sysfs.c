@@ -864,14 +864,16 @@ static ssize_t _show_module_info(struct device *dev, char *buf)
 	return (ssize_t)size;
 }
 
+u32 __weak t_mon_dbg_mask;	//instead of using extern
+
 static ssize_t _show_dbg_mask(struct device *dev, char *buf)
 {
 //	struct siw_ts *ts = to_touch_core(dev);
 	int size = 0;
 
 	size += siw_snprintf(buf, size,
-				"t_dev_dbg_mask %08Xh, t_pr_dbg_mask %08Xh\n\n",
-				t_dev_dbg_mask, t_pr_dbg_mask);
+				"t_dev_dbg_mask %08Xh, t_pr_dbg_mask %08Xh, t_mon_dbg_mask %08Xh\n\n",
+				t_dev_dbg_mask, t_pr_dbg_mask, t_mon_dbg_mask);
 
 	size += siw_snprintf(buf, size,
 				"Usage:\n");
@@ -879,6 +881,8 @@ static ssize_t _show_dbg_mask(struct device *dev, char *buf)
 				" t_dev_dbg_mask : echo 0 {mask_value} > dbg_mask\n");
 	size += siw_snprintf(buf, size,
 				" t_pr_dbg_mask  : echo 1 {mask_value} > dbg_mask\n");
+	size += siw_snprintf(buf, size,
+				" t_mon_dbg_mask : echo 2 {mask_value} > dbg_mask\n");
 
 	return (ssize_t)size;
 }
@@ -888,12 +892,13 @@ static void _store_dbg_mask_usage(struct device *dev)
 	t_dev_info(dev, "Usage:\n");
 	t_dev_info(dev, " t_dev_dbg_mask : echo 0 {mask_value(hex)} > dbg_mask\n");
 	t_dev_info(dev, " t_pr_dbg_mask  : echo 1 {mask_value(hex)} > dbg_mask\n");
+	t_dev_info(dev, " t_mon_dbg_mask : echo 2 {mask_value(hex)} > dbg_mask\n");
 }
 
 static ssize_t _store_dbg_mask(struct device *dev,
 				const char *buf, size_t count)
 {
-//	struct siw_ts *ts = to_touch_core(dev);
+	struct siw_ts *ts = to_touch_core(dev);
 	int type = 0;
 	u32 old_value, new_value = 0;
 
@@ -915,6 +920,15 @@ static ssize_t _store_dbg_mask(struct device *dev,
 		t_pr_dbg_mask = new_value;
 		t_dev_info(dev, "t_pr_dbg_mask changed : %08Xh -> %08xh\n",
 			old_value, new_value);
+		break;
+	case 2 :
+		old_value = t_mon_dbg_mask;
+		t_mon_dbg_mask = new_value;
+		t_dev_info(dev, "t_mon_dbg_mask changed : %08Xh -> %08xh\n",
+			old_value, new_value);
+		if (!(touch_flags(ts) & TOUCH_USE_MON_THREAD)) {
+			t_dev_info(dev, "(but, mon thread not activated)\n");
+		}
 		break;
 	default :
 		_store_dbg_mask_usage(dev);
