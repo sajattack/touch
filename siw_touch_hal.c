@@ -4757,7 +4757,20 @@ static int siw_hal_asc(struct device *dev, u32 code, u32 value)
 
 static int siw_hal_check_fault_type(struct device *dev)
 {
-	return -1;
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	int fault_type = -1;
+	int ret = 0;
+
+	switch (touch_chip_type(chip->ts)) {
+	case CHIP_SW49407 :
+		ret = siw_hal_read_value(dev, 0x283, (u32 *)&fault_type);
+		if (ret < 0) {
+			return ret;
+		}
+		break;
+	}
+
+	return fault_type;
 }
 
 static int siw_hal_check_status_type_x(struct device *dev,
