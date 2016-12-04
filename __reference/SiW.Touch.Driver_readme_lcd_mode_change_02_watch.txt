@@ -1,4 +1,4 @@
-[Last updated : 2016.11.18]
+[Last updated : 2016.12.04]
 
 ###################################################################################################
 # Preview                                                                                         #
@@ -204,9 +204,7 @@ Step-2. Change lcd_mode
 ---------------------------------------------------------------------------------------------------
 [Change to main display off & 2nd screen on mode : U0 -> U2]
 
-Step-1. Set display mode to U2 in LCD driver
-
-Step-2. Set RESET notifier (ready for reset)
+Step-1. Set RESET notifier (ready for reset)
         [via notifier]
         In LCD driver, send RESET event
         : siw_touch_notifier_call_chain(LCD_EVENT_HW_RESET, NULL) --> siw_hal_notify
@@ -219,6 +217,8 @@ Step-2. Set RESET notifier (ready for reset)
         [...] siw_touch spi1.0: irq(512) wake disabled
         [...] siw_touch spi1.0: irq(512) disabled
         ...
+
+Step-2. Set display mode to U2 in LCD driver
 
 Step-3. Change lcd_mode
         [via notifier]

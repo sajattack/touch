@@ -1,4 +1,4 @@
-[Last updated : 2016.11.18]
+[Last updated : 2016.12.04]
 
 ###################################################################################################
 # Preview                                                                                         #
@@ -134,9 +134,7 @@ Step-1. In android framework, set lpwg mode via lpwg_notify sysfs attr
         [...] siw_touch spi1.0: lpwg suspend(0, 0): lcd_mode 0, driving_mode 0
         ...
 
-Step-2. Set display mode to U3 in LCD driver
-
-Step-3. Set RESET notifier (ready for reset)
+Step-2. Set RESET notifier (ready for reset)
         [via notifier]
         In LCD driver, send RESET event
         : siw_touch_notifier_call_chain(LCD_EVENT_HW_RESET, NULL) --> siw_hal_notify
@@ -149,6 +147,8 @@ Step-3. Set RESET notifier (ready for reset)
         [...] siw_touch spi1.0: irq(512) wake disabled
         [...] siw_touch spi1.0: irq(512) disabled
         ...
+
+Step-3. Set display mode to U3 in LCD driver
 
 Step-4. Change lcd_mode
         [via notifier]
