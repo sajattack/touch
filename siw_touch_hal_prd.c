@@ -3366,11 +3366,10 @@ static int prd_ic_exception_check(struct siw_hal_prd_data *prd, char *buf)
 {
 	struct device *dev = prd->dev;
 	int boot_mode = 0;
-	int size = 0;
 
 	boot_mode = siw_touch_boot_mode_check(dev);
 
-	return size;
+	return boot_mode;
 }
 
 static int prd_write_test_control(struct siw_hal_prd_data *prd, u32 mode)
@@ -3426,11 +3425,9 @@ static int prd_show_do_sd(struct siw_hal_prd_data *prd, char *buf)
 		goto out;
 	}
 
-	siw_touch_irq_control(dev, INTERRUPT_DISABLE);
-
 	ret = prd_chip_driving(dev, LCD_MODE_STOP);
 	if (ret < 0) {
-		goto out_reset;
+		goto out;
 	}
 
 	/*
@@ -3441,7 +3438,7 @@ static int prd_show_do_sd(struct siw_hal_prd_data *prd, char *buf)
 	if(param->sd_test_flag & U3_M2_RAWDATA_TEST_FLAG) {
 		rawdata_ret = prd_rawdata_test(prd, U3_M2_RAWDATA_TEST, RESULT_ON);
 		if (rawdata_ret < 0) {
-			goto out_reset;
+			goto out;
 		}
 	}
 
@@ -3453,7 +3450,7 @@ static int prd_show_do_sd(struct siw_hal_prd_data *prd, char *buf)
 	if(param->sd_test_flag & U3_JITTER_TEST_FLAG) {
 		u3_jitter_ret = prd_rawdata_test(prd, U3_JITTER_TEST, RESULT_ON);
 		if (u3_jitter_ret < 0) {
-			goto out_reset;
+			goto out;
 		}
 	}
 
@@ -3468,7 +3465,7 @@ static int prd_show_do_sd(struct siw_hal_prd_data *prd, char *buf)
 	if(param->sd_test_flag & U3_BLU_JITTER_TEST_FLAG) {
 		blu_jitter_ret = prd_rawdata_test(prd, U3_BLU_JITTER_TEST, RESULT_ON);
 		if (blu_jitter_ret < 0) {
-			goto out_reset;
+			goto out;
 		}
 	 }
 
@@ -3480,7 +3477,7 @@ static int prd_show_do_sd(struct siw_hal_prd_data *prd, char *buf)
 	if(param->sd_test_flag & OPEN_SHORT_NODE_TEST_FLAG) {
 		openshort_ret = prd_open_short_test(prd);
 		if (openshort_ret < 0) {
-			goto out_reset;
+			goto out;
 		}
 	}
 
@@ -3534,10 +3531,6 @@ static int prd_show_do_sd(struct siw_hal_prd_data *prd, char *buf)
 	t_prd_info(prd, "%s \n", buf);
 	prd_write_test_control(prd, CMD_TEST_EXIT);
 
-out_reset:
-	prd_chip_driving(dev, LCD_MODE_U3);
-	prd_chip_reset(dev);
-
 out:
 	return size;
 }
@@ -3548,6 +3541,7 @@ static ssize_t prd_show_sd(struct device *dev, char *buf)
 	struct siw_ts *ts = chip->ts;
 	struct siw_hal_prd_data *prd = (struct siw_hal_prd_data *)ts->prd;
 	int size = 0;
+	int ret = 0;
 
 	/* LCD mode check */
 	if (chip->lcd_mode != LCD_MODE_U3) {
@@ -3556,20 +3550,24 @@ static ssize_t prd_show_sd(struct device *dev, char *buf)
 		goto out;
 	}
 
+	/* ic rev check - MINIOS mode, MFTS mode check */
+	ret = prd_ic_exception_check(prd, buf);
+	if (ret > 0) {
+		t_prd_err(prd, "ic exception(%d) detected, test canceled\n", ret);
+		size += siw_snprintf(buf, size,
+					"ic exception(%d) detected, test canceled\n", ret);
+		goto out;
+	}
+
 	siw_touch_mon_pause(dev);
+
+	siw_touch_irq_control(dev, INTERRUPT_DISABLE);
 
 	/* file create , time log */
 	prd_write_file(prd, "\nShow_sd Test Start", TIME_INFO_SKIP);
 	prd_write_file(prd, "\n", TIME_INFO_WRITE);
 
 	t_prd_info(prd, "show_sd test begins\n");
-
-	/* ic rev check - MINIOS mode, MFTS mode check */
-	size = prd_ic_exception_check(prd, buf);
-	if (size > 0) {
-		t_prd_err(prd, "ic exception detected, test canceled\n");
-		goto out_sd;
-	}
 
 	prd_firmware_version_log(prd);
 	prd_ic_run_info_print(prd);
@@ -3581,9 +3579,11 @@ static ssize_t prd_show_sd(struct device *dev, char *buf)
 	prd_write_file(prd, "Show_sd Test End\n", TIME_INFO_WRITE);
 	prd_log_file_size_check(prd);
 
-	t_prd_info(prd, "show_sd test terminated\n");
+	t_prd_info(prd, "show_sd test terminated\n\n");
 
-out_sd:
+	prd_chip_driving(dev, LCD_MODE_U3);
+	prd_chip_reset(dev);
+
 	siw_touch_mon_resume(dev);
 
 out:
