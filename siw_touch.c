@@ -799,19 +799,56 @@ static void siw_touch_fb_work_func(struct work_struct *work)
 	}
 }
 
+#if defined(__SIW_CONFIG_USE_SYS_PANEL_RESET)
+extern int siw_touch_notify(struct siw_ts *ts, unsigned long event, void *data);
+
 static void siw_touch_sys_reset_work_func(struct work_struct *work)
 {
 	struct siw_ts *ts =
 			container_of(to_delayed_work(work),
 				struct siw_ts, sys_reset_work);
 	struct device *dev = ts->dev;
-	int ret;
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	u32 lcd_mode = (u32)chip->lcd_mode;
+	int ret = 0;
 
+	t_dev_info(dev, "sys reset start\n");
+
+	siw_touch_notify(ts, NOTIFY_TOUCH_RESET, NULL);
+
+	/*
+	 * direct call for LCD reset
+	 */
 	ret = siw_touch_sys_panel_reset(dev);
 	if (ret < 0) {
 		t_dev_err(dev, "failed to reset panel\n");
 	}
+
+	siw_touch_notify(ts, LCD_EVENT_LCD_MODE, (void *)&lcd_mode);
 }
+
+static int siw_touch_reset(struct siw_ts *ts)
+{
+	struct device *dev = ts->dev;
+
+	siw_touch_irq_control(dev, INTERRUPT_DISABLE);
+
+	siw_touch_qd_sys_reset_work_now(ts);
+
+	return 0;
+}
+#else	/* __SIW_CONFIG_USE_SYS_PANEL_RESET */
+static void siw_touch_sys_reset_work_func(struct work_struct *work)
+{
+
+}
+
+static int siw_touch_reset(struct siw_ts *ts)
+{
+	return siw_ops_reset(ts, HW_RESET_ASYNC);
+}
+#endif	/* __SIW_CONFIG_USE_SYS_PANEL_RESET */
+
 
 #if defined(__SIW_SUPPORT_ASC)
 static void siw_touch_toggle_delta_check_work_func(
@@ -1174,8 +1211,8 @@ static int _siw_touch_do_irq_thread(struct siw_ts *ts)
 				wake_lock_timeout(&ts->lpwg_wake_lock, msecs_to_jiffies(1000));
 			#endif
 			}
-			siw_touch_qd_sys_reset_work_now(ts);
-			siw_ops_reset(ts, HW_RESET_ASYNC);
+
+			siw_touch_reset(ts);
 		}
 		return ret;
 	}
