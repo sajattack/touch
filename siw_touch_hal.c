@@ -5516,8 +5516,15 @@ static int siw_hal_notify(struct device *dev, ulong event, void *data)
 		noti_str = "TOUCH_RESET_END";
 		break;
 	case LCD_EVENT_LCD_MODE:
+		noti_str = "LCD_MODE";
+
 		t_dev_info(dev, "notify: lcd_event: lcd mode\n");
-		ret = siw_hal_lcd_mode(dev, *(u32 *)data);
+		if (data == NULL) {
+			t_dev_err(dev, "data is null, cancled\n");
+			break;
+		}
+
+		ret = siw_hal_lcd_mode(dev, value);
 		if (ret < 0) {
 			break;
 		}
@@ -5526,8 +5533,6 @@ static int siw_hal_notify(struct device *dev, ulong event, void *data)
 			queue_delayed_work(ts->wq, &chip->fb_notify_work, 0);
 		}
 		ret = 0;
-
-		noti_str = "LCD_MODE";
 		break;
 
 	case LCD_EVENT_READ_REG:
