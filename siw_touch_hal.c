@@ -5852,6 +5852,62 @@ module_param_named(mon_dbg_mask, t_mon_dbg_mask, uint, S_IRUGO|S_IWUSR|S_IWGRP);
 #define t_mon_dbg_trace(_dev, fmt, args...)	\
 		t_mon_dbg(DBG_TRACE, _dev, fmt, ##args)
 
+static int siw_hal_mon_handler_chk_frame(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+//	struct siw_hal_reg *reg = chip->reg;
+	u32 frame_addr = 0;
+	u32 frame_s = 0;
+	u32 frame_e = 0;
+	u32 delay = 0;
+	int cnt = 0;
+	int i;
+	int ret = 0;
+
+	switch (touch_chip_type(ts)) {
+	case CHIP_SW1828:
+		frame_addr = 0x24F;
+		cnt = 20;
+		delay = 1;
+		break;
+	default:
+		return 0;
+	}
+
+	ret = siw_hal_read_value(dev,
+				frame_addr,
+				(void *)&frame_s);
+	if (ret < 0){
+		goto out;
+	}
+
+	for (i = 0; i < cnt; i++) {
+		touch_msleep(delay);
+
+		ret = siw_hal_read_value(dev,
+					frame_addr,
+					(void *)&frame_e);
+		if (ret < 0){
+			goto out;
+		}
+
+		if (frame_e != frame_s) {
+			t_mon_dbg_trace(dev, "frame ok: %d(%d), %d x %d ms\n",
+				frame_e, frame_s, i, delay);
+			return 0;
+		}
+	}
+
+	t_mon_err(dev, "frame not changed: %d, %d x %d ms\n",
+			frame_s, cnt, delay);
+
+	ret = -ERESTART;
+
+out:
+	return ret;
+}
+
 static int siw_hal_mon_handler_chk_status(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
@@ -5934,6 +5990,7 @@ struct siw_mon_hanlder_op {
 static const struct siw_mon_hanlder_op siw_mon_hanlder_ops[] = {
 	SIW_MON_HANDLER_OP_SET(0, 10, 3, "id", siw_hal_mon_handler_chk_id),
 	SIW_MON_HANDLER_OP_SET(1, 10, 3, "status", siw_hal_mon_handler_chk_status),
+	SIW_MON_HANDLER_OP_SET(2, 10, 3, "frame", siw_hal_mon_handler_chk_frame),
 };
 
 static int siw_hal_mon_hanlder_do_op(struct device *dev,
