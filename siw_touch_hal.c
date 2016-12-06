@@ -4758,16 +4758,77 @@ static int siw_hal_asc(struct device *dev, u32 code, u32 value)
 static int siw_hal_check_fault_type(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
-	int fault_type = -1;
+	u32 addr = 0;
+	int fault_type = NON_FAULT_INT;
 	int ret = 0;
 
 	switch (touch_chip_type(chip->ts)) {
 	case CHIP_SW49407 :
-		ret = siw_hal_read_value(dev, 0x283, (u32 *)&fault_type);
-		if (ret < 0) {
-			return ret;
-		}
+		addr = 0x283;
 		break;
+	default :
+		return NON_FAULT_INT;
+	}
+
+	ret = siw_hal_read_value(dev, addr, (u32 *)&fault_type);
+	if (ret < 0) {
+		return NON_FAULT_INT;
+	}
+
+	return fault_type;
+}
+
+static u32 siw_hal_check_sys_error_type(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	u32 addr = 0;
+	u32 fault_type = NON_FAULT_U32;
+	int ret = 0;
+
+	switch (touch_chip_type(chip->ts)) {
+	case CHIP_SW49105 :
+	case CHIP_SW49407 :
+		addr = 0x020;
+		break;
+	case CHIP_SW49408 :
+		addr = 0x021;
+		break;
+	case CHIP_SW49409 :
+		addr = 0x01C;
+		break;
+	default :
+		return NON_FAULT_U32;
+	}
+
+	ret = siw_hal_read_value(dev, addr, (u32 *)&fault_type);
+	if (ret < 0) {
+		return NON_FAULT_U32;
+	}
+
+	return fault_type;
+}
+
+static u32 siw_hal_check_sys_fault_type(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	u32 addr = 0;
+	u32 fault_type = NON_FAULT_U32;
+	int ret = 0;
+
+	switch (touch_chip_type(chip->ts)) {
+	case CHIP_SW49105 :
+	case CHIP_SW49407 :
+	case CHIP_SW49408 :
+	case CHIP_SW49409 :
+		addr = 0xFF4;
+		break;
+	default :
+		return NON_FAULT_U32;
+	}
+
+	ret = siw_hal_read_value(dev, addr, (u32 *)&fault_type);
+	if (ret < 0) {
+		return NON_FAULT_U32;
 	}
 
 	return fault_type;
@@ -4830,13 +4891,36 @@ static int siw_hal_check_status_type_x(struct device *dev,
 	}
 
 	if (ic_status & chip->status_mask_ic_abnormal) {
-		if (log_flag) {
-			t_dev_err(dev, "[%d] watchdog exception\n",
-				irq);
-		} else {
-			t_dev_err(dev, "[%d] watchdog exception - status %08Xh, ic_status %08Xh\n",
-				irq, status, ic_status);
+		u32 sys_error, sys_fault;
+		int log_add = !log_flag;
+
+		sys_error = siw_hal_check_sys_error_type(dev);
+		sys_fault = siw_hal_check_sys_fault_type(dev);
+
+		log_add |= (!!((sys_error != NON_FAULT_U32) || (sys_fault != NON_FAULT_U32)))<<1;
+
+		len = siw_chk_sts_snprintf(dev, log, log_max, 0,
+					"[%d] watchdog exception", irq);
+
+		if (log_add) {
+			len += siw_chk_sts_snprintf(dev, log, log_max, len,
+							" - ");
+
+			if (log_add & 0x01) {
+				len += siw_chk_sts_snprintf(dev, log, log_max, len,
+							"status %08Xh, ic_status %08Xh%s",
+							status, ic_status,
+							(log_add & 0x02) ? ", " : " ");
+			}
+
+			if (log_add & 0x02) {
+				len += siw_chk_sts_snprintf(dev, log, log_max, len,
+							"sys_error %08Xh, sys_fault %08Xh",
+							sys_error, sys_fault);
+			}
 		}
+
+		t_dev_err(dev, "%s\n", log);
 
 		esd_send |= chip->status_mask_ic_abnormal;
 	}

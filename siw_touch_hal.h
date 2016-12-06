@@ -20,6 +20,11 @@
 
 #include "siw_touch_hal_reg.h"
 
+enum {
+	NON_FAULT_INT 	= -1,
+	NON_FAULT_U32	= ~0,
+};
+
 /* report packet */
 struct siw_hal_touch_data {
 	u8 tool_type:4;
