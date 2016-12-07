@@ -1,4 +1,4 @@
-[Last updated : 2016.12.04]
+[Last updated : 2016.12.07]
 
 ###################################################################################################
 # Preview                                                                                         #
@@ -12,6 +12,13 @@ touch driver supports notifer chain for this mode control
 Rule 1. The display mode setup shall precede touch mode setup
 Rule 2. The mode status of two drivers shall be synchronized with each other
 
+
+###################################################################################################
+# Exception                                                                                       #
+###################################################################################################
+
+- LG4946 doesn't support direct change of U2 <--> U0
+  The flow should be U2 -> U3 -> U0 -> U3 -> U2 instead
 
 ###################################################################################################
 # Definitions                                                                                     #
