@@ -5445,6 +5445,12 @@ static void siw_hal_prd_set_sd_cmd(struct siw_hal_prd_data *prd)
 	struct siw_ts *ts = chip->ts;
 	struct siw_hal_prd_sd_cmd *sd_cmd = &prd->sd_cmd;
 
+	sd_cmd->cmd_open_node = OPEN_NODE_TEST_POST_CMD;
+	sd_cmd->cmd_short_node = SHORT_NODE_TEST_POST_CMD;
+	sd_cmd->cmd_m2_rawdata = M2_RAWDATA_TEST_POST_CMD;
+	sd_cmd->cmd_m1_rawdata = M1_RAWDATA_TEST_POST_CMD;
+	sd_cmd->cmd_jitter = JITTER_TEST_POST_CMD;
+
 	switch (touch_chip_type(ts)) {
 	case CHIP_SW49407:
 		sd_cmd->cmd_open_node = 1;
@@ -5453,12 +5459,8 @@ static void siw_hal_prd_set_sd_cmd(struct siw_hal_prd_data *prd)
 		sd_cmd->cmd_m1_rawdata = 3;
 		sd_cmd->cmd_jitter = 10;
 		break;
-	default:
-		sd_cmd->cmd_open_node = OPEN_NODE_TEST_POST_CMD;
-		sd_cmd->cmd_short_node = SHORT_NODE_TEST_POST_CMD;
-		sd_cmd->cmd_m2_rawdata = M2_RAWDATA_TEST_POST_CMD;
-		sd_cmd->cmd_m1_rawdata = M1_RAWDATA_TEST_POST_CMD;
-		sd_cmd->cmd_jitter = JITTER_TEST_POST_CMD;
+	case CHIP_LG4946:
+		sd_cmd->cmd_jitter = 10;
 		break;
 	};
 
