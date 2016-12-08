@@ -2122,13 +2122,15 @@ static int prd_print_os_data(struct siw_hal_prd_data *prd, int type)
 static int prd_print_os_rawdata(struct siw_hal_prd_data *prd, u8 type)
 {
 	struct siw_hal_prd_param *param = &prd->param;
+	struct siw_hal_prd_ctrl *ctrl = &prd->ctrl;
 	int i = 0, j = 0;
 	int size = 0;
 	int log_size = 0;
 	u16 *os_buf = NULL;
+	int os_buf_size = ctrl->m2_row_col_buf_size;
 	int col_size = 0;
 	char *log_buf = prd->log_buf;
-	u16 short_temp_buf[(param->col + param->col_add) * param->row];
+	u16 short_temp_buf[os_buf_size];
 
 	memset(prd->buf_write, 0, PRD_BUF_SIZE);
 
@@ -2159,7 +2161,7 @@ static int prd_print_os_rawdata(struct siw_hal_prd_data *prd, u8 type)
 	 */
 	if(type == SHORT_NODE_TEST) {
 		memcpy(short_temp_buf, os_buf, sizeof(short_temp_buf));
-		memset(os_buf, 0, sizeof(os_buf));
+		memset(os_buf, 0, os_buf_size);
 
 		for (i = 0; i < col_size; i++) {
 			for (j = 0; j < param->row; j++) {
