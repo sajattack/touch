@@ -4974,11 +4974,11 @@ static int siw_hal_do_check_status(struct device *dev,
 
 	if (!status && !ic_status) {
 		t_dev_err(dev, "all low detected\n");
-		return -ERESTART;
+		return -ERANGE;
 	}
 	if ((status == ~0) && (ic_status == ~0)) {
 		t_dev_err(dev, "all high detected\n");
-		return -ERESTART;
+		return -ERANGE;
 	}
 
 	ret = siw_hal_chk_status_type(dev);
