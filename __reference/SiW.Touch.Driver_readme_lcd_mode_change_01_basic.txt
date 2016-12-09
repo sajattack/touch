@@ -1,4 +1,4 @@
-[Last updated : 2016.12.04]
+[Last updated : 2016.12.09]
 
 ###################################################################################################
 # Preview                                                                                         #
@@ -28,6 +28,18 @@ enum {
 	LCD_MODE_MAX,
 };
 
+###################################################################################################
+# Base                                                                                            #
+###################################################################################################
+* default sysfs path
+  general : /sys/devices/virtual/input/siw_touch_input/
+  watch   : /sys/devices/virtual/input/siw_ext_watch/
+
+* To use notifier call chain of touch driver in LCD driver,
+  (1) Copy the siw_touch_notify.h([SiW driver source]/include/linux/input/siw_touch_notify.h)
+      to [Kernel Top]/include/linux/input/ folder
+  (2) Use this include in your LCD driver
+      #include <linux/input/siw_touch_notify.h>
 
 ###################################################################################################
 # Procedure - Default                                                                             #
@@ -49,7 +61,7 @@ Step-2. Initialize touch mode (U3)
 
 * LPWG area set
         In android framework, set lpwg active area via lpwg_notify sysfs attr
-        : echo 3 0 0 720 1280 > lpwg_notify -> siw_hal_lpwg
+        : echo 3 0 0 720 1280 > /sys/devices/virtual/input/siw_touch_input/lpwg_notify
                | | |  |   y2
                | | |  x2
                | | y1
@@ -67,7 +79,7 @@ Step-2. Initialize touch mode (U3)
 [Change to display off mode : U3 -> U0]
 
 Step-1. In android framework, set lpwg mode via lpwg_notify sysfs attr
-        : echo 9 1 0 1 0 > lpwg_notify -> siw_hal_lpwg (See Driver.Reg.Access.Table_yy.mm.dd.pdf)
+        : echo 9 1 0 1 0 > /sys/devices/virtual/input/siw_touch_input/lpwg_notify
                | | | | qcover
                | | | sensor
                | | screen
@@ -97,7 +109,8 @@ Step-3. Change lcd_mode
         : int panel_mode = LCD_EVENT_LCD_MODE_U0;
           siw_touch_notifier_call_chain(LCD_EVENT_LCD_MODE, (void *)&panel_mode) --> siw_hal_notify
         [via sysfs]
-        echo 0 > lcd_mode
+        In android framework,
+        : echo 0 > /sys/devices/virtual/input/siw_touch_input/lcd_mode
 
         <Log example>
         ...
@@ -124,7 +137,7 @@ Step-3. Change lcd_mode
 [Change to display on mode : U0 -> U3]
 
 Step-1. In android framework, set lpwg mode via lpwg_notify sysfs attr
-        : echo 9 0 1 1 0 > lpwg_notify
+        : echo 9 0 1 1 0 > /sys/devices/virtual/input/siw_touch_input/lpwg_notify
 
         <Log example>
         ...
@@ -139,7 +152,8 @@ Step-2. Set RESET notifier (ready for reset)
         In LCD driver, send RESET event
         : siw_touch_notifier_call_chain(LCD_EVENT_HW_RESET, NULL) --> siw_hal_notify
         [via sysfs]
-        echo 0x5A 0x13 0 > dbg_notify
+        In android framework,
+        : echo 0x5A 0x13 0 > /sys/devices/virtual/input/siw_touch_input/dbg_notify
 
         <Log example>
         ...
@@ -156,7 +170,8 @@ Step-4. Change lcd_mode
         : int panel_mode = LCD_EVENT_LCD_MODE_U3;
           siw_touch_notifier_call_chain(LCD_EVENT_LCD_MODE, (void *)&panel_mode) --> siw_hal_notify
         [via sysfs]
-        echo 3 > lcd_mode
+        In android framework,
+        : echo 3 > /sys/devices/virtual/input/siw_touch_input/lcd_mode
 
         <Log example>
         ...

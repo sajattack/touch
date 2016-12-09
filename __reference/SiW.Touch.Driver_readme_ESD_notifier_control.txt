@@ -1,4 +1,4 @@
-[Last updated : 2016.12.08]
+[Last updated : 2016.12.09]
 
 ###################################################################################################
 # Preview                                                                                         #
@@ -28,6 +28,19 @@ touch driver supports notifer chain for this mode control
          |                                         |
          |<--------- LCD_EVENT_LCD_MODE -----------| (4)
          |                                         |
+
+###################################################################################################
+# Base                                                                                            #
+###################################################################################################
+* default sysfs path
+  general : /sys/devices/virtual/input/siw_touch_input/
+  watch   : /sys/devices/virtual/input/siw_ext_watch/
+
+* To use notifier call chain of touch driver in LCD driver,
+  (1) Copy the siw_touch_notify.h([SiW driver source]/include/linux/input/siw_touch_notify.h)
+      to [Kernel Top]/include/linux/input/ folder
+  (2) Use this include in your LCD driver
+      #include <linux/input/siw_touch_notify.h>
 
 ###################################################################################################
 # [Touch side] ESD detection                                                                      #
