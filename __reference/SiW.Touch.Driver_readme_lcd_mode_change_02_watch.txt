@@ -1,4 +1,4 @@
-[Last updated : 2016.12.09]
+[Last updated : 2016.12.10]
 
 ###################################################################################################
 # Preview                                                                                         #
@@ -70,10 +70,15 @@ Step-2. Initialize touch mode (U3)
         In android framework, set lpwg active area via lpwg_notify sysfs attr
         : echo 3 0 0 720 1280 > /sys/devices/virtual/input/siw_touch_input/lpwg_notify
                | | |  |   y2
-               | | |  x2
-               | | y1
+               | | |  y1
+               | | x2
                | x1
                code : 3 = LPWG_ACTIVE_AREA
+
+        <Log example>
+        ...
+        [...] siw_touch spi5.0: LPWG_ACTIVE_AREA: x1[0], y1[720], x2[0], y2[1280]
+        ...
 
 ###################################################################################################
 # Procedure - U3 <-> U2(2nd screen) <-> U0                                                        #
@@ -230,6 +235,10 @@ Step-2. Change lcd_mode
 [Change to main display off & 2nd screen on mode : U0 -> U2]
 
 Step-1. Set RESET notifier (ready for reset)
+        (1) This RESET notifier tells touch side that nReset or Power re-init will happen.
+            So, this shall be done before nReset or power sequence of LCD
+        (2) This is required only when the mode changes from U0 to another
+            Don't use this on initial power-on sequence of system booting.
         [via notifier]
         In LCD driver, send RESET event
         : siw_touch_notifier_call_chain(LCD_EVENT_HW_RESET, NULL) --> siw_hal_notify
@@ -244,7 +253,7 @@ Step-1. Set RESET notifier (ready for reset)
         [...] siw_touch spi1.0: irq(512) disabled
         ...
 
-Step-2. Set display mode to U2 in LCD driver
+Step-2. Set display mode to U2 in LCD driver (including nReset or power sequence)
 
 Step-3. Change lcd_mode
         [via notifier]
