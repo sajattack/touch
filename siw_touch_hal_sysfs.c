@@ -197,7 +197,7 @@ static int __show_reg_list(struct device *dev, char *buf, int size)
 	return size;
 }
 
-static ssize_t _show_reg_ctrl(struct device *dev, char *buf)
+static ssize_t _show_reg_list(struct device *dev, char *buf)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 //	struct siw_ts *ts = chip->ts;
@@ -260,10 +260,68 @@ static ssize_t _show_reg_ctrl(struct device *dev, char *buf)
 	return (ssize_t)size;
 }
 
+static int __show_reg_ctrl_log_history(struct device *dev, char *buf)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+//	struct siw_ts *ts = chip->ts;
+	struct siw_hal_reg_log *reg_log = chip->reg_log;
+	char *dir_name;
+	int reg_err;
+	int i;
+	int size = 0;
+
+	size += siw_snprintf(buf, size, "[Test History]\n");
+	for (i = 0; i < REG_LOG_MAX; i++) {
+		if (reg_log->dir) {
+			dir_name = !!((reg_log->dir & REG_DIR_MASK) == REG_DIR_WR) ?
+						"wr" : "rd";
+			reg_err = !!(reg_log->dir & REG_DIR_ERR);
+		} else {
+			dir_name = "__";
+			reg_err = 0;
+		}
+
+		size += siw_snprintf(buf, size, " %s: reg[0x%04X] = 0x%08X %s\n",
+					dir_name, reg_log->addr, reg_log->data,
+					(reg_err) ? "(err)" : "");
+
+		reg_log++;
+	}
+
+	return size;
+}
+
+static ssize_t _show_reg_ctrl(struct device *dev, char *buf)
+{
+//	struct siw_touch_chip *chip = to_touch_chip(dev);
+//	struct siw_ts *ts = chip->ts;
+	int size = 0;
+
+	size += __show_reg_ctrl_log_history(dev, buf);
+
+	size += siw_snprintf(buf, size, "\n[Usage]\n");
+	size += siw_snprintf(buf, size, " echo wr 0x1234 {value} > reg_ctrl\n");
+	size += siw_snprintf(buf, size, " echo rd 0x1234 > reg_ctrl\n");
+
+	return (ssize_t)size;
+}
+
+static void __store_reg_ctrl_log_add(struct device *dev,
+				struct siw_hal_reg_log *new_log)
+
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_hal_reg_log *reg_log = chip->reg_log;
+
+	memmove(&reg_log[1], reg_log, sizeof(*reg_log) * (REG_LOG_MAX - 1));
+	memcpy(reg_log, new_log, sizeof(*reg_log));
+}
+
 static ssize_t _store_reg_ctrl(struct device *dev,
 				const char *buf, size_t count)
 {
 //	struct siw_ts *ts = to_touch_core(dev);
+	struct siw_hal_reg_log reg_log;
 	char command[6] = {0};
 	u32 reg = 0;
 	u32 data = 1;
@@ -292,21 +350,33 @@ static ssize_t _store_reg_ctrl(struct device *dev,
 		ret = siw_hal_write_value(dev,
 					reg_addr,
 					data);
+		reg_log.dir = REG_DIR_WR;
+		reg_log.addr = reg_addr;
+		reg_log.data = data;
 		if (ret >= 0) {
 			t_dev_info(dev,
 				"wr: reg[0x%04X] = 0x%08X\n",
 				reg_addr, data);
+		} else {
+			reg_log.dir |=REG_DIR_ERR;
 		}
+		__store_reg_ctrl_log_add(dev, &reg_log);
 		goto out;
 	} else if (!wr) {
 		ret = siw_hal_read_value(dev,
 					reg_addr,
 					&data);
+		reg_log.dir = REG_DIR_RD;
+		reg_log.addr = reg_addr;
+		reg_log.data = data;
 		if (ret >= 0) {
 			t_dev_info(dev,
 				"rd: reg[0x%04X] = 0x%08X\n",
 				reg_addr, data);
+		} else {
+			reg_log.dir |=REG_DIR_ERR;
 		}
+		__store_reg_ctrl_log_add(dev, &reg_log);
 		goto out;
 	}
 
@@ -654,6 +724,7 @@ out:
 #define _SIW_TOUCH_HAL_ATTR_T(_name)	\
 		touch_attr_##_name
 
+static SIW_TOUCH_HAL_ATTR(reg_list, _show_reg_list, NULL);
 static SIW_TOUCH_HAL_ATTR(reg_ctrl, _show_reg_ctrl, _store_reg_ctrl);
 static SIW_TOUCH_HAL_ATTR(tci_debug, _show_tci_debug, _store_tci_debug);
 static SIW_TOUCH_HAL_ATTR(swipe_debug, _show_swipe_debug, _store_swipe_debug);
@@ -668,6 +739,7 @@ static SIW_TOUCH_HAL_ATTR(debug_bus, _show_debug_bus, NULL);
 #endif
 
 static struct attribute *siw_hal_attribute_list[] = {
+	&_SIW_TOUCH_HAL_ATTR_T(reg_list).attr,
 	&_SIW_TOUCH_HAL_ATTR_T(reg_ctrl).attr,
 	&_SIW_TOUCH_HAL_ATTR_T(tci_debug).attr,
 	&_SIW_TOUCH_HAL_ATTR_T(swipe_debug).attr,

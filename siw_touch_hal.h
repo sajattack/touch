@@ -404,6 +404,19 @@ enum {
 	STS_FILTER_FLAG_CHK_FAULT		= _STS_FILTER_FLAG_CHK_FAULT,
 };
 
+#define REG_LOG_MAX		8
+#define REG_DIR_NONE	0
+#define REG_DIR_RD		1
+#define REG_DIR_WR		2
+#define REG_DIR_ERR		(1<<8)
+#define REG_DIR_MASK	(REG_DIR_ERR-1)
+
+struct siw_hal_reg_log {
+	int dir;
+	u32 addr;
+	u32 data;
+};
+
 struct siw_touch_chip {
 	void *ts;			//struct siw_ts
 	struct siw_hal_reg *reg;
@@ -441,6 +454,7 @@ struct siw_touch_chip {
 #if defined(__SIW_SUPPORT_PM_QOS)
 	struct pm_qos_request pm_qos_req;
 #endif
+	struct siw_hal_reg_log reg_log[REG_LOG_MAX];
 };
 
 enum {
