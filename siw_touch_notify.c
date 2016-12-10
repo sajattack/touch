@@ -216,10 +216,30 @@ static int _siw_touch_do_notify(struct siw_ts *ts,
 
 int siw_touch_notify(struct siw_ts *ts, unsigned long event, void *data)
 {
+	int noti_allowed = 0;
+	int core_state = 0;
 	int ret = 0;
 
-	if (siw_touch_get_boot_mode() == SIW_TOUCH_CHARGER_MODE)
+	if (siw_touch_get_boot_mode() == SIW_TOUCH_CHARGER_MODE) {
 		return 0;
+	}
+
+	core_state = atomic_read(&ts->state.core);
+	switch (event) {
+	case LCD_EVENT_TOUCH_INIT_LATE:
+		noti_allowed = !!(core_state == CORE_PROBE);
+		break;
+	default:
+		noti_allowed = !!(core_state == CORE_NORMAL);
+		break;
+	}
+
+	if (!noti_allowed) {
+		t_dev_dbg_base(ts->dev,
+			"notify: event(%Xh) is skipped: core %d\n",
+			(int)event, core_state);
+		return 0;
+	}
 
 	mutex_lock(&ts->lock);
 	ret = _siw_touch_do_notify(ts, event, data);
