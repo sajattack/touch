@@ -1344,7 +1344,7 @@ static ssize_t siw_touch_attr_store(struct kobject *kobj,
 		container_of(kobj, struct siw_ts, kobj);
 	struct siw_touch_attribute *priv =
 		container_of(attr, struct siw_touch_attribute, attr);
-	ssize_t ret = 0;
+	ssize_t ret = count;
 
 	if (priv->store)
 		ret = priv->store(ts->dev, buf, count);
