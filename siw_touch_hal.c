@@ -1176,6 +1176,10 @@ static int siw_hal_power(struct device *dev, int ctrl)
 	return 0;
 }
 
+enum {
+	BOOT_CHK_SKIP = (1<<16),
+};
+
 static int siw_hal_chk_boot_mode(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
@@ -1191,7 +1195,17 @@ static int siw_hal_chk_boot_mode(struct device *dev)
 		return ret;
 	}
 
-	if ((bootmode >> 3) & 0x1) {
+	/* maybe nReset is low state */
+	if (!bootmode || (bootmode == ~0)) {
+		return BOOT_CHK_SKIP;
+	}
+
+	/* booting... need to wait */
+	if ((bootmode >> 1) & 0x1) {
+		return BOOT_CHK_SKIP;
+	}
+
+	if ((bootmode >> 3) & 0x1) {	/* CRC error */
 		return 0x1;
 	}
 
@@ -1203,11 +1217,17 @@ static int siw_hal_chk_boot_status(struct device *dev)
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 //	struct siw_ts *ts = chip->ts;
 	struct siw_hal_reg *reg = chip->reg;
+	struct siw_hal_status_mask_bit *mask_bit = &chip->status_mask_bit;
 	u32 boot_failed = 0;
 	u32 tc_status = 0;
-	u32 tc_valid_chk1 = (1<<7);
-	u32 tc_valid_chk2 = (1<<6);
+	u32 valid_cfg_crc_mask = 0;
+	u32 valid_code_crc_mask = 0;
 	int ret = 0;
+
+	valid_cfg_crc_mask = (mask_bit->valid_cfg_crc) ?
+		mask_bit->valid_cfg_crc : (1<<STS_POS_VALID_CFG_CRC);
+	valid_code_crc_mask = (mask_bit->valid_code_crc) ?
+		mask_bit->valid_code_crc : (1<<STS_POS_VALID_CODE_CRC);
 
 	ret = siw_hal_read_value(dev,
 			reg->tc_status,
@@ -1216,10 +1236,15 @@ static int siw_hal_chk_boot_status(struct device *dev)
 		return ret;
 	}
 
-	if (!(tc_status & tc_valid_chk1)) {
+	/* maybe nReset is low state */
+	if (!tc_status || (tc_status == ~0)) {
+		return BOOT_CHK_SKIP;
+	}
+
+	if (!(tc_status & valid_cfg_crc_mask)) {
 		boot_failed |= (1<<5);
 	}
-	if (!(tc_status & tc_valid_chk2)) {
+	if (!(tc_status & valid_code_crc_mask)) {
 		boot_failed |= (1<<4);
 	}
 
@@ -1235,11 +1260,17 @@ static int siw_hal_chk_boot(struct device *dev)
 	if (ret < 0) {
 		return ret;
 	}
+	if (ret == BOOT_CHK_SKIP) {
+		return 0;
+	}
 	boot_failed |= ret;
 
 	ret = siw_hal_chk_boot_status(dev);
 	if (ret < 0) {
 		return ret;
+	}
+	if (ret == BOOT_CHK_SKIP) {
+		return boot_failed;
 	}
 	boot_failed |= ret;
 
@@ -1594,18 +1625,30 @@ static int siw_hal_do_ic_info(struct device *dev, int prt_on)
 			((bootmode >> 3) & 0x1) ? "ERROR" : "ok",
 			bootmode);
 
-	if (atomic_read(&ts->state.core) == CORE_PROBE) {
-		ret = siw_hal_chk_boot(dev);
-		if (ret < 0) {
-			return ret;
-		}
-		if (ret) {
-			t_dev_err(dev, "Boot fail detected - %02Xh\n", ret);
-			atomic_set(&chip->boot, IC_BOOT_FAIL);
-			/* return special flag to let the core layer know */
-			return -(ENOMEDIUM<<3);
-		}
+	ret = siw_hal_chk_boot(dev);
+	if (ret < 0) {
+		return ret;
 	}
+	if (ret) {
+		int boot_fail_cnt = chip->boot_fail_cnt;
+		atomic_set(&chip->boot, IC_BOOT_FAIL);
+
+		/* Limit to avoid infinite repetition */
+		if (boot_fail_cnt >= BOOT_FAIL_RECOVERY_MAX) {
+			t_dev_err(dev, "Boot fail can't be recovered(%d) - %02Xh\n",
+				boot_fail_cnt, ret);
+			return -EFAULT;
+		}
+
+		t_dev_err(dev, "Boot fail detected(%d) - %02Xh\n",
+			boot_fail_cnt, ret);
+
+		chip->boot_fail_cnt++;
+
+		/* return special flag to let the core layer know */
+		return -(ENOMEDIUM<<3);
+	}
+	chip->boot_fail_cnt = 0;
 
 	switch (touch_chip_type(ts)) {
 	case CHIP_LG4946:
@@ -2010,6 +2053,19 @@ static int siw_hal_check_mode(struct device *dev){ return 0; }
 static void siw_hal_lcd_event_read_reg(struct device *dev){ }
 #endif	/* __SIW_SUPPORT_WATCH */
 
+static int siw_hal_send_esd_notifier(struct device *dev, int type)
+{
+	int esd = type;
+	int ret;
+
+	ret = siw_touch_atomic_notifier_call(LCD_EVENT_TOUCH_ESD_DETECTED, (void*)&esd);
+	if (ret)
+		t_dev_err(dev, "check the value, %d\n", ret);
+
+	/* Sending Event done */
+	return 1;
+}
+
 static int siw_hal_init(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
@@ -2036,8 +2092,39 @@ static int siw_hal_init(struct device *dev)
 		if (ret >= 0) {
 			break;
 		}
+		/*
+		 * When boot fail detected
+		 *
+		 * 1. At the fisrt detection,
+		 *    it sends esd noti for LCD recovery(full reset procedure)
+		 *    and skip fw_upgrade.
+		 * 2. LCD driver is suppsed to send lcd mode notifier
+		 *    back to touch side after its recovery.
+		 * 3. The lcd mode notifier restarts init work again
+		 *    via siw_touch_resume.
+		 * 4. If boot fail detected again(counted by boot_fail_cnt)
+		 *    it goes to fw_upgrade stage.
+		 * (See siw_touch_init_work_func in siw_touch.c)
+		 */
 		if (ret == -(ENOMEDIUM<<3)) {
-			/* boot fail detected */
+			/* For the probe stage */
+			if (atomic_read(&ts->state.core) == CORE_PROBE) {
+				break;
+			}
+
+			/* Don't do recovery twice continuously */
+			if (atomic_read(&chip->esd_noti_sent)) {
+				break;
+			}
+
+			/* At the first boot fail */
+			if (chip->boot_fail_cnt > 1) {
+				break;
+			}
+
+			if (siw_hal_send_esd_notifier(dev, 2)) {
+				ret = -((ENOMEDIUM<<3)+1);
+			}
 			break;
 		}
 
@@ -2051,6 +2138,8 @@ static int siw_hal_init(struct device *dev)
 	if (ret < 0) {
 		goto out;
 	}
+
+	atomic_set(&chip->esd_noti_sent, 0);
 
 	siw_hal_init_reg_set(dev);
 
@@ -4926,15 +5015,12 @@ static int siw_hal_check_status_type_x(struct device *dev,
 	}
 
 	if (esd_send) {
-		if (chip->lcd_mode == LCD_MODE_U0) {
-			ret = -ERESTART;
-		} else {
-		#if 1
-			int esd = 1;
-			ret = siw_touch_atomic_notifier_call(LCD_EVENT_TOUCH_ESD_DETECTED, (void*)&esd);
-			if (ret)
-				t_dev_err(dev, "check the value, %d\n", ret);
-		#endif
+		ret = -ERESTART;
+		if (chip->lcd_mode != LCD_MODE_U0) {
+			if (siw_hal_send_esd_notifier(dev, 1)) {
+				atomic_set(&chip->esd_noti_sent, 1);
+				return -((ENOMEDIUM<<3)+0xF);
+			}
 		}
 	}
 
@@ -5019,6 +5105,10 @@ static int siw_hal_do_check_status(struct device *dev,
 	default:
 		t_dev_warn(dev, "unknown status type, %d\n", chip->status_type);
 		break;
+	}
+
+	if (ret == -((ENOMEDIUM<<3)+0xF)) {
+		return ret;
 	}
 
 	if (ret_pre) {
@@ -5693,7 +5783,7 @@ static int siw_hal_notify(struct device *dev, ulong event, void *data)
 		noti_str = "PROXY";
 		break;
 	case LCD_EVENT_TOUCH_ESD_DETECTED:
-		t_dev_info(dev, "notify: ESD_DETECTED(%lu)\n", event);
+		t_dev_info(dev, "notify: ESD_DETECTED(%lu, %d)\n", event, value);
 		noti_str = "ESD";
 		break;
 	default:

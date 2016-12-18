@@ -451,10 +451,16 @@ struct siw_touch_chip {
 	atomic_t block_watch_cfg;
 	atomic_t init;
 	atomic_t boot;
+	atomic_t esd_noti_sent;
+	int boot_fail_cnt;
 #if defined(__SIW_SUPPORT_PM_QOS)
 	struct pm_qos_request pm_qos_req;
 #endif
 	struct siw_hal_reg_log reg_log[REG_LOG_MAX];
+};
+
+enum {
+	BOOT_FAIL_RECOVERY_MAX = 3,	/* to avoid infinite repetition */
 };
 
 enum {
