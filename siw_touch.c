@@ -684,9 +684,14 @@ static void siw_touch_init_work_func(struct work_struct *work)
 			container_of(to_delayed_work(work),
 						struct siw_ts, init_work);
 	struct device *dev = ts->dev;
+	int do_fw_upgarde = 0;
 	int ret = 0;
 
 	t_dev_dbg_base(dev, "init work start\n");
+
+	if (atomic_read(&ts->state.core) == CORE_PROBE) {
+		do_fw_upgarde |= !!(ts->role.use_fw_upgrade);
+	}
 
 	mutex_lock(&ts->lock);
 	siw_touch_initialize(ts);
@@ -695,8 +700,12 @@ static void siw_touch_init_work_func(struct work_struct *work)
 		siw_touch_irq_control(dev, INTERRUPT_ENABLE);
 	}
 	mutex_unlock(&ts->lock);
-	if (ret == -(ENOMEDIUM<<3)) {
-		/* boot fail detected */
+	if (ret == -((ENOMEDIUM<<3)+1)) {
+		/* boot fail detected, but skip(postpone) fw_upgrade */
+		return;
+	} else if (ret == -(ENOMEDIUM<<3)) {
+		/* boot fail detected, do fw_upgrade */
+		do_fw_upgarde |= 0x2;
 	} else if (ret < 0) {
 		if (atomic_read(&ts->state.core) == CORE_PROBE) {
 			t_dev_err(dev, "%s init work failed(%d), try again\n",
@@ -711,12 +720,10 @@ static void siw_touch_init_work_func(struct work_struct *work)
 		return;
 	}
 
-	if (ts->role.use_fw_upgrade) {
-		if (atomic_read(&ts->state.core) == CORE_PROBE) {
-			t_dev_info(dev, "Touch F/W upgrade triggered\n");
-			siw_touch_qd_upgrade_work_now(ts);
-			return;
-		}
+	if (do_fw_upgarde) {
+		t_dev_info(dev, "Touch F/W upgrade triggered(%Xh)\n", do_fw_upgarde);
+		siw_touch_qd_upgrade_work_now(ts);
+		return;
 	}
 
 #if defined(__SIW_SUPPORT_ASC)
