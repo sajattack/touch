@@ -55,6 +55,10 @@
 
 #define CHIP_FW_SIZE				(64<<10)
 
+#define CHIP_FLAGS					(0 |	\
+									TOUCH_SKIP_ESD_EVENT |	\
+									0)
+
 #define CHIP_IRQFLAGS				(IRQF_TRIGGER_FALLING | IRQF_ONESHOT)
 
 
@@ -142,7 +146,7 @@ static const struct siw_touch_pdata chip_pdata = {
 	.chip_type			= CHIP_TYPE,
 	.mode_allowed		= CHIP_MODE_ALLOWED,
 	.fw_size			= CHIP_FW_SIZE,
-	.flags				= 0,	/* Caution : MSB(bit31) unavailable */
+	.flags				= CHIP_FLAGS,	/* Caution : MSB(bit31) unavailable */
 	.irqflags			= CHIP_IRQFLAGS,
 	.quirks				= CHIP_QUIRKS,
 	/* */
