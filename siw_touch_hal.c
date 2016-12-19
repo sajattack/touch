@@ -4251,7 +4251,14 @@ static int siw_hal_tc_driving(struct device *dev, int mode)
 
 	if ((mode == LCD_MODE_U0) ||
 		(mode == LCD_MODE_U2)) {
-		touch_msleep(200);
+		int middle_delay = 0;
+
+		switch (touch_chip_type(ts)) {
+		case CHIP_LG4895:
+			middle_delay = 200;
+			break;
+		}
+		touch_msleep(middle_delay);
 	}
 
 	t_dev_info(dev, "current driving mode is %s\n",
