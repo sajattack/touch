@@ -3017,6 +3017,9 @@ out:
 	return ret;
 }
 
+#define	FW_POST_DELAY		20
+#define FW_POST_COUNT		200
+
 static int siw_hal_fw_upgrade_fw_post(struct device *dev, int fw_size)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
@@ -3053,7 +3056,7 @@ static int siw_hal_fw_upgrade_fw_post(struct device *dev, int fw_size)
 	/* download check */
 	chk_resp = FLASH_CODE_DNCHK_VALUE;
 	ret = siw_hal_condition_wait(dev, reg->tc_flash_dn_status, &data,
-				chk_resp, 0xFFFF, 30, 600);
+				chk_resp, 0xFFFF, FW_POST_DELAY, FW_POST_COUNT);
 	if (ret < 0) {
 		t_dev_err(dev, "FW upgrade: failed - code check(%Xh), %08Xh\n",
 			chk_resp, data);
@@ -3132,6 +3135,9 @@ out:
 	return ret;
 }
 
+#define	CONF_POST_DELAY		20
+#define CONF_POST_COUNT		200
+
 static int siw_hal_fw_upgrade_conf_post(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
@@ -3150,7 +3156,7 @@ static int siw_hal_fw_upgrade_conf_post(struct device *dev)
 	/* Conf check */
 	chk_resp = FLASH_CONF_DNCHK_VALUE_TYPE_X;
 	ret = siw_hal_condition_wait(dev, reg->tc_flash_dn_status, &data,
-				chk_resp, 0xFFFF, 30, 600);
+				chk_resp, 0xFFFF, CONF_POST_DELAY, CONF_POST_COUNT);
 	if (ret < 0) {
 		t_dev_err(dev, "FW upgrade: failed - conf check(%Xh), %X\n",
 			chk_resp, data);
