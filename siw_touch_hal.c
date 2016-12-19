@@ -2055,8 +2055,14 @@ static void siw_hal_lcd_event_read_reg(struct device *dev){ }
 
 static int siw_hal_send_esd_notifier(struct device *dev, int type)
 {
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
 	int esd = type;
 	int ret;
+
+	if (touch_flags(ts) & TOUCH_SKIP_ESD_EVENT) {
+		return 0;
+	}
 
 	ret = siw_touch_atomic_notifier_call(LCD_EVENT_TOUCH_ESD_DETECTED, (void*)&esd);
 	if (ret)
