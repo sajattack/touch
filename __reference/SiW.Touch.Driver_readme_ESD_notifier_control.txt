@@ -1,4 +1,4 @@
-[Last updated : 2016.12.09]
+[Last updated : 2016.12.19]
 
 ###################################################################################################
 # Preview                                                                                         #
@@ -48,24 +48,16 @@ touch driver supports notifer chain for this mode control
 * Touch sends ESD signal(LCD_EVENT_TOUCH_ESD_DETECTED) via notifier call chain
   and the LCD driver can receive this.
 
-  <Status check in IRQ handler>
-  static int siw_hal_check_status_type_x(struct device *dev,
-				u32 status, u32 ic_status, int irq)
+  <ESD event handler>
+  static int siw_hal_send_esd_notifier(struct device *dev, int type)
   {
 	...
+	int esd = type;
+	...
 
-	if (esd_send) {
-		if (chip->lcd_mode == LCD_MODE_U0) {
-			ret = -ERESTART;
-		} else {
-		#if 1
-			int esd = 1;
-			ret = siw_touch_atomic_notifier_call(LCD_EVENT_TOUCH_ESD_DETECTED, (void*)&esd);
-			if (ret)
-				t_dev_err(dev, "check the value, %d\n", ret);
-		#endif
-		}
-	}
+	ret = siw_touch_atomic_notifier_call(LCD_EVENT_TOUCH_ESD_DETECTED, (void*)&esd);
+	if (ret)
+		t_dev_err(dev, "check the value, %d\n", ret);
 	...
   }
 
