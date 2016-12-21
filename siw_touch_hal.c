@@ -1423,15 +1423,15 @@ static int siw_hal_chk_status_type(struct device *dev)
 						mask_bit->valid_tv_drv |
 						0;
 
-	chip->status_mask_logging = mask_bit->valid_code_crc |
-						mask_bit->valid_cfg_crc |
-						mask_bit->error_mismtach |
+	chip->status_mask_logging = mask_bit->error_mismtach |
 						mask_bit->valid_irq_pin |
 						mask_bit->valid_irq_en |
 						mask_bit->valid_tv_drv |
 						0;
 
 	chip->status_mask_reset = mask_bit->valid_dev_ctl |
+						mask_bit->valid_code_crc |
+						mask_bit->valid_cfg_crc |
 						mask_bit->error_abnormal |
 						mask_bit->error_system |
 						0;
