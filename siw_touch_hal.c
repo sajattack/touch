@@ -1443,6 +1443,8 @@ static int siw_hal_chk_status_type(struct device *dev)
 
 	chip->status_mask_ic_abnormal = INT_IC_ABNORMAL_STATUS;
 
+	chip->status_mask_ic_valid = 0xFF;
+
 	t_dev_info(dev, "status type  : %d\n", chip->status_type);
 	t_dev_info(dev, "status mask  : %08Xh\n", chip->status_mask);
 	t_dev_info(dev, " normal      : %08Xh\n", chip->status_mask_normal);
@@ -4960,6 +4962,19 @@ static int siw_hal_check_status_type_x(struct device *dev,
 
 	if (filter == NULL) {
 		return -EINVAL;
+	}
+
+	if (ic_status & ~chip->status_mask_ic_valid) {
+		t_dev_err(dev, "[%d] status %08Xh, ic_status %08Xh, ic_status invalid\n",
+			irq, status, ic_status);
+
+		if (chip->lcd_mode != LCD_MODE_U0) {
+			if (siw_hal_send_esd_notifier(dev, 8)) {
+				atomic_set(&chip->esd_noti_sent, 1);
+				return -((ENOMEDIUM<<3)+0xF);
+			}
+		}
+		return -ERESTART;
 	}
 
 	while (1) {
