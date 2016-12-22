@@ -427,13 +427,11 @@ enum {
 	SD_FLAG_LG4946		=	(0	|	\
 							U3_M2_RAWDATA_TEST_FLAG |	\
 							OPEN_SHORT_NODE_TEST_FLAG |	\
-							U3_JITTER_TEST_FLAG |	\
-							OPEN_SHORT_RESULT_DATA_FLAG |	\
+							OPEN_SHORT_RESULT_RAWDATA_FLAG |	\
 							0),
 	LPWG_SD_FLAG_LG4946 = 	(0 |	\
 							U0_M2_RAWDATA_TEST_FLAG |	\
 							U0_M1_RAWDATA_TEST_FLAG |	\
-							U0_JITTER_TEST_FLAG |	\
 							0),
 };
 
