@@ -1648,7 +1648,7 @@ static int siw_hal_do_ic_info(struct device *dev, int prt_on)
 		chip->boot_fail_cnt++;
 
 		/* return special flag to let the core layer know */
-		return -(ENOMEDIUM<<3);
+		return -ETDBOOTFAIL;
 	}
 	chip->boot_fail_cnt = 0;
 
@@ -2114,7 +2114,7 @@ static int siw_hal_init(struct device *dev)
 		 *    it goes to fw_upgrade stage.
 		 * (See siw_touch_init_work_func in siw_touch.c)
 		 */
-		if (ret == -(ENOMEDIUM<<3)) {
+		if (ret == -ETDBOOTFAIL) {
 			/* For the probe stage */
 			if (atomic_read(&ts->state.core) == CORE_PROBE) {
 				break;
@@ -2131,7 +2131,7 @@ static int siw_hal_init(struct device *dev)
 			}
 
 			if (siw_hal_send_esd_notifier(dev, 2)) {
-				ret = -((ENOMEDIUM<<3)+1);
+				ret = -ETDSENTESD;
 			}
 			break;
 		}
@@ -4971,7 +4971,7 @@ static int siw_hal_check_status_type_x(struct device *dev,
 		if (chip->lcd_mode != LCD_MODE_U0) {
 			if (siw_hal_send_esd_notifier(dev, 8)) {
 				atomic_set(&chip->esd_noti_sent, 1);
-				return -((ENOMEDIUM<<3)+0xF);
+				return -ETDSENTESDIRQ;
 			}
 		}
 		return -ERESTART;
@@ -5053,7 +5053,7 @@ static int siw_hal_check_status_type_x(struct device *dev,
 		if (chip->lcd_mode != LCD_MODE_U0) {
 			if (siw_hal_send_esd_notifier(dev, 1)) {
 				atomic_set(&chip->esd_noti_sent, 1);
-				return -((ENOMEDIUM<<3)+0xF);
+				return -ETDSENTESDIRQ;
 			}
 		}
 	}
@@ -5141,7 +5141,7 @@ static int siw_hal_do_check_status(struct device *dev,
 		break;
 	}
 
-	if (ret == -((ENOMEDIUM<<3)+0xF)) {
+	if (ret == -ETDSENTESDIRQ) {
 		return ret;
 	}
 

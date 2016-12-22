@@ -188,6 +188,9 @@ enum {
 	DBG_FLAG_SKIP_UEVENT	= (1<<9),
 };
 
+#define ETDBOOTFAIL			((ENOMEDIUM<<3) + 0x00)
+#define ETDSENTESD			((ENOMEDIUM<<3) + 0x01)
+#define ETDSENTESDIRQ		((ENOMEDIUM<<3) + 0x0F)
 
 #endif	/* __SIW_TOUCH_DBG_H */
 

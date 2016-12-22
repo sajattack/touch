@@ -700,10 +700,10 @@ static void siw_touch_init_work_func(struct work_struct *work)
 		siw_touch_irq_control(dev, INTERRUPT_ENABLE);
 	}
 	mutex_unlock(&ts->lock);
-	if (ret == -((ENOMEDIUM<<3)+1)) {
+	if (ret == -ETDSENTESD) {
 		/* boot fail detected, but skip(postpone) fw_upgrade */
 		return;
-	} else if (ret == -(ENOMEDIUM<<3)) {
+	} else if (ret == -ETDBOOTFAIL) {
 		/* boot fail detected, do fw_upgrade */
 		do_fw_upgarde |= 0x2;
 	} else if (ret < 0) {
