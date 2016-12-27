@@ -272,7 +272,7 @@ __packed struct ext_watch_cfg_position {	/* 0xC11 */
 
 static inline int __check_pos_not_set(struct ext_watch_cfg_position *position)
 {
-	return !(position->h1x_pos);
+	return !(position->m1x_pos);
 }
 
 __packed struct ext_watch_cfg_status {	/* 0x270*/
