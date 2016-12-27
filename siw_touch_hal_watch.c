@@ -1179,7 +1179,8 @@ static int ext_watch_set_position(struct device *dev)
 	struct siw_hal_reg *reg = chip->reg;
 	struct watch_data *watch = (struct watch_data *)chip->watch;
 	struct ext_watch_cfg_position *position = &watch->ext_wdata.position;
-//	u8 *ptr = (u8 *)position;
+	u8 *ptr = (u8 *)position;
+	int i;
 	int ret = 0;
 
 	if (WATCH_FLAG(watch) & WATCH_FLAG_SKIP_SET_POS) {
@@ -1199,9 +1200,24 @@ static int ext_watch_set_position(struct device *dev)
 		return 0;
 	}
 
+#if 1
+	/*
+	 * Single access for wide compatibility
+	 * LG4946 can't support burst access
+	 */
+	for (i = 0; i < 5; i++) {
+		ret = siw_hal_reg_write(dev,
+				reg->ext_watch_position + i,
+				(void *)&ptr[i<<2], sizeof(u32));
+		if (ret < 0) {
+			break;
+		}
+	}
+#else
 	ret = siw_hal_reg_write(dev,
 				reg->ext_watch_position,
 				(void *)position, sizeof(u32)*5);
+#endif
 	if (ret < 0) {
 		goto out;
 	}
