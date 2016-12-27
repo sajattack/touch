@@ -2177,8 +2177,8 @@ static ssize_t store_ext_watch_config_font_effect(struct device *dev,
 
 		switch (watch_type) {
 		case WATCH_TYPE_1:
-			cfg.blink.bstartx = 232;
-			cfg.blink.bendx = cfg.blink.bstartx;
+			cfg.blink.bstartx = 696;
+			cfg.blink.bendx = 744;
 			break;
 		default:
 			/*
@@ -2283,7 +2283,7 @@ static const struct ext_watch_config_font_pos watch_pos_test_1 = {
 	.watstartx	= 464,
 	.watendx	= 976,
 	.watstarty	= 244,
-	.watendy	= 408,
+	.watendy	= 428,
 	.h1x_pos	= 114,
 	.h10x_pos	= 0,
 	.m1x_pos	= 398,
@@ -2409,6 +2409,19 @@ out:
 	return ret;
 }
 
+static const struct ext_watch_config_font_prop watch_prop_test_lg4946 = {
+	.max_num = EXT_WATCH_LUT_NUM,
+	.lut = {
+		[0] = { 0x01, 0x01, 0x01 },
+		[1] = { 0x36, 0x36, 0x36 },
+		[2] = { 0x4F, 0x4F, 0x4F },
+		[3] = { 0x73, 0x73, 0x73 },
+		[4] = { 0x8E, 0x8E, 0x8E },
+		[5] = { 0xA2, 0xA2, 0xA2 },
+		[6] = { 0xC0, 0xC0, 0xC0 },
+	},
+};
+
 static const struct ext_watch_config_font_prop watch_prop_test = {
 	.max_num = EXT_WATCH_LUT_NUM,
 	.lut = {
@@ -2426,7 +2439,7 @@ static ssize_t store_ext_watch_config_font_property(struct device *dev,
  					const char *buf, size_t count)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
-//	struct siw_ts *ts = chip->ts;
+	struct siw_ts *ts = chip->ts;
 	struct watch_data *watch = (struct watch_data *)chip->watch;
 	struct ext_watch_cfg_mode *mode = &watch->ext_wdata.mode;
 	struct ext_watch_bits_lut *lut = NULL;
@@ -2445,7 +2458,14 @@ static ssize_t store_ext_watch_config_font_property(struct device *dev,
 
 	//for test using echo command
 	if ((count == 2) && (buf[0] == EXT_WATCH_CFG_DEBUG)) {
-		prop_src = (void *)&watch_prop_test;
+		switch (touch_chip_type(ts)) {
+		case CHIP_LG4946:
+			prop_src = (void *)&watch_prop_test_lg4946;
+			break;
+		default:
+			prop_src = (void *)&watch_prop_test;
+			break;
+		}
 	} else {
 		prop_src = (void *)buf;
 	}
