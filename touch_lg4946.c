@@ -166,7 +166,11 @@ static const struct siw_hal_reg_quirk chip_reg_quirks[] = {
 	{ .old_addr = PRD_M1_M2_RAW_OFFSET, .new_addr = 0x292, },
 	{ .old_addr = PRD_TUNE_RESULT_OFFSET, .new_addr = 0x295, },
 	{ .old_addr = PRD_OPEN3_SHORT_OFFSET, .new_addr = 0x294, },
-	{ .old_addr = EXT_WATCH_FONT_OFFSET, .new_addr = 0x28E, },
+	{ .old_addr = EXT_WATCH_CTRL, .new_addr = 0x282, },
+	{ .old_addr = EXT_WATCH_AREA_X, .new_addr = 0x283, },
+	{ .old_addr = EXT_WATCH_AREA_Y, .new_addr = 0x284, },
+	{ .old_addr = EXT_WATCH_BLINK_AREA, .new_addr = 0x285, },
+	{ .old_addr = EXT_WATCH_LUT, .new_addr = 0x286, },
 	{ .old_addr = ~0, .new_addr = ~0 },		// End signal
 };
 
