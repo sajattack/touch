@@ -10,9 +10,9 @@
 
 		chip_flags = <0x102>;
 
-		//pinctrl-names = "pmx_ts_active","pmx_ts_suspend";
-		//pinctrl-0 = <&ts_int_active>;
-		//pinctrl-1 = <&ts_int_suspend>;
+	//	pinctrl-names = "touch_pin_active", "touch_pin_sleep";
+	//	pinctrl-0 = <&ts_reset_active &ts_int_active>;
+	//	pinctrl-1 = <&ts_reset_suspend &ts_int_suspend >;
 
 		reset-gpio = <&pio 62 0x00>;
 		irq-gpio = <&eintc 10 0x2008>;
