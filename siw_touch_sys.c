@@ -125,11 +125,7 @@ int siw_touch_boot_mode_check(struct device *dev)
 
 int siw_touch_boot_mode_tc_check(struct device *dev)
 {
-#if defined(CONFIG_TOUCHSCREEN_SIW_LG4946_F700)
-	int ret = 1;
-#else
 	int ret = 0;
-#endif
 
 #if defined(CONFIG_SIW_GET_BOOT_MODE)
 	if (sys_get_boot_mode() == BOOT_MODE_CHARGERLOGO) {
