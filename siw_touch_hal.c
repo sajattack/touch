@@ -6162,7 +6162,7 @@ static void siw_hal_mon_handler_self_reset(struct device *dev, char *title)
 		return;
 	}
 
-	if (chip->lcd_mode < LCD_MODE_U3) {
+	if (chip->lcd_mode != LCD_MODE_U3) {
 		return;
 	}
 
