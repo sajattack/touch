@@ -1669,6 +1669,8 @@ extern int siw_touch_remove(struct siw_ts *ts);
 
 extern int siw_touch_init_late(void *data);
 
+extern int siw_touch_notify(struct siw_ts *ts, unsigned long event, void *data);
+
 
 #if defined(CONFIG_TOUCHSCREEN_SIWMON)
 

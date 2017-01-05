@@ -807,8 +807,6 @@ static void siw_touch_fb_work_func(struct work_struct *work)
 }
 
 #if defined(__SIW_CONFIG_USE_SYS_PANEL_RESET)
-extern int siw_touch_notify(struct siw_ts *ts, unsigned long event, void *data);
-
 static void siw_touch_sys_reset_work_func(struct work_struct *work)
 {
 	struct siw_ts *ts =
