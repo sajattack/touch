@@ -4327,15 +4327,19 @@ static int siw_hal_tc_driving(struct device *dev, int mode)
 	}
 
 	if (re_init) {
+		ret = siw_hal_read_value(dev,
+				reg->spr_subdisp_status,
+				&rdata);
+
 		if (atomic_read(&ts->recur_chk)) {
-			t_dev_err(dev, "command failed: mode %d, tc_status %08Xh\n",
-				mode, tc_status);
+			t_dev_err(dev, "command failed: mode %d, tc_status %08Xh, DDI %08Xh\n",
+				mode, tc_status, rdata);
 			atomic_set(&ts->recur_chk, 0);
 			return -EFAULT;
 		}
 
-		t_dev_err(dev, "command missed: mode %d, tc_status %08Xh\n",
-			mode, tc_status);
+		t_dev_err(dev, "command missed: mode %d, tc_status %08Xh, DDI %08Xh\n",
+			mode, tc_status, rdata);
 
 		atomic_set(&ts->recur_chk, 1);
 
