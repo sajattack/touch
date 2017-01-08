@@ -4257,7 +4257,6 @@ static ssize_t prd_show_get_data_common(struct device *dev, char *buf, int type)
 	 */
 #if defined(__PRD_LOG_VIA_SHELL)
 	switch (type) {
-	case CMD_RAWDATA_PRD:
 	case CMD_BLU_JITTER:
 		break;
 	default:
