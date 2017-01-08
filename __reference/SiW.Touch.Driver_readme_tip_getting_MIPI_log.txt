@@ -1,0 +1,100 @@
+[Last updated : 2017.01.06]
+
+###################################################################################################
+# Extracting MIPI raw command log (just example)                                                  #
+###################################################################################################
+
+The SiW AIT touch module basically consists of display and touch block
+and these two parts area related to each other for mode mngt.
+So, display driver and touch driver shall be connected and
+touch driver supports notifer chain for this mode control
+
+Rule 1. The display mode setup shall precede touch mode setup
+Rule 2. The mode status of two drivers shall be synchronized with each other
+
+Sometimes it needs to be checeked if the operation sequence is correct or not.
+This example is useful for getting MIPI command transfer log.
+
+###################################################################################################
+# Code example : for msm driver                                                                   #
+###################################################################################################
+
+[drivers/video/msm/mdss/mdss_dsi_panel.c]
+void mdss_dsi_panel_cmds_send(struct mdss_dsi_ctrl_pdata *ctrl,
+                                        struct dsi_panel_cmds *pcmds, u32 flags)
+{
+	struct dcs_cmd_req cmdreq;
+	struct mdss_panel_info *pinfo;
+
+	pinfo = &(ctrl->panel_data.panel_info);
+	if (pinfo->dcs_cmd_by_left) {
+		if (ctrl->ndx != DSI_CTRL_LEFT)
+			return;
+	}
+
+	memset(&cmdreq, 0, sizeof(cmdreq));
+	cmdreq.cmds = pcmds->cmds;
+	cmdreq.cmds_cnt = pcmds->cmd_cnt;
+	cmdreq.flags = flags;
+
+	/*Panel ON/Off commands should be sent in DSI Low Power Mode*/
+	if (pcmds->link_state == DSI_LP_MODE)
+		cmdreq.flags  |= CMD_REQ_LP_MODE;
+	else if (pcmds->link_state == DSI_HS_MODE)
+		cmdreq.flags |= CMD_REQ_HS_MODE;
+
+	cmdreq.rlen = 0;
+	cmdreq.cb = NULL;
+
+	/*
+	 * Here! This is MIPI command log print
+	 */
+	if (1) {
+		struct dsi_cmd_desc *cmds = pcmds->cmds;
+		struct dsi_ctrl_hdr *dchdr;
+		char *payload;
+		char *pbuf = __getname();
+		int cnt, i;
+		int offset;
+
+		for (cnt = 0; cnt < pcmds->cmd_cnt; cnt++) {
+			dchdr = &cmds->dchdr;
+			payload = cmds->payload;
+
+			offset = snprintf(pbuf, PATH_MAX,
+						"%02X %02X %02X %02X %02X %02X %02X ",
+						dchdr->dtype, dchdr->last, dchdr->vc,
+						dchdr->ack, dchdr->wait,
+						dchdr->dlen >> 8, dchdr->dlen & 0xFF);
+
+			for (i = 0; i < dchdr->dlen ; i++) {
+				offset += snprintf(pbuf + offset, PATH_MAX - offset,
+								"%02X ", payload[i]);
+			}
+
+			pr_info("MIPI: %s\n", pbuf);
+
+			cmds++;
+		}
+		__putname(pbuf);
+	}
+
+	mdss_dsi_cmdlist_put(ctrl, &cmdreq);
+}
+
+---------------------------------------------------------------------------------------------------
+
+<Log example>
+...
+[  296.980688] MIPI: 39 01 00 00 00 00 0D FF 88 11 22 02 52 00 02 00 0A 00 02 D0 
+[  296.980701] MIPI: 15 01 00 00 00 00 02 53 0D
+...
+
+---------------------------------------------------------------------------------------------------
+
+---------------------------------------------------------------------------------------------------
+
+---------------------------------------------------------------------------------------------------
+
+
+
