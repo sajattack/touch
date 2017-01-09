@@ -51,6 +51,12 @@
  *
  */
 
+#define __SIW_SUPPORT_PRD_SET_SD
+
+#if defined(__SIW_SUPPORT_PRD_SET_SD)
+//#define __SIW_SUPPORT_PRD_SET_SD_ONLY
+#endif
+
 enum {
 	PRD_DATA_NAME_SZ	= 128,
 	/* */
@@ -312,6 +318,19 @@ enum _SIW_PRD_DBG_MASK_FLAG {
 	PRD_DBG_OPEN_SHORT_DATA		= (1U<<0),
 };
 
+#if defined(__SIW_SUPPORT_PRD_SET_SD)
+struct siw_hal_prd_sd_param {
+	int u3_m2[2];	/* [0] = lower, [1] = upper */
+	int u0_m2[2];
+	int u0_m1[2];
+	int u3_blu_jitter[2];
+	int u3_jitter[2];
+	int u0_jitter[2];
+	int last_type;
+	int last_val[2];
+};
+#endif	/* __SIW_SUPPORT_PRD_SET_SD */
+
 struct siw_hal_prd_data {
 	struct device *dev;
 	char name[PRD_DATA_NAME_SZ];
@@ -324,6 +343,10 @@ struct siw_hal_prd_data {
 	/* */
 	struct siw_hal_prd_img_cmd img_cmd;
 	struct siw_hal_prd_img_offset img_offset;
+	/* */
+#if defined(__SIW_SUPPORT_PRD_SET_SD)
+	struct siw_hal_prd_sd_param sd_param;
+#endif
 	/* */
 	int prd_app_mode;
 	/* */
@@ -781,13 +804,13 @@ static const char *prd_cmp_tool_str[][2] = {
 		[0] = "U3_M2_Lower",
 		[1] = "U3_M2_Upper",
 	},
-	[U0_M1_RAWDATA_TEST] = {
-		[0] = "U0_M1_Lower",
-		[1] = "U0_M1_Upper",
-	},
 	[U0_M2_RAWDATA_TEST] = {
 		[0] = "U0_M2_Lower",
 		[1] = "U0_M2_Upper",
+	},
+	[U0_M1_RAWDATA_TEST] = {
+		[0] = "U0_M1_Lower",
+		[1] = "U0_M1_Upper",
 	},
 	[U3_BLU_JITTER_TEST] = {
 		[0] = "U3_Blu_Jitter_Lower",
@@ -1838,7 +1861,7 @@ out:
 	return ret;
 }
 
-static int prd_get_limit(struct siw_hal_prd_data *prd,
+static int __used prd_get_limit(struct siw_hal_prd_data *prd,
 		char *breakpoint, int *limit)
 {
 	struct device *dev = prd->dev;
@@ -2492,6 +2515,8 @@ static int prd_print_rawdata(struct siw_hal_prd_data *prd,
 	return size;
 }
 
+#define STR_SPEC_BY_PARAM	"(p)"
+
 /*
 *	return "result Pass:0 , Fail:1"
 */
@@ -2513,7 +2538,13 @@ static int prd_compare_tool(struct siw_hal_prd_data *prd,
 	int curr_lower, curr_upper;
 	int raw_err = 0;
 	int	result = 0;
+	int spec_by_param = 0;
 	int cnt = 0;
+
+	spec_by_param = !!(opt & (1<<16));
+	opt &= 0xFFFF;
+
+	col_add = (opt) ? param->col_add : 0;
 
 	if (!test_cnt) {
 		t_prd_err(prd, "zero test count\n");
@@ -2527,12 +2558,14 @@ static int prd_compare_tool(struct siw_hal_prd_data *prd,
 	curr_lower = prd->image_lower;
 	curr_upper = prd->image_upper;
 
-	t_prd_info(prd, "lower %d, upper %d\n",
-		curr_lower, curr_upper);
+	t_prd_info(prd, "lower %d, upper %d %s\n",
+		curr_lower, curr_upper,
+		(spec_by_param) ? STR_SPEC_BY_PARAM : "");
 	size += siw_prd_buf_snprintf(prd->buf_write,
 				size,
-				"lower %d, upper %d\n",
-				curr_lower, curr_upper);
+				"lower %d, upper %d %s\n",
+				curr_lower, curr_upper,
+				(spec_by_param) ? STR_SPEC_BY_PARAM : "");
 
 	if (type != U0_M1_RAWDATA_TEST) {
 		second_screen = &param->second_scr;
@@ -2622,6 +2655,10 @@ out:
 static int prd_compare_rawdata(struct siw_hal_prd_data *prd, int type)
 {
 	struct siw_hal_prd_param *param = &prd->param;
+#if defined(__SIW_SUPPORT_PRD_SET_SD)
+	struct siw_hal_prd_sd_param *sd_param = &prd->sd_param;
+#endif
+	int spec_by_param = 0;
 //	struct device *dev = prd->dev;
 	/* spec reading */
 	char lower_str[64] = {0, };
@@ -2632,6 +2669,8 @@ static int prd_compare_rawdata(struct siw_hal_prd_data *prd, int type)
 	};
 	int row_size = param->row;
 	int col_size = param->col;
+	int lower = 0, upper = 0;
+	int invalid = 0;
 	int test_cnt = 0;
 	int opt = 1;
 	int ret = 0;
@@ -2645,9 +2684,9 @@ static int prd_compare_rawdata(struct siw_hal_prd_data *prd, int type)
 	snprintf(upper_str, sizeof(upper_str), prd_cmp_tool_str[type][1]);
 
 	switch (type) {
-	case U0_M2_RAWDATA_TEST:
-		/* fall through */
 	case U3_M2_RAWDATA_TEST:
+		/* fall through */
+	case U0_M2_RAWDATA_TEST:
 		/* fall through */
 	case U3_BLU_JITTER_TEST:
 		/* fall through */
@@ -2671,25 +2710,84 @@ static int prd_compare_rawdata(struct siw_hal_prd_data *prd, int type)
 		return -EINVAL;
 	}
 
+#if defined(__SIW_SUPPORT_PRD_SET_SD)
+	switch (type) {
+	case U3_M2_RAWDATA_TEST:
+		lower = sd_param->u3_m2[0];
+		upper = sd_param->u3_m2[1];
+		break;
+	case U0_M2_RAWDATA_TEST:
+		lower = sd_param->u0_m2[0];
+		upper = sd_param->u0_m2[1];
+		break;
+	case U0_M1_RAWDATA_TEST:
+		lower = sd_param->u0_m1[0];
+		upper = sd_param->u0_m1[1];
+		break;
+	case U3_BLU_JITTER_TEST:
+		lower = sd_param->u3_blu_jitter[0];
+		upper = sd_param->u3_blu_jitter[1];
+		break;
+	case U3_JITTER_TEST:
+		lower = sd_param->u3_jitter[0];
+		upper = sd_param->u3_jitter[1];
+		break;
+	case U0_JITTER_TEST:
+		lower = sd_param->u0_jitter[0];
+		upper = sd_param->u0_jitter[1];
+		break;
+	}
+	if (lower || upper) {
+		spec_by_param = (1<<16);
+	}
+#endif
+
+	if (spec_by_param) {
+		t_prd_info(prd, "type %d, skip reading spec file\n", type);
+		goto skip_file;
+	}
+
+#if !defined(__SIW_SUPPORT_PRD_SET_SD_ONLY)
 	ret = prd_get_limit(prd,
-				lower_str, &prd->image_lower);
+				lower_str, &lower);
 	if (ret < 0) {
-		goto out;
+		return ret;
 	}
 
 	ret = prd_get_limit(prd,
-				upper_str, &prd->image_upper);
+				upper_str, &upper);
 	if (ret < 0) {
-		goto out;
+		return ret;
 	}
+#endif
+
+skip_file:
+	invalid |= !!(lower < 0);
+	invalid |= !!(upper < 0);
+	invalid |= !!(lower >= upper);
+
+	if (invalid) {
+		t_prd_err(prd, "wrong condition: type %d, lower %d, upper %d %s\n",
+			type, lower, upper,
+			(spec_by_param) ? STR_SPEC_BY_PARAM : "");
+
+		siw_prd_buf_snprintf(prd->buf_write, 0,
+			"wrong condition: type %d, lower %d, upper %d %s\n",
+			type, lower, upper,
+			(spec_by_param) ? STR_SPEC_BY_PARAM : "");
+
+		return -EINVAL;
+	}
+
+	prd->image_lower = lower;
+	prd->image_upper = upper;
 
 	ret = prd_compare_tool(prd, test_cnt,
-				rawdata_buf, row_size, col_size, type, opt);
+				rawdata_buf, row_size, col_size, type,
+				opt | spec_by_param);
 
-out:
 	return ret;
 }
-
 
 /*
  * SIW TOUCH IC F/W Stop HandShake
@@ -4883,6 +4981,223 @@ static ssize_t prd_store_dbg_mask(struct device *dev,
 	return count;
 }
 
+#if defined(__SIW_SUPPORT_PRD_SET_SD)
+#define siw_prd_set_sd_sprintf(_buf, _title) \
+		sprintf(_buf, "%-20s(%d) -", #_title, _title)
+
+#define t_prd_info_set_sd(_prd, _title) \
+		t_prd_info(_prd, "  %-20s - %d\n", #_title, _title)
+
+static int prd_show_set_sd_item(char *buf, int size, char *title, int *value)
+{
+	int lower = value[0];
+	int upper = value[1];
+	int disabled = 0;
+	int invalid = 0;
+
+	disabled = !!(!lower && !upper);
+
+	invalid |= !!(lower < 0);
+	invalid |= !!(upper < 0);
+	invalid |= !!(lower >= upper);
+
+	size = siw_snprintf(buf, size,
+				" %s lower %d, upper %d %s\n",
+				title, lower, upper,
+				(disabled) ? "(disabled)" :
+				(invalid) ? "(invalid)" : "(enabled)");
+
+	return size;
+}
+
+static ssize_t prd_show_set_sd(struct device *dev, char *buf)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	struct siw_hal_prd_data *prd = (struct siw_hal_prd_data *)ts->prd;
+	struct siw_hal_prd_param *param = &prd->param;
+	struct siw_hal_prd_sd_param *sd_param = &prd->sd_param;
+	char title[32] = {0, };
+	int valid = 0;
+	int disabled = 0;
+	int invalid = 0;
+	int type;
+	int lower, upper;
+	int size = 0;
+
+	size += siw_snprintf(buf, size, "[sd]\n");
+
+	if(param->sd_test_flag & U3_M2_RAWDATA_TEST_FLAG) {
+		siw_prd_set_sd_sprintf(title, U3_M2_RAWDATA_TEST);
+		size += prd_show_set_sd_item(buf, size, title, sd_param->u3_m2);
+	}
+	if(param->sd_test_flag & U3_BLU_JITTER_TEST_FLAG) {
+		siw_prd_set_sd_sprintf(title, U3_BLU_JITTER_TEST);
+		size += prd_show_set_sd_item(buf, size, title, sd_param->u3_blu_jitter);
+	}
+	if(param->sd_test_flag & U3_JITTER_TEST_FLAG) {
+		siw_prd_set_sd_sprintf(title, U3_JITTER_TEST);
+		size += prd_show_set_sd_item(buf, size, title, sd_param->u3_jitter);
+	}
+
+	size += siw_snprintf(buf, size, "[lpwg_sd]\n");
+
+	if(param->lpwg_sd_test_flag & U0_M2_RAWDATA_TEST_FLAG) {
+		siw_prd_set_sd_sprintf(title, U0_M2_RAWDATA_TEST);
+		size += prd_show_set_sd_item(buf, size, title, sd_param->u0_m2);
+	}
+	if(param->lpwg_sd_test_flag & U0_M1_RAWDATA_TEST_FLAG) {
+		siw_prd_set_sd_sprintf(title, U0_M1_RAWDATA_TEST);
+		size += prd_show_set_sd_item(buf, size, title, sd_param->u0_m1);
+	}
+	if(param->lpwg_sd_test_flag & U0_JITTER_TEST_FLAG) {
+		siw_prd_set_sd_sprintf(title, U0_JITTER_TEST);
+		size += prd_show_set_sd_item(buf, size, title, sd_param->u0_jitter);
+	}
+
+	type = sd_param->last_type;
+	lower = sd_param->last_val[0];
+	upper = sd_param->last_val[1];
+	if ((type >=0) && (type < UX_INVALID)) {
+		if (param->sd_test_flag & (1<<type)) {
+			valid |= !!(1<<type);
+		}
+		if (param->lpwg_sd_test_flag & (1<<type)) {
+			valid |= !!(1<<type);
+		}
+	}
+
+	disabled = !!(valid && !lower && !upper);
+
+	invalid |= !valid;
+	invalid |= !!(lower < 0);
+	invalid |= !!(upper < 0);
+	invalid |= !!(lower >= upper);
+
+	size += siw_snprintf(buf, size,
+				"\nLast:\n");
+	size += siw_snprintf(buf, size,
+				" type %d, lower %d, upper %d %s\n",
+				type,lower, upper,
+				(disabled) ? "(disabled)" :
+				(invalid) ? "(invalid)" : "(enabled)");
+
+	size += siw_snprintf(buf, size,
+				"\nUsage:\n");
+	size += siw_snprintf(buf, size,
+				" echo {type} {lower} {upper} > set_sd\n\n");
+
+	return (ssize_t)size;
+}
+
+static void prd_store_set_sd_usage(struct device *dev)
+{
+	struct siw_ts *ts = to_touch_core(dev);
+	struct siw_hal_prd_data *prd = (struct siw_hal_prd_data *)ts->prd;
+	struct siw_hal_prd_param *param = &prd->param;
+
+	t_prd_info(prd, "Usage:\n");
+	t_prd_info(prd, " echo {type} {lower} {upper} > set_sd\n");
+	t_prd_info(prd, " [type for sd]\n");
+	if(param->sd_test_flag & U3_M2_RAWDATA_TEST_FLAG) {
+		t_prd_info_set_sd(prd, U3_M2_RAWDATA_TEST);
+	}
+	if(param->sd_test_flag & U3_BLU_JITTER_TEST_FLAG) {
+		t_prd_info_set_sd(prd, U3_BLU_JITTER_TEST);
+	}
+	if(param->sd_test_flag & U3_JITTER_TEST_FLAG) {
+		t_prd_info_set_sd(prd, U3_JITTER_TEST);
+	}
+	t_prd_info(prd, " [type for lpwd_sd]\n");
+	if(param->lpwg_sd_test_flag & U0_M2_RAWDATA_TEST_FLAG) {
+		t_prd_info_set_sd(prd, U0_M2_RAWDATA_TEST);
+	}
+	if(param->lpwg_sd_test_flag & U0_M1_RAWDATA_TEST_FLAG) {
+		t_prd_info_set_sd(prd, U0_M1_RAWDATA_TEST);
+	}
+	if(param->lpwg_sd_test_flag & U0_JITTER_TEST_FLAG) {
+		t_prd_info_set_sd(prd, U0_JITTER_TEST);
+	}
+}
+
+static ssize_t prd_store_set_sd(struct device *dev,
+				const char *buf, size_t count)
+{
+	struct siw_ts *ts = to_touch_core(dev);
+	struct siw_hal_prd_data *prd = (struct siw_hal_prd_data *)ts->prd;
+	struct siw_hal_prd_param *param = &prd->param;
+	struct siw_hal_prd_sd_param *sd_param = &prd->sd_param;
+	int type = 0;
+	int valid = 0;
+	int lower = 0, upper = 0;
+
+	if (sscanf(buf, "%d %d %d", &type, &lower, &upper) <= 0) {
+		t_prd_err(prd, "Invalid param\n");
+		prd_store_set_sd_usage(dev);
+		return count;
+	}
+
+	if ((type >=0) && (type < UX_INVALID)) {
+		if (param->sd_test_flag & (1<<type)) {
+			valid |= !!(1<<type);
+		}
+		if (param->lpwg_sd_test_flag & (1<<type)) {
+			valid |= !!(1<<type);
+		}
+	}
+
+	sd_param->last_type = type;
+	sd_param->last_val[0] = lower;
+	sd_param->last_val[1] = upper;
+
+	if (!valid) {
+		prd_store_set_sd_usage(dev);
+		return count;
+	}
+
+	switch (type) {
+	/* items of sd */
+	case U3_M2_RAWDATA_TEST:
+		sd_param->u3_m2[0] = lower;
+		sd_param->u3_m2[1] = upper;
+		break;
+	case U3_BLU_JITTER_TEST:
+		sd_param->u3_blu_jitter[0] = lower;
+		sd_param->u3_blu_jitter[1] = upper;
+		break;
+	case U3_JITTER_TEST:
+		sd_param->u3_jitter[0] = lower;
+		sd_param->u3_jitter[1] = upper;
+		break;
+
+	/* items of lpwg_sd */
+	case U0_M2_RAWDATA_TEST:
+		sd_param->u0_m2[0] = lower;
+		sd_param->u0_m2[1] = upper;
+		break;
+	case U0_M1_RAWDATA_TEST:
+		sd_param->u0_m1[0] = lower;
+		sd_param->u0_m1[1] = upper;
+		break;
+	case U0_JITTER_TEST:
+		sd_param->u0_jitter[0] = lower;
+		sd_param->u0_jitter[1] = upper;
+		break;
+	}
+
+	if (prd_cmp_tool_str[type]) {
+		t_prd_info(prd, "set_sd: %s %d, %s %d\n",
+			prd_cmp_tool_str[type][0], lower,
+			prd_cmp_tool_str[type][0], upper);
+	} else {
+		t_prd_info(prd, "set_sd: type %d, lower %d, upper %d\n",
+			type, lower, upper);
+	}
+
+	return count;
+}
+#endif /* __SIW_SUPPORT_PRD_SET_SD */
+
 
 #if defined(__SIW_ATTR_PERMISSION_ALL)
 #define __TOUCH_PRD_PERM	(S_IRUGO | S_IWUGO)
@@ -4917,6 +5232,10 @@ static SIW_TOUCH_HAL_PRD_ATTR(prd_app_info, prd_show_app_info, NULL);
 
 static SIW_TOUCH_HAL_PRD_ATTR(prd_dbg_mask, prd_show_dbg_mask, prd_store_dbg_mask);
 
+#if defined(__SIW_SUPPORT_PRD_SET_SD)
+static SIW_TOUCH_HAL_PRD_ATTR(set_sd, prd_show_set_sd, prd_store_set_sd);
+#endif
+
 static struct attribute *siw_hal_prd_attribute_list_all[] = {
 	/*
 	 * [Caution]
@@ -4941,6 +5260,9 @@ static struct attribute *siw_hal_prd_attribute_list_all[] = {
 	&_SIW_TOUCH_HAL_PRD_T(prd_app_info).attr,
 	/* */
 	&_SIW_TOUCH_HAL_PRD_T(prd_dbg_mask).attr,
+#if defined(__SIW_SUPPORT_PRD_SET_SD)
+	&_SIW_TOUCH_HAL_PRD_T(set_sd).attr,
+#endif
 	NULL,
 };
 
@@ -5503,6 +5825,10 @@ static struct siw_hal_prd_data *siw_hal_prd_alloc(struct device *dev)
 	ts->prd = prd;
 
 	siw_hal_prd_set_sd_cmd(prd);
+
+#if defined(__SIW_SUPPORT_PRD_SET_SD)
+	prd->sd_param.last_type = UX_INVALID;
+#endif
 
 	return prd;
 
