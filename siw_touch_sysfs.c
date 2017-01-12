@@ -1179,6 +1179,17 @@ static ssize_t _store_grab_state(struct device *dev,
 	return (ssize_t)ret;
 }
 
+ssize_t __weak show_sys_con(struct device *dev, char *buf)
+{
+	return 0;
+}
+
+ssize_t __weak store_sys_con(struct device *dev,
+				const char *buf, size_t count)
+{
+	return count;
+}
+
 
 #define SIW_TOUCH_ATTR(_name, _show, _store)	\
 		TOUCH_ATTR(_name, _show, _store)
@@ -1275,6 +1286,9 @@ static SIW_TOUCH_ATTR(glove_status,
 static SIW_TOUCH_ATTR(grab_status,
 						_show_grab_state,
 						_store_grab_state);
+static SIW_TOUCH_ATTR(sys_con,
+						show_sys_con,
+						store_sys_con);
 
 
 static struct attribute *siw_touch_attribute_list[] = {
@@ -1315,6 +1329,7 @@ static struct attribute *siw_touch_attribute_list[] = {
 	&_SIW_TOUCH_ATTR_T(dbg_test).attr,
 	&_SIW_TOUCH_ATTR_T(glove_status).attr,
 	&_SIW_TOUCH_ATTR_T(grab_status).attr,
+	&_SIW_TOUCH_ATTR_T(sys_con).attr,
 	NULL,
 };
 
