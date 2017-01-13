@@ -4203,6 +4203,52 @@ static void siw_hal_chk_dbg_report(struct device *dev, u32 status, int irq)
 		irq, ic_debug[0], ic_debug[1], ic_debug[2]);
 }
 
+static int siw_hal_tc_driving_post(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	struct siw_hal_fw_info *fw = &chip->fw;
+	u32 addr[4] = { 0, };
+	u32 rdata;
+	int ret = 0;
+
+	switch (touch_chip_type(ts)) {
+	case CHIP_SW49407:
+		if (chip->driving_mode != LCD_MODE_U3) {
+			break;
+		}
+
+		rdata = 0;
+		switch (fw->v.version.major) {
+		case 0 :
+		case 1 :
+			rdata = !!(fw->v.version.minor > 14);
+			break;
+		}
+
+		addr[0] = (rdata) ? 0x284 : 0;
+		break;
+	default:
+		goto out;
+	}
+
+	if (addr[0]) {
+		rdata = 0;
+		ret = siw_hal_read_value(dev, addr[0], &rdata);
+		if (ret < 0) {
+			goto out;
+		}
+		if (rdata) {
+			t_dev_err(dev, "!! [Warning] !!\n");
+			t_dev_err(dev, "   Check MIPI script (%d)\n", rdata);
+			t_dev_err(dev, "   Maybe, MIPI(VIDEO) vs. FW(CMD) or vice versa.\n");
+		}
+	}
+
+out:
+	return 0;
+}
+
 static int siw_hal_tc_driving(struct device *dev, int mode)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
@@ -4301,6 +4347,8 @@ static int siw_hal_tc_driving(struct device *dev, int mode)
 	if (mode == LCD_MODE_U3_PARTIAL) {
 		goto out;
 	}
+
+	siw_hal_tc_driving_post(dev);
 
 	ret = siw_hal_read_value(dev,
 				reg->tc_status,
