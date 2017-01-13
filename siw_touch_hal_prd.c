@@ -121,6 +121,8 @@ enum {
 	/* for sd_test_flag */
 	OPEN_SHORT_RESULT_DATA_IDX = 24,
 	OPEN_SHORT_RESULT_RAWDATA_IDX,
+
+	U0_JITTER_M1,
 };
 
 enum {
@@ -155,6 +157,8 @@ enum {
 	/* */
 	OPEN_SHORT_RESULT_DATA_FLAG		= (1<<OPEN_SHORT_RESULT_DATA_IDX),
 	OPEN_SHORT_RESULT_RAWDATA_FLAG	= (1<<OPEN_SHORT_RESULT_RAWDATA_IDX),
+
+	U0_JITTER_M1_FLAG			= (1<<U0_JITTER_M1),
 };
 
 enum {
@@ -311,6 +315,7 @@ struct siw_hal_prd_sd_cmd {
 	u32 cmd_m2_rawdata;
 	u32 cmd_m1_rawdata;
 	u32 cmd_jitter;
+	u32 cmd_u0_jitter;
 };
 
 enum _SIW_PRD_DBG_MASK_FLAG {
@@ -479,7 +484,7 @@ enum {
 	LPWG_SD_FLAG_SW49406	= __LPWG_SD_FLAG_SW49XXX,
 
 	SD_FLAG_SW49407			= __SD_FLAG_SW49XXX,
-	LPWG_SD_FLAG_SW49407	= __LPWG_SD_FLAG_SW49XXX,
+	LPWG_SD_FLAG_SW49407	= __LPWG_SD_FLAG_SW49XXX | U0_JITTER_M1_FLAG,
 
 	SD_FLAG_SW49408			= __SD_FLAG_SW49XXX,
 	LPWG_SD_FLAG_SW49408	= __LPWG_SD_FLAG_SW49XXX,
@@ -1700,6 +1705,9 @@ static int prd_write_test_mode(struct siw_hal_prd_data *prd, int type)
 			break;
 		}
 		break;
+	case CHIP_SW49407:
+		line_filter_option = 0;
+		break;
 	}
 
 	switch (type) {
@@ -1730,7 +1738,7 @@ static int prd_write_test_mode(struct siw_hal_prd_data *prd, int type)
 		testmode = ((U3_TEST_PRE_CMD << 8) + sd_cmd->cmd_jitter) | line_filter_option;
 		break;
 	case U0_JITTER_TEST:
-		testmode = ((U0_TEST_PRE_CMD << 8) + sd_cmd->cmd_jitter) | line_filter_option;
+		testmode = ((U0_TEST_PRE_CMD << 8) + sd_cmd->cmd_u0_jitter) | line_filter_option;
 		break;
 	default:
 		t_prd_err(prd, "unsupported test mode, %d\n", type);
@@ -2672,6 +2680,7 @@ static int prd_compare_rawdata(struct siw_hal_prd_data *prd, int type)
 	int lower = 0, upper = 0;
 	int invalid = 0;
 	int test_cnt = 0;
+	int sel_m1 = 0;
 	int opt = 1;
 	int ret = 0;
 
@@ -2691,23 +2700,31 @@ static int prd_compare_rawdata(struct siw_hal_prd_data *prd, int type)
 	case U3_BLU_JITTER_TEST:
 		/* fall through */
 	case U3_JITTER_TEST:
-		/* fall through */
+		break;
+
 	case U0_JITTER_TEST:
-		test_cnt = param->m2_cnt;
+		sel_m1 = !!(param->lpwg_sd_test_flag & U0_JITTER_M1_FLAG);
 		break;
 
 	case U0_M1_RAWDATA_TEST:
+		sel_m1 = 1;
+		break;
+
+	default:
+		t_prd_err(prd, "unsupported test mode, %d\n", type);
+		return -EINVAL;
+	}
+
+
+	if (sel_m1) {
 		row_size = param->row;
 		col_size = param->m1_col;
 		rawdata_buf[0] = prd->m1_buf_even_rawdata;
 		rawdata_buf[1] = prd->m1_buf_odd_rawdata;
 		test_cnt = param->m1_cnt;
 		opt = 0;
-		break;
-
-	default:
-		t_prd_err(prd, "unsupported test mode, %d\n", type);
-		return -EINVAL;
+	} else {
+		test_cnt = param->m2_cnt;
 	}
 
 #if defined(__SIW_SUPPORT_PRD_SET_SD)
@@ -2896,6 +2913,7 @@ static int prd_read_rawdata(struct siw_hal_prd_data *prd, int type)
 	int16_t *tmp_buf = prd->m1_buf_tmp;
 	int16_t *raw_buf;
 	int addr = reg->prd_m1_m2_raw_offset;
+	int sel_m1 = 0;
 	int i, j = 0;
 	int ret = 0;
 
@@ -2929,39 +2947,22 @@ static int prd_read_rawdata(struct siw_hal_prd_data *prd, int type)
 		/* fall through */
 	case U3_JITTER_TEST:
 		/* fall through */
-	case U0_JITTER_TEST:
-		/* fall through */
 	case U3_M2_RAWDATA_TEST:
 		/* fall through */
 	case U0_M2_RAWDATA_TEST:
-		for (i = 0; i < param->m2_cnt; i++) {
-			/* raw data offset write */
-			ret = siw_hal_write_value(dev,
-						reg->serial_data_offset,
-						raw_data_offset[i]);
-			if (ret < 0) {
-				goto out;
-			}
+		break;
 
-			if (buf_rawdata[i] == NULL) {
-				t_prd_err(prd, "reading rawdata(%d) failed: NULL buf\n", type);
-				ret = -EFAULT;
-				goto out;
-			}
-
-			/* raw data read */
-			memset(buf_rawdata[i], 0, __m2_frame_size);
-
-			ret = siw_hal_reg_read(dev,
-						reg->data_i2cbase_addr,
-						(void *)buf_rawdata[i], __m2_frame_size);
-			if (ret < 0) {
-				goto out;
-			}
-		}
+ 	case U0_JITTER_TEST:
+		sel_m1 = !!(param->lpwg_sd_test_flag & U0_JITTER_M1_FLAG);
 		break;
 
 	case U0_M1_RAWDATA_TEST:
+		sel_m1 = 1;
+		break;
+
+	}
+
+	if (sel_m1) {
 		buf_rawdata[0] = prd->m1_buf_even_rawdata;
 		buf_rawdata[1] = prd->m1_buf_odd_rawdata;
 
@@ -2999,7 +3000,32 @@ static int prd_read_rawdata(struct siw_hal_prd_data *prd, int type)
 			}
 
 		}
-		break;
+	} else {
+		for (i = 0; i < param->m2_cnt; i++) {
+			/* raw data offset write */
+			ret = siw_hal_write_value(dev,
+						reg->serial_data_offset,
+						raw_data_offset[i]);
+			if (ret < 0) {
+				goto out;
+			}
+
+			if (buf_rawdata[i] == NULL) {
+				t_prd_err(prd, "reading rawdata(%d) failed: NULL buf\n", type);
+				ret = -EFAULT;
+				goto out;
+			}
+
+			/* raw data read */
+			memset(buf_rawdata[i], 0, __m2_frame_size);
+
+			ret = siw_hal_reg_read(dev,
+						reg->data_i2cbase_addr,
+						(void *)buf_rawdata[i], __m2_frame_size);
+			if (ret < 0) {
+				goto out;
+			}
+		}
 	}
 
 out:
@@ -3206,6 +3232,7 @@ static int prd_conrtol_rawdata_result(struct siw_hal_prd_data *prd, int type, in
 	struct siw_hal_prd_param *param = &prd->param;
 	int print_type[2] = {0, };
 	int i,test_cnt;
+	int sel_m1 = 0;
 	int opt = 1;
 	int size = 0;
 	int result = 0;
@@ -3215,22 +3242,30 @@ static int prd_conrtol_rawdata_result(struct siw_hal_prd_data *prd, int type, in
 	case U0_M2_RAWDATA_TEST:
 	case U3_BLU_JITTER_TEST:
 	case U3_JITTER_TEST:
+		break;
+
 	case U0_JITTER_TEST:
-		print_type[0] = M2_EVEN_DATA;
-		print_type[1] = M2_ODD_DATA;
-		test_cnt = param->m2_cnt;
+		sel_m1 = !!(param->lpwg_sd_test_flag & U0_JITTER_M1_FLAG);
 		break;
 
 	case U0_M1_RAWDATA_TEST:
-		print_type[0] = M1_EVEN_DATA;
-		print_type[1] = M1_ODD_DATA;
-		test_cnt = param->m1_cnt;
-		opt = 0;
+		sel_m1 = 1;
 		break;
 
 	default:
 		t_prd_err(prd, "conrtol_rawdata_result Type not defined, %d\n", type);
 		return 1;
+	}
+
+	if (sel_m1) {
+		print_type[0] = M1_EVEN_DATA;
+		print_type[1] = M1_ODD_DATA;
+		test_cnt = param->m1_cnt;
+		opt = 0;
+	} else {
+		print_type[0] = M2_EVEN_DATA;
+		print_type[1] = M2_ODD_DATA;
+		test_cnt = param->m2_cnt;
 	}
 
 #if 1
@@ -5771,6 +5806,7 @@ static void siw_hal_prd_set_sd_cmd(struct siw_hal_prd_data *prd)
 	sd_cmd->cmd_m2_rawdata = M2_RAWDATA_TEST_POST_CMD;
 	sd_cmd->cmd_m1_rawdata = M1_RAWDATA_TEST_POST_CMD;
 	sd_cmd->cmd_jitter = JITTER_TEST_POST_CMD;
+	sd_cmd->cmd_u0_jitter = JITTER_TEST_POST_CMD;
 
 	switch (touch_chip_type(ts)) {
 	case CHIP_SW49407:
@@ -5778,12 +5814,14 @@ static void siw_hal_prd_set_sd_cmd(struct siw_hal_prd_data *prd)
 		sd_cmd->cmd_short_node = 2;
 		sd_cmd->cmd_m2_rawdata = 5;
 		sd_cmd->cmd_m1_rawdata = 3;
-		sd_cmd->cmd_jitter = 10;
+		sd_cmd->cmd_jitter = 6;
+		sd_cmd->cmd_u0_jitter = 4;
 		break;
 	case CHIP_LG4946:
 		sd_cmd->cmd_jitter = 10;
+		sd_cmd->cmd_u0_jitter = 10;
 		break;
-	};
+	}
 
 	t_prd_info(prd,
 		"cmd_open_node  : %d\n",
@@ -5798,8 +5836,11 @@ static void siw_hal_prd_set_sd_cmd(struct siw_hal_prd_data *prd)
 		"cmd_m1_rawdata : %d\n",
 		sd_cmd->cmd_m1_rawdata);
 	t_prd_info(prd,
-		"cmd_jitter     : %d\n",
+		"cmd_jitter 	 : %d\n",
 		sd_cmd->cmd_jitter);
+	t_prd_info(prd,
+		"cmd_jitter(u0)  : %d\n",
+		sd_cmd->cmd_u0_jitter);
 }
 
 static struct siw_hal_prd_data *siw_hal_prd_alloc(struct device *dev)
