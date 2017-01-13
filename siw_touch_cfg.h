@@ -81,6 +81,8 @@
 #define __SIW_CONFIG_FB
 #endif
 
+//#define __SIW_CONFIG_FASTBOOT
+
 #define __SIW_CONFIG_PROX_ON_SUSPEND
 #define __SIW_CONFIG_PROX_ON_RESUME
 

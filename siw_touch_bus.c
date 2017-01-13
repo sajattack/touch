@@ -565,7 +565,7 @@ int siw_touch_bus_del_driver(struct siw_touch_chip_data *chip_data)
 	return __siw_touch_bus_add_driver(chip_data, DRIVER_FREE);
 }
 
-int siw_touch_bus_pm_suspend(struct device *dev)
+static int siw_touch_bus_do_pm_suspend(struct device *dev)
 {
 	struct siw_ts *ts = to_touch_core(dev);
 
@@ -573,12 +573,10 @@ int siw_touch_bus_pm_suspend(struct device *dev)
 
 	atomic_set(&ts->state.pm, DEV_PM_SUSPEND);
 
-	t_dev_info(dev, "touch bus pm suspend done\n");
-
 	return 0;
 }
 
-int siw_touch_bus_pm_resume(struct device *dev)
+static int siw_touch_bus_do_pm_resume(struct device *dev)
 {
 	struct siw_ts *ts = to_touch_core(dev);
 	int resume_irq = 0;
@@ -595,9 +593,44 @@ int siw_touch_bus_pm_resume(struct device *dev)
 		siw_touch_resume_irq(dev);
 	}
 
-	t_dev_info(dev, "touch bus pm resume done\n");
-
 	return 0;
+}
+
+int siw_touch_bus_pm_suspend(struct device *dev, int freeze)
+{
+	struct siw_ts *ts = to_touch_core(dev);
+	int ret = 0;
+
+	if (freeze) {
+		siw_touch_mon_pause(dev);
+	}
+
+	ret = siw_touch_bus_do_pm_suspend(dev);
+
+	if (freeze) {
+		siw_touch_notify(ts, NOTIFY_TOUCH_RESET, NULL);
+	}
+
+	t_dev_info(dev, "touch bus pm %s done\n",
+		(freeze) ? "freeze" : "suspend");
+
+	return ret;
+}
+
+int siw_touch_bus_pm_resume(struct device *dev, int thaw)
+{
+	int ret = 0;
+
+	ret = siw_touch_bus_do_pm_resume(dev);
+
+	if (thaw) {
+		siw_touch_mon_resume(dev);
+	}
+
+	t_dev_info(dev, "touch bus pm %s done\n",
+		(thaw) ? "thaw" : "resume");
+
+	return ret;
 }
 
 

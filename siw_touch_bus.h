@@ -124,8 +124,8 @@ extern void siw_touch_bus_err_dump_data(struct device *dev,
 extern int siw_touch_bus_add_driver(struct siw_touch_chip_data *chip_data);
 extern int siw_touch_bus_del_driver(struct siw_touch_chip_data *chip_data);
 
-extern int siw_touch_bus_pm_suspend(struct device *dev);
-extern int siw_touch_bus_pm_resume(struct device *dev);
+extern int siw_touch_bus_pm_suspend(struct device *dev, int freeze);
+extern int siw_touch_bus_pm_resume(struct device *dev, int thaw);
 
 
 #endif	/* __SIW_TOUCH_BUS_H */

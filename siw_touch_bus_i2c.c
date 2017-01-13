@@ -292,11 +292,12 @@ static int siw_touch_i2c_remove(struct i2c_client *i2c)
 	return 0;
 }
 
+#if defined(CONFIG_PM_SLEEP)
 static int siw_touch_i2c_pm_suspend(struct device *dev)
 {
 	int ret = 0;
 
-	ret = siw_touch_bus_pm_suspend(dev);
+	ret = siw_touch_bus_pm_suspend(dev, 0);
 
 	return ret;
 }
@@ -305,15 +306,45 @@ static int siw_touch_i2c_pm_resume(struct device *dev)
 {
 	int ret = 0;
 
-	ret = siw_touch_bus_pm_resume(dev);
+	ret = siw_touch_bus_pm_resume(dev, 0);
 
 	return ret;
 }
 
+#if defined(__SIW_CONFIG_FASTBOOT)
+static int siw_touch_i2c_pm_freeze(struct device *dev)
+{
+	int ret = 0;
+
+	ret = siw_touch_bus_pm_suspend(dev, 1);
+
+	return ret;
+}
+
+static int siw_touch_i2c_pm_thaw(struct device *dev)
+{
+	int ret = 0;
+
+	ret = siw_touch_bus_pm_resume(dev, 1);
+
+	return ret;
+}
+#endif
+
 static const struct dev_pm_ops siw_touch_i2c_pm_ops = {
-	.suspend = siw_touch_i2c_pm_suspend,
-	.resume = siw_touch_i2c_pm_resume,
+	.suspend 		= siw_touch_i2c_pm_suspend,
+	.resume 		= siw_touch_i2c_pm_resume,
+#if defined(__SIW_CONFIG_FASTBOOT)
+	.freeze			= siw_touch_i2c_pm_freeze,
+	.thaw			= siw_touch_i2c_pm_thaw,
+	.poweroff		= siw_touch_i2c_pm_freeze,
+	.restore		= siw_touch_i2c_pm_thaw,
+#endif
 };
+#define DEV_PM_OPS	(&siw_touch_i2c_pm_ops)
+#else	/* CONFIG_PM_SLEEP */
+#define DEV_PM_OPS	NULL
+#endif	/* CONFIG_PM_SLEEP */
 
 static struct i2c_device_id siw_touch_i2c_id[] = {
 	{ SIW_TOUCH_NAME, 0 },
@@ -366,7 +397,7 @@ int siw_touch_i2c_add_driver(void *data)
 #if defined(__SIW_CONFIG_OF)
 	i2c_drv->driver.of_match_table = pdata->of_match_table;
 #endif
-	i2c_drv->driver.pm = &siw_touch_i2c_pm_ops;
+	i2c_drv->driver.pm = DEV_PM_OPS;
 
 	i2c_drv->probe = siw_touch_i2c_probe;
 	i2c_drv->remove = siw_touch_i2c_remove;
