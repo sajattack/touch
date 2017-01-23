@@ -217,8 +217,8 @@ static int siw_touch_do_parse_dts(struct siw_ts *ts)
 	u32 p_flags = 0;
 	int chip_flags = 0;
 	int irq_flags = 0;
-	enum of_gpio_flags pin_flags;
-	int pin_val;
+	enum of_gpio_flags pin_flags = 0;
+	int pin_val = -1;
 
 	if (!ts->dev->of_node) {
 		t_dev_err(dev, "No dts data\n");
@@ -227,12 +227,33 @@ static int siw_touch_do_parse_dts(struct siw_ts *ts)
 
 	t_dev_dbg_of(dev, "start dts parsing\n");
 
-	pin_val = siw_touch_of_gpio(dev, np, "reset-gpio", &pin_flags);
-	if (!gpio_is_valid(pin_val)) {
-		return -EINVAL;
+	chip_flags = siw_touch_of_int(dev, np, "chip_flags");
+	p_flags = pdata_flags(ts->pdata);
+	if ((p_flags & TOUCH_IGNORE_DT_FLAGS) || (chip_flags < 0)) {
+		ts->flags = p_flags;
+	} else {
+		ts->flags = chip_flags & 0xFFFF;
+		ts->flags |= p_flags & (0xFFFFUL<<16);
 	}
-	pins->reset_pin = pin_val;
-	pins->reset_pin_pol = !!(pin_flags & OF_GPIO_ACTIVE_LOW);
+	if (chip_flags >= 0) {
+		t_dev_info(dev, "flags(of) = 0x%08X (0x%08X, 0x%08X)\n",
+			ts->flags, p_flags, chip_flags);
+	} else {
+		t_dev_info(dev, "flags(of) = 0x%08X (0x%08X, %d)\n",
+			ts->flags, p_flags, chip_flags);
+	}
+
+	if (chip_flags & TOUCH_SKIP_RESET_PIN) {
+		pins->reset_pin = -1;
+		pins->reset_pin_pol = 0;
+	} else {
+		pin_val = siw_touch_of_gpio(dev, np, "reset-gpio", &pin_flags);
+		if (!gpio_is_valid(pin_val)) {
+			return -EINVAL;
+		}
+		pins->reset_pin = pin_val;
+		pins->reset_pin_pol = !!(pin_flags & OF_GPIO_ACTIVE_LOW);
+	}
 
 	pin_val = siw_touch_of_gpio(dev, np, "irq-gpio", NULL);
 	if (!gpio_is_valid(pin_val)) {
@@ -260,22 +281,6 @@ static int siw_touch_do_parse_dts(struct siw_ts *ts)
 	} else {
 		t_dev_info(dev, "irqflags(of) = 0x%08X (0x%08X, %d)\n",
 			(u32)ts->irqflags, p_flags, irq_flags);
-	}
-
-	chip_flags = siw_touch_of_int(dev, np, "chip_flags");
-	p_flags = pdata_flags(ts->pdata);
-	if ((p_flags & TOUCH_IGNORE_DT_FLAGS) || (chip_flags < 0)) {
-		ts->flags = p_flags;
-	} else {
-		ts->flags = chip_flags & 0xFFFF;
-		ts->flags |= p_flags & (0xFFFFUL<<16);
-	}
-	if (chip_flags >= 0) {
-		t_dev_info(dev, "flags(of) = 0x%08X (0x%08X, 0x%08X)\n",
-			ts->flags, p_flags, chip_flags);
-	} else {
-		t_dev_info(dev, "flags(of) = 0x%08X (0x%08X, %d)\n",
-			ts->flags, p_flags, chip_flags);
 	}
 
 	/* Caps */
@@ -371,6 +376,7 @@ out:
 static int siw_touch_parse_dts(struct siw_ts *ts)
 {
 	struct device *dev = ts->dev;
+	struct touch_pins *pins = &ts->pins;
 
 	ts->irqflags = pdata_irqflags(ts->pdata);
 
@@ -378,6 +384,18 @@ static int siw_touch_parse_dts(struct siw_ts *ts)
 	t_dev_info(dev, "flags = 0x%08X", ts->flags);
 
 	touch_set_pins(ts, &ts->pdata->pins);
+	if (ts->flags & TOUCH_SKIP_RESET_PIN) {
+		pins->reset_pin = -1;
+		pins->reset_pin_pol = 0;
+	} else {
+		if (!gpio_is_valid(pins->reset_pin)) {
+			return -EINVAL;
+		}
+	}
+	if (!gpio_is_valid(pins->irq_pin)) {
+		return -EINVAL;
+	}
+
 	touch_set_caps(ts, &ts->pdata->caps);
 
 	memcpy((void *)&ts->i_id, (void *)&ts->pdata->i_id, sizeof(ts->i_id));
