@@ -228,10 +228,31 @@ static void siw_hal_power_vio(struct device *dev, int value)
 #define SIW_HAL_GPIO_IRQ		"siw_hal_irq"
 #define SIW_HAL_GPIO_MAKER		"siw_hal_maker_id"
 
+static int __siw_hal_gpio_skip_reset(struct siw_ts *ts)
+{
+	struct device *dev = ts->dev;
+	int reset_pin = touch_reset_pin(ts);
+
+	if (touch_flags(ts) & TOUCH_SKIP_RESET_PIN) {
+		return 1;
+	}
+
+	if (!gpio_is_valid(reset_pin)) {
+		t_dev_err(dev, "reset_pin invalid, %d\n", reset_pin);
+		return 1;
+	}
+
+	return 0;
+}
+
 static void siw_hal_set_gpio_reset(struct device *dev, int val)
 {
 	struct siw_ts *ts = to_touch_core(dev);
 	int reset_pin = touch_reset_pin(ts);
+
+	if (__siw_hal_gpio_skip_reset(ts)) {
+		return;
+	}
 
 	siw_touch_gpio_direction_output(dev,
 			reset_pin, !!(val));
@@ -245,6 +266,10 @@ static void siw_hal_init_gpio_reset(struct device *dev)
 	struct siw_ts *ts = to_touch_core(dev);
 	int reset_pin = touch_reset_pin(ts);
 	int ret = 0;
+
+	if (__siw_hal_gpio_skip_reset(ts)) {
+		return;
+	}
 
 	ret = siw_touch_gpio_init(dev,
 			reset_pin,
@@ -266,6 +291,12 @@ static void siw_hal_init_gpio_reset(struct device *dev)
 
 static void siw_hal_trigger_gpio_reset(struct device *dev)
 {
+	struct siw_ts *ts = to_touch_core(dev);
+
+	if (__siw_hal_gpio_skip_reset(ts)) {
+		return;
+	}
+
 	siw_hal_set_gpio_reset(dev, GPIO_OUT_ZERO);
 	touch_msleep(1);
 	siw_hal_set_gpio_reset(dev, GPIO_OUT_ONE);
@@ -278,7 +309,24 @@ static void siw_hal_free_gpio_reset(struct device *dev)
 	struct siw_ts *ts = to_touch_core(dev);
 	int reset_pin = touch_reset_pin(ts);
 
+	if (__siw_hal_gpio_skip_reset(ts)) {
+		return;
+	}
+
 	siw_touch_gpio_free(dev, reset_pin);
+}
+
+static int __siw_hal_gpio_skip_irq(struct siw_ts *ts)
+{
+	struct device *dev = ts->dev;
+	int irq_pin = touch_irq_pin(ts);
+
+	if (!gpio_is_valid(irq_pin)) {
+		t_dev_err(dev, "irq_pin inavlid, %d\n", irq_pin);
+		return 1;
+	}
+
+	return 0;
 }
 
 static void siw_hal_init_gpio_irq(struct device *dev)
@@ -286,6 +334,10 @@ static void siw_hal_init_gpio_irq(struct device *dev)
 	struct siw_ts *ts = to_touch_core(dev);
 	int irq_pin = touch_irq_pin(ts);
 	int ret = 0;
+
+	if (__siw_hal_gpio_skip_irq(ts)) {
+		return;
+	}
 
 	ret = siw_touch_gpio_init(dev,
 			irq_pin,
@@ -311,6 +363,10 @@ static void siw_hal_free_gpio_irq(struct device *dev)
 	struct siw_ts *ts = to_touch_core(dev);
 	int irq_pin = touch_irq_pin(ts);
 
+	if (__siw_hal_gpio_skip_irq(ts)) {
+		return;
+	}
+
 	siw_touch_gpio_free(dev, irq_pin);
 }
 
@@ -319,8 +375,11 @@ static void siw_hal_init_gpio_maker_id(struct device *dev)
 #if 0
 	struct siw_ts *ts = to_touch_core(dev);
 	int maker_id_pin = touch_maker_id_pin(ts);
-
 	int ret = 0;
+
+	if (!gpio_is_valid(maker_id_pin)) {
+		return;
+	}
 
 	ret = siw_touch_gpio_init(dev,
 			maker_id_pin,
@@ -338,6 +397,10 @@ static void siw_hal_free_gpio_maker_id(struct device *dev)
 #if 0
 	struct siw_ts *ts = to_touch_core(dev);
 	int maker_id_pin = touch_maker_id_pin(ts);
+
+	if (!gpio_is_valid(maker_id_pin)) {
+		return;
+	}
 
 	siw_touch_gpio_free(dev, maker_id_pin);
 #endif
