@@ -209,6 +209,11 @@ static void siw_hal_power_init(struct device *dev)
 	siw_touch_power_init(dev);
 }
 
+static void siw_hal_power_free(struct device *dev)
+{
+	siw_touch_power_free(dev);
+}
+
 static void siw_hal_power_vdd(struct device *dev, int value)
 {
 	siw_touch_power_vdd(dev, value);
@@ -6414,6 +6419,26 @@ out:
 	return ret;
 }
 
+static void __siw_hal_do_remove(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+
+#if defined(__SIW_SUPPORT_PM_QOS)
+	pm_qos_remove_request(&chip->pm_qos_req);
+#endif
+
+	siw_hal_free_works(chip);
+	siw_hal_free_locks(chip);
+
+	siw_hal_power_free(dev);
+	siw_hal_free_gpios(dev);
+
+	touch_set_dev_data(ts, NULL);
+
+	touch_kfree(dev, chip);
+}
+
 static int siw_hal_probe(struct device *dev)
 {
 	struct siw_ts *ts = to_touch_core(dev);
@@ -6444,6 +6469,10 @@ static int siw_hal_probe(struct device *dev)
 			/* U3P driving and maintain 100ms before Deep sleep */
 			ret = siw_hal_tc_driving(dev, LCD_MODE_U3_PARTIAL);
 			if (ret < 0) {
+				__siw_hal_do_remove(dev);
+				siwmon_submit_ops_step_chip_wh_name(dev,
+						"%s probe failed(charger mode)",
+						touch_chip_name(ts), 0);
 				return ret;
 			}
 			touch_msleep(80);
@@ -6452,7 +6481,8 @@ static int siw_hal_probe(struct device *dev)
 		/* Deep Sleep */
 		siw_hal_deep_sleep(dev);
 
-		siwmon_submit_ops_step_chip_wh_name(dev, "%s probe done(charger mode)",
+		siwmon_submit_ops_step_chip_wh_name(dev,
+				"%s probe done(charger mode)",
 				touch_chip_name(ts), 0);
 		return 0;
 	}
@@ -6468,6 +6498,7 @@ static int siw_hal_probe(struct device *dev)
 
 	ret = siw_hal_chipset_check(dev);
 	if (ret < 0) {
+		__siw_hal_do_remove(dev);
 		goto out;
 	}
 
@@ -6480,7 +6511,15 @@ static int siw_hal_probe(struct device *dev)
 	siwmon_submit_ops_step_chip_wh_name(dev, "%s probe done",
 			touch_chip_name(ts), 0);
 
+	return 0;
+
 out:
+	t_dev_dbg_base(dev, "%s probe failed\n",
+				touch_chip_name(ts));
+
+	siwmon_submit_ops_step_chip_wh_name(dev, "%s probe failed",
+			touch_chip_name(ts), 0);
+
 	return ret;
 }
 
@@ -6489,18 +6528,7 @@ static int siw_hal_remove(struct device *dev)
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
 
-#if defined(__SIW_SUPPORT_PM_QOS)
-	pm_qos_remove_request(&chip->pm_qos_req);
-#endif
-
-	siw_hal_free_works(chip);
-	siw_hal_free_locks(chip);
-
-	siw_hal_free_gpios(dev);
-
-	touch_set_dev_data(ts, NULL);
-
-	touch_kfree(dev, chip);
+	__siw_hal_do_remove(dev);
 
 	t_dev_dbg_base(dev, "%s remove done\n",
 				touch_chip_name(ts));
