@@ -1168,7 +1168,7 @@ static void siw_hal_prt_swipe_info(struct device *dev)
 	struct siw_hal_swipe_ctrl *swipe = &chip->swipe;
 	struct siw_hal_swipe_info *info;
 
-	t_dev_dbg_base(dev, "swipe mode %08Xh\n", swipe->mode);
+	t_dev_dbg_swipe(dev, "swipe mode %08Xh\n", swipe->mode);
 	info = &swipe->info[SWIPE_R];
 	siw_prt_swipe_info(dev, "SWIPE_R", info);
 	info = &swipe->info[SWIPE_L];
@@ -3792,6 +3792,11 @@ static int siw_hal_tci_area_set(struct device *dev, int cover_status)
 	struct reset_area *qcover;
 	const char *msg;
 
+	switch (touch_chip_type(ts)) {
+	case CHIP_SW1828:
+		return 0;
+	}
+
 	if (touch_mode_not_allowed(ts, LCD_MODE_U3_QUICKCOVER)) {
 		return 0;
 	}
@@ -3895,6 +3900,11 @@ static int siw_hal_lpwg_control(struct device *dev, int mode)
 	struct siw_ts *ts = chip->ts;
 	struct tci_info *info1 = &ts->tci.info[TCI_1];
 	int ret = 0;
+
+	switch (touch_chip_type(ts)) {
+	case CHIP_SW1828:
+		return 0;
+	}
 
 	switch (mode) {
 	case LPWG_DOUBLE_TAP:
@@ -4071,18 +4081,21 @@ static int siw_hal_swipe_control(struct device *dev, int type)
 static int siw_hal_swipe_mode(struct device *dev, int mode)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
-//	struct siw_ts *ts = chip->ts;
+	struct siw_ts *ts = chip->ts;
 	struct siw_hal_reg *reg = chip->reg;
 	struct siw_hal_swipe_info *left = &chip->swipe.info[SWIPE_L];
 	struct siw_hal_swipe_info *right = &chip->swipe.info[SWIPE_R];
 	u32 swipe_data[11] = {0x0, };
 	int ret = 0;
 
-	if (!chip->swipe.mode) {
-		goto out;
+	switch (touch_chip_type(ts)) {
+	case CHIP_LG4894:
+	case CHIP_SW1828:
+	case CHIP_SW49105:
+		return 0;
 	}
 
-	if (mode != LCD_MODE_U2) {
+	if (!chip->swipe.mode || (mode != LCD_MODE_U2)) {
 		ret = siw_hal_swipe_control(dev, SWIPE_DISABLE_CTRL);
 		t_dev_dbg_base(dev, "swipe disabled\n");
 		goto out;
@@ -4485,7 +4498,7 @@ static void siw_hal_deep_sleep(struct device *dev)
 static void siw_hal_debug_tci(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
-//	struct siw_ts *ts = chip->ts;
+	struct siw_ts *ts = chip->ts;
 	struct siw_hal_reg *reg = chip->reg;
 	u8 debug_reason_buf[TCI_MAX_NUM][TCI_DEBUG_MAX_NUM];
 	u32 rdata[9] = {0, };
@@ -4494,6 +4507,11 @@ static void siw_hal_debug_tci(struct device *dev)
 	u32 i, j = 0;
 	u8 buf = 0;
 	int ret = 0;
+
+	switch (touch_chip_type(ts)) {
+	case CHIP_SW1828:
+		return;
+	}
 
 	if (!chip->tci_debug_type)
 		return;
@@ -4540,7 +4558,7 @@ static void siw_hal_debug_tci(struct device *dev)
 static void siw_hal_debug_swipe(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
-//	struct siw_ts *ts = chip->ts;
+	struct siw_ts *ts = chip->ts;
 	struct siw_hal_reg *reg = chip->reg;
 	u8 debug_reason_buf[SWIPE_MAX_NUM][SWIPE_DEBUG_MAX_NUM];
 	u32 rdata[5] = {0 , };
@@ -4549,6 +4567,13 @@ static void siw_hal_debug_swipe(struct device *dev)
 	u32 i, j = 0;
 	u8 buf = 0;
 	int ret = 0;
+
+	switch (touch_chip_type(ts)) {
+	case CHIP_LG4894:
+	case CHIP_SW1828:
+	case CHIP_SW49105:
+		return;
+	}
 
 	if (!chip->swipe_debug_type)
 		return;
