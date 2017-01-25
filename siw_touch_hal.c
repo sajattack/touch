@@ -2131,6 +2131,7 @@ static int siw_hal_send_esd_notifier(struct device *dev, int type)
 	int ret;
 
 	if (touch_flags(ts) & TOUCH_SKIP_ESD_EVENT) {
+		t_dev_info(dev, "skip sending ESD notifier\n");
 		return 0;
 	}
 
