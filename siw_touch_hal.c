@@ -1319,26 +1319,49 @@ static int siw_hal_chk_boot_status(struct device *dev)
 	return boot_failed;
 }
 
+enum {
+	BOOT_CHK_MODE_RETRY = 2,
+	BOOT_CHK_STS_RETRY	= 2,
+	/* */
+	BOOT_CHK_MODE_DELAY	= 10,
+	BOOT_CHK_STS_DELAY	= 10,
+};
+
 static int siw_hal_chk_boot(struct device *dev)
 {
 	u32 boot_failed = 0;
+	int retry;
 	int ret = 0;
 
-	ret = siw_hal_chk_boot_mode(dev);
-	if (ret < 0) {
-		return ret;
-	}
-	if (ret == BOOT_CHK_SKIP) {
-		return 0;
+	retry = BOOT_CHK_MODE_RETRY;
+	while (retry--) {
+		ret = siw_hal_chk_boot_mode(dev);
+		if (ret < 0) {
+			return ret;
+		}
+		if (ret == BOOT_CHK_SKIP) {
+			return 0;
+		}
+		if (!ret) {
+			break;
+		}
+		touch_msleep(BOOT_CHK_MODE_DELAY);
 	}
 	boot_failed |= ret;
 
-	ret = siw_hal_chk_boot_status(dev);
-	if (ret < 0) {
-		return ret;
-	}
-	if (ret == BOOT_CHK_SKIP) {
-		return boot_failed;
+	retry = BOOT_CHK_STS_RETRY;
+	while (retry--) {
+		ret = siw_hal_chk_boot_status(dev);
+		if (ret < 0) {
+			return ret;
+		}
+		if (ret == BOOT_CHK_SKIP) {
+			return boot_failed;
+		}
+		if (!ret) {
+			break;
+		}
+		touch_msleep(BOOT_CHK_STS_DELAY);
 	}
 	boot_failed |= ret;
 
