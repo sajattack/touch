@@ -95,8 +95,8 @@ static const struct tci_info chip_tci_info[2] = {
 	[TCI_1] = {
 		.tap_count		= 2,
 		.min_intertap	= 0,
-		.max_intertap	= 70,
-		.touch_slop		= 100,
+		.max_intertap	= 50,
+		.touch_slop		= 5,
 		.tap_distance	= 10,
 		.intr_delay		= 0,
 	},
@@ -132,7 +132,7 @@ static struct reset_area chip_qcover_close = {
 };
 
 static const struct siw_hal_swipe_ctrl chip_swipe_info = {
-	.mode	= 0,	//SWIPE_LEFT_BIT | SWIPE_RIGHT_BIT,
+	.mode	= SWIPE_LEFT_BIT | SWIPE_RIGHT_BIT,
 	.info = {
 		[SWIPE_R] = {	//SWIPE_D
 			.distance		= 10,
