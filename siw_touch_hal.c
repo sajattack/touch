@@ -2201,8 +2201,8 @@ static int siw_hal_init(struct device *dev)
 
 			if (siw_hal_send_esd_notifier(dev, 2)) {
 				ret = -ETDSENTESD;
+				break;
 			}
-			break;
 		}
 
 		t_dev_dbg_base(dev, "retry getting ic info (%d)\n", i);
