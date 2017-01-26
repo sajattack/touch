@@ -243,7 +243,7 @@ static int siw_touch_do_parse_dts(struct siw_ts *ts)
 			ts->flags, p_flags, chip_flags);
 	}
 
-	if (chip_flags & TOUCH_SKIP_RESET_PIN) {
+	if (ts->flags & TOUCH_SKIP_RESET_PIN) {
 		pins->reset_pin = -1;
 		pins->reset_pin_pol = 0;
 	} else {
