@@ -1705,7 +1705,7 @@ static int siw_hal_do_ic_info(struct device *dev, int prt_on)
 				(ferr < 0) ? "(invalid)" : "");
 	} else {
 		t_dev_info_sel(dev, prt_on,
-				"[T] chip id %s, version v%u.%02u (0x%08Xh, 0x%02X)\n",
+				"[T] chip id %s, version v%u.%02u (0x%08X, 0x%02X)\n",
 				fw->chip_id,
 				fw->v.version.major, fw->v.version.minor,
 				version, fw->revision);
