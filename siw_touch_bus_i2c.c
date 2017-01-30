@@ -60,7 +60,7 @@ static void siw_touch_i2c_err_dump(struct i2c_client *client,
 	t_dev_err(&client->dev, "i2c transfer err : ");
 	for (i = 0; i < num; i++) {
 		t_dev_err(&client->dev,
-				" - msgs[%d] : addr 0x%04X, flags 0x%04X, len %d\n",
+				" - msgs[%d] : client 0x%04X, flags 0x%04X, len %d\n",
 				i, msg->addr, msg->flags, msg->len);
 		siw_touch_bus_err_dump_data(&client->dev,
 					msg->buf, msg->len, i, "msgs");
