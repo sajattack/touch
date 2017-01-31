@@ -54,9 +54,9 @@
 #if defined(CONFIG_TOUCHSCREEN_SIW_OPT_SINGLE_SCR)
 #define __CHIP_SINGLE_SCR
 
-#define __CHIP_MAX_Y_2ND	0
+#define __CHIP_MAX_Y_2ND			0
 #else
-#define __CHIP_MAX_Y_2ND	160
+#define __CHIP_MAX_Y_2ND			160
 #endif
 
 
@@ -85,13 +85,20 @@
 #define CHIP_FW_SIZE				(84<<10)
 
 #if defined(__SW49407_USE_FONT_BINARY)
-#define CHIP_FLAG_USE_FONT_BINARY		TOUCH_USE_FONT_BINARY
+#define CHIP_FLAG_USE_FONT_BINARY	TOUCH_USE_FONT_BINARY
 #else
-#define CHIP_FLAG_USE_FONT_BINARY		0
+#define CHIP_FLAG_USE_FONT_BINARY	0
 #endif
 
-#define CHIP_FLAGS					(0|	\
+#if defined(CONFIG_MACH_ODROIDXU3)
+#define CHIP_FLAG_SKIP_ESD_EVENT	TOUCH_SKIP_ESD_EVENT
+#else
+#define CHIP_FLAG_SKIP_ESD_EVENT	0
+#endif
+
+#define CHIP_FLAGS					(0 |	\
 									CHIP_FLAG_USE_FONT_BINARY |	\
+									CHIP_FLAG_SKIP_ESD_EVENT |	\
 									0)
 
 #define CHIP_IRQFLAGS				(IRQF_TRIGGER_FALLING | IRQF_ONESHOT)
