@@ -240,8 +240,7 @@ static void siw_setup_reg_quirks(struct siw_ts *ts)
 				continue;
 			}
 
-			if (!old_addr || !new_addr ||
-				(old_addr == ~0) || (new_addr == ~0)) {
+			if ((old_addr == ~0) || (new_addr == ~0)) {
 				break;
 			}
 
