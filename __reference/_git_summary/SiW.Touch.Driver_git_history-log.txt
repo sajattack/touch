@@ -1,4 +1,74 @@
-[Git branch status : 2016.12.02 PM 03:00]
+[Git history : 2017.01.31 AM 11:00]
+
+---------------------------------------------------------------------------------------------------
+
+* 223c157 - input: touchscreen: siw: version fix - v2.17r (Tue Jan 31 10:09:25 2017 +0900) <Harrison Kim>
+* 2e30282 - input: touchscreen: siw: core - udpate reg quirks setup (Tue Jan 31 09:17:52 2017 +0900) <Harrison Kim>
+* 28e62fb - input: touchscreen: siw: hal - adjust an obscure log message (Tue Jan 31 09:17:38 2017 +0900) <Harrison Kim>
+* 7bd5676 - input: touchscreen: siw: bus - adjust an obscure log message (Tue Jan 31 09:17:25 2017 +0900) <Harrison Kim>
+* 6b1fd75 - input: touchscreen: siw: core of - bug fix for 'add option for reset pin' (Thu Jan 26 19:03:39 2017 +0900) <Harrison Kim>
+* 89ea63d - input: touchscreen: siw: LG4946 entry - adjust setup tables (Thu Jan 26 15:56:58 2017 +0900) <Harrison Kim>
+* 2d6029c - input: touchscreen: siw: hal - add retry in boot status check (Thu Jan 26 15:56:48 2017 +0900) <Harrison Kim>
+* 7ad0b1f - input: touchscreen: siw: hal - update init control for retrial (Thu Jan 26 09:16:09 2017 +0900) <Harrison Kim>
+* 7294511 - input: touchscreen: siw: hal - add debugging log (Thu Jan 26 09:16:00 2017 +0900) <Harrison Kim>
+* 650ad36 - input: touchscreen: siw: hal - add chipset exception for knock & swipe (Mon Jan 23 18:55:15 2017 +0900) <Harrison Kim>
+* e8cf00d - input: touchscreen: siw: hal - add gpio validity check (Mon Jan 23 14:44:59 2017 +0900) <Harrison Kim>
+* bc185a6 - input: touchscreen: siw: hal - add missing 'exit' case for hal probe (Mon Jan 23 14:44:39 2017 +0900) <Harrison Kim>
+* f02e5d0 - input: touchscreen: siw: core gpio - add power-free control (Mon Jan 23 14:19:03 2017 +0900) <Harrison Kim>
+* 03a088e - input: touchscreen: siw: core of - add option for reset pin (Mon Jan 23 14:18:41 2017 +0900) <Harrison Kim>
+* 2961908 - input: touchscreen: siw: hal - add post job for tc_driving control (Mon Jan 16 11:37:55 2017 +0900) <Harrison Kim>
+* eed101e - input: touchscreen: siw: __reference: driver guide - panel test (Mon Jan 16 11:37:46 2017 +0900) <Harrison Kim>
+* e62ad18 - input: touchscreen: siw: __reference: prd_spec: add lg4946 spec. file (Mon Jan 16 11:37:15 2017 +0900) <Harrison Kim>
+* de91a24 - input: touchscreen: siw: __reference: prd_spec: update SW49407 file (Mon Jan 16 11:35:08 2017 +0900) <Harrison Kim>
+* bc54120 - input: touchscreen: siw: prd - update for SW49407 PT Test (Mon Jan 16 11:34:55 2017 +0900) <Harrison Kim>
+* 82333b9 - input: touchscreen: siw: bus - update PM suspend/resume (Fri Jan 13 15:16:01 2017 +0900) <Harrison Kim>
+* 19f6957 - input: touchscreen: siw: core sysfs - add sys_con attr (Thu Jan 12 13:58:26 2017 +0900) <Harrison Kim>
+* 9c8bde4 - input: touchscreen: siw: prd - add set_sd sysfs for sd test (Mon Jan 9 14:19:08 2017 +0900) <Harrison Kim>
+* f1fddfd - input: touchscreen: siw: __reference: driver guide - ESD & Boot fail recovery (Mon Jan 9 10:13:06 2017 +0900) <Harrison Kim>
+* 5f35dc3 - input: touchscreen: siw: __reference: driver guide - tip for MIPI command log (Mon Jan 9 08:47:15 2017 +0900) <Harrison Kim>
+* 7bc5509 - input: touchscreen: siw: prd - enable rawdata_prd log on adb (Mon Jan 9 08:47:03 2017 +0900) <Harrison Kim>
+* 91513d6 - input: touchscreen: siw: hal - update tc driving (Fri Jan 6 09:32:07 2017 +0900) <Harrison Kim>
+* b6b7fba - input: touchscreen: siw: hal - update mon handler (Fri Jan 6 09:31:56 2017 +0900) <Harrison Kim>
+* fb3805a - input: touchscreen: siw: core - move notify extern to header file (Fri Jan 6 09:31:46 2017 +0900) <Harrison Kim>
+* 90227fc - input: touchscreen: siw: sys - remove old test code (Tue Jan 3 12:47:09 2017 +0900) <Harrison Kim>
+* 7541025 - input: touchscreen: siw: __reference: dts: udpate example files (Thu Dec 29 10:49:01 2016 +0900) <Harrison Kim>
+* 0848b13 - input: touchscreen: siw: __reference: font_data: add LG4946 files (Tue Dec 27 23:13:15 2016 +0900) <Harrison Kim>
+* 878462e - input: touchscreen: siw: watch - adjust test data for LG4946 (Tue Dec 27 23:13:05 2016 +0900) <Harrison Kim>
+* 8519c7a - input: touchscreen: siw: watch - update ext_watch_set_position (Tue Dec 27 23:12:53 2016 +0900) <Harrison Kim>
+* 3518eaf - input: touchscreen: siw: watch - update parameter check (Tue Dec 27 23:12:43 2016 +0900) <Harrison Kim>
+* b1cd7d2 - input: touchscreen: siw: LG4946 entry - adjust reg_quirks table (Tue Dec 27 23:12:31 2016 +0900) <Harrison Kim>
+* 4bd740e - input: touchscreen: siw: prd - adjust prd_params for LG4946 (Thu Dec 22 12:06:30 2016 +0900) <Harrison Kim>
+* 37fabbd - input: touchscreen: siw: core & hal - add new definitions for return value (Thu Dec 22 11:36:59 2016 +0900) <Harrison Kim>
+* 292b81c - input: touchscreen: siw: hal - add reset condition for invalid ic_status (Wed Dec 21 15:10:20 2016 +0900) <Harrison Kim>
+* 551873e - input: touchscreen: siw: hal - add reset condition for code & cfg crc (Wed Dec 21 15:10:11 2016 +0900) <Harrison Kim>
+* 28915c3 - input: touchscreen: siw: __reference: driver guide - ESD notifier guide (Mon Dec 19 17:06:28 2016 +0900) <Harrison Kim>
+* a6bd185 - input: touchscreen: siw: SW1828 entry - add CHIP_FLAGS (Mon Dec 19 17:06:19 2016 +0900) <Harrison Kim>
+* d9d0dea - input: touchscreen: siw: hal - add option flag for ESD event notifier (Mon Dec 19 17:06:08 2016 +0900) <Harrison Kim>
+* 9782867 - input: touchscreen: siw: hal - adjust timeout for fw upgrade (Mon Dec 19 10:02:30 2016 +0900) <Harrison Kim>
+* 4d4f2b9 - input: touchscreen: siw: hal - adjust time delay in tc driving setup (Mon Dec 19 09:39:55 2016 +0900) <Harrison Kim>
+* ca00466 - input: touchscreen: siw: core - improve boot fail recovery (2/2) (Mon Dec 19 09:03:54 2016 +0900) <Harrison Kim>
+* b2f0d22 - input: touchscreen: siw: hal - improve boot fail recovery (1/2) (Mon Dec 19 09:03:45 2016 +0900) <Harrison Kim>
+* 53e8b96 - input: touchscreen: siw: __reference: driver guide - FW upgarde(readme text) (Mon Dec 12 08:20:05 2016 +0900) <Harrison Kim>
+* aa32127 - input: touchscreen: siw: __reference: driver guide - 'mode change' updated (Sat Dec 10 13:01:02 2016 +0900) <Harrison Kim>
+* cf187be - input: touchscreen: siw: core - skip condition in siw_touch_notify (Sat Dec 10 12:02:43 2016 +0900) <Harrison Kim>
+* 312623a - input: touchscreen: siw: core sysfs - bug-fix for sysfs base function (Sat Dec 10 12:02:19 2016 +0900) <Harrison Kim>
+* 6a7cc78 - input: touchscreen: siw: hal sysfs - new feature for reg. debugging history (Sat Dec 10 12:02:11 2016 +0900) <Harrison Kim>
+* 209f912 - input: touchscreen: siw: __reference: driver guide - update guide docs (Fri Dec 9 12:55:10 2016 +0900) <Harrison Kim>
+* 26fe9ea - input: touchscreen: siw: prd - bug-fix for prd_print_os_rawdata (Thu Dec 8 16:42:34 2016 +0900) <Harrison Kim>
+* 34a5458 - input: touchscreen: siw: prd - update siw_hal_prd_sd_cmd (Thu Dec 8 14:43:12 2016 +0900) <Harrison Kim>
+* 9aa8f4e - input: touchscreen: siw: hal - update check status (Thu Dec 8 14:43:02 2016 +0900) <Harrison Kim>
+* e0f5aec - input: touchscreen: siw: __reference: driver guide - ESD notifier guide (Thu Dec 8 08:38:46 2016 +0900) <Harrison Kim>
+* 3e1d40a - input: touchscreen: siw: hal - update mon handler (Wed Dec 7 14:58:24 2016 +0900) <Harrison Kim>
+* 6001cbf - input: touchscreen: siw: hal - add debugging sub-functions (Wed Dec 7 14:58:19 2016 +0900) <Harrison Kim>
+* 2cb5b06 - input: touchscreen: siw: __reference: driver guide - mode change (Wed Dec 7 14:58:08 2016 +0900) <Harrison Kim>
+* d248e3a - input: touchscreen: siw: core - re-factoring for touch reset (Mon Dec 5 17:48:00 2016 +0900) <Harrison Kim>
+* ab2e68e - input: touchscreen: siw: hal - update notify control (Mon Dec 5 17:47:47 2016 +0900) <Harrison Kim>
+* bae4575 - input: touchscreen: siw: __reference: driver guide - mode change (Sun Dec 4 10:56:23 2016 +0900) <Harrison Kim>
+* 6d5a878 - input: touchscreen: siw: prd - update PT test control (Sun Dec 4 09:43:44 2016 +0900) <Harrison Kim>
+* b03d3ab - input: touchscreen: siw: core sysfs - update dbg_mask attr (Sun Dec 4 09:33:47 2016 +0900) <Harrison Kim>
+* c7a10c9 - input: touchscreen: siw: hal - update siw_hal_check_fault_type (Sun Dec 4 09:33:36 2016 +0900) <Harrison Kim>
+* 6feaccd - input: touchscreen: siw: hal - update mon handler (Sun Dec 4 09:09:32 2016 +0900) <Harrison Kim>
+* 0ca59d2 - input: touchscreen: siw: version 2.17b begins (Sun Dec 4 08:59:14 2016 +0900) <Harrison Kim>
 
 ---------------------------------------------------------------------------------------------------
 
