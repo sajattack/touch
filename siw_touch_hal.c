@@ -1274,6 +1274,7 @@ static int siw_hal_chk_boot_mode(struct device *dev)
 	}
 
 	if ((bootmode >> 3) & 0x1) {	/* CRC error */
+		t_dev_err(dev, "boot fail: boot sts  = %08Xh\n", bootmode);
 		return 0x1;
 	}
 
@@ -1314,6 +1315,10 @@ static int siw_hal_chk_boot_status(struct device *dev)
 	}
 	if (!(tc_status & valid_code_crc_mask)) {
 		boot_failed |= (1<<4);
+	}
+	if (boot_failed) {
+		t_dev_err(dev, "boot fail: tc_status = %08Xh(%02Xh)\n",
+			tc_status, boot_failed);
 	}
 
 	return boot_failed;
