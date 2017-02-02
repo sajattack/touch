@@ -181,6 +181,7 @@ static const struct siw_hal_reg_quirk chip_reg_quirks[] = {
 	{ .old_addr = EXT_WATCH_AREA_Y, .new_addr = 0x284, },
 	{ .old_addr = EXT_WATCH_BLINK_AREA, .new_addr = 0x285, },
 	{ .old_addr = EXT_WATCH_LUT, .new_addr = 0x286, },
+	{ .old_addr = GLOVE_EN, .new_addr = 0xC52, },
 	{ .old_addr = ~0, .new_addr = ~0 },		// End signal
 };
 
