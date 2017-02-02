@@ -4153,24 +4153,39 @@ out:
 	return ret;
 }
 
+static int siw_hal_tc_con_type_g(struct device *dev, u32 addr, int value, char *name)
+{
+	int ret = 0;
+
+	ret = siw_hal_write_value(dev, addr, value);
+	if (ret < 0) {
+		t_dev_err(dev, "failed to set %s[%04Xh], %d\n",
+			name, addr, ret);
+		goto out;
+	}
+
+	t_dev_info(dev, "%s[%04Xh]: %s(%08Xh)\n",
+		name, addr,
+		(value & 0x1) ? "ON" : "OFF",
+		value);
+
+out:
+	return ret;
+}
+
 static int siw_hal_tc_con_glove(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
 	struct siw_hal_reg *reg = chip->reg;
+	u32 addr = reg->glove_en;
 	int value = atomic_read(&ts->state.glove);
 	int ret = 0;
 
 	switch (touch_chip_type(ts)) {
 	case CHIP_LG4946:
 	case CHIP_SW49407:
-		ret = siw_hal_write_value(dev, reg->glove_en, value);
-		if (ret < 0) {
-			t_dev_err(dev, "failed to set glove_en, %d\n", ret);
-			break;
-		}
-		t_dev_info(dev, "glove_en: %s(%08Xh)\n",
-			(value & 0x1) ? "ON" : "OFF", value);
+		ret = siw_hal_tc_con_type_g(dev, addr, value, "glove_en");
 		break;
 	default:
 		break;
@@ -4184,18 +4199,13 @@ static int siw_hal_tc_con_grab(struct device *dev)
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
 	struct siw_hal_reg *reg = chip->reg;
+	u32 addr = reg->grab_en;
 	int value = atomic_read(&ts->state.grab);
 	int ret = 0;
 
 	switch (touch_chip_type(ts)) {
 	case CHIP_SW49407:
-		ret = siw_hal_write_value(dev, reg->grab_en, value);
-		if (ret < 0) {
-			t_dev_err(dev, "failed to set grab_en, %d\n", ret);
-			break;
-		}
-		t_dev_info(dev, "grab_en: %s(%08Xh)\n",
-			(value & 0x1) ? "ON" : "OFF", value);
+		ret = siw_hal_tc_con_type_g(dev, addr, value, "grab_en");
 		break;
 	default:
 		break;
