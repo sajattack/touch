@@ -4162,6 +4162,7 @@ static int siw_hal_tc_con_glove(struct device *dev)
 	int ret = 0;
 
 	switch (touch_chip_type(ts)) {
+	case CHIP_LG4946:
 	case CHIP_SW49407:
 		ret = siw_hal_write_value(dev, reg->glove_en, value);
 		if (ret < 0) {
