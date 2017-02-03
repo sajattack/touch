@@ -426,6 +426,68 @@ static void siw_hal_free_gpios(struct device *dev)
 	siw_hal_free_gpio_maker_id(dev);
 }
 
+u32 t_bus_dbg_mask = 0;
+
+/* usage
+ * (1) echo <value> > /sys/module/{Siw Touch Module Name}/parameters/bus_dbg_mask
+ * (2) insmod {Siw Touch Module Name}.ko bus_dbg_mask=<value>
+ */
+module_param_named(bus_dbg_mask, t_bus_dbg_mask, uint, S_IRUGO|S_IWUSR|S_IWGRP);
+
+#if 1
+#define t_bus_info(_dev, fmt, args...)		__t_dev_info(_dev, "bus: " fmt, ##args)
+#define t_bus_warn(_dev, fmt, args...)		__t_dev_warn(_dev, "bus: " fmt, ##args)
+#else
+#define t_bus_info(_dev, fmt, args...)		__t_dev_none()
+#define t_bus_warn(_dev, fmt, args...)		__t_dev_none()
+#endif
+
+#define t_bus_err(_dev, fmt, args...)		__t_dev_err(_dev, "bus: " fmt, ##args)
+
+#define t_bus_dbg(condition, _dev, fmt, args...)			\
+		do {							\
+			if (unlikely(t_bus_dbg_mask & (condition)))	\
+				__t_dev_info(_dev, "bus: " fmt, ##args);	\
+		} while (0)
+
+#define t_bus_dbg_base(_dev, fmt, args...)	\
+		t_bus_dbg(DBG_BASE, _dev, fmt, ##args)
+
+#define t_bus_dbg_trace(_dev, fmt, args...)	\
+		t_bus_dbg(DBG_TRACE, _dev, fmt, ##args)
+
+static inline void __siw_hal_bus_dbg(struct device *dev, u32 addr, u8 *buf, int size,
+		int wr, int xfer)
+{
+	if (!wr && !xfer &&
+		(size == sizeof(struct siw_hal_touch_info))) {
+		t_bus_dbg_trace(dev, "%s(%s) 0x%04X, 0x%04X: %02X %02X %02X %02X %02X %02X %02X %02X%s\n",
+			(wr) ? "wr" : "rd",
+			(xfer) ? "x" : "s",
+			(u32)addr, (u32)size,
+			buf[0], buf[1],buf[2], buf[3],
+			buf[4], buf[5],buf[6], buf[7],
+			(size > 8) ? " ..." : "");
+		return;
+	}
+
+	if (size > 4) {
+		t_bus_dbg_base(dev, "%s(%s) 0x%04X, 0x%04X: %02X %02X %02X %02X %02X %02X %02X %02X%s\n",
+			(wr) ? "wr" : "rd",
+			(xfer) ? "x" : "s",
+			(u32)addr, (u32)size,
+			buf[0], buf[1],buf[2], buf[3],
+			buf[4], buf[5],buf[6], buf[7],
+			(size > 8) ? " ..." : "");
+	} else {
+		t_bus_dbg_base(dev, "%s(%s) 0x%04X, 0x%04X: %02X %02X %02X %02X\n",
+			(wr) ? "wr" : "rd",
+			(xfer) ? "x" : "s",
+			(u32)addr, (u32)size,
+			buf[0], buf[1],buf[2], buf[3]);
+	}
+}
+
 static void *__siw_hal_get_curr_buf(struct siw_ts *ts, dma_addr_t *dma, int tx)
 {
 	struct siw_touch_buf *t_buf;
@@ -471,7 +533,7 @@ static int __used __siw_hal_do_reg_read(struct device *dev, u32 addr, void *data
 	}
 #endif
 	if (!data) {
-		t_dev_err(dev, "NULL data\n");
+		t_dev_err(dev, "NULL data(0x%04X, 0x%04X)\n", addr, size);
 		return -EFAULT;
 	}
 
@@ -550,6 +612,8 @@ static int __used __siw_hal_do_reg_read(struct device *dev, u32 addr, void *data
 
 	memcpy(data, &rx_buf[bus_rx_hdr_size], size);
 
+	__siw_hal_bus_dbg(dev, addr, (u8 *)data, size, 0, 0);
+
 	return size;
 }
 
@@ -584,7 +648,7 @@ static int __used __siw_hal_do_reg_write(struct device *dev, u32 addr, void *dat
 	}
 #endif
 	if (!data) {
-		t_dev_err(dev, "NULL data\n");
+		t_dev_err(dev, "NULL data(0x%04X, 0x%04X)\n", addr, size);
 		return -EFAULT;
 	}
 
@@ -612,6 +676,8 @@ static int __used __siw_hal_do_reg_write(struct device *dev, u32 addr, void *dat
 				(u32)addr, (u32)size, ret);
 		return ret;
 	}
+
+	__siw_hal_bus_dbg(dev, addr, (u8 *)data, size, 1, 0);
 
 	return size;
 }
@@ -772,6 +838,7 @@ static int __used __siw_hal_do_xfer_msg(struct device *dev, struct touch_xfer_ms
 
 	ret = 0;
 	for (i = 0; i < xfer->msg_count; i++) {
+		tx = &xfer->data[i].tx;
 		rx = &xfer->data[i].rx;
 
 		if (rx->size) {
@@ -783,6 +850,14 @@ static int __used __siw_hal_do_xfer_msg(struct device *dev, struct touch_xfer_ms
 				(rx->size - bus_rx_hdr_size));
 		}
 		ret += rx->size;
+
+		{
+			struct touch_xfer_data_t *dbg = (rx->size) ? rx : tx;
+			int dbg_hdr_size = (rx->size) ? bus_rx_hdr_size : bus_tx_hdr_size;
+
+			__siw_hal_bus_dbg(dev,
+				dbg->addr, dbg->buf, dbg->size - dbg_hdr_size, !(rx->size), 1);
+		}
 	}
 
 	return ret;
