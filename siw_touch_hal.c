@@ -1332,7 +1332,20 @@ static int siw_hal_chk_boot_mode(struct device *dev)
 //	struct siw_ts *ts = chip->ts;
 	struct siw_hal_reg *reg = chip->reg;
 	u32 bootmode = 0;
+	u32 boot_chk_offset_busy;
+	u32 boot_chk_offset_err;
 	int ret = 0;
+
+	switch (chip->opt.t_boot_mode) {
+	case 1:
+		boot_chk_offset_busy = 0;
+		boot_chk_offset_err = 2;
+		break;
+	default:
+		boot_chk_offset_busy = 1;
+		boot_chk_offset_err = 3;
+		break;
+	}
 
 	ret = siw_hal_read_value(dev,
 			reg->spr_boot_status,
@@ -1347,11 +1360,11 @@ static int siw_hal_chk_boot_mode(struct device *dev)
 	}
 
 	/* booting... need to wait */
-	if ((bootmode >> 1) & 0x1) {
+	if ((bootmode >> boot_chk_offset_busy) & 0x1) {
 		return BOOT_CHK_SKIP;
 	}
 
-	if ((bootmode >> 3) & 0x1) {	/* CRC error */
+	if ((bootmode >> boot_chk_offset_err) & 0x1) {	/* CRC error */
 		t_dev_err(dev, "boot fail: boot sts  = %08Xh\n", bootmode);
 		return 0x1;
 	}
@@ -1617,7 +1630,14 @@ static int siw_hal_chk_status_type(struct device *dev)
 
 	chip->status_mask_ic_abnormal = INT_IC_ABNORMAL_STATUS;
 
-	chip->status_mask_ic_valid = 0xFF;
+	switch (chip->opt.t_sts_mask) {
+	case 1:
+		chip->status_mask_ic_valid = 0xFFFF;
+		break;
+	default:
+		chip->status_mask_ic_valid = 0xFF;
+		break;
+	}
 
 	t_dev_info(dev, "status type  : %d\n", chip->status_type);
 	t_dev_info(dev, "status mask  : %08Xh\n", chip->status_mask);
@@ -1714,12 +1734,10 @@ static int siw_hal_do_ic_info(struct device *dev, int prt_on)
 	siw_hal_xfer_add_rx(xfer,
 			reg->tc_product_id1,
 			(void *)&product[0], sizeof(product));
-	switch (touch_chip_type(ts)) {
-	case CHIP_SW1828 :
+	if (chip->opt.f_ver_ext) {
 		siw_hal_xfer_add_rx(xfer,
 				reg->tc_version_ext,
 				(void *)&version_ext, sizeof(version_ext));
-		break;
 	}
 	siw_hal_xfer_add_rx(xfer,
 			reg->spr_boot_status,
@@ -1731,8 +1749,7 @@ static int siw_hal_do_ic_info(struct device *dev, int prt_on)
 		return ret;
 	}
 
-	switch (touch_chip_type(ts)) {
-	case CHIP_LG4946:
+	if (chip->opt.f_info_more) {
 		siw_hal_xfer_init(dev, xfer);
 
 		siw_hal_xfer_add_rx(xfer,
@@ -1762,7 +1779,6 @@ static int siw_hal_do_ic_info(struct device *dev, int prt_on)
 			t_dev_err(dev, "ic_info(2): xfer failed, %d\n", ret);
 			return ret;
 		}
-		break;
 	}
 
 	siw_hal_fw_set_chip_id(fw, chip_id);
@@ -1826,8 +1842,7 @@ static int siw_hal_do_ic_info(struct device *dev, int prt_on)
 	}
 	chip->boot_fail_cnt = 0;
 
-	switch (touch_chip_type(ts)) {
-	case CHIP_LG4946:
+	if (chip->opt.f_info_more) {
 		t_dev_info_sel(dev, prt_on,
 			"[T] fpc %d, wfr %d, cg %d, lot %d\n",
 			fw->fpc, fw->wfr, fw->cg, fw->lot);
@@ -1838,7 +1853,6 @@ static int siw_hal_do_ic_info(struct device *dev, int prt_on)
 			fw->date & 0xFFFF, ((fw->date>>16) & 0xFF), ((fw->date>>24) & 0xFF),
 			fw->time & 0xFF, ((fw->time>>8) & 0xFF), ((fw->time>>16) & 0xFF),
 			((fw->time>>24) & 0xFF));
-		break;
 	}
 
 	if (strcmp(fw->chip_id, touch_chip_id(ts))) {
@@ -1955,11 +1969,13 @@ static int siw_hal_init_reg_set_pre(struct device *dev)
 	struct siw_ts *ts = chip->ts;
 	int ret = 0;
 
-	switch (touch_chip_type(ts)) {
-	case CHIP_SW49105:
-	case CHIP_SW49406:
-	case CHIP_SW49407:
-	case CHIP_SW49408:
+	if (chip->opt.f_attn_opt) {
+		if (touch_bus_type(ts) == BUS_IF_I2C) {
+			ret = siw_hal_write_value(dev, 0xFE4, 0);
+			if (ret < 0) {
+				goto out;
+			}
+		}
 		ret = siw_hal_init_reg_verify(dev,
 				0xFF3, ABNORMAL_IC_DETECTION, 3,
 				"spi_tattn_opt");
@@ -1969,7 +1985,6 @@ static int siw_hal_init_reg_set_pre(struct device *dev)
 				ret);
 			goto out;
 		}
-		break;
 	}
 
 out:
@@ -2161,12 +2176,11 @@ out:
 static int siw_hal_check_mode(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
-	struct siw_ts *ts = chip->ts;
+//	struct siw_ts *ts = chip->ts;
 	int ret = 0;
 
-	switch (touch_chip_type(ts)) {
-	case CHIP_SW49408:
-	case CHIP_LG4946:
+	switch (chip->opt.t_chk_mode) {
+	case 1:
 		ret = siw_hal_check_mode_type_1(dev,
 					chip->lcd_mode, chip->prev_lcd_mode);
 		break;
@@ -2454,13 +2468,11 @@ out:
 static int siw_hal_sw_reset(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
-	struct siw_ts *ts = chip->ts;
+//	struct siw_ts *ts = chip->ts;
 	int ret = 0;
 
-	switch (touch_chip_type(ts)) {
-	case CHIP_LG4895:
-		/* fall through */
-	case CHIP_LG4946:
+	switch (chip->opt.t_sw_rst) {
+	case 1:
 		ret = siw_hal_sw_reset_wh_cmd(dev);
 		atomic_set(&chip->init, IC_INIT_NEED);
 		break;
@@ -2992,13 +3004,10 @@ static int siw_hal_fw_compare(struct device *dev, u8 *fw_buf)
 		return -EINVAL;
 	}
 
-	switch (touch_chip_type(ts)) {
-	case CHIP_SW1828 :
+	if (chip->opt.f_ver_ext) {
 		bin_ver_ext_offset = *((u32 *)&fw_buf[BIN_VER_EXT_OFFSET_POS]);
-		break;
-	default:
+	} else {
 		bin_ver_ext_offset = 0;
-		break;
 	}
 
 	if ((fw->version_ext && !bin_ver_ext_offset) ||
@@ -4091,9 +4100,8 @@ static int siw_hal_clock(struct device *dev, bool onoff)
 
 	siw_touch_sys_osc(dev, onoff);
 
-	switch(touch_chip_type(ts)) {
-	case CHIP_LG4895:
-	case CHIP_LG4946:
+	switch (chip->opt.t_clock) {
+	case 1:
 		ret = siw_hal_clock_type_1(dev, onoff);
 		break;
 	default:
@@ -4261,13 +4269,8 @@ static int siw_hal_tc_con_glove(struct device *dev)
 	int value = atomic_read(&ts->state.glove);
 	int ret = 0;
 
-	switch (touch_chip_type(ts)) {
-	case CHIP_LG4946:
-	case CHIP_SW49407:
+	if (chip->opt.f_glove_en) {
 		ret = siw_hal_tc_con_type_g(dev, addr, value, "glove_en");
-		break;
-	default:
-		break;
 	}
 
 	return ret;
@@ -4282,12 +4285,8 @@ static int siw_hal_tc_con_grab(struct device *dev)
 	int value = atomic_read(&ts->state.grab);
 	int ret = 0;
 
-	switch (touch_chip_type(ts)) {
-	case CHIP_SW49407:
+	if (chip->opt.f_grab_en) {
 		ret = siw_hal_tc_con_type_g(dev, addr, value, "grab_en");
-		break;
-	default:
-		break;
 	}
 
 	return ret;
@@ -4357,7 +4356,7 @@ static inline int siw_hal_tc_driving_stop(struct device *dev)
 static void siw_hal_chk_dbg_report(struct device *dev, u32 status, int irq)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
-	struct siw_ts *ts = chip->ts;
+//	struct siw_ts *ts = chip->ts;
 	u32 debug_mask = (status >> 16) & 0x0F;
 	u32 ic_debug[4];
 	u32 debug_info = 0;
@@ -4365,11 +4364,7 @@ static void siw_hal_chk_dbg_report(struct device *dev, u32 status, int irq)
 	u32 debug_type = 0;
 	int ret = 0;
 
-	switch (touch_chip_type(ts)) {
-	case CHIP_SW1828:
-	case CHIP_SW49407:
-		break;
-	default:
+	if (!chip->opt.f_dbg_report) {
 		return;
 	}
 
@@ -4406,14 +4401,14 @@ static void siw_hal_chk_dbg_report(struct device *dev, u32 status, int irq)
 static int siw_hal_tc_driving_post(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
-	struct siw_ts *ts = chip->ts;
+//	struct siw_ts *ts = chip->ts;
 	struct siw_hal_fw_info *fw = &chip->fw;
 	u32 addr[4] = { 0, };
 	u32 rdata;
 	int ret = 0;
 
-	switch (touch_chip_type(ts)) {
-	case CHIP_SW49407:
+	switch (chip->opt.t_chk_mipi) {
+	case 1:
 		if (chip->driving_mode != LCD_MODE_U3) {
 			break;
 		}
@@ -5138,8 +5133,8 @@ static int siw_hal_check_fault_type(struct device *dev)
 	int fault_type = NON_FAULT_INT;
 	int ret = 0;
 
-	switch (touch_chip_type(chip->ts)) {
-	case CHIP_SW49407 :
+	switch (chip->opt.t_chk_fault) {
+	case 1 :
 		addr = 0x283;
 		break;
 	default :
@@ -5161,15 +5156,14 @@ static u32 siw_hal_check_sys_error_type(struct device *dev)
 	u32 fault_type = NON_FAULT_U32;
 	int ret = 0;
 
-	switch (touch_chip_type(chip->ts)) {
-	case CHIP_SW49105 :
-	case CHIP_SW49407 :
+	switch (chip->opt.t_chk_sys_error) {
+	case 1:
 		addr = 0x020;
 		break;
-	case CHIP_SW49408 :
+	case 2:
 		addr = 0x021;
 		break;
-	case CHIP_SW49409 :
+	case 3:
 		addr = 0x01C;
 		break;
 	default :
@@ -5191,11 +5185,8 @@ static u32 siw_hal_check_sys_fault_type(struct device *dev)
 	u32 fault_type = NON_FAULT_U32;
 	int ret = 0;
 
-	switch (touch_chip_type(chip->ts)) {
-	case CHIP_SW49105 :
-	case CHIP_SW49407 :
-	case CHIP_SW49408 :
-	case CHIP_SW49409 :
+	switch (chip->opt.t_chk_sys_fault) {
+	case 1:
 		addr = 0xFF4;
 		break;
 	default :
@@ -5847,12 +5838,10 @@ static int siw_hal_lcd_mode(struct device *dev, u32 mode)
 		siw_hal_watch_get_curr_time(dev, NULL, NULL);
 	}
 
-	switch (touch_chip_type(ts)) {
-	case CHIP_SW49407:
-	case CHIP_LG4895:
-		if (mode == LCD_MODE_U2_UNBLANK)
+	if (chip->opt.f_u2_blank_chg) {
+		if (mode == LCD_MODE_U2_UNBLANK) {
 			mode = LCD_MODE_U2;
-		break;
+		}
 	}
 
 	chip->prev_lcd_mode = chip->lcd_mode;
@@ -6159,8 +6148,7 @@ static int siw_hal_get_cmd_version(struct device *dev, char *buf, int flag)
 	}
 
 	if (flag & SIW_GET_OPT1) {
-		switch (touch_chip_type(ts)) {
-		case CHIP_LG4946:
+		if (chip->opt.f_info_more) {
 			offset += siw_snprintf(buf, offset,
 						"fpc : %d\n", fw->fpc);
 			offset += siw_snprintf(buf, offset,
@@ -6178,7 +6166,6 @@ static int siw_hal_get_cmd_version(struct device *dev, char *buf, int flag)
 						fw->time & 0xFF,
 						((fw->time>>8) & 0xFF), ((fw->time>>16) & 0xFF),
 						((fw->time>>24) & 0xFF));
-			break;
 		}
 	}
 
@@ -6245,7 +6232,7 @@ module_param_named(mon_dbg_mask, t_mon_dbg_mask, uint, S_IRUGO|S_IWUSR|S_IWGRP);
 static int siw_hal_mon_handler_chk_frame(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
-	struct siw_ts *ts = chip->ts;
+//	struct siw_ts *ts = chip->ts;
 //	struct siw_hal_reg *reg = chip->reg;
 	u32 frame_addr = 0;
 	u32 frame_s = 0;
@@ -6255,8 +6242,8 @@ static int siw_hal_mon_handler_chk_frame(struct device *dev)
 	int i;
 	int ret = 0;
 
-	switch (touch_chip_type(ts)) {
-	case CHIP_SW1828:
+	switch (chip->opt.t_chk_frame) {
+	case 1:
 		frame_addr = 0x24F;
 		cnt = 20;
 		delay = 1;
@@ -6628,6 +6615,90 @@ out:
 	return ret;
 }
 
+static int siw_hal_chipset_option(struct siw_touch_chip *chip)
+{
+	struct device *dev = chip->dev;
+	struct siw_touch_chip_opt *opt = &chip->opt;
+	struct siw_ts *ts = chip->ts;
+
+	switch (touch_chip_type(ts)) {
+	case CHIP_LG4895:
+		opt->f_u2_blank_chg = 1;
+		opt->t_clock = 1;
+		opt->t_sw_rst = 1;
+		break;
+
+	case CHIP_LG4946:
+		opt->f_info_more = 1;
+		opt->f_glove_en = 1;
+		opt->t_chk_mode = 1;
+		opt->t_clock = 1;
+		opt->t_sw_rst = 1;
+		break;
+
+	case CHIP_SW1828 :
+		opt->f_ver_ext = 1;
+		opt->f_dbg_report = 1;
+		opt->t_chk_frame = 1;
+		break;
+
+	case CHIP_SW49105:
+		opt->f_attn_opt = 1;
+		opt->t_chk_sys_error = 1;
+		opt->t_chk_sys_fault = 1;
+		break;
+
+	case CHIP_SW49406:
+		opt->f_attn_opt = 1;
+		break;
+
+	case CHIP_SW49407:
+		opt->f_attn_opt = 1;
+		opt->f_glove_en = 1;
+		opt->f_grab_en = 1;
+		opt->f_dbg_report = 1;
+		opt->f_u2_blank_chg = 1;
+		opt->t_chk_mipi = 1;
+		opt->t_chk_sys_error = 1;
+		opt->t_chk_sys_fault = 1;
+		opt->t_chk_fault = 1;
+		break;
+
+	case CHIP_SW49408:
+		opt->f_attn_opt = 1;
+		opt->t_chk_mode = 1;
+		opt->t_chk_sys_error = 2;
+		opt->t_chk_sys_fault = 1;
+		break;
+
+	case CHIP_SW49409:
+		opt->t_chk_sys_error = 3;
+		opt->t_chk_sys_fault = 1;
+		break;
+	}
+
+	t_dev_info(dev, "[opt summary]\n");
+	t_dev_info(dev, " f_info_more     : %d\n", opt->f_info_more);
+	t_dev_info(dev, " f_ver_ext       : %d\n", opt->f_ver_ext);
+	t_dev_info(dev, " f_attn_opt      : %d\n", opt->f_attn_opt);
+	t_dev_info(dev, " f_glove_en      : %d\n", opt->f_glove_en);
+	t_dev_info(dev, " f_grab_en       : %d\n", opt->f_grab_en);
+	t_dev_info(dev, " f_dbg_report    : %d\n", opt->f_dbg_report);
+	t_dev_info(dev, " f_u2_blank_chg  : %d\n", opt->f_u2_blank_chg);
+	t_dev_info(dev, " t_boot_mode     : %d\n", opt->t_boot_mode);
+	t_dev_info(dev, " t_sts_mask      : %d\n", opt->t_sts_mask);
+	t_dev_info(dev, " t_chk_mode      : %d\n", opt->t_chk_mode);
+	t_dev_info(dev, " t_sw_rst        : %d\n", opt->t_sw_rst);
+	t_dev_info(dev, " t_clock         : %d\n", opt->t_clock);
+	t_dev_info(dev, " t_chk_mipi      : %d\n", opt->t_chk_mipi);
+	t_dev_info(dev, " t_chk_frame     : %d\n", opt->t_chk_frame);
+	t_dev_info(dev, " t_chk_sys_error : %d\n", opt->t_chk_sys_error);
+	t_dev_info(dev, " t_chk_sys_fault : %d\n", opt->t_chk_sys_fault);
+	t_dev_info(dev, " t_chk_fault     : %d\n", opt->t_chk_fault);
+
+	return 0;
+}
+
 static void __siw_hal_do_remove(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
@@ -6666,6 +6737,8 @@ static int siw_hal_probe(struct device *dev)
 	chip->ts = ts;
 
 	touch_set_dev_data(ts, chip);
+
+	siw_hal_chipset_option(chip);
 
 	siw_hal_init_gpios(dev);
 	siw_hal_power_init(dev);

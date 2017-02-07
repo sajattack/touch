@@ -417,8 +417,39 @@ struct siw_hal_reg_log {
 	u32 data;
 };
 
+struct siw_touch_chip_opt {
+	u32 f_info_more:1;
+	u32 f_ver_ext:1;
+	u32 f_attn_opt:1;
+	u32 f_glove_en:1;
+	u32 f_grab_en:1;
+	u32 f_dbg_report:1;
+	u32 f_u2_blank_chg:1;
+	u32 f_rsvd00:1;
+	u32 f_rsvd01:8;
+	u32 f_rsvd02:8;
+	u32 f_rsvd03:8;
+	/* */
+	u32 t_boot_mode:4;
+	u32 t_sts_mask:4;
+	u32 t_chk_mode:4;
+	u32 t_sw_rst:4;
+	u32 t_clock:4;
+	u32 t_chk_mipi:4;
+	u32 t_chk_frame:4;
+	u32 rsvd13:4;
+	/* */
+	u32 t_chk_sys_error:4;
+	u32 t_chk_sys_fault:4;
+	u32 t_chk_fault:4;
+	u32 rsvd21:4;
+	u32 rsvd22:8;
+	u32 rsvd23:8;
+};
+
 struct siw_touch_chip {
 	void *ts;			//struct siw_ts
+	struct siw_touch_chip_opt opt;
 	struct siw_hal_reg *reg;
 	struct device *dev;
 	struct kobject kobj;
