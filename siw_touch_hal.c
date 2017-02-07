@@ -173,7 +173,7 @@ static int siw_hal_tc_driving(struct device *dev, int mode);
 #define t_hal_bus_warn(_abt, fmt, args...)	\
 		__t_dev_warn(_dev, "hal(bus) : " fmt, ##args)
 
-
+#if defined(__SIW_CONFIG_KNOCK)
 #define TCI_FAIL_NUM 11
 static const char const *siw_hal_tci_debug_str[TCI_FAIL_NUM] = {
 	"NONE",
@@ -188,6 +188,7 @@ static const char const *siw_hal_tci_debug_str[TCI_FAIL_NUM] = {
 	"DEBUG9",
 	"DEBUG10"
 };
+#endif	/* __SIW_CONFIG_KNOCK */
 
 #if defined(__SIW_CONFIG_SWIPE)
 #define SWIPE_FAIL_NUM 7
@@ -3760,6 +3761,7 @@ out:
 	return ret;
 }
 
+#if defined(__SIW_CONFIG_KNOCK)
 static void siw_hal_set_debug_reason(struct device *dev, int type)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
@@ -3898,11 +3900,6 @@ static int siw_hal_tci_area_set(struct device *dev, int cover_status)
 	struct reset_area *qcover;
 	const char *msg;
 
-	switch (touch_chip_type(ts)) {
-	case CHIP_SW1828:
-		return 0;
-	}
-
 	if (touch_mode_not_allowed(ts, LCD_MODE_U3_QUICKCOVER)) {
 		return 0;
 	}
@@ -4007,11 +4004,6 @@ static int siw_hal_lpwg_control(struct device *dev, int mode)
 	struct tci_info *info1 = &ts->tci.info[TCI_1];
 	int ret = 0;
 
-	switch (touch_chip_type(ts)) {
-	case CHIP_SW1828:
-		return 0;
-	}
-
 	switch (mode) {
 	case LPWG_DOUBLE_TAP:
 		ts->tci.mode = 0x01;
@@ -4053,6 +4045,16 @@ static int siw_hal_lpwg_control(struct device *dev, int mode)
 
 	return ret;
 }
+#else	/* __SIW_SUPPORT_KNOCK */
+static int siw_hal_tci_area_set(struct device *dev, int cover_status)
+{
+	return 0;
+}
+static int siw_hal_lpwg_control(struct device *dev, int mode)
+{
+	return 0;
+}
+#endif	/* __SIW_SUPPORT_KNOCK */
 
 static int siw_hal_clock_type_1(struct device *dev, bool onoff)
 {
@@ -4612,10 +4614,11 @@ static void siw_hal_deep_sleep(struct device *dev)
 	siw_hal_clock(dev, 0);
 }
 
+#if defined(__SIW_CONFIG_KNOCK)
 static void siw_hal_debug_tci(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
-	struct siw_ts *ts = chip->ts;
+//	struct siw_ts *ts = chip->ts;
 	struct siw_hal_reg *reg = chip->reg;
 	u8 debug_reason_buf[TCI_MAX_NUM][TCI_DEBUG_MAX_NUM];
 	u32 rdata[9] = {0, };
@@ -4624,11 +4627,6 @@ static void siw_hal_debug_tci(struct device *dev)
 	u32 i, j = 0;
 	u8 buf = 0;
 	int ret = 0;
-
-	switch (touch_chip_type(ts)) {
-	case CHIP_SW1828:
-		return;
-	}
 
 	if (!chip->tci_debug_type)
 		return;
@@ -4671,6 +4669,12 @@ static void siw_hal_debug_tci(struct device *dev)
 		}
 	}
 }
+#else	/* __SIW_CONFIG_KNOCK */
+static void siw_hal_debug_tci(struct device *dev)
+{
+
+}
+#endif	/* __SIW_CONFIG_KNOCK */
 
 #if defined(__SIW_CONFIG_SWIPE)
 static void siw_hal_debug_swipe(struct device *dev)

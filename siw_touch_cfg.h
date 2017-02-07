@@ -90,6 +90,12 @@
 //#define __SIW_CONFIG_SHOW_SWIPE_INIT_VAL
 
 
+#if defined(CONFIG_TOUCHSCREEN_SIW_SW1828)
+
+#else
+#define __SIW_CONFIG_KNOCK
+#endif
+
 #if defined(__SIW_SUPPORT_WATCH)
 #define __SIW_CONFIG_SWIPE
 #endif
