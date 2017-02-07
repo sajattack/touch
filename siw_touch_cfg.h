@@ -89,6 +89,12 @@
 //#define __SIW_CONFIG_SHOW_TCI_INIT_VAL
 //#define __SIW_CONFIG_SHOW_SWIPE_INIT_VAL
 
+
+#if defined(__SIW_SUPPORT_WATCH)
+#define __SIW_CONFIG_SWIPE
+#endif
+
+
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 15, 0))
 #define __SIW_ATTR_PERMISSION_ALL
 #endif
