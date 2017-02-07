@@ -64,7 +64,7 @@ static const char *siw_hal_debug_type_str[] = {
 static int __show_reg_list(struct device *dev, char *buf, int size)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
-	struct siw_ts *ts = chip->ts;
+//	struct siw_ts *ts = chip->ts;
 	struct siw_hal_reg *reg = chip->reg;
 
 	size += siw_snprintf(buf, size, "# Reg. Map List\n");
@@ -147,8 +147,9 @@ static int __show_reg_list(struct device *dev, char *buf, int size)
 	size += _reg_snprintf(buf, size, reg, raw_data_ctl_read);
 	size += _reg_snprintf(buf, size, reg, raw_data_ctl_write);
 	size += _reg_snprintf(buf, size, reg, serial_data_offset);
-	/* __SIW_SUPPORT_WATCH */
-	if (!touch_test_quirks(ts, CHIP_QUIRK_NOT_SUPPORT_WATCH)) {
+
+#if defined(__SIW_SUPPORT_WATCH)
+	if (!touch_test_quirks(chip->ts, CHIP_QUIRK_NOT_SUPPORT_WATCH)) {
 		size += _reg_snprintf(buf, size, reg, ext_watch_font_offset);
 		size += _reg_snprintf(buf, size, reg, ext_watch_font_addr);
 		size += _reg_snprintf(buf, size, reg, ext_watch_font_dn_addr_info);
@@ -160,7 +161,7 @@ static int __show_reg_list(struct device *dev, char *buf, int size)
 		size += _reg_snprintf(buf, size, reg, ext_watch_area_y);
 		size += _reg_snprintf(buf, size, reg, ext_watch_blink_area);
 
-		switch (touch_chip_type(ts)) {
+		switch (touch_chip_type(chip->ts)) {
 		case CHIP_LG4895:
 			/* SKIP : reg->ext_watch_lut not available */
 			break;
@@ -184,6 +185,8 @@ static int __show_reg_list(struct device *dev, char *buf, int size)
 		size += _reg_snprintf(buf, size, reg, ext_watch_state);
 		size += _reg_snprintf(buf, size, reg, sys_dispmode_status);
 	}
+#endif	/* __SIW_SUPPORT_WATCH */
+
 	/* __SIW_SUPPORT_PRD */
 	size += _reg_snprintf(buf, size, reg, prd_serial_tcm_offset);
 	size += _reg_snprintf(buf, size, reg, prd_tc_mem_sel);
