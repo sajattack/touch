@@ -59,12 +59,16 @@
 	};
 };
 
+/* I2C group */
 //#include "exynos5422-odroidxu3_siw_touch_lg4894.dtsi"
+//#include "exynos5422-odroidxu3_siw_touch_sw1828.dtsi"
+//#include "exynos5422-odroidxu3_siw_touch_sw49105.dtsi
+//#include "exynos5422-odroidxu3_siw_touch_sw49106.dtsi
+#include "exynos5422-odroidxu3_siw_touch_sw42101.dtsi"
+
+/* SPI group */
 //#include "exynos5422-odroidxu3_siw_touch_lg4895.dtsi"
 //#include "exynos5422-odroidxu3_siw_touch_lg4946.dtsi"
-//#include "exynos5422-odroidxu3_siw_touch_sw1828.dtsi"
 #include "exynos5422-odroidxu3_siw_touch_sw49407.dtsi"
-
-
 
 
