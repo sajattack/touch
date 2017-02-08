@@ -3429,11 +3429,20 @@ static int siw_hal_fw_upgrade(struct device *dev,
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
+	struct siw_touch_fquirks *fquirks = touch_fquirks(ts);
 	int fw_size_max;
 	u32 include_conf;
 	int ret = 0;
 
 	t_dev_info(dev, "===== FW upgrade: start (%d) =====\n", retry);
+
+	if (fquirks->fwup_upgrade) {
+		ret = fquirks->fwup_upgrade(dev, fw_buf, fw_size, retry);
+		if (ret < 0) {
+			goto out;
+		}
+		goto out_done;
+	}
 
 	fw_size_max = touch_fw_size(ts);
 
@@ -3461,6 +3470,7 @@ static int siw_hal_fw_upgrade(struct device *dev,
 		}
 	}
 
+out_done:
 	t_dev_info(dev, "===== FW upgrade: done (%d) =====\n", retry);
 
 out:

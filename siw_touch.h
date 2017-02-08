@@ -543,6 +543,7 @@ struct siw_touch_fquirks {	//function quirks
 	int (*power_vio)(struct device *dev, int value);
 	/* */
 	int (*fwup_check)(struct device *dev, u8 *fw_buf);
+	int (*fwup_upgrade)(struct device *dev, u8 *fw_buf, int fw_size, int retry);
 	/* */
 	int (*mon_handler)(struct device *dev, u32 opt);
 	int mon_interval;
