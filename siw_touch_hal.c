@@ -589,9 +589,15 @@ static int __used __siw_hal_do_reg_read(struct device *dev, u32 addr, void *data
 	tx_buf = __siw_hal_get_curr_buf(ts, &tx_dma, 1);
 	rx_buf = __siw_hal_get_curr_buf(ts, &rx_dma, 0);
 
+#if defined(__SIW_BUS_ADDR_16BIT)
+	tx_buf[0] = ((addr >> 8) & 0xff);
+	tx_buf[1] = (addr & 0xff);
+	tx_buf[2] = bus_rd_hdr_flag;	/* just prevent 'build warning' */
+#else
 	tx_buf[0] = bus_rd_hdr_flag | ((size > 4) ? 0x20 : 0x00);
 	tx_buf[0] |= ((addr >> 8) & 0x0f);
 	tx_buf[1] = (addr & 0xff);
+#endif
 //	while (bus_tx_dummy_size--) {
 	while (bus_rx_dummy_size--) {
 		tx_buf[tx_size++] = 0;
@@ -657,10 +663,15 @@ static int __used __siw_hal_do_reg_write(struct device *dev, u32 addr, void *dat
 
 	tx_buf = __siw_hal_get_curr_buf(ts, &tx_dma, 1);
 
+#if defined(__SIW_BUS_ADDR_16BIT)
+	tx_buf[0] = ((addr >> 8) & 0xff);
+	tx_buf[1] = (addr & 0xff);
+#else
 	tx_buf[0] = (touch_bus_type(ts) == BUS_IF_SPI) ? 0x60 :	\
 					((size > 4) ? 0x60 : 0x40);
 	tx_buf[0] |= ((addr >> 8) & 0x0f);
 	tx_buf[1] = (addr & 0xff);
+#endif
 
 	msg->tx_buf = tx_buf;
 	msg->tx_size = bus_tx_hdr_size + size;
@@ -1520,6 +1531,22 @@ static const struct siw_hal_status_filter status_filter_type_1[] = {
 	_STS_FILTER(STS_ID_NONE, 0, 0, 0, NULL),
 };
 
+static const struct siw_hal_status_filter status_filter_type_2[] = {
+	_STS_FILTER(STS_ID_VALID_DEV_CTL, 1, STS_POS_VALID_DEV_CTL,
+		0, "device ctl not set"),
+	_STS_FILTER(STS_ID_ERROR_ABNORMAL, 1, STS_POS_ERROR_ABNORMAL,
+		STS_FILTER_FLAG_TYPE_ERROR | STS_FILTER_FLAG_CHK_FAULT,
+		"re-init required"),
+	_STS_FILTER(STS_ID_VALID_IRQ_PIN, 1, STS_POS_VALID_IRQ_PIN,
+		0, "irq pin invalid"),
+	_STS_FILTER(STS_ID_VALID_IRQ_EN, 1, STS_POS_VALID_IRQ_EN,
+		0, "irq status invalid"),
+	_STS_FILTER(STS_ID_VALID_TC_DRV, 1, STS_POS_VALID_TC_DRV,
+		0, "driving invalid"),
+	/* end mask */
+	_STS_FILTER(STS_ID_NONE, 0, 0, 0, NULL),
+};
+
 static u32 siw_hal_get_status_mask(struct device *dev, int id)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
@@ -1562,6 +1589,9 @@ static int siw_hal_chk_status_type(struct device *dev)
 	}
 
 	switch (touch_chip_type(ts)) {
+	case CHIP_SW42101:
+		chip->status_type = CHIP_STATUS_TYPE_2;
+		break;
 	case CHIP_LG4894:
 		if (!strncmp(fw->product_id, "L0W53K6P", 8)) {
 			chip->status_type = CHIP_STATUS_TYPE_0;
@@ -1574,6 +1604,9 @@ static int siw_hal_chk_status_type(struct device *dev)
 	}
 
 	switch (chip->status_type) {
+	case CHIP_STATUS_TYPE_2:
+		chip->status_filter = (struct siw_hal_status_filter *)status_filter_type_2;
+		break;
 	case CHIP_STATUS_TYPE_0:
 		chip->status_filter = (struct siw_hal_status_filter *)status_filter_type_0;
 		break;
@@ -1664,6 +1697,7 @@ static const struct siw_ic_info_chip_proto siw_ic_info_chip_protos[] = {
 	{ CHIP_SW49406, 7, 4 },
 	{ CHIP_SW49407, 9, 4 },
 	{ CHIP_SW49408, 12, 4 },
+	{ CHIP_SW42101, 15, 4 },
 	{ CHIP_NONE, 0, 0 },	//End mark
 };
 
@@ -2263,6 +2297,28 @@ static int siw_hal_send_esd_notifier(struct device *dev, int type)
 	return 1;
 }
 
+static int siw_hal_init_quirk(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	u8 temp[10+4];
+	int ret = 0;
+
+	switch (touch_chip_type(ts)) {
+	case CHIP_SW42101:
+		memset(temp, 0, sizeof(temp));
+		ret = siw_hal_reg_read(dev, 0x150, temp, 10);
+		if (ret < 0) {
+			t_dev_err(dev, "init quirk for SW42101 failed, %d\n", ret);
+			return ret;
+		}
+		t_dev_info(dev, "init quirk for SW42101: %s\n", temp);
+		break;
+	}
+
+	return 0;
+}
+
 static int siw_hal_init(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
@@ -2276,6 +2332,11 @@ static int siw_hal_init(struct device *dev)
 	if (atomic_read(&ts->state.core) == CORE_PROBE) {
 		siw_hal_fb_notifier_init(dev);
 		init_retry = CHIP_INIT_RETRY_PROBE;
+	} else {
+		siw_hal_init_quirk(dev);
+		if (ret < 0) {
+			goto out;
+		}
 	}
 
 	t_dev_dbg_base(dev, "charger_state = 0x%02X\n", chip->charger);
@@ -5398,6 +5459,7 @@ static int siw_hal_do_check_status(struct device *dev,
 	}
 
 	switch (chip->status_type) {
+	case CHIP_STATUS_TYPE_2:
 	case CHIP_STATUS_TYPE_1:
 	case CHIP_STATUS_TYPE_0:
 		ret = siw_hal_check_status_type_x(dev, status, ic_status, irq);
@@ -6597,6 +6659,11 @@ static int siw_hal_chipset_check(struct device *dev)
 	int ret = 0;
 
 	touch_msleep(ts->caps.hw_reset_delay);
+
+	ret = siw_hal_init_quirk(dev);
+	if (ret < 0) {
+		goto out;
+	}
 
 	ret = siw_hal_ic_test(dev);
 	if (ret < 0) {
