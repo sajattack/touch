@@ -47,12 +47,14 @@ static const char *siw_ime_str[] = {
 };
 #endif
 
+#if defined(__SIW_CONFIG_KNOCK)
 static const char *siw_mfts_str[] = {
 	"NONE",
 	"FOLDER",
 	"FLAT",
 	"CURVED",
 };
+#endif
 
 #if defined(__SIW_SUPPORT_ASC)
 static const char *siw_incoming_call_str[] = {
@@ -230,19 +232,27 @@ static ssize_t _show_upgrade(struct device *dev, char *buf)
 	return 0;
 }
 
+#if defined(__SIW_CONFIG_KNOCK)
 static int __show_do_lpwg_data(struct device *dev, char *buf)
 {
 	struct siw_ts *ts = to_touch_core(dev);
+	struct lpwg_info *lpwg = &ts->lpwg;
 	int i;
 	int size = 0;
 
 	for (i = 0; i < MAX_LPWG_CODE; i++) {
-		if (ts->lpwg.code[i].x == -1 && ts->lpwg.code[i].y == -1)
+		if ((lpwg->code[i].x == -1) && (lpwg->code[i].y == -1)) {
 			break;
+		}
+
 		size += siw_snprintf(buf, size, "%d %d\n",
-				ts->lpwg.code[i].x, ts->lpwg.code[i].y);
+				lpwg->code[i].x, lpwg->code[i].y);
+
+		if (!lpwg->code[i].x && !lpwg->code[i].y) {
+			break;
+		}
 	}
-	memset(ts->lpwg.code, 0, sizeof(struct point) * MAX_LPWG_CODE);
+	memset(lpwg->code, 0, sizeof(struct point) * MAX_LPWG_CODE);
 
 	return size;
 }
@@ -329,6 +339,72 @@ static ssize_t _store_lpwg_notify(struct device *dev,
 out:
 	return count;
 }
+
+static ssize_t _show_mfts_state(struct device *dev, char *buf)
+{
+	struct siw_ts *ts = to_touch_core(dev);
+	int value = 0;
+	int size = 0;
+
+	value = atomic_read(&ts->state.mfts);
+
+	size += siw_snprintf(buf, size, "%s : %s(%d)\n",
+				__func__,
+				siw_mfts_str[value], value);
+
+	return (ssize_t)size;
+}
+
+static ssize_t _store_mfts_state(struct device *dev,
+				const char *buf, size_t count)
+{
+	struct siw_ts *ts = to_touch_core(dev);
+	int value = 0;
+
+	if (sscanf(buf, "%d", &value) <= 0) {
+		siw_sysfs_err_invalid_param(dev);
+		return count;
+	}
+
+	if (value >= MFTS_NONE && value <= MFTS_CURVED) {
+		atomic_set(&ts->state.mfts, value);
+		t_dev_info(dev, "MFTS : %s(%d)\n", siw_mfts_str[value], value);
+	} else {
+		t_dev_info(dev, "MFTS : Unknown state, %d\n", value);
+	}
+
+	return count;
+}
+
+static ssize_t _show_mfts_lpwg(struct device *dev, char *buf)
+{
+	struct siw_ts *ts = to_touch_core(dev);
+	int size = 0;
+
+	size += siw_snprintf(buf, size, "MFTS LPWG : %d\n",
+				ts->role.use_lpwg_test);
+
+	return (ssize_t)size;
+}
+
+static ssize_t _store_mfts_lpwg(struct device *dev,
+				const char *buf, size_t count)
+{
+	struct siw_ts *ts = to_touch_core(dev);
+	int value = 0;
+
+	if (sscanf(buf, "%d", &value) <= 0) {
+		siw_sysfs_err_invalid_param(dev);
+		return count;
+	}
+
+	ts->role.mfts_lpwg = value;
+	t_mfts_lpwg = value;
+	t_dev_info(dev, "MFTS LPWG : %d\n", ts->role.mfts_lpwg);
+
+	return count;
+}
+#endif	/* __SIW_CONFIG_KNOCK */
 
 #if defined(__SYS_USE_LOCKSCREEN)
 static ssize_t _show_lockscreen_state(struct device *dev, char *buf)
@@ -463,71 +539,6 @@ static ssize_t _show_version_info(struct device *dev, char *buf)
 static ssize_t _show_atcmd_version_info(struct device *dev, char *buf)
 {
 	return siw_touch_get(dev, CMD_ATCMD_VERSION, buf);
-}
-
-static ssize_t _show_mfts_state(struct device *dev, char *buf)
-{
-	struct siw_ts *ts = to_touch_core(dev);
-	int value = 0;
-	int size = 0;
-
-	value = atomic_read(&ts->state.mfts);
-
-	size += siw_snprintf(buf, size, "%s : %s(%d)\n",
-				__func__,
-				siw_mfts_str[value], value);
-
-	return (ssize_t)size;
-}
-
-static ssize_t _store_mfts_state(struct device *dev,
-				const char *buf, size_t count)
-{
-	struct siw_ts *ts = to_touch_core(dev);
-	int value = 0;
-
-	if (sscanf(buf, "%d", &value) <= 0) {
-		siw_sysfs_err_invalid_param(dev);
-		return count;
-	}
-
-	if (value >= MFTS_NONE && value <= MFTS_CURVED) {
-		atomic_set(&ts->state.mfts, value);
-		t_dev_info(dev, "MFTS : %s(%d)\n", siw_mfts_str[value], value);
-	} else {
-		t_dev_info(dev, "MFTS : Unknown state, %d\n", value);
-	}
-
-	return count;
-}
-
-static ssize_t _show_mfts_lpwg(struct device *dev, char *buf)
-{
-	struct siw_ts *ts = to_touch_core(dev);
-	int size = 0;
-
-	size += siw_snprintf(buf, size, "MFTS LPWG : %d\n",
-				ts->role.use_lpwg_test);
-
-	return (ssize_t)size;
-}
-
-static ssize_t _store_mfts_lpwg(struct device *dev,
-				const char *buf, size_t count)
-{
-	struct siw_ts *ts = to_touch_core(dev);
-	int value = 0;
-
-	if (sscanf(buf, "%d", &value) <= 0) {
-		siw_sysfs_err_invalid_param(dev);
-		return count;
-	}
-
-	ts->role.mfts_lpwg = value;
-	t_mfts_lpwg = value;
-	t_dev_info(dev, "MFTS LPWG : %d\n", ts->role.mfts_lpwg);
-
-	return count;
 }
 
 static ssize_t _show_sp_link_touch_off(struct device *dev, char *buf)
@@ -1220,11 +1231,19 @@ static SIW_TOUCH_ATTR(driver_data,
 static SIW_TOUCH_ATTR(fw_upgrade,
 						_show_upgrade,
 						_store_upgrade);
+#if defined(__SIW_CONFIG_KNOCK)
 static SIW_TOUCH_ATTR(lpwg_data,
 						_show_lpwg_data,
 						_store_lpwg_data);
 static SIW_TOUCH_ATTR(lpwg_notify, NULL,
 						_store_lpwg_notify);
+static SIW_TOUCH_ATTR(mfts,
+						_show_mfts_state,
+						_store_mfts_state);
+static SIW_TOUCH_ATTR(mfts_lpwg,
+						_show_mfts_lpwg,
+						_store_mfts_lpwg);
+#endif	/* __SIW_CONFIG_KNOCK */
 #if defined(__SYS_USE_LOCKSCREEN)
 static SIW_TOUCH_ATTR(keyguard,
 						_show_lockscreen_state,
@@ -1244,12 +1263,6 @@ static SIW_TOUCH_ATTR(version,
 						_show_version_info, NULL);
 static SIW_TOUCH_ATTR(testmode_ver,
 						_show_atcmd_version_info, NULL);
-static SIW_TOUCH_ATTR(mfts,
-						_show_mfts_state,
-						_store_mfts_state);
-static SIW_TOUCH_ATTR(mfts_lpwg,
-						_show_mfts_lpwg,
-						_store_mfts_lpwg);
 static SIW_TOUCH_ATTR(sp_link_touch_off,
 						_show_sp_link_touch_off,
 						_store_sp_link_touch_off);
@@ -1310,8 +1323,12 @@ static struct attribute *siw_touch_attribute_list[] = {
 	&_SIW_TOUCH_ATTR_T(platform_data).attr,
 	&_SIW_TOUCH_ATTR_T(driver_data).attr,
 	&_SIW_TOUCH_ATTR_T(fw_upgrade).attr,
+#if defined(__SIW_CONFIG_KNOCK)
 	&_SIW_TOUCH_ATTR_T(lpwg_data).attr,
 	&_SIW_TOUCH_ATTR_T(lpwg_notify).attr,
+	&_SIW_TOUCH_ATTR_T(mfts).attr,
+	&_SIW_TOUCH_ATTR_T(mfts_lpwg).attr,
+#endif	/* __SIW_CONFIG_KNOCK */
 #if defined(__SYS_USE_LOCKSCREEN)
 	&_SIW_TOUCH_ATTR_T(keyguard.attr),
 #endif	/* __SYS_USE_LOCKSCREEN */
@@ -1322,8 +1339,6 @@ static struct attribute *siw_touch_attribute_list[] = {
 	&_SIW_TOUCH_ATTR_T(firmware).attr,
 	&_SIW_TOUCH_ATTR_T(version).attr,
 	&_SIW_TOUCH_ATTR_T(testmode_ver).attr,
-	&_SIW_TOUCH_ATTR_T(mfts).attr,
-	&_SIW_TOUCH_ATTR_T(mfts_lpwg).attr,
 	&_SIW_TOUCH_ATTR_T(sp_link_touch_off).attr,
 	&_SIW_TOUCH_ATTR_T(irq_state).attr,
 	&_SIW_TOUCH_ATTR_T(irq_level).attr,
