@@ -52,11 +52,14 @@
 		t_dev_err(_dev, "Invalid param\n");
 
 
+#if defined(__SIW_CONFIG_KNOCK) ||	\
+	defined(__SIW_CONFIG_SWIPE)
 static const char *siw_hal_debug_type_str[] = {
 	"Disable Type",
 	"Buffer Type",
 	"Always Report Type"
 };
+#endif
 
 #define _reg_snprintf(_buf, _size, _reg, _element)	\
 		siw_snprintf(_buf, _size, "# 0x%04X [%s]\n", _reg->_element, #_element)
@@ -98,6 +101,7 @@ static int __show_reg_list(struct device *dev, char *buf, int size)
 	size += _reg_snprintf(buf, size, reg, tc_interrupt_ctl);
 	size += _reg_snprintf(buf, size, reg, tc_interrupt_status);
 	size += _reg_snprintf(buf, size, reg, tc_drive_ctl);
+#if defined(__SIW_CONFIG_KNOCK)
 	size += _reg_snprintf(buf, size, reg, tci_fail_debug_r);
 	size += _reg_snprintf(buf, size, reg, tic_fail_bit_r);
 	size += _reg_snprintf(buf, size, reg, tci_debug_r);
@@ -114,6 +118,8 @@ static int __show_reg_list(struct device *dev, char *buf, int size)
 	size += _reg_snprintf(buf, size, reg, act_area_y1_w);
 	size += _reg_snprintf(buf, size, reg, act_area_x2_w);
 	size += _reg_snprintf(buf, size, reg, act_area_y2_w);
+#endif
+#if defined(__SIW_CONFIG_SWIPE)
 	size += _reg_snprintf(buf, size, reg, swipe_enable_w);
 	size += _reg_snprintf(buf, size, reg, swipe_dist_w);
 	size += _reg_snprintf(buf, size, reg, swipe_ratio_thr_w);
@@ -128,15 +134,18 @@ static int __show_reg_list(struct device *dev, char *buf, int size)
 	size += _reg_snprintf(buf, size, reg, swipe_fail_debug_w);
 	size += _reg_snprintf(buf, size, reg, swipe_fail_debug_r);
 	size += _reg_snprintf(buf, size, reg, swipe_debug_r);
+#endif
 	size += _reg_snprintf(buf, size, reg, cmd_raw_data_report_mode_read);
 	size += _reg_snprintf(buf, size, reg, cmd_raw_data_compress_write);
 	size += _reg_snprintf(buf, size, reg, cmd_raw_data_report_mode_write);
 	size += _reg_snprintf(buf, size, reg, spr_charger_status);
 	size += _reg_snprintf(buf, size, reg, ime_state);
+#if defined(__SIW_SUPPORT_ASC)
 	size += _reg_snprintf(buf, size, reg, max_delta);
 	size += _reg_snprintf(buf, size, reg, touch_max_w);
 	size += _reg_snprintf(buf, size, reg, touch_max_r);
 	size += _reg_snprintf(buf, size, reg, call_state);
+#endif
 	size += _reg_snprintf(buf, size, reg, tc_tsp_test_ctl);
 	size += _reg_snprintf(buf, size, reg, tc_tsp_test_status);
 	size += _reg_snprintf(buf, size, reg, tc_tsp_test_pf_result);
@@ -391,6 +400,7 @@ out:
 	return count;
 }
 
+#if defined(__SIW_CONFIG_KNOCK)
 static ssize_t _show_tci_debug(struct device *dev, char *buf)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
@@ -443,6 +453,40 @@ static ssize_t _store_tci_debug(struct device *dev,
 	return count;
 }
 
+static ssize_t _show_lcd_mode(struct device *dev, char *buf)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	int size = 0;
+
+	size += siw_snprintf(buf, size, "current driving mode is %s\n",
+				siw_lcd_driving_mode_str(chip->lcd_mode));
+
+	return size;
+}
+
+static ssize_t _store_lcd_mode(struct device *dev,
+				const char *buf, size_t count)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	int value = 0;
+
+	if (sscanf(buf, "%d", &value) <= 0) {
+		siw_hal_sysfs_err_invalid_param(dev);
+		return count;
+	}
+
+	t_dev_info(dev, "try to change driving mode: %s -> %s\n",
+			siw_lcd_driving_mode_str(chip->lcd_mode),
+			siw_lcd_driving_mode_str(value));
+	siw_ops_notify(ts, LCD_EVENT_LCD_MODE, &value);
+
+	return count;
+}
+
+#endif	/* __SIW_CONFIG_KNOCK */
+
+#if defined(__SIW_CONFIG_SWIPE)
 static ssize_t _show_swipe_debug(struct device *dev, char *buf)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
@@ -492,6 +536,7 @@ static ssize_t _store_swipe_debug(struct device *dev,
 
 	return count;
 }
+#endif	/* __SIW_CONFIG_SWIPE */
 
 static ssize_t _show_reset_ctrl(struct device *dev, char *buf)
 {
@@ -557,37 +602,6 @@ static ssize_t _show_reset_hw(struct device *dev, char *buf)
 	return _store_reset_xxx(dev, HW_RESET_SYNC);
 }
 #endif
-
-static ssize_t _show_lcd_mode(struct device *dev, char *buf)
-{
-	struct siw_touch_chip *chip = to_touch_chip(dev);
-	int size = 0;
-
-	size += siw_snprintf(buf, size, "current driving mode is %s\n",
-				siw_lcd_driving_mode_str(chip->lcd_mode));
-
-	return size;
-}
-
-static ssize_t _store_lcd_mode(struct device *dev,
-				const char *buf, size_t count)
-{
-	struct siw_touch_chip *chip = to_touch_chip(dev);
-	struct siw_ts *ts = chip->ts;
-	int value = 0;
-
-	if (sscanf(buf, "%d", &value) <= 0) {
-		siw_hal_sysfs_err_invalid_param(dev);
-		return count;
-	}
-
-	t_dev_info(dev, "try to change driving mode: %s -> %s\n",
-			siw_lcd_driving_mode_str(chip->lcd_mode),
-			siw_lcd_driving_mode_str(value));
-	siw_ops_notify(ts, LCD_EVENT_LCD_MODE, &value);
-
-	return count;
-}
 
 #if defined(__SIW_USE_BUS_TEST)
 u32 t_dbg_bus_cnt = 10000;
@@ -729,14 +743,18 @@ out:
 
 static SIW_TOUCH_HAL_ATTR(reg_list, _show_reg_list, NULL);
 static SIW_TOUCH_HAL_ATTR(reg_ctrl, _show_reg_ctrl, _store_reg_ctrl);
+#if defined(__SIW_CONFIG_KNOCK)
 static SIW_TOUCH_HAL_ATTR(tci_debug, _show_tci_debug, _store_tci_debug);
+static SIW_TOUCH_HAL_ATTR(lcd_mode, _show_lcd_mode, _store_lcd_mode);
+#endif
+#if defined(__SIW_CONFIG_SWIPE)
 static SIW_TOUCH_HAL_ATTR(swipe_debug, _show_swipe_debug, _store_swipe_debug);
+#endif
 static SIW_TOUCH_HAL_ATTR(reset_ctrl, _show_reset_ctrl, _store_reset_ctrl);
 #if defined(__SIW_ATTR_RST_BY_READ)
 static SIW_TOUCH_HAL_ATTR(reset_sw, _show_reset_sw, NULL);
 static SIW_TOUCH_HAL_ATTR(reset_hw, _show_reset_hw, NULL);
 #endif
-static SIW_TOUCH_HAL_ATTR(lcd_mode, _show_lcd_mode, _store_lcd_mode);
 #if defined(__SIW_USE_BUS_TEST)
 static SIW_TOUCH_HAL_ATTR(debug_bus, _show_debug_bus, NULL);
 #endif
@@ -744,14 +762,18 @@ static SIW_TOUCH_HAL_ATTR(debug_bus, _show_debug_bus, NULL);
 static struct attribute *siw_hal_attribute_list[] = {
 	&_SIW_TOUCH_HAL_ATTR_T(reg_list).attr,
 	&_SIW_TOUCH_HAL_ATTR_T(reg_ctrl).attr,
+#if defined(__SIW_CONFIG_KNOCK)
 	&_SIW_TOUCH_HAL_ATTR_T(tci_debug).attr,
+	&_SIW_TOUCH_HAL_ATTR_T(lcd_mode).attr,
+#endif
+#if defined(__SIW_CONFIG_SWIPE)
 	&_SIW_TOUCH_HAL_ATTR_T(swipe_debug).attr,
+#endif
 	&_SIW_TOUCH_HAL_ATTR_T(reset_ctrl).attr,
 #if defined(__SIW_ATTR_RST_BY_READ)
 	&_SIW_TOUCH_HAL_ATTR_T(reset_sw).attr,
 	&_SIW_TOUCH_HAL_ATTR_T(reset_hw).attr,
 #endif
-	&_SIW_TOUCH_HAL_ATTR_T(lcd_mode).attr,
 #if defined(__SIW_USE_BUS_TEST)
 	&_SIW_TOUCH_HAL_ATTR_T(debug_bus).attr,
 #endif
