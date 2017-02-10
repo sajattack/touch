@@ -1752,6 +1752,7 @@ static int siw_hal_do_ic_info(struct device *dev, int prt_on)
 	u32 version_ext = 0;
 	u32 revision = 0;
 	u32 bootmode = 0;
+	u32 boot_chk_offset;
 	int ret = 0;
 
 	siw_hal_xfer_init(dev, xfer);
@@ -1843,12 +1844,21 @@ static int siw_hal_do_ic_info(struct device *dev, int prt_on)
 				fw->v.version.major, fw->v.version.minor,
 				version, fw->revision);
 	}
+
+	switch (chip->opt.t_boot_mode) {
+	case 1:
+		boot_chk_offset = 0;
+		break;
+	default:
+		boot_chk_offset = 1;
+		break;
+	}
 	t_dev_info_sel(dev, prt_on,
 			"[T] product id %s, flash boot %s(%s), crc %s (0x%08X)\n",
 			fw->product_id,
-			((bootmode >> 1) & 0x1) ? "BUSY" : "idle",
-			((bootmode >> 2) & 0x1) ? "done" : "booting",
-			((bootmode >> 3) & 0x1) ? "ERROR" : "ok",
+			((bootmode >> boot_chk_offset) & 0x1) ? "BUSY" : "idle",
+			((bootmode >> (boot_chk_offset + 1)) & 0x1) ? "done" : "booting",
+			((bootmode >> (boot_chk_offset + 2)) & 0x1) ? "ERROR" : "ok",
 			bootmode);
 
 	ret = siw_hal_chk_boot(dev);

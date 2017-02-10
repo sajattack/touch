@@ -216,6 +216,7 @@ static ssize_t _show_reg_list(struct device *dev, char *buf)
 	struct siw_hal_reg *reg = chip->reg;
 	struct siw_hal_fw_info *fw = &chip->fw;
 	u32 bootmode = 0;
+	u32 boot_chk_offset = 0;
 	int size = 0;
 	int ret = 0;
 
@@ -253,11 +254,20 @@ static ssize_t _show_reg_list(struct device *dev, char *buf)
 				">> product id : %s\n",
 				fw->product_id);
 
+	switch (chip->opt.t_boot_mode) {
+	case 1:
+		boot_chk_offset = 0;
+		break;
+	default:
+		boot_chk_offset = 1;
+		break;
+	}
+
 	size += siw_snprintf(buf, size,
 				">> flash boot : %s(%s), crc %s  (0x%08X)\n",
-				(bootmode >> 1 & 0x1) ? "BUSY" : "idle",
-				(bootmode >> 2 & 0x1) ? "done" : "booting",
-				(bootmode >> 3 & 0x1) ? "ERROR" : "ok",
+				(bootmode >> (boot_chk_offset) & 0x1) ? "BUSY" : "idle",
+				(bootmode >> (boot_chk_offset + 1) & 0x1) ? "done" : "booting",
+				(bootmode >> (boot_chk_offset + 2) & 0x1) ? "ERROR" : "ok",
 				bootmode);
 
 	size += siw_snprintf(buf, size,
