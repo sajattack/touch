@@ -282,12 +282,17 @@ static ssize_t _show_reg_list(struct device *dev, char *buf)
 	return (ssize_t)size;
 }
 
+#define REG_BURST_MAX			512
+#define REG_BURST_LOG_BUF_SZ	(1<<10)
+#define REG_BURST_COL_PWR		4
+
 static int __show_reg_ctrl_log_history(struct device *dev, char *buf)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 //	struct siw_ts *ts = chip->ts;
 	struct siw_hal_reg_log *reg_log = chip->reg_log;
 	char *dir_name;
+	int reg_burst;
 	int reg_err;
 	int i;
 	int size = 0;
@@ -297,15 +302,23 @@ static int __show_reg_ctrl_log_history(struct device *dev, char *buf)
 		if (reg_log->dir) {
 			dir_name = !!((reg_log->dir & REG_DIR_MASK) == REG_DIR_WR) ?
 						"wr" : "rd";
+			reg_burst = !!(reg_log->dir & (REG_DIR_ERR<<1));
 			reg_err = !!(reg_log->dir & REG_DIR_ERR);
 		} else {
 			dir_name = "__";
+			reg_burst = 0;
 			reg_err = 0;
 		}
 
-		size += siw_snprintf(buf, size, " %s: reg[0x%04X] = 0x%08X %s\n",
-					dir_name, reg_log->addr, reg_log->data,
-					(reg_err) ? "(err)" : "");
+		if (reg_burst) {
+			size += siw_snprintf(buf, size, " %s: reg[0x%04X] = (burst) %s\n",
+						dir_name, reg_log->addr,
+						(reg_err) ? "(err)" : "");
+		} else {
+			size += siw_snprintf(buf, size, " %s: reg[0x%04X] = 0x%08X %s\n",
+						dir_name, reg_log->addr, reg_log->data,
+						(reg_err) ? "(err)" : "");
+		}
 
 		reg_log++;
 	}
@@ -324,6 +337,9 @@ static ssize_t _show_reg_ctrl(struct device *dev, char *buf)
 	size += siw_snprintf(buf, size, "\n[Usage]\n");
 	size += siw_snprintf(buf, size, " echo wr 0x1234 {value} > reg_ctrl\n");
 	size += siw_snprintf(buf, size, " echo rd 0x1234 > reg_ctrl\n");
+	size += siw_snprintf(buf, size, " (burst access)\n");
+	size += siw_snprintf(buf, size, " echo rd 0x1234 0x111 > reg_ctrl, 0x111 is size(max 0x%X)\n",
+		REG_BURST_MAX);
 
 	return (ssize_t)size;
 }
@@ -337,6 +353,67 @@ static void __store_reg_ctrl_log_add(struct device *dev,
 
 	memmove(&reg_log[1], reg_log, sizeof(*reg_log) * (REG_LOG_MAX - 1));
 	memcpy(reg_log, new_log, sizeof(*reg_log));
+}
+
+static inline void __store_reg_ctrl_rd_burst_log(struct device *dev,
+					u8 *row_buf, u8 *log_buf, int log_buf_sz, int row, int col)
+{
+	int log_size = 0;
+	int i;
+
+	if (!col)
+		return;
+
+	for (i = 0; i < col ; i++) {
+		log_size += snprintf(log_buf + log_size, log_buf_sz - log_size,
+						"%02X ", *row_buf++);
+	}
+	t_dev_info(dev, "rd: [%3Xh] %s\n", row, log_buf);
+}
+
+static int __store_reg_ctrl_rd_burst(struct device *dev, u32 addr, int size)
+{
+	u8 *rd_buf, *row_buf;
+	u8 *log_buf;
+	int log_buf_sz = REG_BURST_LOG_BUF_SZ;
+	int col_power = REG_BURST_COL_PWR;
+	int col_width = (1<<col_power);
+	int row_curr, col_curr;
+	int ret = 0;
+
+	size = min(size, REG_BURST_MAX);
+
+	rd_buf = (u8 *)kzalloc(size + log_buf_sz, GFP_KERNEL);
+	if (rd_buf == NULL) {
+		t_dev_err(dev, "failed to allocate rd_buf\n");
+		return -ENOMEM;
+	}
+	log_buf = rd_buf + size;
+
+	ret = siw_hal_reg_read(dev, addr, rd_buf, size);
+	if (ret < 0) {
+		goto out;
+	}
+
+	t_dev_info(dev, "rd: addr %04Xh, size %Xh\n", addr, size);
+
+	row_buf = rd_buf;
+	row_curr = 0;
+	while (size) {
+		col_curr = min(col_width, size);
+
+		__store_reg_ctrl_rd_burst_log(dev, row_buf, log_buf,
+			log_buf_sz, row_curr, col_curr);
+
+		row_buf += col_curr;
+		row_curr += col_curr;
+		size -= col_curr;
+	}
+
+out:
+	kfree(rd_buf);
+
+	return ret;
 }
 
 static ssize_t _store_reg_ctrl(struct device *dev,
@@ -380,23 +457,29 @@ static ssize_t _store_reg_ctrl(struct device *dev,
 				"wr: reg[0x%04X] = 0x%08X\n",
 				reg_addr, data);
 		} else {
-			reg_log.dir |=REG_DIR_ERR;
+			reg_log.dir |= REG_DIR_ERR;
 		}
 		__store_reg_ctrl_log_add(dev, &reg_log);
 		goto out;
 	} else if (!wr) {
-		ret = siw_hal_read_value(dev,
-					reg_addr,
-					&data);
 		reg_log.dir = REG_DIR_RD;
 		reg_log.addr = reg_addr;
-		reg_log.data = data;
-		if (ret >= 0) {
-			t_dev_info(dev,
-				"rd: reg[0x%04X] = 0x%08X\n",
-				reg_addr, data);
+		if (value <= 4) {
+			ret = siw_hal_read_value(dev,
+						reg_addr,
+						&data);
+			reg_log.data = data;
+			if (ret >= 0) {
+				t_dev_info(dev,
+					"rd: reg[0x%04X] = 0x%08X\n",
+					reg_addr, data);
+			}
 		} else {
-			reg_log.dir |=REG_DIR_ERR;
+			reg_log.dir |= (REG_DIR_ERR<<1);
+			ret = __store_reg_ctrl_rd_burst(dev, reg_addr, value);
+		}
+		if (ret < 0) {
+			reg_log.dir |= REG_DIR_ERR;
 		}
 		__store_reg_ctrl_log_add(dev, &reg_log);
 		goto out;
@@ -405,6 +488,9 @@ static ssize_t _store_reg_ctrl(struct device *dev,
 	t_dev_info(dev, "[Usage]\n");
 	t_dev_info(dev, " echo wr 0x1234 {value} > reg_ctrl\n");
 	t_dev_info(dev, " echo rd 0x1234 > reg_ctrl\n");
+	t_dev_info(dev, " (burst access)\n");
+	t_dev_info(dev, " echo rd 0x1234 0x111 > reg_ctrl, 0x111 is size(max 0x%X)\n",
+		REG_BURST_MAX);
 
 out:
 	return count;
