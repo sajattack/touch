@@ -829,7 +829,93 @@ static ssize_t _show_debug_bus(struct device *dev, char *buf)
 out:
 	return (ssize_t)size;
 }
-#endif
+#endif	/* __SIW_USE_BUS_TEST */
+
+static const char *__debug_hal_delay_str[] = {
+	[HAL_DBG_DLY_TC_DRIVING_0]	= "(Group - TC Driving)",
+	[HAL_DBG_DLY_FW_0]			= "(Group - FW)",
+	[HAL_DBG_DLY_HW_RST_0]		= "(Group - Reset)",
+	[HAL_DBG_DLY_NOTIFY]		= "(Group - Notify)",
+	[HAL_DBG_DLY_LPWG]			= "(Group - LPWG)",
+};
+
+static ssize_t _show_debug_hal(struct device *dev, char *buf)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+//	struct siw_ts *ts = chip->ts;
+	struct siw_hal_debug *dbg = &chip->dbg;
+	char *str;
+	int size = 0;
+	int i;
+
+	for (i = 0; i < HAL_DBG_DLY_MAX; i++) {
+		switch (i) {
+		case HAL_DBG_DLY_TC_DRIVING_0:
+		case HAL_DBG_DLY_FW_0:
+		case HAL_DBG_DLY_HW_RST_0:
+		case HAL_DBG_DLY_NOTIFY:
+		case HAL_DBG_DLY_LPWG:
+			str = (char *)__debug_hal_delay_str[i];
+			break;
+		default:
+			str = "";
+		}
+		size += siw_snprintf(buf, size,
+			 "debug_hal: delay[%d] = %Xh %s\n",
+			 i, dbg->delay[i], str);
+	}
+
+	return (ssize_t)size;
+}
+
+static int _store_debug_hal_delay(struct device *dev, int sel, int val, int opt)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_hal_debug *dbg = &chip->dbg;
+
+	if (sel < HAL_DBG_DLY_MAX) {
+		u32 *delay = &dbg->delay[sel];
+
+		if ((*delay) != val) {
+			t_dev_info(dev, "debug_hal: delay[%d] changed: %Xh -> %Xh\n",
+				sel, (*delay), val);
+			(*delay) = val;
+		}
+	}
+
+	return 0;
+}
+
+static ssize_t _store_debug_hal(struct device *dev,
+				const char *buf, size_t count)
+{
+//	struct siw_touch_chip *chip = to_touch_chip(dev);
+//	struct siw_ts *ts = chip->ts;
+	int code = 0;
+	int sel = 0;
+	int val = 0;
+	int opt = 0;
+	int ret;
+
+	if (sscanf(buf, "%X %X %X %X", &code, &sel, &val, &opt) <= 0) {
+		siw_hal_sysfs_err_invalid_param(dev);
+		return count;
+	}
+
+	t_dev_info(dev, "debug_hal: code %Xh, sel %Xh, val %Xh, opt %Xh\n",
+			code, sel, val, opt);
+
+	switch (code) {
+	case HAL_DBG_GRP_0:
+		ret = _store_debug_hal_delay(dev, sel, val, opt);
+		break;
+	default:
+		break;
+	}
+
+	return count;
+}
+
 
 #define SIW_TOUCH_HAL_ATTR(_name, _show, _store)	\
 		TOUCH_ATTR(_name, _show, _store)
@@ -854,6 +940,7 @@ static SIW_TOUCH_HAL_ATTR(reset_hw, _show_reset_hw, NULL);
 #if defined(__SIW_USE_BUS_TEST)
 static SIW_TOUCH_HAL_ATTR(debug_bus, _show_debug_bus, NULL);
 #endif
+static SIW_TOUCH_HAL_ATTR(debug_hal, _show_debug_hal, _store_debug_hal);
 
 static struct attribute *siw_hal_attribute_list[] = {
 	&_SIW_TOUCH_HAL_ATTR_T(reg_list).attr,
@@ -873,6 +960,7 @@ static struct attribute *siw_hal_attribute_list[] = {
 #if defined(__SIW_USE_BUS_TEST)
 	&_SIW_TOUCH_HAL_ATTR_T(debug_bus).attr,
 #endif
+	&_SIW_TOUCH_HAL_ATTR_T(debug_hal).attr,
 	NULL,
 };
 

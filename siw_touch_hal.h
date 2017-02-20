@@ -448,6 +448,35 @@ struct siw_touch_chip_opt {
 	u32 rsvd23:8;
 };
 
+enum {
+	HAL_DBG_GRP_0 = 0,
+	HAL_DBG_GRP_MAX,
+};
+
+enum {
+	HAL_DBG_DLY_TC_DRIVING_0 = 0,
+	HAL_DBG_DLY_TC_DRIVING_1,
+	HAL_DBG_DLY_FW_0,
+	HAL_DBG_DLY_FW_1,
+	HAL_DBG_DLY_FW_2,
+	HAL_DBG_DLY_HW_RST_0,
+	HAL_DBG_DLY_HW_RST_1,
+	HAL_DBG_DLY_HW_RST_2,
+	HAL_DBG_DLY_SW_RST_0,
+	HAL_DBG_DLY_SW_RST_1,
+	HAL_DBG_DLY_NOTIFY,
+	HAL_DBG_DLY_LPWG,
+	HAL_DBG_DLY_MAX,
+};
+
+struct siw_hal_debug {
+	/* group 0 : delay */
+	u32 delay[HAL_DBG_DLY_MAX];
+	/* group 1 : rsvd */
+	/* group 2 : rsvd */
+	/* group 3 : rsvd */
+};
+
 struct siw_touch_chip {
 	void *ts;			//struct siw_ts
 	struct siw_touch_chip_opt opt;
@@ -490,7 +519,13 @@ struct siw_touch_chip {
 	struct pm_qos_request pm_qos_req;
 #endif
 	struct siw_hal_reg_log reg_log[REG_LOG_MAX];
+	struct siw_hal_debug dbg;
 };
+
+static inline int hal_dbg_delay(struct siw_touch_chip *chip, int index)
+{
+	return (index < HAL_DBG_DLY_MAX) ? chip->dbg.delay[index] : 0;
+}
 
 enum {
 	BOOT_FAIL_RECOVERY_MAX = 3,	/* to avoid infinite repetition */

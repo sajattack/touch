@@ -294,14 +294,15 @@ static void siw_hal_init_gpio_reset(struct device *dev)
 
 static void siw_hal_trigger_gpio_reset(struct device *dev)
 {
-	struct siw_ts *ts = to_touch_core(dev);
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
 
 	if (__siw_hal_gpio_skip_reset(ts)) {
 		return;
 	}
 
 	siw_hal_set_gpio_reset(dev, GPIO_OUT_ZERO);
-	touch_msleep(1);
+	touch_msleep(1 + hal_dbg_delay(chip, HAL_DBG_DLY_HW_RST_0));
 	siw_hal_set_gpio_reset(dev, GPIO_OUT_ONE);
 
 	t_dev_info(dev, "trigger gpio reset\n");
@@ -1307,7 +1308,7 @@ static int siw_hal_power(struct device *dev, int ctrl)
 		siw_hal_set_gpio_reset(dev, GPIO_OUT_ZERO);
 		siw_hal_power_vio(dev, 0);
 		siw_hal_power_vdd(dev, 0);
-		touch_msleep(1);
+		touch_msleep(1 + hal_dbg_delay(chip, HAL_DBG_DLY_HW_RST_0));
 		break;
 
 	case POWER_ON:
@@ -2459,7 +2460,7 @@ static int siw_hal_reinit(struct device *dev,
 		siw_hal_power(dev, POWER_ON);
 	} else {
 		siw_hal_set_gpio_reset(dev, GPIO_OUT_ZERO);
-		touch_msleep(1);
+		touch_msleep(1 + hal_dbg_delay(chip, HAL_DBG_DLY_HW_RST_0));
 		siw_hal_set_gpio_reset(dev, GPIO_OUT_ONE);
 	}
 	atomic_set(&chip->init, IC_INIT_NEED);
@@ -2484,7 +2485,7 @@ static int siw_hal_sw_reset_wh_cmd(struct device *dev)
 	siw_hal_cmd_write(dev, CMD_ENA);
 	siw_hal_cmd_write(dev, CMD_RESET_LOW);
 
-	touch_msleep(1);
+	touch_msleep(1 + hal_dbg_delay(chip, HAL_DBG_DLY_SW_RST_1));
 
 	siw_hal_cmd_write(dev, CMD_RESET_HIGH);
 	siw_hal_cmd_write(dev, CMD_DIS);
@@ -2525,7 +2526,9 @@ static int siw_hal_sw_reset_default(struct device *dev)
 	/* firmware boot done check */
 	chk_resp = FLASH_BOOTCHK_VALUE;
 	ret = siw_hal_condition_wait(dev, reg->tc_flash_dn_status, &data,
-				chk_resp, ~0, 10, 200);
+				chk_resp, ~0,
+				10 + hal_dbg_delay(chip, HAL_DBG_DLY_SW_RST_0),
+				200);
 	if (ret < 0) {
 		t_dev_err(dev, "failed : boot check(%Xh), %Xh\n",
 			chk_resp, data);
@@ -2567,7 +2570,7 @@ static int siw_hal_hw_reset(struct device *dev, int ctrl)
 		(ctrl == HW_RESET_ASYNC) ? "Async" : "Sync");
 
 	if (ctrl == HW_RESET_ASYNC) {
-		siw_hal_reinit(dev, 0, 0, 0, NULL);
+		siw_hal_reinit(dev, 0, hal_dbg_delay(chip, HAL_DBG_DLY_HW_RST_1), 0, NULL);
 		siw_touch_qd_init_work_hw(ts);
 		return 0;
 	}
@@ -2799,6 +2802,9 @@ enum {
 #define FLASH_CONF_DNCHK_VALUE_TYPE_X	(FLASH_CONF_DNCHK_VALUE | 0x0C)
 #define FLASH_CONF_SIZE_TYPE_X			(1<<9)
 
+#define FW_POST_QUIRK_DELAY		20
+#define FW_POST_QUIRK_COUNT		200
+
 static int siw_hal_fw_upgrade_fw_post_quirk(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
@@ -2827,7 +2833,9 @@ static int siw_hal_fw_upgrade_fw_post_quirk(struct device *dev)
 	/* firmware boot done check */
 	chk_resp = FW_BOOT_LOADER_CODE;
 	ret = siw_hal_condition_wait(dev, FW_BOOT_CODE_ADDR, &data,
-				chk_resp, ~0, 20, 200);
+				chk_resp, ~0,
+				FW_POST_QUIRK_DELAY + hal_dbg_delay(chip, HAL_DBG_DLY_FW_0),
+				FW_POST_QUIRK_COUNT);
 	if (ret < 0) {
 		t_dev_err(dev, "FW upgrade: failed - boot check(%Xh), %08Xh\n",
 			chk_resp, data);
@@ -2944,6 +2952,9 @@ static int siw_hal_fw_size_check_post(struct device *dev, int fw_size)
 #define FLASH_CONF_DNCHK_VALUE_TYPE_X	(FLASH_CONF_DNCHK_VALUE)
 #define FLASH_CONF_SIZE_TYPE_X			FLASH_CONF_SIZE
 
+#define FW_POST_QUIRK_DELAY		20
+#define FW_POST_QUIRK_COUNT		200
+
 static int siw_hal_fw_upgrade_fw_post_quirk(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
@@ -2967,7 +2978,9 @@ static int siw_hal_fw_upgrade_fw_post_quirk(struct device *dev)
 	/* firmware boot done check */
 	chk_resp = FLASH_BOOTCHK_VALUE;
 	ret = siw_hal_condition_wait(dev, reg->tc_flash_dn_status, &data,
-				chk_resp, ~0, 10, 200);
+				chk_resp, ~0,
+				FW_POST_QUIRK_DELAY + hal_dbg_delay(chip, HAL_DBG_DLY_FW_0),
+				FW_POST_QUIRK_COUNT);
 	if (ret < 0) {
 		t_dev_err(dev, "FW upgrade: failed - boot check(%Xh), %08Xh\n",
 			chk_resp, data);
@@ -3320,7 +3333,9 @@ static int siw_hal_fw_upgrade_fw_post(struct device *dev, int fw_size)
 	/* download check */
 	chk_resp = FLASH_CODE_DNCHK_VALUE;
 	ret = siw_hal_condition_wait(dev, reg->tc_flash_dn_status, &data,
-				chk_resp, 0xFFFF, FW_POST_DELAY, FW_POST_COUNT);
+				chk_resp, 0xFFFF,
+				FW_POST_DELAY + hal_dbg_delay(chip, HAL_DBG_DLY_FW_1),
+				FW_POST_COUNT);
 	if (ret < 0) {
 		t_dev_err(dev, "FW upgrade: failed - code check(%Xh), %08Xh\n",
 			chk_resp, data);
@@ -3420,7 +3435,9 @@ static int siw_hal_fw_upgrade_conf_post(struct device *dev)
 	/* Conf check */
 	chk_resp = FLASH_CONF_DNCHK_VALUE_TYPE_X;
 	ret = siw_hal_condition_wait(dev, reg->tc_flash_dn_status, &data,
-				chk_resp, 0xFFFF, CONF_POST_DELAY, CONF_POST_COUNT);
+				chk_resp, 0xFFFF,
+				CONF_POST_DELAY + hal_dbg_delay(chip, HAL_DBG_DLY_FW_2),
+				CONF_POST_COUNT);
 	if (ret < 0) {
 		t_dev_err(dev, "FW upgrade: failed - conf check(%Xh), %X\n",
 			chk_resp, data);
@@ -4598,6 +4615,8 @@ static int siw_hal_tc_driving(struct device *dev, int mode)
 		touch_msleep(middle_delay);
 	}
 
+	touch_msleep(hal_dbg_delay(chip, HAL_DBG_DLY_TC_DRIVING_0));
+
 	t_dev_info(dev, "current driving mode is %s\n",
 			siw_lcd_driving_mode_str(mode));
 
@@ -4613,9 +4632,9 @@ static int siw_hal_tc_driving(struct device *dev, int mode)
 	t_dev_info(dev, "TC Driving[%04Xh] wr 0x%08X\n",
 			reg->tc_drive_ctl, ctrl);
 
-	touch_msleep(HAL_TC_DRIVING_DELAY);
-
-	t_dev_dbg_base(dev, "waiting %d msecs\n", HAL_TC_DRIVING_DELAY);
+	rdata = HAL_TC_DRIVING_DELAY + hal_dbg_delay(chip, HAL_DBG_DLY_TC_DRIVING_1);
+	touch_msleep(rdata);
+	t_dev_dbg_base(dev, "waiting %d msecs\n", rdata);
 
 	if (siw_touch_boot_mode_tc_check(dev)) {
 		goto out;
@@ -4668,7 +4687,7 @@ static int siw_hal_tc_driving(struct device *dev, int mode)
 
 		atomic_set(&ts->recur_chk, 1);
 
-		siw_hal_reinit(dev, 1, 100, 1, siw_hal_init);
+		siw_hal_reinit(dev, 1, 100 + hal_dbg_delay(chip, HAL_DBG_DLY_HW_RST_2), 1, siw_hal_init);
 	} else {
 		t_dev_info(dev, "command done: mode %d, running_sts %02Xh\n",
 			mode, running_status);
@@ -5047,6 +5066,8 @@ static int siw_hal_lpwg(struct device *dev, u32 code, void *param)
 				touch_chip_name(ts));
 		return 0;
 	}
+
+	touch_msleep(hal_dbg_delay(chip, HAL_DBG_DLY_LPWG));
 
 	switch (code) {
 	case LPWG_ACTIVE_AREA:
@@ -6020,6 +6041,15 @@ static int siw_hal_notify(struct device *dev, ulong event, void *data)
 		value = *((u32 *)data);
 	}
 
+	switch (event) {
+	case LCD_EVENT_TOUCH_RESET_START:
+	case LCD_EVENT_TOUCH_RESET_END:
+		break;
+	default:
+		touch_msleep(hal_dbg_delay(chip, HAL_DBG_DLY_NOTIFY));
+		break;
+	}
+
 	t_dev_dbg_noti(dev, "notify event(%d)\n", (u32)event);
 
 	switch (event) {
@@ -6048,6 +6078,7 @@ static int siw_hal_notify(struct device *dev, ulong event, void *data)
 		t_dev_info(dev, "notify: lcd_event: touch reset start\n");
 		siw_touch_irq_control(ts->dev, INTERRUPT_DISABLE);
 		siw_hal_set_gpio_reset(dev, GPIO_OUT_ZERO);
+		touch_msleep(1 + hal_dbg_delay(chip, HAL_DBG_DLY_HW_RST_0));
 
 		noti_str = "TOUCH_RESET_START";
 		break;
