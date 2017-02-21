@@ -272,7 +272,7 @@ struct siw_hal_prd_param {
 	//
 	struct siw_touch_second_screen second_scr;
 	//
-	u32 flag;
+	u32 sysfs_off_flag;
 	//
 	u32 sd_test_flag;
 	u32 lpwg_sd_test_flag;
@@ -396,7 +396,7 @@ enum {
 #define PRD_OFFSET_QUIRK_GET_IDX(_addr)			((_addr) >> 24)
 #define PRD_OFFSET_QUIRK_GET_OFFSET(_addr)		((_addr) & 0x00FFFFFF)
 
-#define __PRD_PARAM_DIMESION(_row, _col, _col_add, _ch, _m1_col, _m1_cnt, _m2_cnt)	\
+#define __PRD_PARAM_DIMENSION(_row, _col, _col_add, _ch, _m1_col, _m1_cnt, _m2_cnt)	\
 		.row = (_row), .col = (_col), .col_add = (_col_add), .ch = (_ch),	\
 		.m1_col = (_m1_col), .m1_cnt = (_m1_cnt), .m2_cnt = (_m2_cnt)
 
@@ -519,9 +519,9 @@ static const struct siw_hal_prd_param prd_params[] = {
 			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_DEBUG, 0xBCF),
 			0,
 		},
-		__PRD_PARAM_DIMESION(26, 15, 1, 32, PRD_M1_COL_SIZE, 2, 2),
+		__PRD_PARAM_DIMENSION(26, 15, 1, 32, PRD_M1_COL_SIZE, 2, 2),
 		__PRD_2ND_SCR(0, 0),
-		.flag = 0,
+		.sysfs_off_flag = 0,
 		.sd_test_flag = SD_FLAG_LG4894,
 		.lpwg_sd_test_flag = LPWG_SD_FLAG_LG4894,
 	},
@@ -537,9 +537,9 @@ static const struct siw_hal_prd_param prd_params[] = {
 			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_DEBUG, 0xBCF),
 			0,
 		},
-		__PRD_PARAM_DIMESION(26, 15, 1, 32, PRD_M1_COL_SIZE, 2, 2),
+		__PRD_PARAM_DIMENSION(26, 15, 1, 32, PRD_M1_COL_SIZE, 2, 2),
 		__PRD_2ND_SCR(0, 0),
-		.flag = 0,
+		.sysfs_off_flag = 0,
 		.sd_test_flag = SD_FLAG_LG4894,
 		.lpwg_sd_test_flag = LPWG_SD_FLAG_LG4894,
 	},
@@ -553,9 +553,9 @@ static const struct siw_hal_prd_param prd_params[] = {
 			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_LABEL, 0xD96),
 			0,
 		},
-		__PRD_PARAM_DIMESION(32, 18, 0, 32, PRD_M1_COL_SIZE, 1, 1),
+		__PRD_PARAM_DIMENSION(32, 18, 0, 32, PRD_M1_COL_SIZE, 1, 1),
 		__PRD_2ND_SCR(0, 0),
-		.flag = (PRD_SYS_EN_DEBUG_BUF|PRD_SYS_EN_APP_DEBUG_BUF),
+		.sysfs_off_flag = (PRD_SYS_EN_DEBUG_BUF|PRD_SYS_EN_APP_DEBUG_BUF),
 		.sd_test_flag = SD_FLAG_LG4894,
 		.lpwg_sd_test_flag = LPWG_SD_FLAG_LG4894,
 	},
@@ -569,9 +569,9 @@ static const struct siw_hal_prd_param prd_params[] = {
 			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_LABEL, 0xD96),
 			0,
 		},
-		__PRD_PARAM_DIMESION(32, 18, 0, 32, PRD_M1_COL_SIZE, 1, 1),
+		__PRD_PARAM_DIMENSION(32, 18, 0, 32, PRD_M1_COL_SIZE, 1, 1),
 		__PRD_2ND_SCR(0, 0),
-		.flag = (PRD_SYS_EN_DEBUG_BUF|PRD_SYS_EN_APP_DEBUG_BUF),
+		.sysfs_off_flag = (PRD_SYS_EN_DEBUG_BUF|PRD_SYS_EN_APP_DEBUG_BUF),
 		.sd_test_flag = SD_FLAG_LG4894,
 		.lpwg_sd_test_flag = LPWG_SD_FLAG_LG4894,
 	},
@@ -590,9 +590,9 @@ static const struct siw_hal_prd_param prd_params[] = {
 			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_DEBUG, 0xADA),
 			0,
 		},
-		__PRD_PARAM_DIMESION(34, 18, 0, 32+2, PRD_M1_COL_SIZE, 1, 1),
+		__PRD_PARAM_DIMENSION(34, 18, 0, 32+2, PRD_M1_COL_SIZE, 1, 1),
 		__PRD_2ND_SCR(1, 4),
-		.flag = 0,
+		.sysfs_off_flag = 0,
 		.sd_test_flag = SD_FLAG_LG4895,
 		.lpwg_sd_test_flag = LPWG_SD_FLAG_LG4895,
 	},
@@ -608,9 +608,9 @@ static const struct siw_hal_prd_param prd_params[] = {
 			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_DEBUG, 0xADA),
 			0,
 		},
-		__PRD_PARAM_DIMESION(34, 18, 0, 32+2, PRD_M1_COL_SIZE, 1, 1),
+		__PRD_PARAM_DIMENSION(34, 18, 0, 32+2, PRD_M1_COL_SIZE, 1, 1),
 		__PRD_2ND_SCR(1, 4),
-		.flag = 0,
+		.sysfs_off_flag = 0,
 		.sd_test_flag = SD_FLAG_LG4895,
 		.lpwg_sd_test_flag = LPWG_SD_FLAG_LG4895,
 	},
@@ -629,9 +629,9 @@ static const struct siw_hal_prd_param prd_params[] = {
 			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_DEBUG, 0xADA),
 			0,
 		},
-		__PRD_PARAM_DIMESION(32, 18, 0, 32, PRD_M1_COL_SIZE, 1, 1),
+		__PRD_PARAM_DIMENSION(32, 18, 0, 32, PRD_M1_COL_SIZE, 1, 1),
 		__PRD_2ND_SCR(0, 0),
-		.flag = 0,
+		.sysfs_off_flag = 0,
 		.sd_test_flag = SD_FLAG_LG4946,
 		.lpwg_sd_test_flag = LPWG_SD_FLAG_LG4946,
 	},
@@ -646,9 +646,9 @@ static const struct siw_hal_prd_param prd_params[] = {
 			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_DEBUG, 0xADA),
 			0,
 		},
-		__PRD_PARAM_DIMESION(32, 18, 0, 32, PRD_M1_COL_SIZE, 1, 1),
+		__PRD_PARAM_DIMENSION(32, 18, 0, 32, PRD_M1_COL_SIZE, 1, 1),
 		__PRD_2ND_SCR(0, 0),
-		.flag = 0,
+		.sysfs_off_flag = 0,
 		.sd_test_flag = SD_FLAG_LG4946,
 		.lpwg_sd_test_flag = LPWG_SD_FLAG_LG4946,
 	},
@@ -666,9 +666,9 @@ static const struct siw_hal_prd_param prd_params[] = {
 			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_DEBUG, 0xB0F),
 			0,
 		},
-		__PRD_PARAM_DIMESION(30, 18, 0, 32, PRD_M1_COL_SIZE, 1, 1),
+		__PRD_PARAM_DIMENSION(30, 18, 0, 32, PRD_M1_COL_SIZE, 1, 1),
 		__PRD_2ND_SCR(0, 0),
-		.flag = 0,
+		.sysfs_off_flag = 0,
 		.sd_test_flag = SD_FLAG_SW49105,
 		.lpwg_sd_test_flag = LPWG_SD_FLAG_SW49105,
 	},
@@ -686,9 +686,9 @@ static const struct siw_hal_prd_param prd_params[] = {
 			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_DEBUG, 0xADA),
 			0,
 		},
-		__PRD_PARAM_DIMESION(32, 18, 0, 32, PRD_M1_COL_SIZE, 1, 1),
+		__PRD_PARAM_DIMENSION(32, 18, 0, 32, PRD_M1_COL_SIZE, 1, 1),
 		__PRD_2ND_SCR(0, 0),
-		.flag = 0,
+		.sysfs_off_flag = 0,
 		.sd_test_flag = SD_FLAG_SW49406,
 		.lpwg_sd_test_flag = LPWG_SD_FLAG_SW49406,
 	},
@@ -706,9 +706,9 @@ static const struct siw_hal_prd_param prd_params[] = {
 			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_DEBUG, 0xCCF),
 			0,
 		},
-		__PRD_PARAM_DIMESION(32+2, 18, 0, 32+2, PRD_M1_COL_SIZE, 1, 1),
+		__PRD_PARAM_DIMENSION(32+2, 18, 0, 32+2, PRD_M1_COL_SIZE, 1, 1),
 		__PRD_2ND_SCR(1, 4),
-		.flag = 0,
+		.sysfs_off_flag = 0,
 		.sd_test_flag = SD_FLAG_SW49407,
 		.lpwg_sd_test_flag = LPWG_SD_FLAG_SW49407,
 	},
@@ -726,9 +726,9 @@ static const struct siw_hal_prd_param prd_params[] = {
 			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_DEBUG, 0xB0F),
 			0,
 		},
-		__PRD_PARAM_DIMESION(30, 18, 0, 32, PRD_M1_COL_SIZE, 1, 1),
+		__PRD_PARAM_DIMENSION(30, 18, 0, 32, PRD_M1_COL_SIZE, 1, 1),
 		__PRD_2ND_SCR(0, 0),
-		.flag = 0,
+		.sysfs_off_flag = 0,
 		.sd_test_flag = SD_FLAG_SW49408,
 		.lpwg_sd_test_flag = LPWG_SD_FLAG_SW49408,
 	},
@@ -746,9 +746,9 @@ static const struct siw_hal_prd_param prd_params[] = {
 			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_F_DELTA, 0x7FD),
 			0,
 		},
-		__PRD_PARAM_DIMESION(20, 32, 0, 48, PRD_M1_COL_SIZE, 1, 1),
+		__PRD_PARAM_DIMENSION(20, 32, 0, 48, PRD_M1_COL_SIZE, 1, 1),
 		__PRD_2ND_SCR(0, 0),
-		.flag = (PRD_SYS_EN_DEBUG_BUF|PRD_SYS_EN_APP_DEBUG_BUF),
+		.sysfs_off_flag = (PRD_SYS_EN_DEBUG_BUF|PRD_SYS_EN_APP_DEBUG_BUF),
 		.sd_test_flag = SD_FLAG_SW1828,
 		.lpwg_sd_test_flag = LPWG_SD_FLAG_SW1828,
 	},
@@ -5271,34 +5271,39 @@ static SIW_TOUCH_HAL_PRD_ATTR(prd_dbg_mask, prd_show_dbg_mask, prd_store_dbg_mas
 static SIW_TOUCH_HAL_PRD_ATTR(set_sd, prd_show_set_sd, prd_store_set_sd);
 #endif
 
-static struct attribute *siw_hal_prd_attribute_list_all[] = {
-	/*
-	 * [Caution]
-	 * Do not touch this ordering
-	 */
-	&_SIW_TOUCH_HAL_PRD_T(sd).attr,
-	&_SIW_TOUCH_HAL_PRD_T(delta).attr,
-	&_SIW_TOUCH_HAL_PRD_T(label).attr,
-	&_SIW_TOUCH_HAL_PRD_T(rawdata_prd).attr,
-	&_SIW_TOUCH_HAL_PRD_T(rawdata_tcm).attr,
-	&_SIW_TOUCH_HAL_PRD_T(rawdata).attr,
-	&_SIW_TOUCH_HAL_PRD_T(base).attr,
-	&_SIW_TOUCH_HAL_PRD_T(debug_buf).attr,
-	&_SIW_TOUCH_HAL_PRD_T(lpwg_sd).attr,
-	&_SIW_TOUCH_HAL_PRD_T(file_test).attr,
-	&_SIW_TOUCH_HAL_PRD_T(prd_app_raw).attr,
-	&_SIW_TOUCH_HAL_PRD_T(prd_app_base).attr,
-	&_SIW_TOUCH_HAL_PRD_T(prd_app_label).attr,
-	&_SIW_TOUCH_HAL_PRD_T(prd_app_delta).attr,
-	&_SIW_TOUCH_HAL_PRD_T(prd_app_debug_buf).attr,
-	&_SIW_TOUCH_HAL_PRD_T(prd_app_end).attr,
-	&_SIW_TOUCH_HAL_PRD_T(prd_app_info).attr,
+struct siw_hal_prd_attribute {
+	struct attribute *attr;
+	int flag;
+};
+
+#define _SIW_TOUCH_HAL_PRD_LIST_T(_name, _flag)	\
+	{ .attr = &_SIW_TOUCH_HAL_PRD_T(_name).attr, .flag = _flag, }
+
+static const struct siw_hal_prd_attribute siw_hal_prd_attribute_list_all[] = {
+	_SIW_TOUCH_HAL_PRD_LIST_T(sd, PRD_SYS_EN_SD),
+	_SIW_TOUCH_HAL_PRD_LIST_T(delta, PRD_SYS_EN_DELTA),
+	_SIW_TOUCH_HAL_PRD_LIST_T(label, PRD_SYS_EN_LABEL),
+	_SIW_TOUCH_HAL_PRD_LIST_T(rawdata_prd, PRD_SYS_EN_RAWDATA_PRD),
+	_SIW_TOUCH_HAL_PRD_LIST_T(rawdata_tcm, PRD_SYS_EN_RAWDATA_TCM),
+	_SIW_TOUCH_HAL_PRD_LIST_T(rawdata, PRD_SYS_EN_RAWDATA_AIT),
+	_SIW_TOUCH_HAL_PRD_LIST_T(base, PRD_SYS_EN_BASE),
+	_SIW_TOUCH_HAL_PRD_LIST_T(debug_buf, PRD_SYS_EN_DEBUG_BUF),
+	_SIW_TOUCH_HAL_PRD_LIST_T(lpwg_sd, PRD_SYS_EN_LPWG_SD),
+	_SIW_TOUCH_HAL_PRD_LIST_T(file_test, PRD_SYS_EN_FILE_TEST),
+	_SIW_TOUCH_HAL_PRD_LIST_T(prd_app_raw, PRD_SYS_EN_APP_RAW),
+	_SIW_TOUCH_HAL_PRD_LIST_T(prd_app_base, PRD_SYS_EN_APP_BASE),
+	_SIW_TOUCH_HAL_PRD_LIST_T(prd_app_label, PRD_SYS_EN_APP_LABEL),
+	_SIW_TOUCH_HAL_PRD_LIST_T(prd_app_delta, PRD_SYS_EN_APP_DELTA),
+	_SIW_TOUCH_HAL_PRD_LIST_T(prd_app_debug_buf, PRD_SYS_EN_APP_DEBUG_BUF),
+	_SIW_TOUCH_HAL_PRD_LIST_T(prd_app_end, PRD_SYS_EN_APP_END),
+	_SIW_TOUCH_HAL_PRD_LIST_T(prd_app_info, PRD_SYS_EN_APP_INFO),
 	/* */
-	&_SIW_TOUCH_HAL_PRD_T(prd_dbg_mask).attr,
+	_SIW_TOUCH_HAL_PRD_LIST_T(prd_dbg_mask, -1),
 #if defined(__SIW_SUPPORT_PRD_SET_SD)
-	&_SIW_TOUCH_HAL_PRD_T(set_sd).attr,
+	_SIW_TOUCH_HAL_PRD_LIST_T(set_sd, PRD_SYS_EN_SD),
 #endif
-	NULL,
+	/* */
+	{ .attr = NULL, .flag = 0, },	/* end mask */
 };
 
 enum {
@@ -5317,7 +5322,7 @@ static int siw_hal_prd_create_group(struct device *dev)
 	struct siw_ts *ts = chip->ts;
 	struct siw_hal_prd_data *prd = (struct siw_hal_prd_data *)ts->prd;
 	struct kobject *kobj = &ts->kobj;
-	struct attribute **attr_total = siw_hal_prd_attribute_list_all;
+	struct siw_hal_prd_attribute *prd_attr;
 	struct attribute **attr_actual = siw_hal_prd_attribute_list;
 	int sysfs_flag = prd->sysfs_flag;
 	int attr_size = PRD_SYS_ATTR_SIZE;
@@ -5326,23 +5331,28 @@ static int siw_hal_prd_create_group(struct device *dev)
 	int added = 0;
 	int ret = 0;
 
+	prd_attr = (struct siw_hal_prd_attribute *)siw_hal_prd_attribute_list_all;
+
 	memset(siw_hal_prd_attribute_list, 0, sizeof(siw_hal_prd_attribute_list));
 
 	for(i = 0; i < attr_size; i++){
 		added = 0;
-		if ((sysfs_flag & 0x1) || (i >= PRD_SYS_ATTR_MAX)){
-			attr_actual[j] = attr_total[i];
+		if ((prd_attr->flag == -1) ||
+			(prd_attr->flag & sysfs_flag)){
+			attr_actual[j] = prd_attr->attr;
 			j++;
 			added = 1;
 		}
-		if (!attr_total[i]) {
+
+		if (prd_attr->attr == NULL) {
 			break;
 		}
 
 		t_dev_dbg_base(dev, "prd sysfs %02d(%20s) %s\n",
-			i, attr_total[i]->name,
+			i, prd_attr->attr->name,
 			(added) ? "added" : "not supported");
-		sysfs_flag >>= 1;
+
+		prd_attr++;
 	}
 
 	ret = sysfs_create_group(kobj, &siw_hal_prd_attribute_group);
@@ -5664,9 +5674,9 @@ static void siw_hal_prd_parse_work(struct device *dev, struct siw_hal_prd_param 
 
 	siw_hal_prd_set_cmd(dev, param->cmd_type);
 
-	prd->sysfs_flag = PRD_SYS_ATTR_EN_FLAG & ~param->flag;		//Disable quirk bits
+	prd->sysfs_flag = PRD_SYS_ATTR_EN_FLAG & ~param->sysfs_off_flag;		//Disable quirk bits
 
-	t_prd_info(prd, "sysfs flag: %Xh (%Xh)\n", prd->sysfs_flag, param->flag);
+	t_prd_info(prd, "sysfs flag: %Xh (%Xh)\n", prd->sysfs_flag, param->sysfs_off_flag);
 }
 
 static void siw_hal_prd_show_param(struct device *dev, struct siw_hal_prd_param *param)
@@ -5711,8 +5721,8 @@ static void siw_hal_prd_show_param(struct device *dev, struct siw_hal_prd_param 
 	t_prd_dbg_base(prd, "param: m1_col %d, m1_cnt %d, m2_cnt %d\n",
 		param->m1_col, param->m1_cnt, param->m2_cnt);
 
-	t_prd_dbg_base(prd, "param: flag %Xh\n",
-		param->flag);
+	t_prd_dbg_base(prd, "param: sysfs_off_flag %Xh\n",
+		param->sysfs_off_flag);
 }
 
 static int siw_hal_prd_parse_param(struct device *dev, struct siw_hal_prd_param *param)
