@@ -2016,8 +2016,14 @@ static int siw_hal_init_reg_set_pre(struct device *dev)
 	int ret = 0;
 
 	if (chip->opt.f_attn_opt) {
+		u32 addr = 0;
 		if (touch_bus_type(ts) == BUS_IF_I2C) {
-			ret = siw_hal_write_value(dev, 0xFE4, 0);
+			addr = 0xFE4;
+		} else {
+			addr = 0xFE5;
+		}
+		if (addr) {
+			ret = siw_hal_write_value(dev, addr, 0);
 			if (ret < 0) {
 				goto out;
 			}
