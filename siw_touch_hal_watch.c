@@ -2940,7 +2940,7 @@ static ssize_t ext_watch_access_write(struct file *filp, struct kobject *kobj,
 	}
 
 	if ((off + count) > watch->font_max_size)	 {
-		t_watch_err(dev, "access_read: size overflow : offset[%d] size[%d]\n",
+		t_watch_err(dev, "access_write: size overflow : offset[%d] size[%d]\n",
 			(int)off, (int)count);
 		atomic_set(&watch->state.font_status, FONT_EMPTY);
 		ret = -EOVERFLOW;
@@ -3130,7 +3130,7 @@ static const struct siw_watch_type_table watch_type_tables[] = {
 		.flag = WATCH_FLAG_SKIP_FOR_SW49407,
 		.win_fixed = (struct reset_area *)&watch_win_fixed_sw49407,
 		.font_type = FONT_TYPE_1,
-		.font_max_size = ((42<<10)+(1<<9)),		//42.5KB
+		.font_max_size = ((45<<10) + 962),		//45.94KB
 		.font_crc_offset = 16,
 		.font_magic_code = SIW_FONT_MAGIC_CODE,
 		.dcst_offset = 0x085,	//dcst_reg_oft
