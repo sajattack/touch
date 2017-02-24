@@ -27,6 +27,8 @@
 #include <linux/atomic.h>
 #include <linux/input.h>
 #include <linux/input/mt.h>
+#include <linux/fs.h>
+#include <linux/slab.h>
 
 #if defined(__SIW_CONFIG_EARLYSUSPEND)
 #include <linux/earlysuspend.h>
