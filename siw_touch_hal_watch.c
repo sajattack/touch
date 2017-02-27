@@ -1522,7 +1522,7 @@ static int ext_watch_font_dn_type_0(struct device *dev)
 		crc_file, crc_addr);
 
 	ext_wdata->font_crc =
-		ext_watch_font_crc_cal(ext_wdata->font_data, font_hdr->size);
+		ext_watch_font_crc_cal(ext_wdata->font_data, crc_addr);
 	t_watch_info_font_dn_0(dev,
 		"result crc %08Xh\n",
 		ext_wdata->font_crc);
