@@ -1404,13 +1404,34 @@ static u32 ext_watch_font_crc_cal(char *data, u32 size)
 	return crc_value & 0x3FFFFFFF;
 }
 
+static int ext_watch_do_chk_font_status(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_hal_reg *reg = chip->reg;
+	u32 status = 0;
+	int ret = 0;
+
+	ret = siw_hal_read_value(dev,
+				reg->tc_status,
+				&status);
+	if (ret < 0) {
+		return ret;
+	}
+
+	if (!(status & FONT_MEM_CRC)) {
+		t_watch_err(dev, "font crc fail [tc_status %08Xh]\n", status);
+		return 1;
+	}
+
+	t_watch_info(dev, "font crc ok\n");
+	return 0;
+}
+
 static int ext_watch_chk_font_status(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
-	struct siw_hal_reg *reg = chip->reg;
 	struct watch_data *watch = (struct watch_data *)chip->watch;
-	u32 status = 1;
 	int ret = 0;
 
 	if (siw_touch_boot_mode_check(dev) >= MINIOS_MFTS_FOLDER) {
@@ -1426,19 +1447,11 @@ static int ext_watch_chk_font_status(struct device *dev)
 		return 0;
 	}
 
-	ret = siw_hal_read_value(dev,
-				reg->tc_status,
-				&status);
-	if (ret < 0) {
-		/* */
-	}
-	if (!(status & FONT_MEM_CRC)) {
-		t_watch_err(dev, "crc fail [tc_status %08Xh]\n", status);
+	ret = ext_watch_do_chk_font_status(dev);
+	if (ret == 1) {
 		mod_delayed_work(ts->wq, &chip->font_download_work, 0);
 		goto out;
 	}
-
-	t_watch_info(dev, "crc ok\n");
 
 out:
 	return ret;
@@ -1789,6 +1802,10 @@ static void ext_watch_font_download(struct work_struct *font_download_work)
 		ext_watch_font_dn_type_0(dev);
 		break;
 	}
+
+	touch_msleep(5);
+
+	ext_watch_do_chk_font_status(dev);
 
 out:
 	mutex_unlock(&ts->reset_lock);
