@@ -1481,7 +1481,9 @@ enum {
 	//
 	IC_CHK_LOG_MAX		= (1<<9),
 	//
-	INT_IC_ABNORMAL_STATUS	= ((1<<3) | (1<<0)),	//0x09
+	INT_IC_ABNORMAL_STATUS	= (1<<0),
+	//
+	INT_IC_ERROR_STATUS = ((1<<5) | (1<<3)),
 };
 
 static const struct siw_hal_status_filter status_filter_type_0[] = {
@@ -1663,9 +1665,11 @@ static int siw_hal_chk_status_type(struct device *dev)
 						0;
 
 	chip->status_mask_ic_abnormal = INT_IC_ABNORMAL_STATUS;
+	chip->status_mask_ic_error = INT_IC_ERROR_STATUS;
 
 	switch (chip->opt.t_sts_mask) {
 	case 1:
+		chip->status_mask_ic_abnormal |= (0x3<<6);
 		chip->status_mask_ic_valid = 0xFFFF;
 		break;
 	default:
@@ -1679,6 +1683,7 @@ static int siw_hal_chk_status_type(struct device *dev)
 	t_dev_info(dev, " logging     : %08Xh\n", chip->status_mask_logging);
 	t_dev_info(dev, " reset       : %08Xh\n", chip->status_mask_reset);
 	t_dev_info(dev, " ic abnormal : %08Xh\n", chip->status_mask_ic_abnormal);
+	t_dev_info(dev, " ic error    : %08Xh\n", chip->status_mask_ic_error);
 
 	return 0;
 }
@@ -5320,6 +5325,7 @@ static int siw_hal_check_status_type_x(struct device *dev,
 	u32 dbg_mask = 0;
 	u32 log_flag = 0;
 	u32 esd_send = 0;
+	u32 ic_abnormal, ic_error;
 	int log_max = IC_CHK_LOG_MAX;
 	char log[IC_CHK_LOG_MAX] = {0, };
 	int fault_val;
@@ -5379,7 +5385,10 @@ static int siw_hal_check_status_type_x(struct device *dev,
 			irq, status, ic_status, log_flag, log);
 	}
 
-	if (ic_status & chip->status_mask_ic_abnormal) {
+	ic_abnormal = ic_status & chip->status_mask_ic_abnormal;
+	ic_error = ic_status & chip->status_mask_ic_error;
+
+	if (ic_abnormal || ic_error) {
 		u32 sys_error, sys_fault;
 		int log_add = !log_flag;
 
@@ -5411,7 +5420,10 @@ static int siw_hal_check_status_type_x(struct device *dev,
 
 		t_dev_err(dev, "%s\n", log);
 
-		esd_send |= chip->status_mask_ic_abnormal;
+		esd_send |= ic_abnormal;
+		if (!esd_send) {
+			ret = -ERESTART;	//touch reset
+		}
 	}
 
 	if (esd_send) {

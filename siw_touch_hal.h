@@ -494,6 +494,7 @@ struct siw_touch_chip {
 	u32 status_mask_logging;
 	u32 status_mask_reset;
 	u32 status_mask_ic_abnormal;
+	u32 status_mask_ic_error;
 	u32 status_mask_ic_valid;
 	struct siw_hal_status_mask_bit status_mask_bit;
 	struct siw_hal_status_filter *status_filter;
