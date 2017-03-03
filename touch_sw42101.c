@@ -51,7 +51,7 @@
 									LCD_MODE_BIT_U3 |	\
 									0)
 
-#define CHIP_FW_SIZE				(128<<10)
+#define CHIP_FW_SIZE				(120<<10)
 
 #define CHIP_FLAGS					(0 |	\
 									TOUCH_SKIP_ESD_EVENT |	\
@@ -141,16 +141,399 @@ enum CHIP_CAPABILITY {
 #endif	/* __SIW_CONFIG_OF */
 
 
-static int sw42101_fwup_check(struct device *dev, u8 *fw_buf)
+enum {
+	LTR_NONE,
+	LTR_TRIG,
+	LTR_WAIT = 0xFF,
+};
+
+struct sw42101_log_ctrl {
+	u32 mask;
+	u8 trigger;
+};
+
+struct sw42101_flash_ctrl {
+	u32 addr;
+	u16 size;
+	u8 status;
+	u8 cmd;
+};
+
+enum {
+	BIN_VER_OFFSET_POS = (CHIP_FW_SIZE - 0x14),			//0x0001_DFEC
+	BIN_PID_OFFSET_POS = (CHIP_FW_SIZE - 0x10),			//0x0001_DFF0
+};
+
+enum {
+	RS_READY	= 0xA0,
+	RS_NONE		= 0x05,
+	RS_LOG		= 0x77,
+	RS_IMAGE	= 0xAA,
+};
+
+#define FW_STS_DELAY		25
+#define FW_STS_COUNT		200
+
+#define FW_VERIFY_DELAY		5
+#define FW_VERIFY_COUNT		1000
+
+static int sw42101_condition_wait(struct device *dev,
+					u32 addr, u32 *value, u32 expect,
+				    u32 mask, u32 delay, u32 retry)
 {
-	t_dev_info(dev, "SW42101 fw check: under construction\n");
-	return -ESRCH;
+	u32 data = 0;
+	int ret = 0;
+
+	do {
+		touch_msleep(delay);
+
+		ret = siw_hal_read_value(dev, addr, &data);
+		if ((ret >= 0) && ((data & mask) == expect)) {
+			if (value)
+				*value = data;
+			return 0;
+		}
+	} while (--retry);
+
+	if (value) {
+		*value = data;
+	}
+
+	t_dev_err(dev,
+		"wait fail: addr[%04Xh] data[%08Xh], "
+		"mask[%08Xh], expect[%08Xh]\n",
+		addr, data, mask, expect);
+
+	return -EPERM;
 }
 
-static int sw42101_fwup_upgrade(struct device *dev, u8 *fw_buf, int fw_size, int retry)
+static int sw42101_fwup_check(struct device *dev, u8 *fw_buf)
 {
-	t_dev_info(dev, "SW42101 fw upgrade: under construction\n");
-	return 0;
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	struct siw_hal_fw_info *fw = &chip->fw;
+	struct siw_hal_tc_version *bin_ver;
+	u32 bin_ver_offset = BIN_VER_OFFSET_POS;
+	u32 bin_pid_offset = BIN_PID_OFFSET_POS;
+	u32 dev_major = 0;
+	u32 dev_minor = 0;
+	char pid[12] = {0, };
+	u32 bin_major = 0;
+	u32 bin_minor = 0;
+//	u32 bin_raw = 0;
+	int update = 0;
+//	int ret = 0;
+
+	dev_major = fw->v.version.major;
+	dev_minor = fw->v.version.minor;
+
+	if (atomic_read(&chip->boot) == IC_BOOT_FAIL) {
+		update |= (1<<7);
+		goto out;
+	}
+
+	if (!dev_major) {
+		switch (dev_minor) {
+		case 1 :
+			t_dev_err(dev, "The current fw(v%u.%02u) doesn't support this upgrade protocol!!\n",
+				dev_major, dev_minor);
+			t_dev_err(dev, "You have to do manual writing\n");
+			return 0;
+		case 0 :
+			t_dev_err(dev, "fw can not be 0.0!! Check your panel connection!!\n");
+			return 0;
+		}
+	}
+
+	memcpy(pid, &fw_buf[bin_pid_offset], 8);
+	t_dev_dbg_base(dev, "pid %s\n", pid);
+
+	bin_ver = (struct siw_hal_tc_version *)&fw_buf[bin_ver_offset];
+	bin_major = bin_ver->major;
+	bin_minor = bin_ver->minor;
+
+	t_dev_info(dev, "FW compare: bin-ver: %d.%02d (%s)\n",
+			bin_major, bin_minor, pid);
+
+	t_dev_info(dev, "FW compare: dev-ver: %d.%02d (%s)\n",
+			dev_major, dev_minor, fw->product_id);
+
+	if (ts->force_fwup) {
+		update |= (1<<0);
+	} else {
+		if (bin_major > dev_major) {
+			update |= (1<<1);
+		} else if (bin_major == dev_major) {
+			if (bin_minor > dev_minor) {
+				update |= (1<<2);
+			}
+		}
+	}
+
+	if (memcmp(pid, fw->product_id, 8)) {
+		t_dev_err(dev,
+			"FW compare: bin-pid[%s] != dev-pid[%s], halted (up %02X, fup %02X)\n",
+			pid, fw->product_id, update, ts->force_fwup);
+		return -EINVAL;
+	}
+
+out:
+	t_dev_info(dev,
+		"FW compare: up %02X, fup %02X\n",
+		update, ts->force_fwup);
+
+	return update;
+}
+
+static int sw42101_fwup_mode(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct sw42101_log_ctrl log_ctrl_w = { 0, };
+	struct sw42101_log_ctrl log_ctrl_r = { 0, };
+	u32 chk_resp, data;
+	int ret = 0;
+
+	ret = siw_hal_read_value(dev, 0x610, (void *)&data);
+	if (ret < 0) {
+		goto out;
+	}
+	if ((data & 0xFF) == 2) {
+		goto out;
+	}
+
+	log_ctrl_w.trigger = LTR_NONE;
+	ret = siw_hal_reg_write(dev, 0x1010, (void *)&log_ctrl_w, sizeof(log_ctrl_w));
+	if (ret < 0) {
+		goto out;
+	}
+
+	t_dev_dbg_base(dev, "FW upgrade: mode trigger set\n");
+
+	ret = siw_hal_reg_read(dev, 0x1010, (void *)&log_ctrl_r, sizeof(log_ctrl_r));
+	if (ret < 0) {
+		goto out;
+	}
+
+	if (log_ctrl_r.trigger != LTR_NONE) {
+		t_dev_err(dev, "FW upgrade: failed - mode trigger, %d\n",
+			log_ctrl_r.trigger);
+		ret = -EPERM;
+		goto out;
+	}
+
+	t_dev_dbg_base(dev, "FW upgrade: mode trigger done\n");
+
+	data = 0x02;	//M_TOUCH_DFUP
+	ret = siw_hal_reg_write(dev, 0x610, (void *)&data, 1);	//1-byte
+	if (ret < 0) {
+		goto out;
+	}
+
+	t_dev_dbg_base(dev, "FW upgrade: DFUP change set\n");
+
+	chk_resp = RS_READY;
+	ret = sw42101_condition_wait(dev, 0x600, &data,
+				chk_resp, 0xFF,
+				FW_STS_DELAY + hal_dbg_delay(chip, HAL_DBG_DLY_FW_0),
+				FW_STS_COUNT);
+	if (ret < 0) {
+		t_dev_err(dev, "FW upgrade: failed - DFUP change(%Xh), %08Xh\n",
+			chk_resp, data);
+		goto out;
+	}
+
+	t_dev_dbg_base(dev, "FW upgrade: DFUP change done\n");
+
+out:
+	return ret;
+}
+
+#define FW_WR_OFFSET		0x2000
+#define FW_WR_END			(CHIP_FW_SIZE + FW_WR_OFFSET)
+#define FW_WR_SIZE			128
+
+#define FW_WR_CMD			0x03
+
+#define FW_WR_LOG_UNIT		(8<<10)
+
+static inline void __down_delay(void)
+{
+	usleep_range(10, 10);
+}
+
+static int sw42101_fwup_down(struct device *dev, u8 *fw_buf, int fw_size)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct sw42101_flash_ctrl ctrl = { 0, };
+	u8 *fw_data = fw_buf;
+	int fw_offset = FW_WR_OFFSET;
+	int fw_size_org, fw_dn_size, fw_dn_percent;
+	int fw_pos, curr_size;
+	u32 chk_resp, data;
+	int ret = 0;
+
+	t_dev_info(dev, "FW upgrade: downloading...\n");
+
+	fw_size_org = fw_size;
+	fw_dn_size = 0;
+
+	fw_pos = 0;
+	while (fw_size) {
+		t_dev_dbg_base(dev, "FW upgrade: fw_pos[%06Xh ...] = %02X %02X %02X %02X ...\n",
+				fw_pos,
+				fw_data[0], fw_data[1], fw_data[2], fw_data[3]);
+
+		curr_size = min(fw_size, FW_WR_SIZE);
+
+		ret = siw_hal_reg_write(dev, 0x6000, (void *)fw_data, curr_size);
+		if (ret < 0) {
+			t_dev_err(dev, "FW upgrade: failed - fw-down(%06Xh, %06Xh), %d\n",
+				fw_pos, fw_offset, ret);
+			goto out;
+		}
+
+		__down_delay();
+
+		/*
+		 * Flash write
+		 */
+		t_dev_dbg_base(dev, "FW upgrade: ctrl: a %06Xh, s %Xh\n",
+			fw_offset, curr_size);
+
+		ctrl.addr = fw_offset;
+		ctrl.size = curr_size;
+		ctrl.status = 0;
+		ctrl.cmd = FW_WR_CMD;
+		ret = siw_hal_reg_write(dev, 0x1400, (void *)&ctrl, sizeof(ctrl));
+		if (ret < 0) {
+			t_dev_err(dev,
+				"FW upgrade: failed - fw-down command(%06Xh, %06Xh), %d\n",
+				fw_pos, fw_offset, ret);
+			goto out;
+		}
+
+		chk_resp = RS_READY;
+		ret = sw42101_condition_wait(dev, 0x600, &data,
+				chk_resp, 0xFF,
+				FW_STS_DELAY + hal_dbg_delay(chip, HAL_DBG_DLY_FW_1),
+				FW_STS_COUNT);
+		if (ret < 0) {
+			t_dev_err(dev,
+				"FW upgrade: failed - fw-down status(%06Xh, %06Xh, %Xh, %08Xh), %d\n",
+				fw_pos, fw_offset, chk_resp, data, ret);
+			goto out;
+		}
+
+		fw_dn_size += curr_size;
+		fw_offset += curr_size;
+		fw_data += curr_size;
+		fw_pos += curr_size;
+		fw_size -= curr_size;
+
+		if (fw_dn_size && !(fw_dn_size & (FW_WR_LOG_UNIT-1))) {
+			fw_dn_percent = (fw_dn_size * 100);
+			fw_dn_percent /= fw_size_org;
+
+			t_dev_info(dev, "FW upgrade: downloading...(%d%c)\n", fw_dn_percent, '%');
+		}
+	}
+
+out:
+	return ret;
+}
+
+static int sw42101_fwup_core(struct device *dev, u8 *fw_buf, int fw_size)
+{
+	u8 *rd_buf;
+	int ret = 0;
+
+	rd_buf = (u8 *)kmalloc(fw_size, GFP_KERNEL);
+	if (rd_buf == NULL) {
+		t_dev_err(dev, "failed to allocate rd_buf\n");
+		return -ENOMEM;
+	}
+	memcpy(rd_buf, fw_buf, fw_size);
+
+	ret = sw42101_fwup_down(dev, fw_buf, fw_size);
+	if (ret < 0) {
+		t_dev_err(dev, "FW upgrade: failed - fw-down, %d\n", ret);
+		goto out;
+	}
+
+out:
+	kfree(rd_buf);
+
+	return ret;
+}
+
+static int sw42101_fwup_post(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+//	struct siw_ts *ts = chip->ts;
+	struct siw_hal_reg *reg = chip->reg;
+	u32 chk_resp, data;
+	int ret = 0;
+
+	data = 0x11;
+	ret = siw_hal_reg_write(dev, 0x610, (void *)&data, 1);	//1-byte
+	if (ret < 0) {
+		t_dev_err(dev, "FW upgrade: failed - reset, %d\n", ret);
+		goto out;
+	}
+
+	touch_msleep(5000);
+
+	ret = siw_hal_read_value(dev, 0x150, &data);
+	if (ret < 0) {
+		goto out;
+	}
+
+	/*
+	 * Wait until TC_DEVICE_CTL becomes initial state(zero)
+	 */
+	chk_resp = 0;
+	ret = sw42101_condition_wait(dev, reg->tc_device_ctl, &data,
+				chk_resp, 0xFF,
+				FW_VERIFY_DELAY + hal_dbg_delay(chip, HAL_DBG_DLY_FW_2),
+				FW_VERIFY_COUNT);
+	if (ret < 0) {
+		t_dev_err(dev, "FW upgrade: failed - restart status(%Xh), %08Xh\n",
+			chk_resp, data);
+		goto out;
+	}
+
+	t_dev_info(dev, "FW upgrade: post done\n");
+
+out:
+	return ret;
+}
+
+static int __used sw42101_fwup_upgrade(struct device *dev,
+					u8 *fw_buf, int fw_size, int retry)
+{
+	int fw_size_max = CHIP_FW_SIZE;
+	int ret = 0;
+
+	if (fw_size != fw_size_max) {
+		t_dev_err(dev, "FW upgrade: wrong file size - %Xh, shall be '%Xh'\n",
+			fw_size, fw_size_max);
+		return -EFAULT;
+	}
+
+	ret = sw42101_fwup_mode(dev);
+	if (ret < 0) {
+		goto out;
+	}
+
+	ret = sw42101_fwup_core(dev, fw_buf, fw_size);
+	if (ret < 0) {
+		goto out;
+	}
+
+	ret = sw42101_fwup_post(dev);
+
+out:
+	return ret;
 }
 
 
