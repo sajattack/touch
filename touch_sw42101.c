@@ -232,17 +232,9 @@ static int sw42101_fwup_check(struct device *dev, u8 *fw_buf)
 		goto out;
 	}
 
-	if (!dev_major) {
-		switch (dev_minor) {
-		case 1 :
-			t_dev_err(dev, "The current fw(v%u.%02u) doesn't support this upgrade protocol!!\n",
-				dev_major, dev_minor);
-			t_dev_err(dev, "You have to do manual writing\n");
-			return 0;
-		case 0 :
-			t_dev_err(dev, "fw can not be 0.0!! Check your panel connection!!\n");
-			return 0;
-		}
+	if (!dev_major && !dev_minor){
+		t_dev_err(dev, "fw can not be 0.0!! Check your panel connection!!\n");
+		return 0;
 	}
 
 	memcpy(pid, &fw_buf[bin_pid_offset], 8);
