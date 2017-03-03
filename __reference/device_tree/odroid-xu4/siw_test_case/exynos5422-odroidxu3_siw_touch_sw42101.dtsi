@@ -32,7 +32,7 @@
 		max_id = <10>;
 
 		// role
-		hw_reset_delay = <500>;
+		hw_reset_delay = <1000>;
 		sw_reset_delay = <90>;
 		use_lpwg = <0>;
 		use_lpwg_test = <0>;
