@@ -5662,6 +5662,55 @@ static void siw_hal_prd_set_cmd(struct device *dev, int cmd_type)
 	img_cmd->debug = IT_IMAGE_DEBUG;
 }
 
+static void siw_hal_prd_set_sd_cmd(struct siw_hal_prd_data *prd)
+{
+	struct device *dev = prd->dev;
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	struct siw_hal_prd_sd_cmd *sd_cmd = &prd->sd_cmd;
+
+	sd_cmd->cmd_open_node = OPEN_NODE_TEST_POST_CMD;
+	sd_cmd->cmd_short_node = SHORT_NODE_TEST_POST_CMD;
+	sd_cmd->cmd_m2_rawdata = M2_RAWDATA_TEST_POST_CMD;
+	sd_cmd->cmd_m1_rawdata = M1_RAWDATA_TEST_POST_CMD;
+	sd_cmd->cmd_jitter = JITTER_TEST_POST_CMD;
+	sd_cmd->cmd_u0_jitter = JITTER_TEST_POST_CMD;
+
+	switch (touch_chip_type(ts)) {
+	case CHIP_SW49407:
+		sd_cmd->cmd_open_node = 1;
+		sd_cmd->cmd_short_node = 2;
+		sd_cmd->cmd_m2_rawdata = 5;
+		sd_cmd->cmd_m1_rawdata = 3;
+		sd_cmd->cmd_jitter = 6;
+		sd_cmd->cmd_u0_jitter = 4;
+		break;
+	case CHIP_LG4946:
+		sd_cmd->cmd_jitter = 10;
+		sd_cmd->cmd_u0_jitter = 10;
+		break;
+	}
+
+	t_prd_info(prd,
+		"cmd_open_node  : %d\n",
+		sd_cmd->cmd_open_node);
+	t_prd_info(prd,
+		"cmd_short_node : %d\n",
+		sd_cmd->cmd_short_node);
+	t_prd_info(prd,
+		"cmd_m2_rawdata : %d\n",
+		sd_cmd->cmd_m2_rawdata);
+	t_prd_info(prd,
+		"cmd_m1_rawdata : %d\n",
+		sd_cmd->cmd_m1_rawdata);
+	t_prd_info(prd,
+		"cmd_jitter 	 : %d\n",
+		sd_cmd->cmd_jitter);
+	t_prd_info(prd,
+		"cmd_jitter(u0)  : %d\n",
+		sd_cmd->cmd_u0_jitter);
+}
+
 static void siw_hal_prd_parse_work(struct device *dev, struct siw_hal_prd_param *param)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
@@ -5673,6 +5722,8 @@ static void siw_hal_prd_parse_work(struct device *dev, struct siw_hal_prd_param 
 	siw_hal_prd_set_offset(dev, param);
 
 	siw_hal_prd_set_cmd(dev, param->cmd_type);
+
+	siw_hal_prd_set_sd_cmd(prd);
 
 	prd->sysfs_flag = PRD_SYS_ATTR_EN_FLAG & ~param->sysfs_off_flag;		//Disable quirk bits
 
@@ -5804,55 +5855,6 @@ static void siw_hal_prd_free_param(struct device *dev)
 	siw_hal_prd_free_buffer(dev);
 }
 
-static void siw_hal_prd_set_sd_cmd(struct siw_hal_prd_data *prd)
-{
-	struct device *dev = prd->dev;
-	struct siw_touch_chip *chip = to_touch_chip(dev);
-	struct siw_ts *ts = chip->ts;
-	struct siw_hal_prd_sd_cmd *sd_cmd = &prd->sd_cmd;
-
-	sd_cmd->cmd_open_node = OPEN_NODE_TEST_POST_CMD;
-	sd_cmd->cmd_short_node = SHORT_NODE_TEST_POST_CMD;
-	sd_cmd->cmd_m2_rawdata = M2_RAWDATA_TEST_POST_CMD;
-	sd_cmd->cmd_m1_rawdata = M1_RAWDATA_TEST_POST_CMD;
-	sd_cmd->cmd_jitter = JITTER_TEST_POST_CMD;
-	sd_cmd->cmd_u0_jitter = JITTER_TEST_POST_CMD;
-
-	switch (touch_chip_type(ts)) {
-	case CHIP_SW49407:
-		sd_cmd->cmd_open_node = 1;
-		sd_cmd->cmd_short_node = 2;
-		sd_cmd->cmd_m2_rawdata = 5;
-		sd_cmd->cmd_m1_rawdata = 3;
-		sd_cmd->cmd_jitter = 6;
-		sd_cmd->cmd_u0_jitter = 4;
-		break;
-	case CHIP_LG4946:
-		sd_cmd->cmd_jitter = 10;
-		sd_cmd->cmd_u0_jitter = 10;
-		break;
-	}
-
-	t_prd_info(prd,
-		"cmd_open_node  : %d\n",
-		sd_cmd->cmd_open_node);
-	t_prd_info(prd,
-		"cmd_short_node : %d\n",
-		sd_cmd->cmd_short_node);
-	t_prd_info(prd,
-		"cmd_m2_rawdata : %d\n",
-		sd_cmd->cmd_m2_rawdata);
-	t_prd_info(prd,
-		"cmd_m1_rawdata : %d\n",
-		sd_cmd->cmd_m1_rawdata);
-	t_prd_info(prd,
-		"cmd_jitter 	 : %d\n",
-		sd_cmd->cmd_jitter);
-	t_prd_info(prd,
-		"cmd_jitter(u0)  : %d\n",
-		sd_cmd->cmd_u0_jitter);
-}
-
 static struct siw_hal_prd_data *siw_hal_prd_alloc(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
@@ -5874,8 +5876,6 @@ static struct siw_hal_prd_data *siw_hal_prd_alloc(struct device *dev)
 	prd->dev = ts->dev;
 
 	ts->prd = prd;
-
-	siw_hal_prd_set_sd_cmd(prd);
 
 #if defined(__SIW_SUPPORT_PRD_SET_SD)
 	prd->sd_param.last_type = UX_INVALID;
