@@ -554,10 +554,19 @@ static int abt_sock_sendmsg(struct siw_hal_abt_data *abt,
 			}	\
 		} while (0)
 
+static int siw_sock_create_kern(int family, int type, int protocol, struct socket **res)
+{
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 2, 0))
+	return sock_create_kern(&init_net, family, type, protocol, res);
+#else
+	return sock_create_kern(family, type, protocol, res);
+#endif
+}
+
 static int __used abt_sock_create_data(struct siw_hal_abt_data *abt,
 				struct socket **res)
 {
-	int ret = sock_create_kern(PF_INET, SOCK_DGRAM, IPPROTO_UDP, res);
+	int ret = siw_sock_create_kern(PF_INET, SOCK_DGRAM, IPPROTO_UDP, res);
 	t_abt_log_sock_create(abt, "datagram", ret);
 	return ret;
 }
@@ -565,7 +574,7 @@ static int __used abt_sock_create_data(struct siw_hal_abt_data *abt,
 static int __used abt_sock_create_stream(struct siw_hal_abt_data *abt,
 				struct socket **res)
 {
-	int ret = sock_create_kern(PF_INET, SOCK_STREAM, IPPROTO_TCP, res);
+	int ret = siw_sock_create_kern(PF_INET, SOCK_STREAM, IPPROTO_TCP, res);
 	t_abt_log_sock_create(abt, "stream", ret);
 	return ret;
 }
