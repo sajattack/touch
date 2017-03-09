@@ -261,7 +261,7 @@ static const struct siw_hal_reg_quirk chip_reg_quirks[] = {
 	/* */
 	{ .old_addr = TCI_ENABLE_W, .new_addr = 0x2BF, },
 	{ .old_addr = TCI_FAIL_DEBUG_W, .new_addr = 0x2CA, },
-	{ .old_addr = TCI_ENABLE_W, .new_addr = 0x2CC, },
+	{ .old_addr = TCI_FAIL_BIT_W, .new_addr = 0x2CC, },
 	/* */
 	{ .old_addr = TAP_COUNT_W, .new_addr = 0xC30, },
 	{ .old_addr = MIN_INTERTAP_W, .new_addr = 0xC31, },
