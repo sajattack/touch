@@ -1476,6 +1476,17 @@ static int siw_hal_chk_boot(struct device *dev)
 	return boot_failed;
 }
 
+#if defined(CONFIG_TOUCHSCREEN_SIW_SW49408)
+#define __SIW_SUPPORT_STATUS_ERROR_MEM
+#endif
+
+#if defined(CONFIG_TOUCHSCREEN_SIW_SW49106) ||	\
+	defined(CONFIG_TOUCHSCREEN_SIW_SW49408) ||	\
+	defined(CONFIG_TOUCHSCREEN_SIW_SW49409) ||	\
+	defined(CONFIG_TOUCHSCREEN_SIW_SW49501)
+#define __SIW_SUPPORT_STATUS_ERROR_DISP
+#endif
+
 enum {
 	IC_DEBUG_SIZE		= 16,	// byte
 	//
@@ -1530,6 +1541,16 @@ static const struct siw_hal_status_filter status_filter_type_1[] = {
 		0, "irq status invalid"),
 	_STS_FILTER(STS_ID_VALID_TC_DRV, 1, STS_POS_VALID_TC_DRV,
 		0, "driving invalid"),
+#if defined(__SIW_SUPPORT_STATUS_ERROR_MEM)
+	_STS_FILTER(STS_ID_ERROR_MEM, 1, STS_POS_ERROR_MEM,
+		STS_FILTER_FLAG_TYPE_ERROR,
+		"memory error detected"),
+#endif
+#if defined(__SIW_SUPPORT_STATUS_ERROR_DISP)
+	_STS_FILTER(STS_ID_ERROR_DISP, 1, STS_POS_ERROR_DISP,
+		STS_FILTER_FLAG_TYPE_ERROR | STS_FILTER_FLAG_ESD_SEND,
+		"display error detected"),
+#endif
 	/* end mask */
 	_STS_FILTER(STS_ID_NONE, 0, 0, 0, NULL),
 };
@@ -1574,7 +1595,6 @@ static u32 siw_hal_get_status_mask(struct device *dev, int id)
 out:
 	return mask;
 }
-
 
 static int siw_hal_chk_status_type(struct device *dev)
 {
@@ -1626,7 +1646,9 @@ static int siw_hal_chk_status_type(struct device *dev)
 	mask_bit->error_mismtach = siw_hal_get_status_mask(dev, STS_ID_ERROR_MISMTACH);
 	mask_bit->valid_irq_pin = siw_hal_get_status_mask(dev, STS_ID_VALID_IRQ_PIN);
 	mask_bit->valid_irq_en = siw_hal_get_status_mask(dev, STS_ID_VALID_IRQ_EN);
+	mask_bit->error_mem = siw_hal_get_status_mask(dev, STS_ID_ERROR_MEM);
 	mask_bit->valid_tv_drv = siw_hal_get_status_mask(dev, STS_ID_VALID_TC_DRV);
+	mask_bit->error_disp = siw_hal_get_status_mask(dev, STS_ID_ERROR_DISP);
 
 	t_dev_dbg_base(dev, "mask[v_dev]  : %08Xh\n", mask_bit->valid_dev_ctl);
 	t_dev_dbg_base(dev, "mask[v_code] : %08Xh\n", mask_bit->valid_code_crc);
@@ -1636,7 +1658,9 @@ static int siw_hal_chk_status_type(struct device *dev)
 	t_dev_dbg_base(dev, "mask[e_mis]  : %08Xh\n", mask_bit->error_mismtach);
 	t_dev_dbg_base(dev, "mask[v_i_p]  : %08Xh\n", mask_bit->valid_irq_pin);
 	t_dev_dbg_base(dev, "mask[v_i_e]  : %08Xh\n", mask_bit->valid_irq_en);
+	t_dev_dbg_base(dev, "mask[e_mem]  : %08Xh\n", mask_bit->error_mem);
 	t_dev_dbg_base(dev, "mask[v_tc]   : %08Xh\n", mask_bit->valid_tv_drv);
+	t_dev_dbg_base(dev, "mask[e_disp] : %08Xh\n", mask_bit->error_disp);
 
 	chip->status_mask_normal = mask_bit->valid_dev_ctl |
 						mask_bit->valid_code_crc |
@@ -1657,6 +1681,8 @@ static int siw_hal_chk_status_type(struct device *dev)
 						mask_bit->valid_cfg_crc |
 						mask_bit->error_abnormal |
 						mask_bit->error_system |
+						mask_bit->error_mem |
+						mask_bit->error_disp |
 						0;
 
 	chip->status_mask = chip->status_mask_normal |
@@ -3881,6 +3907,14 @@ out:
 }
 
 #if defined(__SIW_CONFIG_KNOCK)
+
+#if defined(CONFIG_TOUCHSCREEN_SIW_SW49408)
+
+#else
+#define __TCI_SET_DEBUG
+#endif
+
+#if defined(__TCI_SET_DEBUG)
 static void siw_hal_set_debug_reason(struct device *dev, int type)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
@@ -3901,6 +3935,9 @@ static void siw_hal_set_debug_reason(struct device *dev, int type)
 			reg->tci_fail_debug_w,
 			(void *)wdata, sizeof(wdata));
 }
+#else
+#define siw_hal_set_debug_reason(_dev, _type) do { } while(0)
+#endif
 
 static int siw_hal_tci_knock(struct device *dev)
 {

@@ -355,7 +355,9 @@ enum {
 	STS_ID_ERROR_MISMTACH,
 	STS_ID_VALID_IRQ_PIN,
 	STS_ID_VALID_IRQ_EN,
+	STS_ID_ERROR_MEM,
 	STS_ID_VALID_TC_DRV,
+	STS_ID_ERROR_DISP,
 };
 
 enum {
@@ -368,7 +370,9 @@ enum {
 	STS_POS_ERROR_MISMTACH			= 13,
 	STS_POS_VALID_IRQ_PIN			= 15,
 	STS_POS_VALID_IRQ_EN			= 20,
+	STS_POS_ERROR_MEM				= 21,
 	STS_POS_VALID_TC_DRV			= 22,
+	STS_POS_ERROR_DISP				= 31,
 	/* */
 	STS_POS_VALID_CODE_CRC_TYPE_0	= 22,
 };
@@ -382,7 +386,9 @@ struct siw_hal_status_mask_bit {
 	u32 error_mismtach;
 	u32 valid_irq_pin;
 	u32 valid_irq_en;
+	u32 error_mem;
 	u32 valid_tv_drv;
+	u32 error_disp;
 };
 
 struct siw_hal_status_filter {
