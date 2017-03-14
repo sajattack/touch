@@ -1703,7 +1703,7 @@ static const struct siw_ic_info_chip_proto siw_ic_info_chip_protos[] = {
 	{ CHIP_SW49105, 10, 4 },
 	{ CHIP_SW49406, 7, 4 },
 	{ CHIP_SW49407, 9, 4 },
-	{ CHIP_SW49408, 12, 4 },
+	{ CHIP_SW49408, 9, 4 },
 	{ CHIP_SW42101, 15, 4 },
 	{ CHIP_NONE, 0, 0 },	//End mark
 };
