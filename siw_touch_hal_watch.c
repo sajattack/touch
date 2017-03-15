@@ -29,6 +29,15 @@
 
 #define __SUPPORT_WATCH_CTRL_ACCESS
 
+/*
+ * [Notice : __SUPPORT_WATCH_CTRL_ACCESS]
+ * This chipset has watch function in its spec,
+ * but its concept has been changed differently than before.
+ * - The role for watch control including font download is mainly managed by MIPI.
+ * - This watch layer supports 'config_fontdata'
+ *   but this is just a kind of 'Plan B' for test or debugging
+ *   when the MIPI control for font download doesn't work well.
+ */
 #if defined(CONFIG_TOUCHSCREEN_SIW_SW49408)
 #undef	__SUPPORT_WATCH_CTRL_ACCESS
 #endif
