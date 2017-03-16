@@ -2513,21 +2513,44 @@ static int siw_hal_reinit(struct device *dev,
 	return 0;
 }
 
+#define SIW_SW_RST_CTL_T2		0xFE0
 
-static int siw_hal_sw_reset_wh_cmd(struct device *dev)
+static int siw_hal_sw_reset_type_2(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
 
+	t_dev_info(dev, "SW Reset(2)\n");
+
+	siw_hal_write_value(dev, SIW_SW_RST_CTL_T2, 0);
+
+	touch_msleep(1 + hal_dbg_delay(chip, HAL_DBG_DLY_SW_RST_0));
+
+	siw_hal_write_value(dev, SIW_SW_RST_CTL_T2, 1);
+
+	touch_msleep(ts->caps.sw_reset_delay +	\
+		hal_dbg_delay(chip, HAL_DBG_DLY_SW_RST_1));
+
+	return 0;
+}
+
+static int siw_hal_sw_reset_type_1(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+
+	t_dev_info(dev, "SW Reset(1)\n");
+
 	siw_hal_cmd_write(dev, CMD_ENA);
 	siw_hal_cmd_write(dev, CMD_RESET_LOW);
 
-	touch_msleep(1 + hal_dbg_delay(chip, HAL_DBG_DLY_SW_RST_1));
+	touch_msleep(1 + hal_dbg_delay(chip, HAL_DBG_DLY_SW_RST_0));
 
 	siw_hal_cmd_write(dev, CMD_RESET_HIGH);
 	siw_hal_cmd_write(dev, CMD_DIS);
 
-	touch_msleep(ts->caps.sw_reset_delay);
+	touch_msleep(ts->caps.sw_reset_delay +	\
+		hal_dbg_delay(chip, HAL_DBG_DLY_SW_RST_1));
 
 	return 0;
 }
@@ -2535,13 +2558,11 @@ static int siw_hal_sw_reset_wh_cmd(struct device *dev)
 static int siw_hal_sw_reset_default(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
-	struct siw_ts *ts = chip->ts;
+//	struct siw_ts *ts = chip->ts;
 	struct siw_hal_reg *reg = chip->reg;
 	u32 chk_resp;
 	u32 data;
 	int ret = 0;
-
-	siw_touch_irq_control(dev, INTERRUPT_DISABLE);
 
 	/******************************************************
 	* Siliconworks does not recommend to use SW reset    *
@@ -2571,7 +2592,6 @@ static int siw_hal_sw_reset_default(struct device *dev)
 			chk_resp, data);
 		goto out;
 	}
-	siw_touch_qd_init_work_sw(ts);
 
 out:
 	return ret;
@@ -2580,20 +2600,28 @@ out:
 static int siw_hal_sw_reset(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
-//	struct siw_ts *ts = chip->ts;
+	struct siw_ts *ts = chip->ts;
 	int ret = 0;
 
+	siw_touch_irq_control(dev, INTERRUPT_DISABLE);
+
 	switch (chip->opt.t_sw_rst) {
+	case 2:
+		ret = siw_hal_sw_reset_type_2(dev);
+		break;
+
 	case 1:
-		ret = siw_hal_sw_reset_wh_cmd(dev);
-		atomic_set(&chip->init, IC_INIT_NEED);
+		ret = siw_hal_sw_reset_type_1(dev);
 		break;
 
 	default:
 		ret = siw_hal_sw_reset_default(dev);
-		atomic_set(&chip->init, IC_INIT_NEED);
 		break;
 	}
+
+	atomic_set(&chip->init, IC_INIT_NEED);
+
+	siw_touch_qd_init_work_sw(ts);
 
 	return ret;
 }
@@ -4212,6 +4240,40 @@ static int siw_hal_lpwg_control(struct device *dev, int mode)
 }
 #endif	/* __SIW_SUPPORT_KNOCK */
 
+#define SIW_OSC_CTL_T2		0xFE1
+#define SIW_CLK_CTL_T2		0xFE2
+
+static int siw_hal_clock_type_2(struct device *dev, bool onoff)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+
+	if (onoff) {
+		/*
+		 * [Notice]
+		 * I2C needs touch reset.
+		 */
+		if (touch_bus_type(ts) == BUS_IF_SPI) {
+			siw_hal_write_value(dev, SIW_OSC_CTL_T2, onoff);
+			siw_hal_write_value(dev, SIW_CLK_CTL_T2, onoff);
+		}
+		atomic_set(&ts->state.sleep, IC_NORMAL);
+	} else {
+		if (chip->lcd_mode == LCD_MODE_U0) {
+			if (touch_bus_type(ts) == BUS_IF_SPI) {
+				siw_hal_write_value(dev, SIW_CLK_CTL_T2, onoff);
+			}
+			siw_hal_write_value(dev, SIW_OSC_CTL_T2, onoff);
+			atomic_set(&ts->state.sleep, IC_DEEP_SLEEP);
+		}
+	}
+
+	t_dev_info(dev, "siw_hal_clock(2) -> %s\n",
+		(onoff) ? "ON" : (!chip->lcd_mode) ? "OFF" : "SKIP");
+
+	return 0;
+}
+
 static int siw_hal_clock_type_1(struct device *dev, bool onoff)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
@@ -4233,8 +4295,8 @@ static int siw_hal_clock_type_1(struct device *dev, bool onoff)
 
 	siw_hal_cmd_write(dev, CMD_DIS);
 
-	t_dev_info(dev, "siw_hal_clock -> %s\n",
-		(onoff) ? "ON" : (chip->lcd_mode) == 0 ? "OFF" : "SKIP");
+	t_dev_info(dev, "siw_hal_clock(1) -> %s\n",
+		(onoff) ? "ON" : (!chip->lcd_mode) ? "OFF" : "SKIP");
 
 	return 0;
 }
@@ -4248,6 +4310,9 @@ static int siw_hal_clock(struct device *dev, bool onoff)
 	siw_touch_sys_osc(dev, onoff);
 
 	switch (chip->opt.t_clock) {
+	case 2:
+		ret = siw_hal_clock_type_2(dev, onoff);
+		break;
 	case 1:
 		ret = siw_hal_clock_type_1(dev, onoff);
 		break;
@@ -6818,6 +6883,7 @@ static int siw_hal_chipset_option(struct siw_touch_chip *chip)
 
 	case CHIP_SW49105:
 		opt->f_attn_opt = 1;
+		opt->t_sw_rst = 2;
 		opt->t_chk_sys_error = 1;
 		opt->t_chk_sys_fault = 1;
 		break;
@@ -6832,6 +6898,8 @@ static int siw_hal_chipset_option(struct siw_touch_chip *chip)
 		opt->f_grab_en = 1;
 		opt->f_dbg_report = 1;
 		opt->f_u2_blank_chg = 1;
+		opt->t_sw_rst = 2;
+		opt->t_clock = 2;
 		opt->t_chk_mipi = 1;
 		opt->t_chk_sys_error = 1;
 		opt->t_chk_sys_fault = 1;
@@ -6841,11 +6909,15 @@ static int siw_hal_chipset_option(struct siw_touch_chip *chip)
 	case CHIP_SW49408:
 		opt->f_attn_opt = 1;
 		opt->t_chk_mode = 1;
+		opt->t_sw_rst = 2;
+		opt->t_clock = 2;
 		opt->t_chk_sys_error = 2;
 		opt->t_chk_sys_fault = 1;
 		break;
 
 	case CHIP_SW49409:
+		opt->t_sw_rst = 2;
+		opt->t_clock = 2;
 		opt->t_chk_sys_error = 3;
 		opt->t_chk_sys_fault = 1;
 		break;
