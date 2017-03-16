@@ -70,6 +70,7 @@
 //#include "exynos5422-odroidxu3_siw_touch_lg4895.dtsi"
 //#include "exynos5422-odroidxu3_siw_touch_lg4946.dtsi"
 //#include "exynos5422-odroidxu3_siw_touch_lg4951.dtsi"
-#include "exynos5422-odroidxu3_siw_touch_sw49407.dtsi"
+//#include "exynos5422-odroidxu3_siw_touch_sw49407.dtsi"
+#include "exynos5422-odroidxu3_siw_touch_sw49408.dtsi"
 
 
