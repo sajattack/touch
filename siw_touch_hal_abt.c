@@ -307,7 +307,6 @@ struct siw_hal_abt_report_p {
 
 struct siw_hal_abt_data {
 	struct device *dev;
-	char name[128];
 	struct mutex abt_comm_lock;
 	struct mutex abt_socket_lock;
 
@@ -404,18 +403,20 @@ static inline const char *abt_conn_name(int idx)
 	return (idx < ABT_CONN_MAX) ? abt_conn_name_str[idx] : "(invalid)";
 }
 
+#define SIW_ABT_TAG 	"abt"
+
 #define t_abt_info(_abt, fmt, args...)	\
-		__t_dev_info(_abt->dev, "%s[%d(%s)] : " fmt, _abt->name,	\
+		__t_dev_info(_abt->dev, SIW_ABT_TAG "[%d(%s)]: " fmt,	\
 					_abt->abt_conn_tool, abt_conn_name(_abt->abt_conn_tool),	\
 					##args)
 
 #define t_abt_err(_abt, fmt, args...)	\
-		__t_dev_err(_abt->dev, "%s[%d(%s)] : " fmt, _abt->name,	\
+		__t_dev_err(_abt->dev, SIW_ABT_TAG "[%d(%s)] : " fmt,	\
 					_abt->abt_conn_tool, abt_conn_name(_abt->abt_conn_tool),	\
 					##args)
 
 #define t_abt_warn(_abt, fmt, args...)	\
-		__t_dev_warn(_abt->dev, "%s[%d(%s)] : " fmt, _abt->name,	\
+		__t_dev_warn(_abt->dev, SIW_ABT_TAG "[%d(%s)] : " fmt,	\
 					_abt->abt_conn_tool, abt_conn_name(_abt->abt_conn_tool),	\
 					##args)
 
@@ -1634,7 +1635,7 @@ out:
 	({	\
 		struct task_struct *_thread;	\
 		t_abt_dbg_base(_abt, "Run kthread for %s\n", #_func);	\
-		_thread = kthread_run(_func, _abt, _abt->name);	\
+		_thread = kthread_run(_func, _abt, "abt-%s", dev_name(_abt->dev));	\
 		_thread;	\
 	})
 
@@ -2192,10 +2193,7 @@ static struct siw_hal_abt_data *siw_hal_abt_alloc(struct device *dev)
 	}
 	abt->abt_comm.send_packet = send_packet;
 
-	snprintf(abt->name, sizeof(abt->name)-1, "%s-abt", dev_name(dev));
-
-	t_dev_dbg_base(dev, "create abt[%s] (0x%zX)\n",
-				abt->name, (size_t)sizeof(*abt));
+	t_dev_dbg_base(dev, "create abt (0x%zX)\n", (size_t)sizeof(*abt));
 
 	abt->dev = ts->dev;
 
@@ -2244,7 +2242,7 @@ static void siw_hal_abt_free(struct device *dev)
 	struct siw_hal_abt_data *abt = (struct siw_hal_abt_data *)ts->abt;
 
 	if (abt) {
-		t_dev_dbg_base(dev, "free abt[%s]\n", abt->name);
+		t_dev_dbg_base(dev, "free abt\n");
 
 		abt_store_tool_exit(abt, NULL);
 
