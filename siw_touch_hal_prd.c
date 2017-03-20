@@ -58,8 +58,6 @@
 #endif
 
 enum {
-	PRD_DATA_NAME_SZ	= 128,
-	/* */
 	PRD_LINE_NUM		= (1<<10),
 //	PRD_PATH_SIZE		= (1<<6),		//64
 //	PRD_BURST_SIZE		= (1<<9),		//512
@@ -338,7 +336,6 @@ struct siw_hal_prd_sd_param {
 
 struct siw_hal_prd_data {
 	struct device *dev;
-	char name[PRD_DATA_NAME_SZ];
 	struct siw_hal_prd_sd_cmd sd_cmd;
 	u32 dbg_mask;
 	/* */
@@ -939,14 +936,16 @@ enum {
 	PRD_SHOW_FLAG_DISABLE_PRT_RAW	= (1<<0),
 };
 
+#define SIW_PRD_TAG 	"prd: "
+
 #define t_prd_info(_prd, fmt, args...)	\
-		__t_dev_info(_prd->dev, "%s : " fmt, _prd->name, ##args)
+		__t_dev_info(_prd->dev, SIW_PRD_TAG fmt, ##args)
 
 #define t_prd_err(_prd, fmt, args...)	\
-		__t_dev_err(_prd->dev, "%s : " fmt, _prd->name, ##args)
+		__t_dev_err(_prd->dev, SIW_PRD_TAG fmt, ##args)
 
 #define t_prd_warn(_prd, fmt, args...)	\
-		__t_dev_warn(_prd->dev, "%s : " fmt, _prd->name, ##args)
+		__t_dev_warn(_prd->dev, SIW_PRD_TAG fmt, ##args)
 
 #define t_prd_dbg(condition, _prd, fmt, args...)	\
 		do {	\
@@ -5348,7 +5347,7 @@ static int siw_hal_prd_create_group(struct device *dev)
 			break;
 		}
 
-		t_dev_dbg_base(dev, "prd sysfs %02d(%20s) %s\n",
+		t_dev_dbg_base(dev, SIW_PRD_TAG "sysfs %02d(%20s) %s\n",
 			i, prd_attr->attr->name,
 			(added) ? "added" : "not supported");
 
@@ -5868,10 +5867,7 @@ static struct siw_hal_prd_data *siw_hal_prd_alloc(struct device *dev)
 		goto out;
 	}
 
-	snprintf(prd->name, sizeof(prd->name)-1, "%s-prd", dev_name(dev));
-
-	t_dev_dbg_base(dev, "create prd[%s] (0x%X)\n",
-				prd->name, (int)sizeof(*prd));
+	t_dev_dbg_base(dev, "create prd (0x%X)\n", (int)sizeof(*prd));
 
 	prd->dev = ts->dev;
 
@@ -5894,7 +5890,7 @@ static void siw_hal_prd_free(struct device *dev)
 	struct siw_hal_prd_data *prd = (struct siw_hal_prd_data *)ts->prd;
 
 	if (prd) {
-		t_dev_dbg_base(dev, "free prd[%s]\n", prd->name);
+		t_dev_dbg_base(dev, "free prd\n");
 
 		ts->prd = NULL;
 		touch_kfree(dev, prd);
