@@ -5696,7 +5696,7 @@ static int siw_hal_irq_abs_data(struct device *dev)
 			if (data->width_major == data->width_minor)
 				tdata->orientation = 1;
 			else
-				tdata->orientation = data->angle;
+				tdata->orientation = (s8)data->angle;
 
 			finger_index++;
 
