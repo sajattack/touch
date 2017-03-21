@@ -1056,9 +1056,14 @@ static void siw_hal_fb_notify_work_func(struct work_struct *fb_notify_work)
 	struct siw_touch_chip *chip =
 			container_of(to_delayed_work(fb_notify_work),
 				struct siw_touch_chip, fb_notify_work);
-	int type = 0;
+	int type = FB_RESUME;
 
-	type = (chip->lcd_mode == LCD_MODE_U3) ? FB_RESUME : FB_SUSPEND;
+	switch (chip->lcd_mode) {
+	case LCD_MODE_U0:
+	case LCD_MODE_U2:
+		type = FB_SUSPEND;
+		break;
+	}
 
 	siw_touch_notifier_call_chain(NOTIFY_FB, &type);
 }
