@@ -398,7 +398,7 @@ struct touch_data {
 	u16 y;
 	u16 width_major;
 	u16 width_minor;
-	u16 orientation;
+	s16 orientation;
 	u16 pressure;
 	/* finger, palm, pen, glove, hover */
 	u16 type;
