@@ -3201,6 +3201,7 @@ static const struct siw_watch_type_table watch_type_tables[] = {
 		.font_crc_offset = 12,
 		.font_magic_code = SIW_FONT_MAGIC_CODE,
 	},
+#if 0
 	{	.chip_type = CHIP_SW49408,
 		.watch_type = (WATCH_TYPE_1 | (1<<16)),
 		.flag = 0,
@@ -3209,6 +3210,7 @@ static const struct siw_watch_type_table watch_type_tables[] = {
 		.font_crc_offset = 16,
 		.font_magic_code = SIW_FONT_MAGIC_CODE,
 	},
+#endif
 	/* */
 	{ CHIP_NONE, 0, },	//End mark
 };
