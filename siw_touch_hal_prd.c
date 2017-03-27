@@ -1772,7 +1772,8 @@ static int prd_write_test_mode(struct siw_hal_prd_data *prd, int type)
 	} while ((rdata != 0xAA) && retry--);
 
 	if (rdata != 0xAA) {
-		t_prd_err(prd, "ProductionTest Type [%d] Time out\n", type);
+		t_prd_err(prd, "ProductionTest Type [%d] Time out, %08Xh\n",
+			type, rdata);
 		goto out;
 	}
 
@@ -2841,7 +2842,7 @@ static int prd_stop_firmware(struct siw_hal_prd_data *prd, u32 wdata, int flag)
 	do {
 		--try_cnt;
 		if (try_cnt == 0) {
-			t_prd_err(prd, "[ERR] get_data->try_cnt == 0\n");
+			t_prd_err(prd, "[ERR] stop FW: timeout, %08Xh\n", read_val);
 			ret = -ETIMEDOUT;
 			goto out;
 		}
