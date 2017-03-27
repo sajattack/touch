@@ -29,6 +29,8 @@
 
 #define __SUPPORT_WATCH_CTRL_ACCESS
 
+#define __SUPPORT_WATCH_FONT_STS_CHK
+
 /*
  * [Notice : __SUPPORT_WATCH_CTRL_ACCESS]
  * This chipset has watch function in its spec,
@@ -40,6 +42,7 @@
  */
 #if defined(CONFIG_TOUCHSCREEN_SIW_SW49408)
 #undef	__SUPPORT_WATCH_CTRL_ACCESS
+#undef	__SUPPORT_WATCH_FONT_STS_CHK
 #endif
 
 #define SIW_MAX_FONT_SIZE			(6<<10)
@@ -1413,6 +1416,7 @@ static u32 ext_watch_font_crc_cal(char *data, u32 size)
 	return crc_value & 0x3FFFFFFF;
 }
 
+#if defined(__SUPPORT_WATCH_FONT_STS_CHK)
 static int ext_watch_do_chk_font_status(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
@@ -1465,19 +1469,37 @@ static int ext_watch_chk_font_status(struct device *dev)
 out:
 	return ret;
 }
+#else	/* __SUPPORT_WATCH_FONT_STS_CHK */
+static int ext_watch_chk_font_status(struct device *dev)
+{
+	return 0;
+}
+
+#define ext_watch_do_chk_font_status	ext_watch_chk_font_status
+#endif	/* __SUPPORT_WATCH_FONT_STS_CHK */
 
 enum {
 	FONT_TYPE_0 = 0,
 	FONT_TYPE_1,
 };
 
-#define FONT_DN_WORK_MSG_0	"font dn work(0): "
-#define FONT_DN_WORK_MSG_1	"font dn work(1): "
+#define FONT_DN_WORK_MSG	"font dn work(%d): "
+
+#define t_watch_info_font_dn_x(_dev, fmt, _idx, args...)	\
+		t_watch_info(_dev, FONT_DN_WORK_MSG fmt, _idx, ##args)
 
 #define t_watch_info_font_dn_0(_dev, fmt, args...)	\
-		t_watch_info(_dev, FONT_DN_WORK_MSG_0 fmt, ##args)
+		t_watch_info_font_dn_x(_dev, fmt, 0, ##args)
 #define t_watch_info_font_dn_1(_dev, fmt, args...)	\
-		t_watch_info(_dev, FONT_DN_WORK_MSG_1 fmt, ##args)
+		t_watch_info_font_dn_x(_dev, fmt, 1, ##args)
+
+#define t_watch_err_font_dn_x(_dev, fmt, _idx, args...)	\
+		t_watch_err(_dev, FONT_DN_WORK_MSG fmt, _idx, ##args)
+
+#define t_watch_err_font_dn_0(_dev, fmt, args...)	\
+		t_watch_err_font_dn_x(_dev, fmt, 0, ##args)
+#define t_watch_err_font_dn_1(_dev, fmt, args...)	\
+		t_watch_err_font_dn_x(_dev, fmt, 1, ##args)
 
 static int ext_watch_font_dn_type_0(struct device *dev)
 {
@@ -1513,7 +1535,7 @@ static int ext_watch_font_dn_type_0(struct device *dev)
 		magic_addr);
 
 	if (magic_addr > watch->font_written_size) {
-		t_watch_err(dev, "wrong magic addr, %08Xh\n", magic_addr);
+		t_watch_err_font_dn_0(dev, "wrong magic addr, %08Xh\n", magic_addr);
 		goto out;
 	}
 
@@ -1521,7 +1543,7 @@ static int ext_watch_font_dn_type_0(struct device *dev)
 		(void *)&ext_wdata->font_data[magic_addr], sizeof(u32));
 
 	if (font_hdr->magic_code != watch->font_magic_code) {
-		t_watch_err(dev, "wrong magic code: %08Xh (%08Xh)\n",
+		t_watch_err_font_dn_0(dev, "wrong magic code: %08Xh (%08Xh)\n",
 			font_hdr->magic_code, watch->font_magic_code);
 		goto out;
 	}
@@ -1618,11 +1640,13 @@ static int ext_watch_font_dn_type_0(struct device *dev)
 		offset += (curr_size>>2);
 	}
 
+#if defined(__SUPPORT_WATCH_FONT_STS_CHK)
 	ret = siw_hal_write_value(dev,
 				reg->ext_watch_font_crc, 1);
 	if (ret < 0) {
 		goto out;
 	}
+#endif
 
 	atomic_set(&watch->state.font_status, FONT_READY);
 
@@ -1642,9 +1666,7 @@ static int ext_watch_font_dn_type_0(struct device *dev)
 out:
 	atomic_set(&watch->state.font_status, FONT_EMPTY);
 
-	t_watch_err(dev,
-		FONT_DN_WORK_MSG_0 "failed, %d\n",
-		ret);
+	t_watch_err_font_dn_0(dev, "failed, %d\n", ret);
 
 	return ret;
 }
@@ -1670,7 +1692,7 @@ static int ext_watch_font_dn_type_1(struct device *dev)
 	font_hdr = (struct ext_watch_font_header *)watch->ext_wdata.font_data;
 
 	if (font_hdr->magic_code != watch->font_magic_code) {
-		t_watch_err(dev, "wrong magic code: %08Xh (%08Xh)\n",
+		t_watch_err_font_dn_1(dev, "wrong magic code: %08Xh (%08Xh)\n",
 			font_hdr->magic_code, watch->font_magic_code);
 		goto out;
 	}
@@ -1731,11 +1753,13 @@ static int ext_watch_font_dn_type_1(struct device *dev)
 		offset += (curr_size>>2);
 	}
 
+#if defined(__SUPPORT_WATCH_FONT_STS_CHK)
 	ret = siw_hal_write_value(dev,
 				reg->ext_watch_font_crc, 1);
 	if (ret < 0) {
 		goto out;
 	}
+#endif
 
 	atomic_set(&watch->state.font_status, FONT_READY);
 
@@ -1755,9 +1779,7 @@ static int ext_watch_font_dn_type_1(struct device *dev)
 out:
 	atomic_set(&watch->state.font_status, FONT_EMPTY);
 
-	t_watch_err(dev,
-		FONT_DN_WORK_MSG_1 "failed, %d\n",
-		ret);
+	t_watch_err_font_dn_1(dev, "failed, %d\n", ret);
 
 	return ret;
 }
