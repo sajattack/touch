@@ -3511,8 +3511,13 @@ void siw_hal_watch_rtc_on(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct watch_data *watch = (struct watch_data *)chip->watch;
-	int watch_type = WATCH_TYPE(watch);
+	int watch_type;
 	int rtc_on = 0;
+
+	if (watch == NULL)
+		return;
+
+	watch_type = WATCH_TYPE(watch);
 
 	switch (watch_type) {
 	case WATCH_TYPE_1:
@@ -3522,7 +3527,7 @@ void siw_hal_watch_rtc_on(struct device *dev)
 		break;
 	}
 
-	if (watch && rtc_on) {
+	if (rtc_on) {
 		if (atomic_read(&watch->state.rtc_status) == RTC_CLEAR) {
 			ext_watch_rtc_start(dev, EXT_WATCH_RTC_START);
 		}
