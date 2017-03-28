@@ -5156,17 +5156,14 @@ static int siw_hal_lpwg_mode(struct device *dev)
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
 
-	if (atomic_read(&chip->init) == IC_INIT_NEED) {
-		t_dev_info(dev, "Not Ready, Need IC init\n");
-		return 0;
-	}
-
 	if (atomic_read(&ts->state.fb) == FB_SUSPEND) {
 		return siw_hal_lpwg_mode_suspend(dev);
 	}
 
 	return siw_hal_lpwg_mode_resume(dev);
 }
+
+//#define __SKIP_LPWG_UPDATE_ALL_FOR_SAME_INPUT
 
 static int siw_hal_lpwg(struct device *dev, u32 code, void *param)
 {
@@ -5176,12 +5173,18 @@ static int siw_hal_lpwg(struct device *dev, u32 code, void *param)
 	struct active_area *area = &tci->area;
 	struct lpwg_info *lpwg = &ts->lpwg;
 	int *value = (int *)param;
+	int changed = 0;
 	int ret = 0;
 
 //	if (!touch_test_quirks(ts, CHIP_QUIRK_SUPPORT_LPWG)) {
 	if (!ts->role.use_lpwg) {
 		t_dev_warn(dev, "LPWG control not supported in %s\n",
 				touch_chip_name(ts));
+		return 0;
+	}
+
+	if (atomic_read(&chip->init) == IC_INIT_NEED) {
+		t_dev_info(dev, "Not Ready, Need IC init\n");
 		return 0;
 	}
 
@@ -5206,6 +5209,11 @@ static int siw_hal_lpwg(struct device *dev, u32 code, void *param)
 		break;
 
 	case LPWG_UPDATE_ALL:
+		changed = (lpwg->mode != value[0]) |
+				((lpwg->screen != value[1])<<1) |
+				((lpwg->sensor != value[2])<<2) |
+				((lpwg->qcover != value[3])<<3);
+
 		lpwg->mode = value[0];
 		lpwg->screen = value[1];
 		lpwg->sensor = value[2];
@@ -5217,19 +5225,25 @@ static int siw_hal_lpwg(struct device *dev, u32 code, void *param)
 		t_lpwg_qcover = lpwg->qcover;
 
 		t_dev_info(dev,
-				"LPWG_UPDATE_ALL: mode[%d], screen[%s], sensor[%s], qcover[%s]\n",
+				"LPWG_UPDATE_ALL: mode[%d], screen[%s], sensor[%s], qcover[%s] (%02Xh)\n",
 				lpwg->mode,
 				lpwg->screen ? "ON" : "OFF",
 				lpwg->sensor ? "FAR" : "NEAR",
-				lpwg->qcover ? "CLOSE" : "OPEN");
+				lpwg->qcover ? "CLOSE" : "OPEN",
+				changed);
+
+#if defined(__SKIP_LPWG_UPDATE_ALL_FOR_SAME_INPUT)
+		if (!changed) {
+			t_dev_info(dev, "LPWG_UPDATE_ALL: not changed, skip\n");
+			break;
+		}
+#endif
 
 		ret = siw_hal_lpwg_mode(dev);
-
 		break;
 
 	case LPWG_REPLY:
 		break;
-
 	}
 
 	return ret;
