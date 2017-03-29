@@ -260,8 +260,6 @@ static const struct siw_hal_reg_quirk chip_reg_quirks[] = {
 	{ .old_addr = EXT_WATCH_LUT, .new_addr = 0x1040, },
 	/* */
 	{ .old_addr = TCI_ENABLE_W, .new_addr = 0x2BF, },
-	{ .old_addr = TCI_FAIL_DEBUG_W, .new_addr = 0x2CA, },
-	{ .old_addr = TCI_FAIL_BIT_W, .new_addr = 0x2CC, },
 	/* */
 	{ .old_addr = TAP_COUNT_W, .new_addr = 0xC30, },
 	{ .old_addr = MIN_INTERTAP_W, .new_addr = 0xC31, },
@@ -285,7 +283,6 @@ static const struct siw_hal_reg_quirk chip_reg_quirks[] = {
 	{ .old_addr = SWIPE_ACT_AREA_Y1_W, .new_addr = 0xC48, },
 	{ .old_addr = SWIPE_ACT_AREA_X2_W, .new_addr = 0xC49, },
 	{ .old_addr = SWIPE_ACT_AREA_Y2_W, .new_addr = 0xC4A, },
-	{ .old_addr = SWIPE_FAIL_DEBUG_W, .new_addr = 0xC4B, },
 	{ .old_addr = SWIPE_FAIL_DEBUG_R, .new_addr = 0x06C, },
 	{ .old_addr = SWIPE_DEBUG_R, .new_addr = 0x0D0, },
 	/* */
