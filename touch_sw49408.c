@@ -188,9 +188,8 @@ static const struct siw_hal_reg_quirk chip_reg_quirks[] = {
 	{ .old_addr = PRD_IC_AIT_START_REG, .new_addr = 0xF0C, },
 	{ .old_addr = PRD_IC_AIT_DATA_READYSTATUS, .new_addr = 0xF04, },
 	/* */
-	{ .old_addr = EXT_WATCH_FONT_OFFSET, .new_addr = 0x086, },
+	{ .old_addr = EXT_WATCH_FONT_OFFSET, .new_addr = 0x08F, },
 	{ .old_addr = EXT_WATCH_FONT_ADDR, .new_addr = 0xFD8, },
-	{ .old_addr = EXT_WATCH_FONT_CRC, .new_addr = 0xC16, },
 	/* */
 	{ .old_addr = TCI_ENABLE_W, .new_addr = 0xC30, },
 	/* */
@@ -216,7 +215,6 @@ static const struct siw_hal_reg_quirk chip_reg_quirks[] = {
 	{ .old_addr = SWIPE_ACT_AREA_Y1_W, .new_addr = 0xC48, },
 	{ .old_addr = SWIPE_ACT_AREA_X2_W, .new_addr = 0xC49, },
 	{ .old_addr = SWIPE_ACT_AREA_Y2_W, .new_addr = 0xC4A, },
-	{ .old_addr = SWIPE_FAIL_DEBUG_W, .new_addr = 0xC4B, },
 	{ .old_addr = SWIPE_FAIL_DEBUG_R, .new_addr = 0x06C, },
 	{ .old_addr = SWIPE_DEBUG_R, .new_addr = 0x0D0, },
 	/* */
