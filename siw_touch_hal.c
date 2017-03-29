@@ -173,23 +173,6 @@ static int siw_hal_tc_driving(struct device *dev, int mode);
 #define t_hal_bus_warn(_abt, fmt, args...)	\
 		__t_dev_warn(_dev, "hal(bus) : " fmt, ##args)
 
-#if defined(__SIW_CONFIG_KNOCK)
-#define TCI_FAIL_NUM 11
-static const char const *siw_hal_tci_debug_str[TCI_FAIL_NUM] = {
-	"NONE",
-	"DISTANCE_INTER_TAP",
-	"DISTANCE_TOUCHSLOP",
-	"TIMEOUT_INTER_TAP_LONG",
-	"MULTI_FINGER",
-	"DELAY_TIME",/* It means Over Tap */
-	"TIMEOUT_INTER_TAP_SHORT",
-	"PALM_STATE",
-	"TAP_TIMEOVER",
-	"DEBUG9",
-	"DEBUG10"
-};
-#endif	/* __SIW_CONFIG_KNOCK */
-
 #if defined(__SIW_CONFIG_SWIPE)
 #define SWIPE_FAIL_NUM 7
 static const char const *siw_hal_swipe_debug_str[SWIPE_FAIL_NUM] = {
@@ -3940,37 +3923,34 @@ out:
 }
 
 #if defined(__SIW_CONFIG_KNOCK)
-
-#if defined(CONFIG_TOUCHSCREEN_SIW_SW49408)
-
-#else
-#define __TCI_SET_DEBUG
-#endif
-
-#if defined(__TCI_SET_DEBUG)
-static void siw_hal_set_debug_reason(struct device *dev, int type)
+static void siw_hal_set_tci_debug_type_1(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 //	struct siw_ts *ts = chip->ts;
 	struct siw_hal_reg *reg = chip->reg;
-	u32 wdata[2] = {0, };
-//	int ret = 0;
+	u32 wdata = chip->tci_debug_type;
+	int ret = 0;
 
-	if (!chip->tci_debug_type)
-		return;
+	t_dev_info(dev, "TCI-Debug: %s\n", (wdata) ? "Enable" : "Disable");
 
-	wdata[0] = (u32)type;
-	wdata[0] |= (chip->tci_debug_type == 1) ? 0x01 << 2 : 0x01 << 3;
-	wdata[1] = TCI_DEBUG_ALL;
-	t_dev_info(dev, "TCI%d-type:%d\n", type + 1, wdata[0]);
-
-	siw_hal_reg_write(dev,
-			reg->tci_fail_debug_w,
-			(void *)wdata, sizeof(wdata));
+	ret = siw_hal_write_value(dev, reg->tci_debug_fail_ctrl, wdata);
+	if (ret < 0) {
+		t_dev_err(dev, "TCI-Debug: ctrl failed, %d\n", ret);
+	}
 }
-#else
-#define siw_hal_set_debug_reason(_dev, _type) do { } while(0)
-#endif
+
+static void siw_hal_set_tci_debug(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+
+	switch (chip->opt.t_chk_tci_debug) {
+	case 1:
+		siw_hal_set_tci_debug_type_1(dev);
+		break;
+	default:
+		break;
+	}
+}
 
 static int siw_hal_tci_knock(struct device *dev)
 {
@@ -3982,7 +3962,7 @@ static int siw_hal_tci_knock(struct device *dev)
 	u32 lpwg_data[7];
 	int ret = 0;
 
-	siw_hal_set_debug_reason(dev, TCI_1);
+	siw_hal_set_tci_debug(dev);
 
 	lpwg_data[0] = ts->tci.mode;
 	lpwg_data[1] = info1->tap_count | (info2->tap_count << 16);
@@ -4011,7 +3991,7 @@ static int siw_hal_tci_password(struct device *dev)
 {
 //	struct siw_touch_chip *chip = to_touch_chip(dev);
 
-	siw_hal_set_debug_reason(dev, TCI_2);
+	siw_hal_set_tci_debug(dev);
 
 	return siw_hal_tci_knock(dev);
 }
@@ -4829,58 +4809,80 @@ static void siw_hal_deep_sleep(struct device *dev)
 }
 
 #if defined(__SIW_CONFIG_KNOCK)
-static void siw_hal_debug_tci(struct device *dev)
+static const char *siw_hal_tci_debug_type_1_str[] = {
+	"SUCCESS",
+	"DISTANCE_INTER_TAP",
+	"DISTANCE_TOUCH_SLOP",
+	"MIN_TIMEOUT_INTER_TAP",
+	"MAX_TIMEOUT_INTER_TAP",
+	"LONG_PRESS_TIME_OUT",
+	"MULTI_FINGER",
+	"DELAY_TIME",
+	"PALM_STATE",
+	"OUT_OF_AREA",
+};
+
+#define TCI_FAIL_TYPE_1_NUM		ARRAY_SIZE(siw_hal_tci_debug_type_1_str)
+
+static void siw_hal_debug_tci_type_1(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 //	struct siw_ts *ts = chip->ts;
 	struct siw_hal_reg *reg = chip->reg;
-	u8 debug_reason_buf[TCI_MAX_NUM][TCI_DEBUG_MAX_NUM];
-	u32 rdata[9] = {0, };
-	u8 count[2] = {0, };
-	u8 count_max = 0;
-	u32 i, j = 0;
-	u8 buf = 0;
+	char **str = (char **)siw_hal_tci_debug_type_1_str;
+	u32 rdata = 0;
+	u32 buffer = 0;
+	u32 index = 0;
 	int ret = 0;
 
-	if (!chip->tci_debug_type)
+	ret = siw_hal_read_value(dev,
+			reg->tci_debug_fail_status,
+			&rdata);
+	if (ret < 0) {
+		t_dev_err(dev, "failed to read tci debug fail status, %d\n", ret);
 		return;
-
-	ret = siw_hal_reg_read(dev,
-				reg->tci_debug_r,
-				(void *)&rdata, sizeof(rdata));
-
-	count[TCI_1] = (rdata[0] & 0xFFFF);
-	count[TCI_2] = ((rdata[0] >> 16) & 0xFFFF);
-	count_max = (count[TCI_1] > count[TCI_2]) ? count[TCI_1] : count[TCI_2];
-
-	if (count_max == 0)
-		return;
-
-	if (count_max > TCI_DEBUG_MAX_NUM) {
-		count_max = TCI_DEBUG_MAX_NUM;
-		if (count[TCI_1] > TCI_DEBUG_MAX_NUM)
-			count[TCI_1] = TCI_DEBUG_MAX_NUM;
-		if (count[TCI_2] > TCI_DEBUG_MAX_NUM)
-			count[TCI_2] = TCI_DEBUG_MAX_NUM;
 	}
 
-	for (i = 0; i < ((count_max-1)>>2)+1; i++) {
-		memcpy(&debug_reason_buf[TCI_1][i<<2], &rdata[i+1], sizeof(u32));
-		memcpy(&debug_reason_buf[TCI_2][i<<2], &rdata[i+5], sizeof(u32));
+	ret = siw_hal_read_value(dev,
+			reg->tci_debug_fail_buffer,
+			&buffer);
+	if (ret < 0) {
+		t_dev_err(dev, "failed to read tci debug fail buffer, %d\n", ret);
+		return;
 	}
 
-	t_dev_info(dev, "TCI count_max = %d\n", count_max);
-	for (i = 0; i < TCI_MAX_NUM; i++) {
-		t_dev_info(dev, "TCI count[%d] = %d\n", i, count[i]);
-		for (j = 0; j < count[i]; j++) {
-			buf = debug_reason_buf[i][j];
-			t_dev_info(dev, "TCI_%d - DBG[%d/%d]: %s(%d)\n",
-						i + 1, j + 1, count[i],
-						(buf > 0 && buf < TCI_FAIL_NUM) ?
-						siw_hal_tci_debug_str[buf] :
-						siw_hal_tci_debug_str[0],
-						buf);
-		}
+	t_dev_info(dev,
+		"Status[%04Xh] = %08Xh, Buffer[%04Xh] = %08Xh\n",
+		reg->tci_debug_fail_status, rdata,
+		reg->tci_debug_fail_buffer, buffer);
+
+	/* Knock On fail */
+	if (rdata & 0x01) {
+		index = (buffer & 0xFFFF);
+		t_dev_info(dev, "TCI-Debug: on fail reason: %s(%08Xh)\n",
+			(index < TCI_FAIL_TYPE_1_NUM) ? str[index] : "(unknown)",
+			buffer);
+	}
+
+	/* Knock Code fail */
+	if (rdata & 0x02) {
+		index = ((buffer>>16) & 0xFFFF);
+		t_dev_info(dev, "TCI-Debug: code fail reason: %s(%08Xh)\n",
+			(index < TCI_FAIL_TYPE_1_NUM) ? str[index] : "(unknown)",
+			buffer);
+	}
+}
+
+static void siw_hal_debug_tci(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+
+	switch (chip->opt.t_chk_tci_debug) {
+	case 1:
+		siw_hal_debug_tci_type_1(dev);
+		break;
+	default:
+		break;
 	}
 }
 #else	/* __SIW_CONFIG_KNOCK */
@@ -6880,6 +6882,10 @@ static int siw_hal_chipset_option(struct siw_touch_chip *chip)
 	struct siw_ts *ts = chip->ts;
 
 	switch (touch_chip_type(ts)) {
+	case CHIP_LG4894:
+		opt->t_chk_tci_debug = 1;
+		break;
+
 	case CHIP_LG4895:
 		opt->f_u2_blank_chg = 1;
 		opt->t_clock = 1;
@@ -6957,6 +6963,7 @@ static int siw_hal_chipset_option(struct siw_touch_chip *chip)
 	t_dev_info(dev, " t_clock         : %d\n", opt->t_clock);
 	t_dev_info(dev, " t_chk_mipi      : %d\n", opt->t_chk_mipi);
 	t_dev_info(dev, " t_chk_frame     : %d\n", opt->t_chk_frame);
+	t_dev_info(dev, " t_chk_tci_debug : %d\n", opt->t_chk_tci_debug);
 	t_dev_info(dev, " t_chk_sys_error : %d\n", opt->t_chk_sys_error);
 	t_dev_info(dev, " t_chk_sys_fault : %d\n", opt->t_chk_sys_fault);
 	t_dev_info(dev, " t_chk_fault     : %d\n", opt->t_chk_fault);
@@ -7193,12 +7200,7 @@ static const struct siw_hal_reg siw_touch_default_reg = {
 	.tc_interrupt_ctl			= TC_INTERRUPT_CTL,
 	.tc_interrupt_status		= TC_INTERRUPT_STS,
 	.tc_drive_ctl				= TC_DRIVE_CTL,
-	.tci_fail_debug_r			= TCI_FAIL_DEBUG_R,
-	.tic_fail_bit_r				= TCI_FAIL_BIT_R,
-	.tci_debug_r				= TCI_DEBUG_R,
 	.tci_enable_w				= TCI_ENABLE_W,
-	.tci_fail_debug_w			= TCI_FAIL_DEBUG_W,
-	.tci_fail_bit_w				= TCI_FAIL_BIT_W,
 	.tap_count_w				= TAP_COUNT_W,
 	.min_intertap_w				= MIN_INTERTAP_W,
 	.max_intertap_w				= MAX_INTERTAP_W,
@@ -7209,6 +7211,9 @@ static const struct siw_hal_reg siw_touch_default_reg = {
 	.act_area_y1_w				= ACT_AREA_Y1_W,
 	.act_area_x2_w				= ACT_AREA_X2_W,
 	.act_area_y2_w				= ACT_AREA_Y2_W,
+	.tci_debug_fail_ctrl		= TCI_DEBUG_FAIL_CTRL,
+	.tci_debug_fail_buffer		= TCI_DEBUG_FAIL_BUFFER,
+	.tci_debug_fail_status		= TCI_DEBUG_FAIL_STATUS,
 	.swipe_enable_w				= SWIPE_ENABLE_W,
 	.swipe_dist_w				= SWIPE_DIST_W,
 	.swipe_ratio_thr_w			= SWIPE_RATIO_THR_W,
@@ -7220,7 +7225,6 @@ static const struct siw_hal_reg siw_touch_default_reg = {
 	.swipe_act_area_y1_w		= SWIPE_ACT_AREA_Y1_W,
 	.swipe_act_area_x2_w		= SWIPE_ACT_AREA_X2_W,
 	.swipe_act_area_y2_w		= SWIPE_ACT_AREA_Y2_W,
-	.swipe_fail_debug_w			= SWIPE_FAIL_DEBUG_W,
 	.swipe_fail_debug_r			= SWIPE_FAIL_DEBUG_R,
 	.swipe_debug_r				= SWIPE_DEBUG_R,
 	.cmd_raw_data_report_mode_read	= CMD_RAW_DATA_REPORT_MODE_READ,

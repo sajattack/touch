@@ -51,16 +51,6 @@
 #define siw_hal_sysfs_err_invalid_param(_dev)	\
 		t_dev_err(_dev, "Invalid param\n");
 
-
-#if defined(__SIW_CONFIG_KNOCK) ||	\
-	defined(__SIW_CONFIG_SWIPE)
-static const char *siw_hal_debug_type_str[] = {
-	"Disable Type",
-	"Buffer Type",
-	"Always Report Type"
-};
-#endif
-
 #define _reg_snprintf(_buf, _size, _reg, _element)	\
 		siw_snprintf(_buf, _size, "# 0x%04X [%s]\n", _reg->_element, #_element)
 
@@ -102,12 +92,7 @@ static int __show_reg_list(struct device *dev, char *buf, int size)
 	size += _reg_snprintf(buf, size, reg, tc_interrupt_status);
 	size += _reg_snprintf(buf, size, reg, tc_drive_ctl);
 #if defined(__SIW_CONFIG_KNOCK)
-	size += _reg_snprintf(buf, size, reg, tci_fail_debug_r);
-	size += _reg_snprintf(buf, size, reg, tic_fail_bit_r);
-	size += _reg_snprintf(buf, size, reg, tci_debug_r);
 	size += _reg_snprintf(buf, size, reg, tci_enable_w);
-	size += _reg_snprintf(buf, size, reg, tci_fail_debug_w);
-	size += _reg_snprintf(buf, size, reg, tci_fail_bit_w);
 	size += _reg_snprintf(buf, size, reg, tap_count_w);
 	size += _reg_snprintf(buf, size, reg, min_intertap_w);
 	size += _reg_snprintf(buf, size, reg, max_intertap_w);
@@ -118,6 +103,9 @@ static int __show_reg_list(struct device *dev, char *buf, int size)
 	size += _reg_snprintf(buf, size, reg, act_area_y1_w);
 	size += _reg_snprintf(buf, size, reg, act_area_x2_w);
 	size += _reg_snprintf(buf, size, reg, act_area_y2_w);
+	size += _reg_snprintf(buf, size, reg, tci_debug_fail_ctrl);
+	size += _reg_snprintf(buf, size, reg, tci_debug_fail_buffer);
+	size += _reg_snprintf(buf, size, reg, tci_debug_fail_status);
 #endif
 #if defined(__SIW_CONFIG_SWIPE)
 	size += _reg_snprintf(buf, size, reg, swipe_enable_w);
@@ -131,7 +119,6 @@ static int __show_reg_list(struct device *dev, char *buf, int size)
 	size += _reg_snprintf(buf, size, reg, swipe_act_area_y1_w);
 	size += _reg_snprintf(buf, size, reg, swipe_act_area_x2_w);
 	size += _reg_snprintf(buf, size, reg, swipe_act_area_y2_w);
-	size += _reg_snprintf(buf, size, reg, swipe_fail_debug_w);
 	size += _reg_snprintf(buf, size, reg, swipe_fail_debug_r);
 	size += _reg_snprintf(buf, size, reg, swipe_debug_r);
 #endif
@@ -502,28 +489,30 @@ static ssize_t _show_tci_debug(struct device *dev, char *buf)
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 //	struct siw_ts *ts = chip->ts;
 	struct siw_hal_reg *reg = chip->reg;
-	u32 rdata = -1;
+	u32 rdata = 0;
 	int size = 0;
 	int ret = 0;
 
+	if (!chip->opt.t_chk_tci_debug) {
+		t_dev_info(dev, "This chipset doesn't support tci debugging\n");
+		goto out;
+	}
+
 	ret = siw_hal_read_value(dev,
-				reg->tci_fail_debug_r,
-				&rdata);
+			reg->tci_debug_fail_ctrl,
+			&rdata);
 	if (ret < 0) {
-		t_dev_err(dev, "Fail to Read TCI Debug Reason type\n");
-		return (ssize_t)ret;
+		t_dev_err(dev, "failed to get tci_debug_fail_ctrl, %d\n", ret);
+		goto out;
 	}
 
 	size += siw_snprintf(buf, size,
-				"Read TCI Debug Reason type[IC] = %s\n",
-				siw_hal_debug_type_str[(rdata & 0x8) ? 2 :
-				(rdata & 0x4 ? 1 : 0)]);
+				"TCI Debug Status = DRV %s, IC %s\n",
+				(chip->tci_debug_type) ? "Enabled" : "Disabled",
+				(rdata & 0x01) ? "Enabled" : "Disabled");
 
-	size += siw_snprintf(buf, size,
-				"Read TCI Debug Reason type[Driver] = %s\n",
-				siw_hal_debug_type_str[chip->tci_debug_type]);
-
-	return (ssize_t)size;
+out:
+	return size;
 }
 
 static ssize_t _store_tci_debug(struct device *dev,
@@ -532,19 +521,18 @@ static ssize_t _store_tci_debug(struct device *dev,
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	int value = 0;
 
+	if (!chip->opt.t_chk_tci_debug) {
+		t_dev_info(dev, "This chipset doesn't support tci debugging\n");
+		return count;
+	}
+
 	if (sscanf(buf, "%d", &value) <= 0) {
 		siw_hal_sysfs_err_invalid_param(dev);
 		return count;
 	}
 
-	if ((value > 2) || (value < 0)) {
-		t_dev_info(dev, "SET TCI debug reason wrong, 0, 1, 2 only\n");
-		return count;
-	}
-
-	chip->tci_debug_type = (u8)value;
-	t_dev_info(dev, "SET TCI Debug reason type = %s\n",
-				siw_hal_debug_type_str[value]);
+	chip->tci_debug_type = (u8)!!value;
+	t_dev_info(dev, "TCI-Debug %s\n", (value) ? "Enabled" : "Disabled");
 
 	return count;
 }
@@ -583,6 +571,12 @@ static ssize_t _store_lcd_mode(struct device *dev,
 #endif	/* __SIW_CONFIG_KNOCK */
 
 #if defined(__SIW_CONFIG_SWIPE)
+static const char *siw_hal_debug_type_str[] = {
+	"Disable Type",
+	"Buffer Type",
+	"Always Report Type"
+};
+
 static ssize_t _show_swipe_debug(struct device *dev, char *buf)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);

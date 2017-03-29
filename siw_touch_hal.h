@@ -444,7 +444,7 @@ struct siw_touch_chip_opt {
 	u32 t_clock:4;
 	u32 t_chk_mipi:4;
 	u32 t_chk_frame:4;
-	u32 rsvd13:4;
+	u32 t_chk_tci_debug:4;
 	/* */
 	u32 t_chk_sys_error:4;
 	u32 t_chk_sys_fault:4;

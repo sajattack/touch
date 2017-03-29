@@ -56,12 +56,12 @@
 #define TC_INTERRUPT_STS			(0xC02)
 #define TC_DRIVE_CTL				(0xC03)
 
-#define TCI_FAIL_DEBUG_R			(0x28D)
-#define TCI_FAIL_BIT_R				(0x28E)
-#define TCI_DEBUG_R					(0x2AE)
+#define TCI_FAIL_DEBUG_R			(0x28D)	//Not used
+#define TCI_FAIL_BIT_R				(0x28E)	//Not used
+#define TCI_DEBUG_R					(0x2AE)	//Not used
 #define TCI_ENABLE_W				(0xC20)
-#define TCI_FAIL_DEBUG_W			(0xC2C)
-#define TCI_FAIL_BIT_W				(0xC2D)
+#define TCI_FAIL_DEBUG_W			(0xC2C)	//Not used
+#define TCI_FAIL_BIT_W				(0xC2D)	//Not used
 
 #define TAP_COUNT_W					(0xC21)
 #define MIN_INTERTAP_W				(0xC22)
@@ -74,6 +74,10 @@
 #define ACT_AREA_X2_W				(0xC29)
 #define ACT_AREA_Y2_W				(0xC2A)
 
+#define TCI_DEBUG_FAIL_CTRL			(0xC2C)
+#define TCI_DEBUG_FAIL_BUFFER		(0xC2D)
+#define TCI_DEBUG_FAIL_STATUS		(0xC70)
+
 #define SWIPE_ENABLE_W				(0xC30)
 #define SWIPE_DIST_W				(0xC31)
 #define SWIPE_RATIO_THR_W			(0xC32)
@@ -85,7 +89,7 @@
 #define SWIPE_ACT_AREA_Y1_W			(0xC38)
 #define SWIPE_ACT_AREA_X2_W			(0xC39)
 #define SWIPE_ACT_AREA_Y2_W			(0xC3A)
-#define SWIPE_FAIL_DEBUG_W			(0xC3D)
+#define SWIPE_FAIL_DEBUG_W			(0xC3D)	//Not used
 #define SWIPE_FAIL_DEBUG_R			(0x29D)
 #define SWIPE_DEBUG_R				(0x2B6)
 
@@ -205,12 +209,7 @@ struct siw_hal_reg {
 	u32 tc_interrupt_ctl;
 	u32 tc_interrupt_status;
 	u32 tc_drive_ctl;
-	u32 tci_fail_debug_r;
-	u32 tic_fail_bit_r;
-	u32 tci_debug_r;
 	u32 tci_enable_w;
-	u32 tci_fail_debug_w;
-	u32 tci_fail_bit_w;
 	u32 tap_count_w;
 	u32 min_intertap_w;
 	u32 max_intertap_w;
@@ -221,6 +220,9 @@ struct siw_hal_reg {
 	u32 act_area_y1_w;
 	u32 act_area_x2_w;
 	u32 act_area_y2_w;
+	u32 tci_debug_fail_ctrl;
+	u32 tci_debug_fail_buffer;
+	u32 tci_debug_fail_status;
 	u32 swipe_enable_w;
 	u32 swipe_dist_w;
 	u32 swipe_ratio_thr_w;
@@ -232,7 +234,6 @@ struct siw_hal_reg {
 	u32 swipe_act_area_y1_w;
 	u32 swipe_act_area_x2_w;
 	u32 swipe_act_area_y2_w;
-	u32 swipe_fail_debug_w;
 	u32 swipe_fail_debug_r;
 	u32 swipe_debug_r;
 	u32 cmd_raw_data_report_mode_read;
