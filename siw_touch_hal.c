@@ -5984,13 +5984,14 @@ static int siw_hal_irq_handler(struct device *dev)
 	if (chip->info.wakeup_type == ABS_MODE) {
 		ret = siw_hal_irq_abs(dev);
 		if (ret) {
-			t_dev_err(dev, "siw_hal_irq_abs failed, %d/n", ret);
+			t_dev_err(dev, "siw_hal_irq_abs failed(%d), %d\n",
+				chip->info.touch_cnt, ret);
 			goto out;
 		}
 	} else {
 		ret = siw_hal_irq_lpwg(dev);
 		if (ret) {
-			t_dev_err(dev, "siw_hal_irq_lpwg failed, %d/n", ret);
+			t_dev_err(dev, "siw_hal_irq_lpwg failed, %d\n", ret);
 			goto out;
 		}
 	}
