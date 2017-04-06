@@ -183,7 +183,7 @@ static const struct siw_hal_reg_quirk chip_reg_quirks[] = {
 	{ .old_addr = PRD_TC_MEM_SEL, .new_addr = 0x84A, },
 	{ .old_addr = PRD_TC_TEST_MODE_CTL, .new_addr = 0xF0E, },
 	{ .old_addr = PRD_M1_M2_RAW_OFFSET, .new_addr = 0x27B, },
-	{ .old_addr = PRD_TUNE_RESULT_OFFSET, .new_addr = 0x27C, },
+	{ .old_addr = PRD_TUNE_RESULT_OFFSET, .new_addr = 0x30F, },
 	{ .old_addr = PRD_OPEN3_SHORT_OFFSET, .new_addr = 0x27D, },
 	{ .old_addr = PRD_IC_AIT_START_REG, .new_addr = 0xF0C, },
 	{ .old_addr = PRD_IC_AIT_DATA_READYSTATUS, .new_addr = 0xF04, },
