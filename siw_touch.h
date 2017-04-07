@@ -1524,9 +1524,11 @@ static inline void siw_ops_restore_irq_handler(struct siw_ts *ts)
 #define siw_ops_xxx(_ops, _ret, _ts, args...)	\
 		({	int _r = 0;	\
 			do {	\
-				if (((_ret) < 0) && !_ts->ops->_ops) {	\
-					t_dev_err(ts->dev, "%s isn't assigned\n", #_ops);	\
-					_r = _ret;	\
+				if (_ts->ops->_ops == NULL) {	\
+					if ((_ret) < 0) {	\
+						t_dev_err(ts->dev, "%s isn't assigned\n", #_ops);	\
+						_r = _ret;	\
+					}	\
 					break;	\
 				}	\
 				_r = _ts->ops->_ops(_ts->dev, ##args);	\
