@@ -1061,6 +1061,10 @@ static int __used siw_touch_init_thread(struct siw_ts *ts)
 
 	ts_thread = &ts->mon_thread;
 
+	if (ts_thread->thread != NULL) {
+		goto out;
+	}
+
 	mutex_init(&ts_thread->lock);
 
 	if (fquirks->mon_handler) {
