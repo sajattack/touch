@@ -5589,6 +5589,13 @@ static int siw_hal_check_status_type_x(struct device *dev,
 	return ret;
 }
 
+#if defined(CONFIG_TOUCHSCREEN_SIW_SW1828) ||	\
+	defined(CONFIG_TOUCHSCREEN_SIW_SW42101)
+#define STS_RET_ERR		ERESTART
+#else
+#define STS_RET_ERR		ERANGE
+#endif
+
 static int siw_hal_do_check_status(struct device *dev,
 				u32 status, u32 ic_status, int irq)
 {
@@ -5603,11 +5610,11 @@ static int siw_hal_do_check_status(struct device *dev,
 
 	if (!status && !ic_status) {
 		t_dev_err(dev, "all low detected\n");
-		return -ERANGE;
+		return -STS_RET_ERR;
 	}
 	if ((status == ~0) && (ic_status == ~0)) {
 		t_dev_err(dev, "all high detected\n");
-		return -ERANGE;
+		return -STS_RET_ERR;
 	}
 
 	ret = siw_hal_chk_status_type(dev);
