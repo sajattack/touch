@@ -1115,6 +1115,17 @@ const struct tci_info siw_hal_tci_info_default[2] = {
 			_idx, _info->touch_slop, _info->tap_distance, _info->intr_delay);	\
 	} while(0)
 
+#define siw_prt_qcover_info(_dev, _name, _qcover)	\
+	do {	\
+		if (_qcover->x1 != ~0) {	\
+			t_dev_dbg_tci(_dev, "%s %4d %4d %4d %4d\n",	\
+				_name, _qcover->x1, _qcover->y1, _qcover->x2, _qcover->y2);	\
+		} else {	\
+			t_dev_dbg_tci(_dev, "%s %Xh %Xh %Xh %Xh\n",	\
+				_name, _qcover->x1, _qcover->y1, _qcover->x2, _qcover->y2);	\
+		}	\
+	} while(0)
+
 static void siw_hal_prt_tci_info(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
@@ -1132,23 +1143,25 @@ static void siw_hal_prt_tci_info(struct device *dev)
 
 	rst_area = &ts->tci.rst_area;
 	t_dev_dbg_tci(dev,
-		"tci rst area     %Xh %Xh %Xh %Xh\n",
-		rst_area->x1, rst_area->y1, rst_area->x2, rst_area->y2);
+		"tci rst area(l)  %4d %4d %4d %4d\n",
+		rst_area->x1 & 0xFFFF, rst_area->y1 & 0xFFFF,
+		rst_area->x2 & 0xFFFF, rst_area->y2 & 0xFFFF);
+
+	t_dev_dbg_tci(dev,
+		"tci rst area(h)  %4d %4d %4d %4d\n",
+		rst_area->x1>>16, rst_area->y1>>16,
+		rst_area->x2>>16, rst_area->y2>>16);
 
 	area = &ts->tci.area;
 	t_dev_dbg_tci(dev,
-		"tci active area  %Xh %Xh %Xh %Xh\n",
+		"tci active area  %4d %4d %4d %4d\n",
 		area->x1, area->y1, area->x2, area->y2);
 
 	tci_qcover = &ts->tci.qcover_open;
-	t_dev_dbg_tci(dev,
-		"tci qcover_open  %Xh %Xh %Xh %Xh\n",
-		tci_qcover->x1, tci_qcover->y1, tci_qcover->x2, tci_qcover->y2);
+	siw_prt_qcover_info(dev, "tci qcover_open ", tci_qcover);
 
 	tci_qcover = &ts->tci.qcover_close;
-	t_dev_dbg_tci(dev,
-		"tci qcover_close %Xh %Xh %Xh %Xh\n",
-		tci_qcover->x1, tci_qcover->y1, tci_qcover->x2, tci_qcover->y2);
+	siw_prt_qcover_info(dev, "tci qcover_close", tci_qcover);
 }
 
 static void siw_hal_get_tci_info(struct device *dev)
