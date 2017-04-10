@@ -494,6 +494,8 @@ static void *__siw_hal_get_curr_buf(struct siw_ts *ts, dma_addr_t *dma, int tx)
 	return buf;
 }
 
+//#define __SIW_CONFIG_CLR_RX_BUFFER
+
 static int __used __siw_hal_do_reg_read(struct device *dev, u32 addr, void *data, int size)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
@@ -572,6 +574,12 @@ static int __used __siw_hal_do_reg_read(struct device *dev, u32 addr, void *data
 
 	tx_buf = __siw_hal_get_curr_buf(ts, &tx_dma, 1);
 	rx_buf = __siw_hal_get_curr_buf(ts, &rx_dma, 0);
+
+#if defined(__SIW_CONFIG_CLR_RX_BUFFER)
+	if (touch_bus_type(ts) == BUS_IF_I2C) {
+		memset(&rx_buf[bus_rx_hdr_size], 0xFF, min(8, size));
+	}
+#endif
 
 #if defined(__SIW_BUS_ADDR_16BIT)
 	tx_buf[0] = ((addr >> 8) & 0xff);
