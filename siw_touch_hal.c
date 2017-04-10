@@ -6996,11 +6996,11 @@ static void __siw_hal_do_remove(struct device *dev)
 	pm_qos_remove_request(&chip->pm_qos_req);
 #endif
 
-	siw_hal_free_works(chip);
-	siw_hal_free_locks(chip);
-
 	siw_hal_power_free(dev);
 	siw_hal_free_gpios(dev);
+
+	siw_hal_free_works(chip);
+	siw_hal_free_locks(chip);
 
 	touch_set_dev_data(ts, NULL);
 
@@ -7028,11 +7028,11 @@ static int siw_hal_probe(struct device *dev)
 
 	siw_hal_chipset_option(chip);
 
-	siw_hal_init_gpios(dev);
-	siw_hal_power_init(dev);
-
 	siw_hal_init_locks(chip);
 	siw_hal_init_works(chip);
+
+	siw_hal_init_gpios(dev);
+	siw_hal_power_init(dev);
 
 	if (siw_touch_get_boot_mode() == SIW_TOUCH_CHARGER_MODE) {
 		if (touch_mode_allowed(ts, LCD_MODE_U3_PARTIAL)) {
