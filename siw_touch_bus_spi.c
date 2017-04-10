@@ -86,10 +86,10 @@ static void siw_touch_spi_err_dump(struct spi_device *spi,
 				i,
 				x->len, x->cs_change, spi->bits_per_word);
 		siw_touch_bus_err_dump_data(&spi->dev,
-					(char *)x->tx_buf, x->len, i, "x");
+					(char *)x->tx_buf, x->len, i, "t");
 		if (_read) {
 			siw_touch_bus_err_dump_data(&spi->dev,
-						(char *)x->rx_buf, x->len, i, "x");
+						(char *)x->rx_buf, x->len, i, "r");
 		}
 		x++;
 	}
