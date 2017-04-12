@@ -422,7 +422,6 @@ static const struct siw_touch_pdata chip_pdata = {
 	/* */
 	//See 'siw_hal_get_tci_info' [siw_touch_hal.c]
 	.tci_info			= __CHIP_TCI_INFO,
-	.tci_reset_area		= NULL,
 	.tci_qcover_open	= NULL,
 	.tci_qcover_close	= NULL,
 	//See 'siw_hal_get_swipe_info' [siw_touch_hal.c]
