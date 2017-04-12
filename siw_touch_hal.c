@@ -1133,24 +1133,12 @@ static void siw_hal_prt_tci_info(struct device *dev)
 	struct tci_ctrl *tci = &ts->tci;
 	struct tci_info *info;
 	struct active_area *area;
-	struct reset_area *rst_area;
 	struct reset_area *tci_qcover;
 
 	info = &tci->info[TCI_1];
 	siw_prt_tci_info(dev, "TCI_1", info);
 	info = &tci->info[TCI_2];
 	siw_prt_tci_info(dev, "TCI_2", info);
-
-	rst_area = &ts->tci.rst_area;
-	t_dev_dbg_tci(dev,
-		"tci rst area(l)  %4d %4d %4d %4d\n",
-		rst_area->x1 & 0xFFFF, rst_area->y1 & 0xFFFF,
-		rst_area->x2 & 0xFFFF, rst_area->y2 & 0xFFFF);
-
-	t_dev_dbg_tci(dev,
-		"tci rst area(h)  %4d %4d %4d %4d\n",
-		rst_area->x1>>16, rst_area->y1>>16,
-		rst_area->x2>>16, rst_area->y2>>16);
 
 	area = &ts->tci.area;
 	t_dev_dbg_tci(dev,
@@ -1169,7 +1157,6 @@ static void siw_hal_get_tci_info(struct device *dev)
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
 	void *tci_src;
-	void *tci_reset_area;
 	struct reset_area *tci_qcover;
 
 	tci_src = pdata_tci_info(ts->pdata);
@@ -1177,16 +1164,6 @@ static void siw_hal_get_tci_info(struct device *dev)
 		tci_src = (void *)siw_hal_tci_info_default;
 	}
 	memcpy(ts->tci.info, tci_src, sizeof(siw_hal_tci_info_default));
-
-	tci_reset_area = pdata_tci_reset_area(ts->pdata);
-	if (tci_reset_area == NULL) {
-		ts->tci.rst_area.x1 = 0;
-		ts->tci.rst_area.y1 = 0;
-		ts->tci.rst_area.x2 = ts->caps.max_x | (ts->caps.max_x<<16);
-		ts->tci.rst_area.y2 = ts->caps.max_y | (ts->caps.max_y<<16);
-	} else {
-		memcpy(&ts->tci.rst_area, tci_reset_area, sizeof(struct reset_area));
-	}
 
 	//Set default
 	ts->tci.area.x1 = 0;
@@ -4067,10 +4044,6 @@ static int siw_hal_tci_active_area(struct device *dev,
 	t_dev_info(dev, "tci_active_area[%d]: x1[%Xh], y1[%Xh], x2[%Xh], y2[%Xh]\n",
 		type, x1, y1, x2, y2);
 
-	if (type == ACTIVE_AREA_RESET_CTRL) {
-		return siw_hal_do_tci_active_area(dev, x1, y1, x2, y2);
-	}
-
 	area[0] = (x1 + margin) & 0xFFFF;
 	area[1] = (y1 + margin) & 0xFFFF;
 	area[2] = (x2 - margin) & 0xFFFF;
@@ -4117,7 +4090,6 @@ static int siw_hal_tci_control(struct device *dev, int type)
 	struct siw_hal_reg *reg = chip->reg;
 	struct tci_ctrl *tci = &ts->tci;
 	struct active_area *area = &tci->area;
-	struct reset_area *rst_area = &tci->rst_area;
 	struct tci_info *info1 = &tci->info[TCI_1];
 	struct tci_info *info2 = &tci->info[TCI_2];
 	u32 reg_w = ~0;
@@ -4164,13 +4136,6 @@ static int siw_hal_tci_control(struct device *dev, int type)
 		ret = siw_hal_tci_active_area(dev,
 					area->x1, area->y1,
 					area->x2, area->y2,
-					type);
-		break;
-
-	case ACTIVE_AREA_RESET_CTRL:
-		ret = siw_hal_tci_active_area(dev,
-					rst_area->x1, rst_area->y1,
-					rst_area->x2, rst_area->y2,
 					type);
 		break;
 
