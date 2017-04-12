@@ -446,7 +446,6 @@ struct tci_info {
 struct tci_ctrl {
 	u32 mode;
 	struct active_area area;
-	struct reset_area rst_area;
 	struct reset_area qcover_open;
 	struct reset_area qcover_close;
 	u8 double_tap_check;
@@ -670,7 +669,6 @@ struct siw_touch_pdata {
 	struct siw_touch_operations *ops;
 
 	void *tci_info;
-	void *tci_reset_area;
 	void *tci_qcover_open;
 	void *tci_qcover_close;
 	void *swipe_ctrl;
@@ -848,11 +846,6 @@ static inline int pdata_rx_dummy_size(struct siw_touch_pdata *pdata)
 static inline void *pdata_tci_info(struct siw_touch_pdata *pdata)
 {
 	return pdata->tci_info;
-}
-
-static inline void *pdata_tci_reset_area(struct siw_touch_pdata *pdata)
-{
-	return pdata->tci_reset_area;
 }
 
 static inline void *pdata_tci_qcover_open(struct siw_touch_pdata *pdata)
