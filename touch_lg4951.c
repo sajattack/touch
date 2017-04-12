@@ -117,13 +117,6 @@ static const struct tci_info chip_tci_info[2] = {
 	},
 };
 
-static const struct reset_area chip_tci_reset_area = {
-	.x1	= ((65<<16) | 65),
-	.y1 = ((1374<<16) | 1374),
-	.x2 = ((65<<16) | 65),
-	.y2 = ((2494<<16) | 2494),
-};
-
 static const struct siw_hal_reg_quirk chip_reg_quirks[] = {
 	{ .old_addr = TC_CONFDN_BASE_ADDR, .new_addr = 0x290, },
 	{ .old_addr = PRD_M1_M2_RAW_OFFSET, .new_addr = 0x292, },
@@ -236,7 +229,6 @@ static const struct siw_touch_pdata chip_pdata = {
 	/* */
 	//See 'siw_hal_get_tci_info' [siw_touch_hal.c]
 	.tci_info			= (void *)chip_tci_info,
-	.tci_reset_area		= (void *)&chip_tci_reset_area,
 	.tci_qcover_open	= NULL,
 	.tci_qcover_close	= NULL,
 	//See 'siw_hal_get_swipe_info' [siw_touch_hal.c]
