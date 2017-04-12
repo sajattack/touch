@@ -1112,7 +1112,7 @@ static void __used siw_touch_free_thread(struct siw_ts *ts)
 {
 //	struct device *dev = ts->dev;
 	struct siw_ts_thread *ts_thread = NULL;
-	char comm[TASK_COMM_LEN] = { 0, };
+//	char comm[TASK_COMM_LEN] = { 0, };
 
 	if (!(touch_flags(ts) & TOUCH_USE_MON_THREAD)) {
 		return;
@@ -1124,7 +1124,7 @@ static void __used siw_touch_free_thread(struct siw_ts *ts)
 		return;
 	}
 
-	memcpy(comm, ts_thread->thread->comm, TASK_COMM_LEN);
+//	memcpy(comm, ts_thread->thread->comm, TASK_COMM_LEN);
 	kthread_stop(ts_thread->thread);
 
 	ts_thread->thread = NULL;
