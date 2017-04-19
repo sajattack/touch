@@ -1012,6 +1012,18 @@ out:
 	return ret;
 }
 
+static void __used abt_ksocket_free_send_socket(struct siw_hal_abt_data *abt)
+{
+	struct siw_hal_abt_comm *abt_comm = &abt->abt_comm;
+
+	abt_comm->send_connected = 0;
+	if (abt_comm->sock_send != NULL) {
+		sock_release(abt_comm->sock_send);
+		abt_comm->sock_send = NULL;
+		t_abt_info(abt, "send socket released\n");
+	}
+}
+
 static int32_t __used abt_ksocket_init_send_socket(struct siw_hal_abt_data *abt)
 {
 //	struct device *dev = abt->dev;
@@ -1019,7 +1031,11 @@ static int32_t __used abt_ksocket_init_send_socket(struct siw_hal_abt_data *abt)
 	struct socket *sock;
 	struct sockaddr_in *addr_in = &abt_comm->addr_send;
 	char *ip = (char *)abt_comm->send_ip;
-	int ret;
+	int ret = 0;
+
+	if (abt_comm->sock_send != NULL) {
+		return 0;
+	}
 
 	ret = abt_sock_create_data(abt, &sock);
 	if (ret < 0) {
@@ -1045,16 +1061,13 @@ static int32_t __used abt_ksocket_init_send_socket(struct siw_hal_abt_data *abt)
 	}
 
 	abt_comm->send_connected = 1;
-	t_abt_dbg_base(abt, "connect send socket (%s,%d)\n", ip, t_abt_port_send);
+	t_abt_info(abt, "connect send socket (%s,%d)\n", ip, t_abt_port_send);
 
 	return ret;
 
 out:
-	abt_comm->send_connected = 0;
-	if (abt_comm->sock_send != NULL) {
-		sock_release(abt_comm->sock_send);
-		abt_comm->sock_send = NULL;
-	}
+	abt_ksocket_free_send_socket(abt);
+
 	return ret;
 }
 
@@ -1151,11 +1164,7 @@ static void abt_ksocket_exit_kill(struct siw_hal_abt_data *abt)
 		t_abt_dbg_base(abt, "ts_sock released\n");
 	}
 
-	if (abt_comm->sock_send != NULL) {
-		sock_release(abt_comm->sock_send);
-		abt_comm->sock_send = NULL;
-		t_abt_dbg_base(abt, "sock_send released\n");
-	}
+	abt_ksocket_free_send_socket(abt);
 
 	abt_comm->curr_sock = NULL;
 	abt_comm->curr_addr = NULL;
@@ -1190,22 +1199,24 @@ static int32_t abt_ksocket_raw_data_send(
 	struct siw_hal_abt_comm *abt_comm = &abt->abt_comm;
 	int ret = 0;
 
-	if (abt_comm->send_connected == 0)
+	if (abt_comm->sock_send == NULL) {
 		abt_ksocket_init_send_socket(abt);
+	}
 
-	if (abt_comm->send_connected == 1) {
-		ret = abt_ksocket_do_send(abt,
-				abt_comm->sock_send,
-				&abt_comm->addr_send,
-				buf, len);
-	} else {
+	if (!abt_comm->send_connected) {
 		abt->connect_error_count++;
 		if (abt->connect_error_count > 10) {
 			t_abt_err(abt, "connection error - socket release\n");
 			abt_force_set_report_mode(abt, 0);
 			abt_ksocket_exit(abt);
 		}
+		return ret;
 	}
+
+	ret = abt_ksocket_do_send(abt,
+			abt_comm->sock_send,
+			&abt_comm->addr_send,
+			buf, len);
 
 	return ret;
 }
@@ -1606,6 +1617,9 @@ static int abt_ksocket_thread_for_pctool(void *data)
 		goto out;
 	}
 
+	abt->abt_report_point = 1;
+	abt->abt_report_ocd = 1;
+
 	abt->client_connected = 1;
 	t_abt_info(abt,
 		"TCP connected with TS (ip %s, port %d)\n",
@@ -1624,6 +1638,11 @@ out:
 	abt_ksocket_thread_exit(abt,
 				&abt_comm->ts_sock,
 				&abt_comm->ts_addr);
+
+	abt->client_connected = 0;
+
+	abt->abt_report_point = 0;
+	abt->abt_report_ocd = 0;
 
 	t_abt_info(abt, "%s terminated\n", abt_conn_name(tool));
 
@@ -1762,6 +1781,9 @@ static int abt_tool_do_start(struct siw_hal_abt_data *abt,
 				abt_sock_listener_t listener)
 {
 	int ret = 0;
+
+	abt->abt_report_point = 0;
+	abt->abt_report_ocd = 0;
 
 	ret = abt_ksocket_init(abt, ip, tool, listener);
 	if (ret) {
