@@ -1604,9 +1604,10 @@ static int siw_hal_chk_status_type(struct device *dev)
 	case CHIP_LG4894:
 		if (!strncmp(fw->product_id, "L0W53K6P", 8)) {
 			chip->status_type = CHIP_STATUS_TYPE_0;
-		} else {
-			chip->status_type = CHIP_STATUS_TYPE_1;
+			break;
 		}
+		chip->status_type = CHIP_STATUS_TYPE_1;
+		break;
 	default:
 		chip->status_type = CHIP_STATUS_TYPE_1;
 		break;
