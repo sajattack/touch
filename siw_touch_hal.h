@@ -25,6 +25,23 @@ enum {
 	NON_FAULT_U32	= ~0,
 };
 
+/* report packet - type 1 */
+struct siw_hal_touch_data_type_1 {
+	u32 track_id:5;
+	u32 tool_type:3;
+	u32 angle:8;
+	u32 event:2;
+	u32 x:14;
+
+	u32 y:14;
+	u32 pressure:8;
+	u32 reserve1:10;
+
+	u32 reserve2:4;
+	u32 width_major:14;
+	u32 width_minor:14;
+} __packed;
+
 /* report packet */
 struct siw_hal_touch_data {
 	u8 tool_type:4;
@@ -338,6 +355,12 @@ struct siw_hal_swipe_ctrl {
 };
 
 enum {
+	CHIP_REPORT_NONE = 0,
+	CHIP_REPORT_TYPE_0,
+	CHIP_REPORT_TYPE_1,
+};
+
+enum {
 	CHIP_STATUS_NONE = 0,
 	CHIP_STATUS_TYPE_0,
 	CHIP_STATUS_TYPE_1,
@@ -494,6 +517,7 @@ struct siw_touch_chip {
 	struct siw_hal_asc_info asc;
 	struct siw_hal_swipe_ctrl swipe;
 	/* */
+	int report_type;
 	int status_type;
 	u32 status_mask;
 	u32 status_mask_normal;

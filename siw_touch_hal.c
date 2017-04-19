@@ -1582,6 +1582,29 @@ out:
 	return mask;
 }
 
+static void siw_hal_chk_report_type(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	struct siw_hal_fw_info *fw = &chip->fw;
+
+	if (chip->report_type) {
+		return;
+	}
+
+	if (!fw->product_id[0]) {
+		return;
+	}
+
+	switch (touch_chip_type(ts)) {
+	default:
+		chip->report_type = CHIP_REPORT_TYPE_0;
+		break;
+	}
+
+	t_dev_info(dev, "report type  : %d\n", chip->report_type);
+}
+
 static int siw_hal_chk_status_type(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
@@ -1596,6 +1619,8 @@ static int siw_hal_chk_status_type(struct device *dev)
 	if (!fw->product_id[0]) {
 		return -EINVAL;
 	}
+
+	siw_hal_chk_report_type(dev);
 
 	switch (touch_chip_type(ts)) {
 	case CHIP_SW42101:
@@ -5660,16 +5685,18 @@ static int siw_hal_check_status(struct device *dev)
 	return siw_hal_do_check_status(dev, status, ic_status, 1);
 }
 
-static int siw_hal_irq_abs_data(struct device *dev)
+static int siw_hal_irq_abs_data_type_1(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
-	struct siw_hal_touch_data *data = chip->info.data;
+	struct siw_hal_touch_data_type_1 *data;
 	struct touch_data *tdata;
-	u32 touch_count = 0;
-	u8 finger_index = 0;
-	int ret = 0;
+	u32 touch_count = chip->info.touch_cnt;
+	int finger_index = 0;
 	int i = 0;
+	int ret = 0;
+
+	data = (struct siw_hal_touch_data_type_1 *)chip->info.data;
 
 	touch_count = chip->info.touch_cnt;
 	ts->new_mask = 0;
@@ -5688,7 +5715,6 @@ static int siw_hal_irq_abs_data(struct device *dev)
 		return ret;
 	}
 
-	data = chip->info.data;
 	for (i = 0; i < touch_count; i++, data++) {
 		if (data->track_id >= touch_max_finger(ts)) {
 			continue;
@@ -5731,6 +5757,102 @@ static int siw_hal_irq_abs_data(struct device *dev)
 
 	ts->tcount = finger_index;
 	ts->intr_status = TOUCH_IRQ_FINGER;
+
+	return ret;
+}
+
+static int siw_hal_irq_abs_data_type_0(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	struct siw_hal_touch_data *data;
+	struct touch_data *tdata;
+	u32 touch_count = chip->info.touch_cnt;
+	int finger_index = 0;
+	int i = 0;
+	int ret = 0;
+
+	data = (struct siw_hal_touch_data *)chip->info.data;
+
+	touch_count = chip->info.touch_cnt;
+	ts->new_mask = 0;
+
+	/* check if palm detected */
+	if (data->track_id == PALM_ID) {
+		if (data->event == TOUCHSTS_DOWN) {
+			ts->is_palm = 1;
+			t_dev_info(dev, "Palm Detected\n");
+		} else if (data->event == TOUCHSTS_UP) {
+			ts->is_palm = 0;
+			t_dev_info(dev, "Palm Released\n");
+		}
+		ts->tcount = 0;
+		ts->intr_status = TOUCH_IRQ_FINGER;
+		return ret;
+	}
+
+	for (i = 0; i < touch_count; i++, data++) {
+		if (data->track_id >= touch_max_finger(ts)) {
+			continue;
+		}
+
+		if ((data->event == TOUCHSTS_DOWN) ||
+			(data->event == TOUCHSTS_MOVE)) {
+			ts->new_mask |= (1 << data->track_id);
+			tdata = ts->tdata + data->track_id;
+
+			tdata->id = data->track_id;
+			tdata->type = data->tool_type;
+			tdata->event = data->event;
+			tdata->x = data->x;
+			tdata->y = data->y;
+			tdata->pressure = data->pressure;
+			tdata->width_major = data->width_major;
+			tdata->width_minor = data->width_minor;
+
+			if (data->width_major == data->width_minor)
+				tdata->orientation = 1;
+			else
+				tdata->orientation = (s8)data->angle;
+
+			finger_index++;
+
+			t_dev_dbg_abs(dev,
+					"touch data [id %d, t %d, e %d, x %d, y %d, z %d - %d, %d, %d]\n",
+					tdata->id,
+					tdata->type,
+					tdata->event,
+					tdata->x,
+					tdata->y,
+					tdata->pressure,
+					tdata->width_major,
+					tdata->width_minor,
+					tdata->orientation);
+		}
+	}
+
+	ts->tcount = finger_index;
+	ts->intr_status = TOUCH_IRQ_FINGER;
+
+	return ret;
+}
+
+static int siw_hal_irq_abs_data(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	int ret = 0;
+
+	switch (chip->report_type) {
+	case CHIP_REPORT_TYPE_1:
+		ret = siw_hal_irq_abs_data_type_1(dev);
+		break;
+	case CHIP_REPORT_TYPE_0:
+		ret = siw_hal_irq_abs_data_type_0(dev);
+		break;
+	default:
+		t_dev_warn(dev, "unknown report type, %d\n", chip->report_type);
+		break;
+	}
 
 	return ret;
 }
