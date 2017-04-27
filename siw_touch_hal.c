@@ -1099,31 +1099,20 @@ const struct tci_info siw_hal_tci_info_default[2] = {
 	},
 };
 
-#if defined(__SIW_CONFIG_SHOW_TCI_INIT_VAL)
-#define t_dev_dbg_tci	t_dev_info
-#else
-#define t_dev_dbg_tci	t_dev_dbg_base
-#endif
-
 #define siw_prt_tci_info(_dev, _idx, _info)	\
 	do {	\
-		t_dev_dbg_tci(_dev,	\
+		t_dev_info(_dev,	\
 			"tci info[%s] tap_count %d, min_intertap %d, max_intertap %d\n",	\
 			_idx, _info->tap_count, _info->min_intertap, _info->max_intertap);	\
-		t_dev_dbg_tci(_dev,	\
+		t_dev_info(_dev,	\
 			"tci info[%s] touch_slop %d, tap_distance %d, intr_delay %d\n",	\
 			_idx, _info->touch_slop, _info->tap_distance, _info->intr_delay);	\
 	} while(0)
 
-#define siw_prt_qcover_info(_dev, _name, _qcover)	\
+#define siw_prt_area_info(_dev, _name, _area)	\
 	do {	\
-		if (_qcover->x1 != ~0) {	\
-			t_dev_dbg_tci(_dev, "%s %4d %4d %4d %4d\n",	\
-				_name, _qcover->x1, _qcover->y1, _qcover->x2, _qcover->y2);	\
-		} else {	\
-			t_dev_dbg_tci(_dev, "%s %Xh %Xh %Xh %Xh\n",	\
-				_name, _qcover->x1, _qcover->y1, _qcover->x2, _qcover->y2);	\
-		}	\
+		t_dev_info(_dev, "%s %4d %4d %4d %4d\n",	\
+			_name, _area->x1, _area->y1, _area->x2, _area->y2);	\
 	} while(0)
 
 static void siw_hal_prt_tci_info(struct device *dev)
@@ -1141,15 +1130,13 @@ static void siw_hal_prt_tci_info(struct device *dev)
 	siw_prt_tci_info(dev, "TCI_2", info);
 
 	area = &ts->tci.area;
-	t_dev_dbg_tci(dev,
-		"tci active area  %4d %4d %4d %4d\n",
-		area->x1, area->y1, area->x2, area->y2);
+	siw_prt_area_info(dev, "tci active area ", area);
 
 	tci_qcover = &ts->tci.qcover_open;
-	siw_prt_qcover_info(dev, "tci qcover_open ", tci_qcover);
+	siw_prt_area_info(dev, "tci qcover_open ", tci_qcover);
 
 	tci_qcover = &ts->tci.qcover_close;
-	siw_prt_qcover_info(dev, "tci qcover_close", tci_qcover);
+	siw_prt_area_info(dev, "tci qcover_close", tci_qcover);
 }
 
 static void siw_hal_get_tci_info(struct device *dev)
@@ -1172,16 +1159,12 @@ static void siw_hal_get_tci_info(struct device *dev)
 	ts->tci.area.y2 = ts->caps.max_y;
 
 	tci_qcover = pdata_tci_qcover_open(ts->pdata);
-	if (!tci_qcover) {
-		memset(&ts->tci.qcover_open, ~0, sizeof(struct reset_area));
-	} else {
+	if (tci_qcover != NULL) {
 		memcpy(&ts->tci.qcover_open, tci_qcover, sizeof(struct reset_area));
 	}
 
 	tci_qcover = pdata_tci_qcover_close(ts->pdata);
-	if (!tci_qcover) {
-		memset((void *)&ts->tci.qcover_close, ~0, sizeof(struct reset_area));
-	} else {
+	if (tci_qcover != NULL) {
 		memcpy(&ts->tci.qcover_close, tci_qcover, sizeof(struct reset_area));
 	}
 
@@ -1218,21 +1201,15 @@ const struct siw_hal_swipe_ctrl siw_hal_swipe_info_default = {
 	},
 };
 
-#if defined(__SIW_CONFIG_SHOW_SWIPE_INIT_VAL)
-#define t_dev_dbg_swipe		t_dev_info
-#else
-#define t_dev_dbg_swipe		t_dev_dbg_base
-#endif
-
 #define siw_prt_swipe_info(_dev, _idx, _info)	\
 	do {	\
-		t_dev_dbg_swipe(_dev,	\
+		t_dev_info(_dev,	\
 			"swipe info[%s] distance %d, ratio_thres %d, ratio_distance %d\n",	\
 			_idx, _info->distance, _info->ratio_thres, _info->ratio_distance);	\
-		t_dev_dbg_swipe(_dev,	\
+		t_dev_info(_dev,	\
 			"swipe info[%s] ratio_period %d, min_time %d, max_time %d\n",	\
 			_idx, _info->ratio_period, _info->min_time, _info->max_time);	\
-		t_dev_dbg_swipe(_dev,	\
+		t_dev_info(_dev,	\
 			"swipe info[%s] area_x1 %d, area_y1 %d, area_x2 %d, area_y2 %d\n",	\
 			_idx, _info->area.x1, _info->area.y1, _info->area.x2, _info->area.y2);	\
 	} while(0)
@@ -1244,7 +1221,7 @@ static void siw_hal_prt_swipe_info(struct device *dev)
 	struct siw_hal_swipe_ctrl *swipe = &chip->swipe;
 	struct siw_hal_swipe_info *info;
 
-	t_dev_dbg_swipe(dev, "swipe mode %08Xh\n", swipe->mode);
+	t_dev_info(dev, "swipe mode %08Xh\n", swipe->mode);
 	info = &swipe->info[SWIPE_R];
 	siw_prt_swipe_info(dev, "SWIPE_R", info);
 	info = &swipe->info[SWIPE_L];
@@ -4088,6 +4065,7 @@ static int siw_hal_tci_area_set(struct device *dev, int cover_status)
 	struct siw_ts *ts = chip->ts;
 	struct reset_area *qcover;
 	const char *msg;
+	int qcover_invalid = 0;
 
 	if (touch_mode_not_allowed(ts, LCD_MODE_U3_QUICKCOVER)) {
 		return 0;
@@ -4098,13 +4076,25 @@ static int siw_hal_tci_area_set(struct device *dev, int cover_status)
 	msg = (cover_status == QUICKCOVER_CLOSE) ?
 			"close" : "open";
 
-	if (qcover->x1 != ~0) {
+	if (!qcover->x2 || !qcover->y2) {
+		/* deactivated */
+		return 0;
+	}
+
+	qcover_invalid |= (qcover->x1 >= qcover->x2);
+	qcover_invalid |= (qcover->y1 >= qcover->y2);
+
+	if (!qcover_invalid) {
 		siw_hal_tci_active_area(dev,
 				qcover->x1, qcover->y1,
 				qcover->x2, qcover->y2,
 				0);
-		t_dev_info(dev, "lpwg active area - qcover %s\n", msg);
 	}
+
+	t_dev_info(dev,
+		"lpwg active area - qcover %s %4d %4d %4d %4d%s\n",
+		msg, qcover->x1, qcover->y1, qcover->x2, qcover->y2,
+		(qcover_invalid) ? " (invalid)": "");
 
 	return 0;
 }
