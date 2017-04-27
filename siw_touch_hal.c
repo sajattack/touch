@@ -5167,6 +5167,199 @@ static int siw_hal_lpwg_mode(struct device *dev)
 	return siw_hal_lpwg_mode_resume(dev);
 }
 
+#define TCI_INFO_CNT (sizeof(struct tci_info) / 2)
+
+#define siw_prt_tci_control_info(_dev, _idx, _info)	\
+	do {	\
+		t_dev_info(_dev,	\
+			"tci info[%s] tap_count %d, min_intertap %d, max_intertap %d\n",	\
+			_idx, _info->tap_count, _info->min_intertap, _info->max_intertap);	\
+		t_dev_info(_dev,	\
+			"tci info[%s] touch_slop %d, tap_distance %d, intr_delay %d\n",	\
+			_idx, _info->touch_slop, _info->tap_distance, _info->intr_delay);	\
+	} while(0)
+
+static int siw_hal_show_ic_tci_info(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_hal_reg *reg = chip->reg;
+	struct tci_info *info;
+	u16 lpwg_data[TCI_INFO_CNT + 1][2];
+	u16 lpwg_data_tci_1[TCI_INFO_CNT];
+	u16 lpwg_data_tci_2[TCI_INFO_CNT];
+	int i = 0;
+	int ret = 0;
+
+	t_dev_info(dev, "[ IC tci info ]\n");
+
+	ret = siw_hal_reg_read(dev,
+				reg->tci_enable_w,
+				(void *)lpwg_data, sizeof(lpwg_data));
+	if(ret < 0) {
+		t_dev_err(dev, "tci info read fail\n");
+
+		goto out;
+	}
+
+	for (i = 0; i < TCI_INFO_CNT; i++) {
+		lpwg_data_tci_1[i] = lpwg_data[i + 1][0];
+		lpwg_data_tci_2[i] = lpwg_data[i + 1][1];
+	}
+
+	info = (struct tci_info *)lpwg_data_tci_1;
+	siw_prt_tci_control_info(dev, "TCI_1", info);
+
+	info = (struct tci_info *)lpwg_data_tci_2;
+	siw_prt_tci_control_info(dev, "TCI_2", info);
+
+	out:
+		return ret;
+}
+
+static void siw_hal_show_driver_tci_info(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	struct tci_ctrl *tci = &ts->tci;
+	struct tci_info *info;
+
+	t_dev_info(dev, "[ driver tci info ]\n");
+
+	info = &tci->info[TCI_1];
+	siw_prt_tci_control_info(dev, "TCI_1", info);
+
+	info = &tci->info[TCI_2];
+	siw_prt_tci_control_info(dev, "TCI_2", info);
+}
+
+static int siw_hal_lpwg_ext_tci_info(struct device *dev, void *param)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	struct siw_hal_reg *reg = chip->reg;
+	u16 *info_addr;
+	int *data = (int *)param;
+	int tci_type = 0;
+	int index = 0;
+	u16 value = 0;
+	u16 write_en = 0;
+	u16 value_2 = 0;
+	u32 send_buf = 0;
+	int ret = 0;
+
+	tci_type = data[0];
+	index = data[1];
+	value = data[2];
+	write_en = data[3];
+
+	if((tci_type > TCI_2) || (0 > tci_type)) {
+		t_dev_err(dev, "invaild tci_type value [%d]\n", tci_type);
+		goto out_invaild;
+	}
+
+	if((index > (TCI_INFO_CNT - 1)) || (0 > index)) {
+		t_dev_err(dev, "invaild index value [%d]\n", index);
+		goto out_invaild;
+	}
+
+	info_addr = (u16 *)&ts->tci.info[!tci_type];
+	value_2 = info_addr[index];
+
+	send_buf = (value << (tci_type ? 16 : 0)) | (value_2 << (tci_type ? 0 : 16));
+
+	if (write_en == 1) {
+		t_dev_info(dev, "tci info write addr[%Xh] value[%Xh]\n",
+			reg->tap_count_w + index, send_buf);
+
+		ret = siw_hal_write_value(dev,
+			reg->tap_count_w + index, send_buf);
+		if (ret < 0) {
+			t_dev_err(dev, "tci info write fail, so don't setting driver tci info\n");
+			goto out_write_fail;
+		}
+	}
+
+	info_addr = (u16 *)&ts->tci.info[tci_type];
+	info_addr[index] = value;
+
+	siw_hal_show_ic_tci_info(dev);
+
+out_write_fail:
+	siw_hal_show_driver_tci_info(dev);
+
+out_invaild:
+	return ret;
+}
+
+#define TCI_AREA_CNT (sizeof(struct active_area) / 2)
+
+#define __siw_prt_tci_area(_dev, _fmt, _name, _area, _shift)	\
+	do {	\
+		t_dev_info(_dev,	\
+			_fmt "x1:%4d, y1:%4d, x2:%4d, y2:%4d\n",	\
+			_name,	\
+			((_area->x1 >> _shift) & 0xFFFF),	\
+			((_area->y1 >> _shift) & 0xFFFF),	\
+			((_area->x2 >> _shift) & 0xFFFF),	\
+			((_area->y2 >> _shift )& 0xFFFF));	\
+	} while(0)
+
+#define siw_prt_tci_area_drv(_dev, _name, _area, _shift)	\
+	do {	\
+		__siw_prt_tci_area(_dev, "tci %s area ", _name, _area, _shift);	\
+	} while(0)
+
+static void siw_hal_show_driver_tci_area(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	struct active_area *area;
+	struct reset_area *tci_qcover;
+
+	t_dev_info(dev, "[ driver tci area ]\n");
+
+	area = &ts->tci.area;
+	siw_prt_tci_area_drv(dev, "[active      ]", area, 0);
+
+	tci_qcover = &ts->tci.qcover_open;
+	siw_prt_tci_area_drv(dev, "[qcover open ]", tci_qcover, 0);
+
+	tci_qcover = &ts->tci.qcover_close;
+	siw_prt_tci_area_drv(dev, "[qcover close]", tci_qcover, 0);
+}
+
+#define siw_prt_tci_area_ic(_dev, _name, _area, _shift)	\
+	do {	\
+		__siw_prt_tci_area(_dev, "tci area %s ", _name, _area, _shift);	\
+	} while (0)
+
+static int siw_hal_show_ic_tci_area(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_hal_reg *reg = chip->reg;
+	struct reset_area *area;
+	u32 area_data_buf[TCI_AREA_CNT] = {0, };
+	int ret = 0;
+
+	t_dev_info(dev, "[ IC tci area ]\n");
+
+	ret = siw_hal_reg_read(dev,
+				reg->act_area_x1_w,
+				(void *)area_data_buf, sizeof(area_data_buf));
+	if(ret < 0) {
+		t_dev_err(dev, "tci area read fail\n");
+
+		goto out;
+	}
+
+	area = (struct reset_area *)area_data_buf;
+	siw_prt_tci_area_ic(dev, "[TCI_1]", area, 0);
+	siw_prt_tci_area_ic(dev, "[TCI_2]", area, 16);
+
+	out:
+		return ret;
+}
+
 //#define __SKIP_LPWG_UPDATE_ALL_FOR_SAME_INPUT
 
 static int siw_hal_lpwg(struct device *dev, u32 code, void *param)
@@ -5175,6 +5368,7 @@ static int siw_hal_lpwg(struct device *dev, u32 code, void *param)
 	struct siw_ts *ts = chip->ts;
 	struct tci_ctrl *tci = &ts->tci;
 	struct active_area *area = &tci->area;
+	struct reset_area *area_qcover;
 	struct lpwg_info *lpwg = &ts->lpwg;
 	int *value = (int *)param;
 	int changed = 0;
@@ -5247,6 +5441,66 @@ static int siw_hal_lpwg(struct device *dev, u32 code, void *param)
 		break;
 
 	case LPWG_REPLY:
+		break;
+
+	case LPWG_EXT_TCI_INFO_STORE:
+		t_dev_info(dev,
+				"LPWG_EXT_TCI_INFO_STORE: tci[%s], index[%d], value[%d], write_en[%s]\n",
+				value[0] ? "TCI_2" : "TCI_1",
+				value[1],
+				value[2],
+				value[3] ? "YES" : "NO");
+
+		ret = siw_hal_lpwg_ext_tci_info(dev, param);
+		break;
+
+	case LPWG_EXT_TCI_QOPEN_AREA_STORE:
+		area_qcover = &tci->qcover_open;
+
+		area_qcover->x1 = value[0];
+		area_qcover->x2 = value[1];
+		area_qcover->y1 = value[2];
+		area_qcover->y2 = value[3];
+
+		t_dev_info(dev,
+				"LPWG_EXT_TCI_QOPEN_AREA_STORE: x1[%d], y1[%d], x2[%d], y2[%d]\n",
+				area_qcover->x1, area_qcover->y1, area_qcover->x2, area_qcover->y2);
+		break;
+
+	case LPWG_EXT_TCI_QCLOSE_AREA_STORE:
+		area_qcover = &tci->qcover_close;
+
+		area_qcover->x1 = value[0];
+		area_qcover->x2 = value[1];
+		area_qcover->y1 = value[2];
+		area_qcover->y2 = value[3];
+
+		t_dev_info(dev,
+				"LPWG_EXT_TCI_QCLOSE_AREA_STORE: x1[%d], y1[%d], x2[%d], y2[%d]\n",
+				area_qcover->x1, area_qcover->y1, area_qcover->x2, area_qcover->y2);
+		break;
+
+	case LPWG_EXT_SWIPE_INFO_STORE:
+		t_dev_info(dev, "LPWG_EXT_SWIPE_INFO_STORE\n");
+		break;
+
+	case LPWG_EXT_TCI_INFO_SHOW:
+		t_dev_info(dev, "LPWG_EXT_TCI_INFO_SHOW\n");
+
+		ret = siw_hal_show_ic_tci_info(dev);
+
+		siw_hal_show_driver_tci_info(dev);
+		break;
+
+	case LPWG_EXT_TCI_AREA_SHOW:
+		t_dev_info(dev, "LPWG_EXT_TCI_AREA_SHOW\n");
+
+		ret = siw_hal_show_ic_tci_area(dev);
+
+		siw_hal_show_driver_tci_area(dev);
+		break;
+
+	case LPWG_EXT_SWIPE_INFO_SHOW:
 		break;
 	}
 

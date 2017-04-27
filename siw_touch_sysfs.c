@@ -325,6 +325,16 @@ static ssize_t _store_lpwg_notify(struct device *dev,
 	case LPWG_SENSOR_STATUS:
 		goto out;
 	default:
+		if ((code >= LPWG_EXT_TCI_INFO_STORE) &&
+			(code < LPWG_EXT_STORE_END)) {
+			break;
+		}
+
+		if ((code >= LPWG_EXT_TCI_INFO_SHOW) &&
+			(code < LPWG_EXT_SHOW_END)) {
+			break;
+		}
+
 		if (code > LPWG_REPLY) {
 			t_dev_err(dev, "unknown code, %d\n", code);
 			goto out;
