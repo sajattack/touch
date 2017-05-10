@@ -270,10 +270,9 @@ static int siw_touch_do_parse_dts(struct siw_ts *ts)
 	irq_flags = siw_touch_of_u32(dev, np, "irqflags");
 	p_flags = pdata_irqflags(ts->pdata);
 	if ((p_flags & TOUCH_IGNORE_DT_FLAGS) || (irq_flags < 0)) {
-		ts->irqflags = p_flags;
+		ts->irqflags = p_flags & ~TOUCH_IGNORE_DT_FLAGS;
 	} else {
-		ts->irqflags = irq_flags & 0xFFFF;
-		ts->irqflags |= p_flags & (0xFFFFUL<<16);
+		ts->irqflags = irq_flags;
 	}
 	if (irq_flags >= 0) {
 		t_dev_info(dev, "irqflags(of) = 0x%08X (0x%08X, 0x%08X)\n",
