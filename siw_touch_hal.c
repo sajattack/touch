@@ -2478,6 +2478,7 @@ static int siw_hal_reinit(struct device *dev,
 					int (*do_call)(struct device *dev))
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
+	int ret = 0;
 
 	siw_touch_irq_control(dev, INTERRUPT_DISABLE);
 
@@ -2493,13 +2494,14 @@ static int siw_hal_reinit(struct device *dev,
 
 	touch_msleep(delay);
 
-	if (do_call)
-		do_call(dev);
+	if (do_call) {
+		ret = do_call(dev);
+	}
 
 	if (irq_enable)
 		siw_touch_irq_control(dev, INTERRUPT_ENABLE);
 
-	return 0;
+	return ret;
 }
 
 #define SIW_SW_RST_CTL_T2		0xFE0
@@ -4787,7 +4789,10 @@ static int siw_hal_tc_driving(struct device *dev, int mode)
 
 		atomic_set(&ts->recur_chk, 1);
 
-		siw_hal_reinit(dev, 1, 100 + hal_dbg_delay(chip, HAL_DBG_DLY_HW_RST_2), 1, siw_hal_init);
+		ret = siw_hal_reinit(dev, 1, 100 + hal_dbg_delay(chip, HAL_DBG_DLY_HW_RST_2), 1, siw_hal_init);
+		if (ret < 0) {
+			return ret;
+		}
 	} else {
 		t_dev_info(dev, "command done: mode %d, running_sts %02Xh\n",
 			mode, running_status);
