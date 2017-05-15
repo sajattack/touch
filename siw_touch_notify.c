@@ -139,6 +139,10 @@ static int _siw_touch_do_notify(struct siw_ts *ts,
 	u32 value = 0;
 	int ret = 0;
 
+	if (touch_get_dev_data(ts) == NULL) {
+		return 0;
+	}
+
 	if (data) {
 		value = *((int *)data);
 	}
