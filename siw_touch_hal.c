@@ -5782,7 +5782,22 @@ static int siw_hal_check_status_type_x(struct device *dev,
 		log_add |= (!!((sys_error != NON_FAULT_U32) || (sys_fault != NON_FAULT_U32)))<<1;
 
 		len = siw_chk_sts_snprintf(dev, log, log_max, 0,
-					"[%d] watchdog exception", irq);
+					"[%d] ", irq);
+
+		if (ic_abnormal) {
+			len += siw_chk_sts_snprintf(dev, log, log_max, len,
+						"esd");
+		}
+
+		if (ic_error) {
+			if (ic_abnormal) {
+				len += siw_chk_sts_snprintf(dev, log, log_max, len,
+							" & ");
+			}
+
+			len += siw_chk_sts_snprintf(dev, log, log_max, len,
+						"watchdog exception");
+		}
 
 		if (log_add) {
 			len += siw_chk_sts_snprintf(dev, log, log_max, len,
