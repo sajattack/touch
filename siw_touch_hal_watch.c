@@ -1456,13 +1456,15 @@ static int ext_watch_chk_font_status(struct device *dev)
 		return -EBUSY;
 
 	case FONT_DOWNLOADING :
-		mod_delayed_work(ts->wq, &chip->font_download_work, 0);
+		mod_delayed_work(ts->wq, &chip->font_download_work,
+			msecs_to_jiffies(20));
 		return 0;
 	}
 
 	ret = ext_watch_do_chk_font_status(dev);
 	if (ret == 1) {
-		mod_delayed_work(ts->wq, &chip->font_download_work, 0);
+		mod_delayed_work(ts->wq, &chip->font_download_work,
+			msecs_to_jiffies(20));
 		goto out;
 	}
 
