@@ -278,11 +278,7 @@ static void siw_hal_init_gpio_reset(struct device *dev)
 static void siw_hal_trigger_gpio_reset(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
-	struct siw_ts *ts = chip->ts;
-
-	if (__siw_hal_gpio_skip_reset(ts)) {
-		return;
-	}
+//	struct siw_ts *ts = chip->ts;
 
 	siw_hal_set_gpio_reset(dev, GPIO_OUT_ZERO);
 	touch_msleep(1 + hal_dbg_delay(chip, HAL_DBG_DLY_HW_RST_0));
