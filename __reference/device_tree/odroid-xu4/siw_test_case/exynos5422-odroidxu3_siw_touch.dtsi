@@ -65,6 +65,7 @@
 //#include "exynos5422-odroidxu3_siw_touch_sw49105.dtsi
 //#include "exynos5422-odroidxu3_siw_touch_sw49106.dtsi
 #include "exynos5422-odroidxu3_siw_touch_sw42101.dtsi"
+//#include "exynos5422-odroidxu3_siw_touch_lg4951_i2c.dtsi"
 
 /* SPI group */
 //#include "exynos5422-odroidxu3_siw_touch_lg4895.dtsi"
