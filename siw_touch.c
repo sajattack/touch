@@ -47,7 +47,7 @@
 #include "siw_touch_sys.h"
 
 #if !defined(__SIW_CONFIG_OF)
-#pragma message("[SiW - Warning] No COFIG_OF")
+//#pragma message("[SiW - Warning] No COFIG_OF")
 #endif
 
 extern int siw_touch_init_sysfs(struct siw_ts *ts);
@@ -518,7 +518,7 @@ static int __used siw_touch_free_pm(struct siw_ts *ts)
 	return 0;
 }
 #else
-#pragma message("[SiW - Warning] No core pm operation")
+//#pragma message("[SiW - Warning] No core pm operation")
 static int __used __siw_touch_init_pm_none(struct siw_ts *ts, int init)
 {
 	t_dev_dbg_pm(ts->dev, "pm %s none\n", (init) ? "free" : "init");
