@@ -377,6 +377,8 @@ static int siw_touch_parse_dts(struct siw_ts *ts)
 	struct device *dev = ts->dev;
 	struct touch_pins *pins = &ts->pins;
 
+	t_dev_info(dev, "__SIW_CONFIG_OF disabled\n");
+
 	ts->irqflags = pdata_irqflags(ts->pdata);
 
 	ts->flags = pdata_flags(ts->pdata);
