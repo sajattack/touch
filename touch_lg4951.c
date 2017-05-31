@@ -57,14 +57,8 @@
 
 #define CHIP_FW_SIZE				(72<<10)
 
-#if defined(CONFIG_MACH_ODROIDXU3)
-#define CHIP_FLAG_SKIP_ESD_EVENT	TOUCH_SKIP_ESD_EVENT
-#else
-#define CHIP_FLAG_SKIP_ESD_EVENT	0
-#endif
-
 #define CHIP_FLAGS					(0 |	\
-									CHIP_FLAG_SKIP_ESD_EVENT |	\
+									TOUCH_SKIP_ESD_EVENT |	\
 									0)
 
 #define CHIP_IRQFLAGS				(IRQF_TRIGGER_FALLING | IRQF_ONESHOT)
@@ -83,11 +77,22 @@
 
 #define CHIP_QUIRKS					(0 |	\
 									CHIP_QUIRK_NOT_SUPPORT_ASC |	\
+									CHIP_QUIRK_NOT_SUPPORT_WATCH |	\
 									CHIP_QUIRK_NOT_SUPPORT_IME |	\
 									__CHIP_QUIRK_ADD |	\
 									0)
 
-
+#if 1
+#define CHIP_BUS_TYPE				BUS_IF_I2C
+#define	CHIP_BUF_SIZE				0
+#define CHIP_SPI_MODE				-1
+#define CHIP_BPW					-1
+#define CHIP_MAX_FREQ				-1
+#define CHIP_TX_HDR_SZ				I2C_BUS_TX_HDR_SZ
+#define CHIP_RX_HDR_SZ				I2C_BUS_RX_HDR_SZ
+#define CHIP_TX_DUMMY_SZ			I2C_BUS_TX_DUMMY_SZ
+#define CHIP_RX_DUMMY_SZ			I2C_BUS_RX_DUMMY_SZ
+#else
 #define CHIP_BUS_TYPE				BUS_IF_SPI
 #define	CHIP_BUF_SIZE				0
 #define CHIP_SPI_MODE				SPI_MODE_0
@@ -97,6 +102,7 @@
 #define CHIP_RX_HDR_SZ				SPI_BUS_RX_HDR_SZ
 #define CHIP_TX_DUMMY_SZ			SPI_BUS_TX_DUMMY_SZ
 #define CHIP_RX_DUMMY_SZ			SPI_BUS_RX_DUMMY_SZ
+#endif
 
 static const struct tci_info chip_tci_info[2] = {
 	[TCI_1] = {
