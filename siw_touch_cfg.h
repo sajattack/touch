@@ -76,40 +76,27 @@
 #endif
 
 #if defined(CONFIG_HAS_EARLYSUSPEND)
-#define __SIW_CONFIG_EARLYSUSPEND
+//#define __SIW_CONFIG_EARLYSUSPEND
 #elif defined(CONFIG_FB)
 #define __SIW_CONFIG_FB
 #endif
 
-//#define __SIW_CONFIG_FASTBOOT
+#if defined(CONFIG_TOUCHSCREEN_SIW_SW1828)
+#ifdef __SIW_CONFIG_FB
+#undef __SIW_CONFIG_FB
+#endif
 
-#define __SIW_CONFIG_PROX_ON_SUSPEND
-#define __SIW_CONFIG_PROX_ON_RESUME
-
-//#define __SIW_CONFIG_SHOW_TCI_INIT_VAL
-//#define __SIW_CONFIG_SHOW_SWIPE_INIT_VAL
-
-#if defined(CONFIG_TOUCHSCREEN_SIW_SW42101)
+//#define __SIW_CONFIG_FASTBOOT		//Custom option for special scenario
+#elif defined(CONFIG_TOUCHSCREEN_SIW_SW42101)
 #define __SIW_BUS_ADDR_16BIT
 
 #ifdef __SIW_SUPPORT_ABT
 #undef __SIW_SUPPORT_ABT
 #endif
+#else	/* General case for Mobile */
+#define __SIW_CONFIG_PROX_ON_SUSPEND
+#define __SIW_CONFIG_PROX_ON_RESUME
 
-#ifdef __SIW_CONFIG_PROX_ON_SUSPEND
-#undef __SIW_CONFIG_PROX_ON_SUSPEND
-#endif
-
-#ifdef __SIW_CONFIG_PROX_ON_RESUME
-#undef __SIW_CONFIG_PROX_ON_RESUME
-#endif
-#endif	/* CONFIG_TOUCHSCREEN_SIW_SW42101 */
-
-
-#if defined(CONFIG_TOUCHSCREEN_SIW_SW1828) ||	\
-	defined(CONFIG_TOUCHSCREEN_SIW_SW42101)
-
-#else
 #define __SIW_CONFIG_KNOCK
 #endif
 
