@@ -209,7 +209,7 @@ static int siw_touch_spi_write(struct device *dev, void *msg)
 	return siw_touch_spi_do_write(to_spi_device(dev), (struct touch_bus_msg *)msg);
 }
 
-#if defined(CONFIG_TOUCHSCREEN_SIWMON)
+#if defined(CONFIG_TOUCHSCREEN_SIWMON) || defined(CONFIG_TOUCHSCREEN_SIWMON_MODULE)
 static void __siw_touch_spi_xfer_mon(struct spi_device *spi,
 				struct touch_xfer_msg *xfer,
 				int ret)
