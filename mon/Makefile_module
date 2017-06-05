@@ -42,7 +42,7 @@ clean:
 	rm -rf *.o
 	rm -rf *.order
 	rm -rf *.symvers
+	rm -rf modules.builtin
 	rm -rf $(MODULE_NAME)
-#	rm -rf $(INSTALL_DIR)/$(MODULE_NAME)
 
 
