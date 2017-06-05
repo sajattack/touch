@@ -1764,7 +1764,7 @@ out:
 }
 
 
-#if defined(CONFIG_TOUCHSCREEN_SIWMON)
+#if defined(CONFIG_TOUCHSCREEN_SIWMON) || defined(CONFIG_TOUCHSCREEN_SIWMON_MODULE)
 
 struct siw_mon_operations *siw_mon_ops;
 EXPORT_SYMBOL(siw_mon_ops);

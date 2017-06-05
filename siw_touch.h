@@ -1684,7 +1684,7 @@ extern int siw_touch_init_late(void *data);
 extern int siw_touch_notify(struct siw_ts *ts, unsigned long event, void *data);
 
 
-#if defined(CONFIG_TOUCHSCREEN_SIWMON)
+#if defined(CONFIG_TOUCHSCREEN_SIWMON) || defined(CONFIG_TOUCHSCREEN_SIWMON_MODULE)
 
 struct touch_bus_msg;
 
