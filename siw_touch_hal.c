@@ -7039,6 +7039,10 @@ static void siw_hal_mon_handler_self_reset(struct device *dev, char *title)
 	int step;
 	int ret = 0;
 
+	if (atomic_read(&ts->state.pm) > DEV_PM_RESUME) {
+		return;
+	}
+
 	if (atomic_read(&ts->state.core) != CORE_NORMAL) {
 		return;
 	}
