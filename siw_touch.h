@@ -100,8 +100,7 @@ enum {
 };
 
 enum {
-	DEV_PM_AWAKE = 0,
-	DEV_PM_RESUME,
+	DEV_PM_RESUME = 0,
 	DEV_PM_SUSPEND,
 	DEV_PM_SUSPEND_IRQ,
 };

@@ -390,7 +390,6 @@ static void siw_touch_resume(struct device *dev)
 
 	mutex_lock(&ts->lock);
 	atomic_set(&ts->state.fb, FB_RESUME);
-	atomic_set(&ts->state.pm, DEV_PM_AWAKE);
 	/* if need skip, return value is not 0 in pre_resume */
 	ret = siw_ops_resume(ts);
 	mutex_unlock(&ts->lock);
