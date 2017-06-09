@@ -86,18 +86,28 @@
 #undef __SIW_CONFIG_FB
 #endif
 
-//#define __SIW_CONFIG_FASTBOOT		//Custom option for special scenario
+#define __SIW_CONFIG_SYSTEM_PM
 #elif defined(CONFIG_TOUCHSCREEN_SIW_SW42101)
 #define __SIW_BUS_ADDR_16BIT
 
 #ifdef __SIW_SUPPORT_ABT
 #undef __SIW_SUPPORT_ABT
 #endif
+
+#define __SIW_CONFIG_SYSTEM_PM
 #else	/* General case for Mobile */
 #define __SIW_CONFIG_PROX_ON_SUSPEND
 #define __SIW_CONFIG_PROX_ON_RESUME
 
 #define __SIW_CONFIG_KNOCK
+
+//#define __SIW_CONFIG_SYSTEM_PM	//Custom option for special scenario
+#endif
+
+#if defined(__SIW_CONFIG_SYSTEM_PM)
+#if defined(CONFIG_HIBERNATE_CALLBACKS)
+//#define __SIW_CONFIG_FASTBOOT		//Custom option for special scenario
+#endif	/* CONFIG_HIBERNATE_CALLBACKS */
 #endif
 
 #if defined(__SIW_SUPPORT_WATCH)
