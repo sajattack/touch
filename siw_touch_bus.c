@@ -598,7 +598,7 @@ static int siw_touch_bus_do_pm_resume(struct device *dev)
 
 int siw_touch_bus_pm_suspend(struct device *dev, int freeze)
 {
-	struct siw_ts *ts = to_touch_core(dev);
+//	struct siw_ts *ts = to_touch_core(dev);
 	int ret = 0;
 
 	if (freeze) {
@@ -608,7 +608,7 @@ int siw_touch_bus_pm_suspend(struct device *dev, int freeze)
 	ret = siw_touch_bus_do_pm_suspend(dev);
 
 	if (freeze) {
-		siw_touch_notify(ts, NOTIFY_TOUCH_RESET, NULL);
+	//	siw_touch_notify(ts, NOTIFY_TOUCH_RESET, NULL);
 	}
 
 	t_dev_info(dev, "touch bus pm %s done\n",
