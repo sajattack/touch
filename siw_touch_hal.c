@@ -1944,21 +1944,35 @@ static int siw_hal_ic_info(struct device *dev)
 	return siw_hal_do_ic_info(dev, 1);
 }
 
-#if defined(__SIW_CONFIG_FB)
+#if defined(__SIW_CONFIG_FB) && !defined(__SIW_CONFIG_SYSTEM_PM)
 static int siw_hal_fb_notifier_callback(struct notifier_block *self,
 		unsigned long event, void *data)
 {
 	struct siw_ts *ts =
 			container_of(self, struct siw_ts, fb_notif);
 	struct fb_event *ev = (struct fb_event *)data;
+	int *blank;
 
-	if (ev && ev->data && event == FB_EVENT_BLANK) {
-		int *blank = (int *)ev->data;
+	if (!ev || !ev->data) {
+		return 0;
+	}
 
-		if (*blank == FB_BLANK_UNBLANK)
+	blank = (int *)ev->data;
+
+	if (event == FB_EARLY_EVENT_BLANK) {
+		if (*blank == FB_BLANK_UNBLANK) {
+			t_dev_info(ts->dev, "FB_UNBLANK(early)\n");
+		} else if (*blank == FB_BLANK_POWERDOWN) {
+			t_dev_info(ts->dev, "FB_BLANK(early)\n");
+		}
+	}
+
+	if (event == FB_EVENT_BLANK) {
+		if (*blank == FB_BLANK_UNBLANK) {
 			t_dev_info(ts->dev, "FB_UNBLANK\n");
-		else if (*blank == FB_BLANK_POWERDOWN)
+		} else if (*blank == FB_BLANK_POWERDOWN) {
 			t_dev_info(ts->dev, "FB_BLANK\n");
+		}
 	}
 
 	return 0;
@@ -7471,7 +7485,32 @@ static int siw_hal_remove(struct device *dev)
 	return 0;
 }
 
-static int siw_hal_suspend(struct device *dev)
+#if defined(__SIW_CONFIG_SYSTEM_PM)
+static int siw_hal_do_suspend(struct device *dev)
+{
+//	struct siw_ts *ts = to_touch_core(dev);
+
+	siw_touch_irq_control(dev, INTERRUPT_DISABLE);
+
+	siw_hal_power(dev, POWER_OFF);
+
+	return 0;
+}
+
+static int siw_hal_do_resume(struct device *dev)
+{
+	struct siw_ts *ts = to_touch_core(dev);
+
+	siw_hal_power(dev, POWER_ON);
+
+	siw_hal_trigger_gpio_reset(dev);	//Double check for reset
+
+	touch_msleep(ts->caps.hw_reset_delay);
+
+	return 0;
+}
+#else	/* __SIW_CONFIG_SYSTEM_PM */
+static int siw_hal_do_suspend(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
@@ -7500,13 +7539,10 @@ static int siw_hal_suspend(struct device *dev)
 	else /* need init */
 		ret = 1;
 
-	t_dev_dbg_pm(dev, "%s suspend done\n",
-			touch_chip_name(ts));
-
 	return ret;
 }
 
-static int siw_hal_resume(struct device *dev)
+static int siw_hal_do_resume(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
@@ -7527,6 +7563,7 @@ static int siw_hal_resume(struct device *dev)
 			touch_msleep(ts->caps.hw_reset_delay);
 		}
 	}
+
 	if (siw_touch_get_boot_mode() == SIW_TOUCH_CHARGER_MODE) {
 		if (touch_mode_allowed(ts, LCD_MODE_U3_PARTIAL)) {
 			/* U3P driving and maintain 100ms at Resume */
@@ -7541,10 +7578,48 @@ static int siw_hal_resume(struct device *dev)
 		return -EPERM;
 	}
 
+	return 0;
+}
+#endif	/* __SIW_CONFIG_SYSTEM_PM */
+
+static int siw_hal_suspend(struct device *dev)
+{
+	struct siw_ts *ts = to_touch_core(dev);
+	int ret = 0;
+
+	if (atomic_read(&ts->state.core) != CORE_NORMAL) {
+		return -EPERM;
+	}
+
+	ret = siw_hal_do_suspend(dev);
+	if (ret < 0) {
+		return ret;
+	}
+
+	t_dev_dbg_pm(dev, "%s suspend done\n",
+			touch_chip_name(ts));
+
+	return ret;
+}
+
+static int siw_hal_resume(struct device *dev)
+{
+	struct siw_ts *ts = to_touch_core(dev);
+	int ret = 0;
+
+	if (atomic_read(&ts->state.core) != CORE_NORMAL) {
+		return -EPERM;
+	}
+
+	ret = siw_hal_do_resume(dev);
+	if (ret < 0) {
+		return ret;
+	}
+
 	t_dev_dbg_pm(dev, "%s resume done\n",
 			touch_chip_name(ts));
 
-	return 0;
+	return ret;
 }
 
 static const struct siw_hal_reg siw_touch_default_reg = {
