@@ -82,6 +82,10 @@
 #endif
 
 #if defined(CONFIG_TOUCHSCREEN_SIW_SW1828)
+#ifdef __SIW_SUPPORT_ABT
+#undef __SIW_SUPPORT_ABT
+#endif
+
 #ifdef __SIW_CONFIG_FB
 #undef __SIW_CONFIG_FB
 #endif
