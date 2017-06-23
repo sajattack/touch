@@ -263,6 +263,10 @@ struct siw_hal_fw_info {
 	u32 date;
 	u32 time;
 	u32 conf_index;
+	/* __SIW_FW_TYPE_1 */
+	u32 conf_idx_addr;
+	u32 conf_dn_addr;
+	u32 boot_code_addr;
 };
 
 static inline void siw_hal_fw_set_chip_id(struct siw_hal_fw_info *fw, u32 chip_id)
@@ -526,6 +530,7 @@ struct siw_touch_chip {
 	u32 status_mask_ic_abnormal;
 	u32 status_mask_ic_error;
 	u32 status_mask_ic_valid;
+	u32 status_mask_ic_disp_err;
 	struct siw_hal_status_mask_bit status_mask_bit;
 	struct siw_hal_status_filter *status_filter;
 	/* */
