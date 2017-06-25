@@ -366,6 +366,7 @@ struct siw_hal_prd_data {
 	int16_t	*open_buf_result_data;
 	int16_t	*short_buf_result_data;
 	/* */
+	int open_result_type;
 	int image_lower;
 	int image_upper;
 	/* */
@@ -1972,7 +1973,7 @@ static int prd_os_result_rawdata_get(struct siw_hal_prd_data *prd, int type)
 		prd_write_file(prd, "\n[OPEN_NODE_TEST Result Rawdata]\n",
 			TIME_INFO_SKIP);
 		t_prd_info(prd, "Open Node Raw Data Offset = %x\n",
-			short_data_offset);
+			open_data_offset);
 		t_prd_info(prd, "[OPEN_NODE_TEST Result Rawdata]\n");
 
 		//offset write
@@ -2026,6 +2027,7 @@ static int prd_os_result_data_get(struct siw_hal_prd_data *prd, int type)
 	struct siw_hal_reg *reg = chip->reg;
 	u16 open_short_data_offset = 0;
 	u32 os_result_offset;
+	u32 read_size;
 	int ret = 0;
 
 	ret = siw_hal_read_value(dev,
@@ -2051,10 +2053,12 @@ static int prd_os_result_data_get(struct siw_hal_prd_data *prd, int type)
 			goto out;
 		}
 
+		read_size = (prd->open_result_type) ?	\
+				ctrl->m2_row_col_buf_size :	ctrl->m1_row_col_size;
 		//read open data
 		ret = siw_hal_reg_read(dev, reg->data_i2cbase_addr,
 				prd->open_buf_result_data,
-				ctrl->m1_row_col_size * PRD_RAWDATA_SIZE);
+				read_size * PRD_RAWDATA_SIZE);
 		if (ret < 0) {
 			goto out;
 		}
@@ -2104,7 +2108,8 @@ static int prd_print_os_data(struct siw_hal_prd_data *prd, int type)
 
 	switch (type) {
 	case OPEN_NODE_TEST:
-		col_size = param->m1_col;
+		col_size = (prd->open_result_type) ?	\
+				param->col + param->col_add : param->m1_col;
 		os_buf = prd->open_buf_result_data;
 		break;
 	case SHORT_NODE_TEST:
@@ -5060,6 +5065,11 @@ static ssize_t prd_show_set_sd(struct device *dev, char *buf)
 	int lower, upper;
 	int size = 0;
 
+	if (!param->sd_test_flag) {
+		size += siw_snprintf(buf, size, "[sd - disabled]\n");
+		goto skip_show_set_sd;
+	}
+
 	size += siw_snprintf(buf, size, "[sd]\n");
 
 	if(param->sd_test_flag & U3_M2_RAWDATA_TEST_FLAG) {
@@ -5073,6 +5083,12 @@ static ssize_t prd_show_set_sd(struct device *dev, char *buf)
 	if(param->sd_test_flag & U3_JITTER_TEST_FLAG) {
 		siw_prd_set_sd_sprintf(title, U3_JITTER_TEST);
 		size += prd_show_set_sd_item(buf, size, title, sd_param->u3_jitter);
+	}
+skip_show_set_sd:
+
+	if (!param->lpwg_sd_test_flag) {
+		size += siw_snprintf(buf, size, "[lpwg_sd - disabled]\n");
+		goto skip_show_set_lpwg_sd;
 	}
 
 	size += siw_snprintf(buf, size, "[lpwg_sd]\n");
@@ -5088,6 +5104,11 @@ static ssize_t prd_show_set_sd(struct device *dev, char *buf)
 	if(param->lpwg_sd_test_flag & U0_JITTER_TEST_FLAG) {
 		siw_prd_set_sd_sprintf(title, U0_JITTER_TEST);
 		size += prd_show_set_sd_item(buf, size, title, sd_param->u0_jitter);
+	}
+skip_show_set_lpwg_sd:
+
+	if (!param->sd_test_flag && !param->lpwg_sd_test_flag) {
+		return (ssize_t)size;
 	}
 
 	type = sd_param->last_type;
@@ -5131,8 +5152,17 @@ static void prd_store_set_sd_usage(struct device *dev)
 	struct siw_hal_prd_data *prd = (struct siw_hal_prd_data *)ts->prd;
 	struct siw_hal_prd_param *param = &prd->param;
 
+	if (!param->sd_test_flag && !param->lpwg_sd_test_flag) {
+		return;
+	}
+
 	t_prd_info(prd, "Usage:\n");
 	t_prd_info(prd, " echo {type} {lower} {upper} > set_sd\n");
+
+	if (!param->sd_test_flag) {
+		goto skip_store_set_sd_usage;
+	}
+
 	t_prd_info(prd, " [type for sd]\n");
 	if(param->sd_test_flag & U3_M2_RAWDATA_TEST_FLAG) {
 		t_prd_info_set_sd(prd, U3_M2_RAWDATA_TEST);
@@ -5143,6 +5173,12 @@ static void prd_store_set_sd_usage(struct device *dev)
 	if(param->sd_test_flag & U3_JITTER_TEST_FLAG) {
 		t_prd_info_set_sd(prd, U3_JITTER_TEST);
 	}
+skip_store_set_sd_usage:
+
+	if (!param->lpwg_sd_test_flag) {
+		return;
+	}
+
 	t_prd_info(prd, " [type for lpwd_sd]\n");
 	if(param->lpwg_sd_test_flag & U0_M2_RAWDATA_TEST_FLAG) {
 		t_prd_info_set_sd(prd, U0_M2_RAWDATA_TEST);
@@ -5165,6 +5201,7 @@ static ssize_t prd_store_set_sd(struct device *dev,
 	int type = 0;
 	int valid = 0;
 	int lower = 0, upper = 0;
+	int set = 0;
 
 	if (sscanf(buf, "%d %d %d", &type, &lower, &upper) <= 0) {
 		t_prd_err(prd, "Invalid param\n");
@@ -5190,34 +5227,60 @@ static ssize_t prd_store_set_sd(struct device *dev,
 		return count;
 	}
 
+	if (!param->sd_test_flag) {
+		goto skip_set_sd;
+	}
+	if(!(param->sd_test_flag & (1<<type))) {
+		goto skip_set_sd;
+	}
 	switch (type) {
 	/* items of sd */
 	case U3_M2_RAWDATA_TEST:
 		sd_param->u3_m2[0] = lower;
 		sd_param->u3_m2[1] = upper;
+		set |= (1<<type);
 		break;
 	case U3_BLU_JITTER_TEST:
 		sd_param->u3_blu_jitter[0] = lower;
 		sd_param->u3_blu_jitter[1] = upper;
+		set |= (1<<type);
 		break;
 	case U3_JITTER_TEST:
 		sd_param->u3_jitter[0] = lower;
 		sd_param->u3_jitter[1] = upper;
+		set |= (1<<type);
 		break;
+	}
+skip_set_sd:
 
+	if (!param->lpwg_sd_test_flag) {
+		goto skip_set_lpwg_sd;
+	}
+	if(!(param->lpwg_sd_test_flag & (1<<type))) {
+		goto skip_set_lpwg_sd;
+	}
+	switch (type) {
 	/* items of lpwg_sd */
 	case U0_M2_RAWDATA_TEST:
 		sd_param->u0_m2[0] = lower;
 		sd_param->u0_m2[1] = upper;
+		set |= (1<<type);
 		break;
 	case U0_M1_RAWDATA_TEST:
 		sd_param->u0_m1[0] = lower;
 		sd_param->u0_m1[1] = upper;
+		set |= (1<<type);
 		break;
 	case U0_JITTER_TEST:
 		sd_param->u0_jitter[0] = lower;
 		sd_param->u0_jitter[1] = upper;
+		set |= (1<<type);
 		break;
+	}
+skip_set_lpwg_sd:
+
+	if (!set) {
+		return count;
 	}
 
 	if (prd_cmp_tool_str[type]) {
@@ -5426,11 +5489,26 @@ static int siw_hal_prd_alloc_buffer(struct device *dev)
 
 	total_size = (ctrl->m2_row_col_buf_size<<2);
 	total_size += (ctrl->m1_row_col_size<<2);
-	total_size += ctrl->m1_row_col_size;
 	total_size += ctrl->delta_size;
 	total_size += ctrl->debug_buf_size;
 	total_size += ctrl->label_tmp_size;
 	total_size += ctrl->m2_row_col_size;
+
+	switch (touch_chip_type(ts)) {
+	case CHIP_LG4894:
+	case CHIP_LG4895:
+	case CHIP_LG4946:
+	case CHIP_LG4951:
+	case CHIP_SW1828:
+	case CHIP_SW49105:
+		total_size += ctrl->m1_row_col_size;
+		prd->open_result_type = 0;
+		break;
+	default:
+		total_size += ctrl->m2_row_col_buf_size;
+		prd->open_result_type = 1;
+		break;
+	}
 
 	buf = kzalloc(total_size + 128, GFP_KERNEL);
 	if (buf == NULL) {
@@ -5470,7 +5548,11 @@ static int siw_hal_prd_alloc_buffer(struct device *dev)
 	prd->short_buf_result_rawdata = (int16_t *)buf;
 	buf += ctrl->m2_row_col_buf_size;
 	prd->open_buf_result_data = (int16_t *)buf;
-	buf += ctrl->m1_row_col_size;
+	if (prd->open_result_type) {
+		buf += ctrl->m2_row_col_buf_size;
+	} else {
+		buf += ctrl->m1_row_col_size;
+	}
 	prd->short_buf_result_data = (int16_t *)buf;
 	buf += ctrl->m1_row_col_size;
 
@@ -5704,10 +5786,10 @@ static void siw_hal_prd_set_sd_cmd(struct siw_hal_prd_data *prd)
 		"cmd_m1_rawdata : %d\n",
 		sd_cmd->cmd_m1_rawdata);
 	t_prd_info(prd,
-		"cmd_jitter 	 : %d\n",
+		"cmd_jitter     : %d\n",
 		sd_cmd->cmd_jitter);
 	t_prd_info(prd,
-		"cmd_jitter(u0)  : %d\n",
+		"cmd_jitter(u0) : %d\n",
 		sd_cmd->cmd_u0_jitter);
 }
 
