@@ -486,6 +486,8 @@ enum {
 
 	SD_FLAG_SW49408			= __SD_FLAG_SW49XXX,
 	LPWG_SD_FLAG_SW49408	= __LPWG_SD_FLAG_SW49XXX,
+
+	SD_FLAG_SW49501			= __SD_FLAG_SW49XXX,
 };
 
 enum {
@@ -729,6 +731,26 @@ static const struct siw_hal_prd_param prd_params[] = {
 		.sysfs_off_flag = 0,
 		.sd_test_flag = SD_FLAG_SW49408,
 		.lpwg_sd_test_flag = LPWG_SD_FLAG_SW49408,
+	},
+	/*
+	 * SW49501 group
+	 */
+	{	.chip_type = CHIP_SW49501,
+		.name = NULL,	//NULL meas 'Last & Default'
+		.cmd_type = PRD_CMD_TYPE_1,
+		.addr = {
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_RAW, 0x1982),
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_BASELINE_EVEN, 0x1AA2),
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_DELTA, 0x1BC2),
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_LABEL, 0x1D16),
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_DEBUG, 0x14C8),
+			0,
+		},
+		__PRD_PARAM_DIMENSION(32, 18, 0, 32, PRD_M1_COL_SIZE, 1, 1),
+		__PRD_2ND_SCR(0, 0),
+		.sysfs_off_flag = PRD_SYS_EN_LPWG_SD,
+		.sd_test_flag = SD_FLAG_SW49501,
+		.lpwg_sd_test_flag = 0,
 	},
 	/*
 	 * SW1828 group
@@ -5766,6 +5788,14 @@ static void siw_hal_prd_set_sd_cmd(struct siw_hal_prd_data *prd)
 		sd_cmd->cmd_m1_rawdata = 3;
 		sd_cmd->cmd_jitter = 6;
 		sd_cmd->cmd_u0_jitter = 4;
+		break;
+	case CHIP_SW49501:
+		sd_cmd->cmd_open_node = 1;
+		sd_cmd->cmd_short_node = 2;
+		sd_cmd->cmd_m2_rawdata = 5;
+		sd_cmd->cmd_m1_rawdata = 3;
+		sd_cmd->cmd_jitter = 10;
+		sd_cmd->cmd_u0_jitter = 10;
 		break;
 	case CHIP_LG4946:
 		sd_cmd->cmd_jitter = 10;
