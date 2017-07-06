@@ -2407,7 +2407,7 @@ static int siw_hal_init(struct device *dev)
 		siw_hal_fb_notifier_init(dev);
 		init_retry = CHIP_INIT_RETRY_PROBE;
 	} else {
-		siw_hal_init_quirk(dev);
+		ret = siw_hal_init_quirk(dev);
 		if (ret < 0) {
 			goto out;
 		}
