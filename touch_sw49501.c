@@ -49,9 +49,8 @@
 #define CHIP_TYPE					CHIP_SW49501
 
 #define CHIP_MODE_ALLOWED			(0 |	\
-									LCD_MODE_BIT_U0 |	\
 									LCD_MODE_BIT_U3 |	\
-									LCD_MODE_BIT_U3_PARTIAL |	\
+									LCD_MODE_BIT_U3_QUICKCOVER |	\
 									LCD_MODE_BIT_STOP |	\
 									0)
 
