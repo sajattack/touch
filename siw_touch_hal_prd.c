@@ -119,6 +119,7 @@ enum {
 	/* for sd_test_flag */
 	OPEN_SHORT_RESULT_DATA_IDX = 24,
 	OPEN_SHORT_RESULT_RAWDATA_IDX,
+	OPEN_SHORT_RESULT_ALWAYS_IDX,
 
 	U0_JITTER_M1,
 };
@@ -155,6 +156,7 @@ enum {
 	/* */
 	OPEN_SHORT_RESULT_DATA_FLAG		= (1<<OPEN_SHORT_RESULT_DATA_IDX),
 	OPEN_SHORT_RESULT_RAWDATA_FLAG	= (1<<OPEN_SHORT_RESULT_RAWDATA_IDX),
+	OPEN_SHORT_RESULT_ALWAYS_FLAG	= (1<<OPEN_SHORT_RESULT_ALWAYS_IDX),
 
 	U0_JITTER_M1_FLAG			= (1<<U0_JITTER_M1),
 };
@@ -5934,6 +5936,13 @@ static int siw_hal_prd_init_param(struct device *dev)
 			if (found) {
 				t_prd_dbg_base(prd, "%s[%s] param %d selected\n",
 					touch_chip_name(ts), fw->product_id, idx);
+
+				t_prd_info(prd, "sd_test_flag %Xh, lpwg_sd_test_flag %Xh\n",
+					param->sd_test_flag, param->lpwg_sd_test_flag);
+
+				if (param->sd_test_flag & OPEN_SHORT_RESULT_ALWAYS_FLAG) {
+					prd->dbg_mask |= PRD_DBG_OPEN_SHORT_DATA;
+				}
 
 				ret = siw_hal_prd_parse_param(dev, param);
 				if (ret < 0) {
