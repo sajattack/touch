@@ -4359,7 +4359,19 @@ static int siw_hal_clock(struct device *dev, bool onoff)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
+	int state = atomic_read(&ts->state.sleep);
 	int ret = 0;
+
+	if (onoff) {
+		if (state != IC_DEEP_SLEEP) {
+			return 0;
+		}
+	} else {
+		if (state == IC_DEEP_SLEEP) {
+			t_dev_info(dev, "already sleep state\n");
+			return 0;
+		}
+	}
 
 	siw_touch_sys_osc(dev, onoff);
 
