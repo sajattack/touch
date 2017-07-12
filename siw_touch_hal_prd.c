@@ -5509,8 +5509,8 @@ static int siw_hal_prd_alloc_buffer(struct device *dev)
 
 	t_prd_dbg_base(prd, "[param alloc buffer]\n");
 
-	total_size = (ctrl->m2_row_col_buf_size<<2);
-	total_size += (ctrl->m1_row_col_size<<2);
+	total_size = (ctrl->m2_row_col_buf_size * 6);
+	total_size += (ctrl->m1_row_col_size * 3);
 	total_size += ctrl->delta_size;
 	total_size += ctrl->debug_buf_size;
 	total_size += ctrl->label_tmp_size;
@@ -5523,11 +5523,9 @@ static int siw_hal_prd_alloc_buffer(struct device *dev)
 	case CHIP_LG4951:
 	case CHIP_SW1828:
 	case CHIP_SW49105:
-		total_size += ctrl->m1_row_col_size;
 		prd->open_result_type = 0;
 		break;
 	default:
-		total_size += ctrl->m2_row_col_buf_size;
 		prd->open_result_type = 1;
 		break;
 	}
@@ -5570,13 +5568,9 @@ static int siw_hal_prd_alloc_buffer(struct device *dev)
 	prd->short_buf_result_rawdata = (int16_t *)buf;
 	buf += ctrl->m2_row_col_buf_size;
 	prd->open_buf_result_data = (int16_t *)buf;
-	if (prd->open_result_type) {
-		buf += ctrl->m2_row_col_buf_size;
-	} else {
-		buf += ctrl->m1_row_col_size;
-	}
+	buf += ctrl->m2_row_col_buf_size;
 	prd->short_buf_result_data = (int16_t *)buf;
-	buf += ctrl->m1_row_col_size;
+	buf += ctrl->m2_row_col_buf_size;
 
 	prd->buf_delta = (int16_t *)buf;
 	buf += ctrl->delta_size;
