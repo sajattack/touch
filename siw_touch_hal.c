@@ -4298,6 +4298,109 @@ static int siw_hal_lpwg_control(struct device *dev, int mode)
 #define SIW_OSC_CTL_T2		0xFE1
 #define SIW_CLK_CTL_T2		0xFE2
 
+struct siw_clock_setup {
+	const int count;
+	const u32 *data;
+};
+
+static int siw_hal_clock_osc_base(struct device *dev,
+			const struct siw_clock_setup *setup, int onoff)
+{
+	u32 value;
+	int i;
+
+	if (setup == NULL) {
+		t_dev_info(dev, "osc %s\n",
+			(onoff) ? "on" : "off");
+		siw_hal_write_value(dev, SIW_OSC_CTL_T2, !!onoff);
+		return 0;
+	}
+
+	for (i = 0; i < setup->count; i++) {
+		value = setup->data[i];
+		t_dev_info(dev, "osc %s : %Xh\n",
+			(onoff) ? "on" : "off", value);
+		siw_hal_write_value(dev, SIW_OSC_CTL_T2, value);
+		touch_msleep(1);
+	}
+
+	return 0;
+}
+
+static const u32 osc_setup_data_on_base[3] = {
+	0x01, 0x03, 0x07,
+};
+
+static const u32 osc_setup_data_off_base[3] = {
+	0x03, 0x01, 0x00,
+};
+
+static const struct siw_clock_setup osc_setup_spi_on_base = {
+	.count = 3,
+	.data = osc_setup_data_on_base,
+};
+
+static const struct siw_clock_setup osc_setup_spi_off_base = {
+	.count = 3,
+	.data = osc_setup_data_off_base,
+};
+
+static const struct siw_clock_setup osc_setup_i2c_on_base = {
+	.count = 1,
+	.data = &osc_setup_data_on_base[2],
+};
+
+static const struct siw_clock_setup osc_setup_i2c_off_base = {
+	.count = 1,
+	.data = &osc_setup_data_off_base[0],
+};
+
+static int siw_hal_clock_type_2_osc(struct device *dev, bool onoff)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	int is_spi = !!(touch_bus_type(ts) == BUS_IF_SPI);
+	const struct siw_clock_setup *osc_setup = NULL;
+
+	switch (touch_chip_type(ts)) {
+	case CHIP_SW49501:
+		if (onoff) {
+			osc_setup = (is_spi) ? &osc_setup_spi_on_base : \
+									&osc_setup_i2c_on_base;
+		} else {
+			osc_setup = (is_spi) ? &osc_setup_spi_off_base : \
+									&osc_setup_i2c_off_base;
+		}
+		break;
+	}
+
+	if (onoff) {
+		/* I2C needs touch reset. */
+		if (!is_spi) {
+			return 0;
+		}
+	}
+
+	siw_hal_clock_osc_base(dev, osc_setup, onoff);
+
+	return 0;
+}
+
+static int siw_hal_clock_type_2_clk(struct device *dev, bool onoff)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	int is_spi = !!(touch_bus_type(ts) == BUS_IF_SPI);
+
+	if (!is_spi) {
+		return 0;
+	}
+
+	siw_hal_write_value(dev, SIW_CLK_CTL_T2, !!onoff);
+
+	return 0;
+}
+
 static int siw_hal_clock_type_2(struct device *dev, bool onoff)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
@@ -4308,17 +4411,13 @@ static int siw_hal_clock_type_2(struct device *dev, bool onoff)
 		 * [Notice]
 		 * I2C needs touch reset.
 		 */
-		if (touch_bus_type(ts) == BUS_IF_SPI) {
-			siw_hal_write_value(dev, SIW_OSC_CTL_T2, onoff);
-			siw_hal_write_value(dev, SIW_CLK_CTL_T2, onoff);
-		}
+		siw_hal_clock_type_2_osc(dev, onoff);
+		siw_hal_clock_type_2_clk(dev, onoff);
 		atomic_set(&ts->state.sleep, IC_NORMAL);
 	} else {
 		if (chip->lcd_mode == LCD_MODE_U0) {
-			if (touch_bus_type(ts) == BUS_IF_SPI) {
-				siw_hal_write_value(dev, SIW_CLK_CTL_T2, onoff);
-			}
-			siw_hal_write_value(dev, SIW_OSC_CTL_T2, onoff);
+			siw_hal_clock_type_2_clk(dev, onoff);
+			siw_hal_clock_type_2_osc(dev, onoff);
 			atomic_set(&ts->state.sleep, IC_DEEP_SLEEP);
 		}
 	}
