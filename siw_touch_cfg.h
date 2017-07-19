@@ -14,8 +14,13 @@
 #ifndef __SIW_TOUCH_CFG_H
 #define __SIW_TOUCH_CFG_H
 
+#if defined(CONFIG_PINCTRL)
 #define __SIW_SUPPORT_PINCTRL
+#endif
+
+#if defined(CONFIG_REGULATOR)
 #define __SIW_SUPPORT_PWRCTRL
+#endif
 
 //#define __SIW_SUPPORT_MISC
 
