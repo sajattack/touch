@@ -114,6 +114,7 @@ enum {
 	/* */
 	U3_JITTER_TEST,
 	U0_JITTER_TEST,
+	SHORT_FULL_TEST,
 	UX_INVALID,
 
 	/* for sd_test_flag */
@@ -153,6 +154,7 @@ enum {
 	U3_BLU_JITTER_TEST_FLAG 	= (1<<U3_BLU_JITTER_TEST),
 	U3_JITTER_TEST_FLAG			= (1<<U3_JITTER_TEST),
 	U0_JITTER_TEST_FLAG			= (1<<U0_JITTER_TEST),
+	SHORT_FULL_TEST_FLAG		= (1<<SHORT_FULL_TEST),
 	/* */
 	OPEN_SHORT_RESULT_DATA_FLAG		= (1<<OPEN_SHORT_RESULT_DATA_IDX),
 	OPEN_SHORT_RESULT_RAWDATA_FLAG	= (1<<OPEN_SHORT_RESULT_RAWDATA_IDX),
@@ -316,6 +318,7 @@ struct siw_hal_prd_sd_cmd {
 	u32 cmd_m1_rawdata;
 	u32 cmd_jitter;
 	u32 cmd_u0_jitter;
+	u32 cmd_short_full;
 };
 
 enum _SIW_PRD_DBG_MASK_FLAG {
@@ -1753,6 +1756,10 @@ static int prd_write_test_mode(struct siw_hal_prd_data *prd, int type)
 		testmode = (U3_TEST_PRE_CMD << 8) + sd_cmd->cmd_short_node;
 		waiting_time = 1000;
 		break;
+	case SHORT_FULL_TEST:
+		testmode = (U3_TEST_PRE_CMD << 8) + sd_cmd->cmd_short_full;
+		waiting_time = 1000;
+		break;
 	/* */
 	case U3_BLU_JITTER_TEST:
 		testmode = ((U3_TEST_PRE_CMD << 8) + sd_cmd->cmd_jitter) | line_filter_option;
@@ -1981,6 +1988,11 @@ static int prd_os_result_rawdata_get(struct siw_hal_prd_data *prd, int type)
 	u16 open_data_offset = 0;
 	u16 short_data_offset = 0;
 	u32 os_result_offset;
+	u32 data_offset;
+	u32 read_size;
+	int16_t *buf_result_data = NULL;
+	char *info_str_title = NULL;
+	char *info_str_log = NULL;
 	int ret = 0;
 
 	ret = siw_hal_read_value(dev,
@@ -1994,51 +2006,62 @@ static int prd_os_result_rawdata_get(struct siw_hal_prd_data *prd, int type)
 
 	switch (type) {
 	case OPEN_NODE_TEST:
-		prd_write_file(prd, "\n[OPEN_NODE_TEST Result Rawdata]\n",
-			TIME_INFO_SKIP);
-		t_prd_info(prd, "Open Node Raw Data Offset = %x\n",
-			open_data_offset);
-		t_prd_info(prd, "[OPEN_NODE_TEST Result Rawdata]\n");
+		info_str_title = "\n[OPEN_NODE_TEST Result Rawdata]\n";
+		info_str_log = "OPEN_NODE_TEST";
 
-		//offset write
-		ret = siw_hal_write_value(dev, reg->serial_data_offset,
-				open_data_offset);
-		if (ret < 0) {
-			goto out;
-		}
+		data_offset = open_data_offset;
 
-		//read open raw data
-		ret = siw_hal_reg_read(dev, reg->data_i2cbase_addr,
-				prd->open_buf_result_rawdata,
-				ctrl->m2_row_col_buf_size * PRD_RAWDATA_SIZE);
-		if (ret < 0) {
-			goto out;
-		}
+		buf_result_data = prd->open_buf_result_rawdata;
+
+		read_size = ctrl->m2_row_col_buf_size * PRD_RAWDATA_SIZE;
 		break;
 	case SHORT_NODE_TEST:
-		prd_write_file(prd, "\n[SHORT_NODE_TEST Result Rawdata]\n",
-			TIME_INFO_SKIP);
-		t_prd_info(prd, "Short Node Raw Data Offset = %x\n",
-			short_data_offset);
-		t_prd_info(prd, "[SHORT_NODE_TEST Result Rawdata]\n");
+		info_str_title = "\n[SHORT_NODE_TEST Result Rawdata]\n";
+		info_str_log = "SHORT_NODE_TEST";
 
-		//offset write
-		ret = siw_hal_write_value(dev, reg->serial_data_offset,
-				short_data_offset);
- 		if (ret < 0) {
-			goto out;
-		}
+		data_offset = short_data_offset;
 
-		//read short raw data
-		ret = siw_hal_reg_read(dev, reg->data_i2cbase_addr,
-				prd->short_buf_result_rawdata,
-				//(ctrl->m1_row_col_size * 2) * PRD_RAWDATA_SIZE);
-				ctrl->m2_row_col_buf_size * PRD_RAWDATA_SIZE);
-		if (ret < 0) {
-			goto out;
-		}
+		buf_result_data = prd->short_buf_result_rawdata;
+
+		read_size = ctrl->m2_row_col_buf_size * PRD_RAWDATA_SIZE;
+		break;
+	case SHORT_FULL_TEST:
+		info_str_title = "\n[SHORT_FULL_TEST Result Rawdata]\n";
+		info_str_log = "SHORT_FULL_TEST";
+
+		data_offset = short_data_offset;
+
+		buf_result_data = prd->short_buf_result_rawdata;
+
+		read_size = ctrl->m2_row_col_buf_size * PRD_RAWDATA_SIZE;
 		break;
 	}
+
+	if (info_str_log == NULL) {
+		t_prd_err(prd, "[result_rawdata_get] unknown type, %d\n", type);
+		goto out;
+	}
+
+	prd_write_file(prd, info_str_title, TIME_INFO_SKIP);
+
+	t_prd_info(prd, "%s Rawdata Offset = %xh\n", info_str_log, data_offset);
+	t_prd_info(prd, "%s", &info_str_title[1]);
+
+	//offset write
+	ret = siw_hal_write_value(dev, reg->serial_data_offset,
+			data_offset);
+	if (ret < 0) {
+		goto out;
+	}
+
+	//read open raw data
+	ret = siw_hal_reg_read(dev, reg->data_i2cbase_addr,
+			buf_result_data,
+			read_size);
+	if (ret < 0) {
+		goto out;
+	}
+
 out:
 	return ret;
 }
@@ -2052,6 +2075,9 @@ static int prd_os_result_data_get(struct siw_hal_prd_data *prd, int type)
 	u16 open_short_data_offset = 0;
 	u32 os_result_offset;
 	u32 read_size;
+	int16_t *buf_result_data = NULL;
+	char *info_str_title = NULL;
+	char *info_str_log = NULL;
 	int ret = 0;
 
 	ret = siw_hal_read_value(dev,
@@ -2064,52 +2090,58 @@ static int prd_os_result_data_get(struct siw_hal_prd_data *prd, int type)
 
 	switch (type) {
 	case OPEN_NODE_TEST:
-		prd_write_file(prd, "\n[OPEN_NODE_TEST Result Data]\n",
-			TIME_INFO_SKIP);
-		t_prd_info(prd, "Open Node Raw Offset = %x\n",
-			open_short_data_offset);
-		t_prd_info(prd, "[OPEN_NODE_TEST Result Data]\n");
+		info_str_title = "\n[OPEN_NODE_TEST Result Data]\n";
+		info_str_log = "OPEN_NODE_TEST";
 
-		//offset write
-		ret = siw_hal_write_value(dev, reg->serial_data_offset,
-				open_short_data_offset);
-		if (ret < 0) {
-			goto out;
-		}
+		buf_result_data = prd->open_buf_result_data;
 
 		read_size = (prd->open_result_type) ?	\
 				ctrl->m2_row_col_buf_size :	ctrl->m1_row_col_size;
-		//read open data
-		ret = siw_hal_reg_read(dev, reg->data_i2cbase_addr,
-				prd->open_buf_result_data,
-				read_size * PRD_RAWDATA_SIZE);
-		if (ret < 0) {
-			goto out;
-		}
+		read_size *= PRD_RAWDATA_SIZE;
 		break;
 	case SHORT_NODE_TEST:
-		prd_write_file(prd, "\n[SHORT_NODE_TEST Result Data]\n",
-			TIME_INFO_SKIP);
-		t_prd_info(prd, "Short Node Data Offset = %x\n",
-			open_short_data_offset);
-		t_prd_info(prd, "[SHORT_NODE_TEST Result Data]\n");
+		info_str_title = "\n[SHORT_NODE_TEST Result Data]\n";
+		info_str_log = "SHORT_NODE_TEST";
 
-		//offset write
-		ret = siw_hal_write_value(dev, reg->serial_data_offset,
-				open_short_data_offset);
-		if (ret < 0) {
-			goto out;
-		}
+		buf_result_data = prd->short_buf_result_data;
 
-		//read short data
-		ret = siw_hal_reg_read(dev, reg->data_i2cbase_addr,
-				prd->short_buf_result_data,
-				ctrl->m1_row_col_size * PRD_RAWDATA_SIZE);
-		if (ret < 0) {
-			goto out;
-		}
+		read_size = ctrl->m1_row_col_size * PRD_RAWDATA_SIZE;
+		break;
+	case SHORT_FULL_TEST:
+		info_str_title = "\n[SHORT_FULL_TEST Result Data]\n";
+		info_str_log = "SHORT_FULL_TEST";
+
+		buf_result_data = prd->short_buf_result_data;
+
+		read_size = ctrl->m2_row_col_buf_size * PRD_RAWDATA_SIZE;
 		break;
 	}
+
+	if (info_str_log == NULL) {
+		t_prd_err(prd, "[result_data_get] unknown type, %d\n", type);
+		goto out;
+	}
+
+	prd_write_file(prd, info_str_title, TIME_INFO_SKIP);
+
+	t_prd_info(prd, "%s Data Offset = %xh\n", info_str_log, open_short_data_offset);
+	t_prd_info(prd, "%s", &info_str_title[1]);
+
+	//offset write
+	ret = siw_hal_write_value(dev, reg->serial_data_offset,
+			open_short_data_offset);
+	if (ret < 0) {
+		goto out;
+	}
+
+	//read data
+	ret = siw_hal_reg_read(dev, reg->data_i2cbase_addr,
+			buf_result_data,
+			read_size);
+	if (ret < 0) {
+		goto out;
+	}
+
 out:
 	return ret;
 }
@@ -2138,6 +2170,10 @@ static int prd_print_os_data(struct siw_hal_prd_data *prd, int type)
 		break;
 	case SHORT_NODE_TEST:
 		col_size = param->m1_col;
+		os_buf = prd->short_buf_result_data;
+		break;
+	case SHORT_FULL_TEST:
+		col_size = param->col + param->col_add;
 		os_buf = prd->short_buf_result_data;
 		break;
 	}
@@ -2199,6 +2235,10 @@ static int prd_print_os_rawdata(struct siw_hal_prd_data *prd, u8 type)
 		break;
 	case SHORT_NODE_TEST:
 		col_size = 4;
+		os_buf = prd->short_buf_result_rawdata;
+		break;
+	case SHORT_FULL_TEST:
+		col_size = param->col + param->col_add;
 		os_buf = prd->short_buf_result_rawdata;
 		break;
 	}
@@ -2273,16 +2313,42 @@ static int prd_os_xline_result_read(struct siw_hal_prd_data *prd, int type)
 	return ret;
 }
 
+#define PRD_SD_ERROR_RET_FLAG	0x07
 
 static int prd_do_open_short_test(struct siw_hal_prd_data *prd)
 {
 	struct device *dev = prd->dev;
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_hal_reg *reg = chip->reg;
-	u32 open_result = 0;
-	u32 short_result = 0;
 	u32 openshort_all_result = 0;
+	u32 result;
 	int type = 0;
+	struct prd_os_con {
+		int type;
+		char *str;
+		int cmd;
+		int enable;
+	} os_con[3] = {
+		[0] = {
+			.type 	= OPEN_NODE_TEST,
+			.str 	= "open",
+			.cmd	= prd->sd_cmd.cmd_open_node,
+			.enable	= 1,
+		},
+		[1] = {
+			.type 	= SHORT_NODE_TEST,
+			.str 	= "short",
+			.cmd	= prd->sd_cmd.cmd_short_node,
+			.enable	= 1,
+		},
+		[2] = {
+			.type 	= SHORT_FULL_TEST,
+			.str 	= "short max",
+			.cmd	= prd->sd_cmd.cmd_short_full,
+			.enable	= prd->param.sd_test_flag & SHORT_FULL_TEST_FLAG,
+		},
+	};
+	int i;
 	int ret = 0;
 
 	/* Test Type Write */
@@ -2291,55 +2357,45 @@ static int prd_do_open_short_test(struct siw_hal_prd_data *prd)
 		return ret;
 	}
 
-	/* 1. open_test */
-	type = OPEN_NODE_TEST;
-	ret = prd_write_test_mode(prd, type);
-	if (ret < 0) {
-		return ret;
-	}
-	if (!ret) {
-		t_prd_err(prd, "write test mode failed\n");
-		return 0x3;
-	}
-
 	t_prd_dbg_base(prd, "result resister:%d \n", reg->tc_tsp_test_pf_result);
 
-	ret = siw_hal_read_value(dev,
-				reg->tc_tsp_test_pf_result,
-				&open_result);
-	if (ret < 0) {
-		return ret;
-	}
-	t_prd_info(prd, "open result = %d\n", open_result);
+	for (i = 0; i < ARRAY_SIZE(os_con); i++) {
+		type = os_con[i].type;
 
-	if (open_result | (prd->dbg_mask & PRD_DBG_OPEN_SHORT_DATA)) {
-		ret = prd_os_xline_result_read(prd, type);
+		if (!type) {
+			break;
+		}
+
+		if (!os_con[i].cmd || !os_con[i].enable) {
+			continue;
+		}
+
+		ret = prd_write_test_mode(prd, type);
 		if (ret < 0) {
 			return ret;
 		}
-	}
+		if (!ret) {
+			t_prd_err(prd, "write test mode failed\n");
+			return PRD_SD_ERROR_RET_FLAG;
+		}
 
-	/* 2. short_test */
-	type = SHORT_NODE_TEST;
-	ret = prd_write_test_mode(prd, type);
-	if (ret < 0) {
-		return ret;
-	}
-	if (!ret) {
-		t_prd_err(prd, "write test mode failed\n");
-		return 0x3;
-	}
+		ret = siw_hal_read_value(dev,
+					reg->tc_tsp_test_pf_result,
+					&result);
+		if (ret < 0) {
+			return ret;
+		}
+		t_prd_info(prd, "%s result = %d\n", os_con[i].str, result);
 
-	ret = siw_hal_read_value(dev,
-				reg->tc_tsp_test_pf_result,
-				&short_result);
-	t_prd_info(prd, "short result = %d\n", short_result);
+		if (result | (prd->dbg_mask & PRD_DBG_OPEN_SHORT_DATA)) {
+			ret = prd_os_xline_result_read(prd, type);
+			if (ret < 0) {
+				return ret;
+			}
+		}
 
-	if (short_result | (prd->dbg_mask & PRD_DBG_OPEN_SHORT_DATA)) {
-		ret = prd_os_xline_result_read(prd, type);
+		openshort_all_result |= (result<<i);
 	}
-
-	openshort_all_result = (open_result | (short_result<<1));
 
 	return openshort_all_result;
 }
@@ -3682,10 +3738,12 @@ static int prd_show_do_sd(struct siw_hal_prd_data *prd, char *buf)
 			size += siw_snprintf(buf, size,
 						"Channel Status : Pass\n");
 		} else {
+			int open_failed = (openshort_ret & 0x1);
+			int short_failed = ((openshort_ret>>1) & 0x3);
 			size += siw_snprintf(buf, size,
 						"Channel Status : Fail (open:%s/short:%s)\n",
-						((openshort_ret & 0x1) == 0x1) ? "F" : "P",
-						((openshort_ret & 0x2) == 0x2) ? "F" : "P");
+						(open_failed) ? "F" : "P",
+						(short_failed) ? "F" : "P");
 		}
 	}
 
@@ -5775,6 +5833,7 @@ static void siw_hal_prd_set_sd_cmd(struct siw_hal_prd_data *prd)
 	sd_cmd->cmd_m1_rawdata = M1_RAWDATA_TEST_POST_CMD;
 	sd_cmd->cmd_jitter = JITTER_TEST_POST_CMD;
 	sd_cmd->cmd_u0_jitter = JITTER_TEST_POST_CMD;
+	sd_cmd->cmd_short_full = 0;
 
 	switch (touch_chip_type(ts)) {
 	case CHIP_SW49407:
@@ -5792,6 +5851,7 @@ static void siw_hal_prd_set_sd_cmd(struct siw_hal_prd_data *prd)
 		sd_cmd->cmd_m1_rawdata = 3;
 		sd_cmd->cmd_jitter = 10;
 		sd_cmd->cmd_u0_jitter = 10;
+		sd_cmd->cmd_short_full = 12;
 		break;
 	case CHIP_LG4946:
 		sd_cmd->cmd_jitter = 10;
