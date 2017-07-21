@@ -426,6 +426,10 @@ static const char *prd_param_name_lg4946_g[] = {
 	"L0L53P1", "L0W53P1", NULL
 };
 
+static const char *prd_param_name_sw49501_type_1[] = {
+	"AURORA58", NULL
+};
+
 enum {
 	SD_FLAG_LG4894 		=	(0	|	\
 							U3_M2_RAWDATA_TEST_FLAG |	\
@@ -740,6 +744,26 @@ static const struct siw_hal_prd_param prd_params[] = {
 	/*
 	 * SW49501 group
 	 */
+	{	.chip_type = CHIP_SW49501,
+		.name = prd_param_name_sw49501_type_1,
+		.cmd_type = PRD_CMD_TYPE_1,
+		.addr = {
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_RAW, 0x1982),
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_BASELINE_EVEN, 0x1AA2),
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_DELTA, 0x1BC2),
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_LABEL, 0x1D16),
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_DEBUG, 0x14C8),
+			0,
+		},
+		__PRD_PARAM_DIMENSION(32, 18, 0, 32, PRD_M1_COL_SIZE, 1, 1),
+		__PRD_2ND_SCR(0, 0),
+		.sysfs_off_flag = PRD_SYS_EN_LPWG_SD,
+		.sd_test_flag = SD_FLAG_SW49501 |	\
+						SHORT_FULL_TEST_FLAG |	\
+						OPEN_SHORT_RESULT_DATA_FLAG |	\
+						OPEN_SHORT_RESULT_ALWAYS_FLAG,
+		.lpwg_sd_test_flag = 0,
+	},
 	{	.chip_type = CHIP_SW49501,
 		.name = NULL,	//NULL meas 'Last & Default'
 		.cmd_type = PRD_CMD_TYPE_1,
