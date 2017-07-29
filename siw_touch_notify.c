@@ -122,7 +122,7 @@ static int siw_touch_atomic_notifier_callback(struct notifier_block *this,
 		container_of(this, struct siw_ts, atomic_notif);
 
 	ts->notify_event = event;
-	ts->notify_data = *(int *)data;
+	ts->notify_data = (data == NULL) ? 0 : *(int *)data;
 
 	siw_touch_qd_notify_work_now(ts);
 
