@@ -2,7 +2,7 @@ menu "SiW Touch Support"
 
 config TOUCHSCREEN_SIW
 	tristate "Silicon Works Touch Driver Core"
-	depends on SPI_MASTER && I2C
+	depends on SPI_MASTER || I2C
 	default n
 	help
 	  Say Y here if you have a touchscreen interface using
