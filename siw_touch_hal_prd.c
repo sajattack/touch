@@ -6018,6 +6018,13 @@ static int siw_hal_prd_init_param(struct device *dev)
 			}
 
 			if (found) {
+				/* to disable prd control for a specific type */
+				if (!param->row || !param->col) {
+					t_prd_info(prd, "%s[%s] disabled\n",
+						touch_chip_name(ts), fw->product_id);
+					return -EFAULT;
+				}
+
 				t_prd_dbg_base(prd, "%s[%s] param %d selected\n",
 					touch_chip_name(ts), fw->product_id, idx);
 
@@ -6043,7 +6050,7 @@ static int siw_hal_prd_init_param(struct device *dev)
 		idx++;
 	}
 
-	t_prd_err(prd, "%s[%s] param not found\n",
+	t_prd_info(prd, "%s[%s] param not found\n",
 		touch_chip_name(ts), fw->product_id);
 
 	return -EFAULT;
