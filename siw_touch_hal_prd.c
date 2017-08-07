@@ -430,6 +430,10 @@ static const char *prd_param_name_sw49501_type_1[] = {
 	"AURORA58", NULL
 };
 
+static const char *prd_param_name_sw49106_type_1[] = {
+	"CSOTDEMO", NULL
+};
+
 enum {
 	SD_FLAG_LG4894 		=	(0	|	\
 							U3_M2_RAWDATA_TEST_FLAG |	\
@@ -486,6 +490,9 @@ enum {
 
 	SD_FLAG_SW49105			= __SD_FLAG_SW49XXX | OPEN_SHORT_RESULT_DATA_FLAG,
 	LPWG_SD_FLAG_SW49105	= __LPWG_SD_FLAG_SW49XXX,
+
+	SD_FLAG_SW49106			= __SD_FLAG_SW49XXX | OPEN_SHORT_RESULT_DATA_FLAG,
+	LPWG_SD_FLAG_SW49106	= __LPWG_SD_FLAG_SW49XXX,
 
 	SD_FLAG_SW49406			= __SD_FLAG_SW49XXX,
 	LPWG_SD_FLAG_SW49406	= __LPWG_SD_FLAG_SW49XXX,
@@ -680,6 +687,43 @@ static const struct siw_hal_prd_param prd_params[] = {
 		.sysfs_off_flag = 0,
 		.sd_test_flag = SD_FLAG_SW49105,
 		.lpwg_sd_test_flag = LPWG_SD_FLAG_SW49105,
+	},
+	/*
+	 * SW49106 group (Not fixed)
+	 */
+	{	.chip_type = CHIP_SW49106,
+		.name = prd_param_name_sw49106_type_1,
+		.cmd_type = PRD_CMD_TYPE_1,
+		.addr = {
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_RAW, 0xD82),
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_BASELINE_EVEN, 0xEA2),
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_DELTA, 0xFC2),
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_LABEL, 0x1116),
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_DEBUG, 0xC3F),
+			0,
+		},
+		__PRD_PARAM_DIMENSION(30, 18, 0, 32, PRD_M1_COL_SIZE, 1, 1),
+		__PRD_2ND_SCR(0, 0),
+		.sysfs_off_flag = 0,
+		.sd_test_flag = SD_FLAG_SW49106,
+		.lpwg_sd_test_flag = LPWG_SD_FLAG_SW49106,
+	},
+	{	.chip_type = CHIP_SW49106,
+		.name = NULL,	//NULL meas 'Last & Default'
+		.cmd_type = PRD_CMD_TYPE_1,
+		.addr = {
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_RAW, 0xF88),
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_BASELINE_EVEN, 0x104C),
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_DELTA, 0x1110),
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_LABEL, 0x1200),
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_DEBUG, 0xC3F),
+			0,
+		},
+		__PRD_PARAM_DIMENSION(28, 14, 0, 32, PRD_M1_COL_SIZE, 1, 1),
+		__PRD_2ND_SCR(0, 0),
+		.sysfs_off_flag = 0,
+		.sd_test_flag = SD_FLAG_SW49106,
+		.lpwg_sd_test_flag = LPWG_SD_FLAG_SW49106,
 	},
 	/*
 	 * SW49406 group (Not fixed)
@@ -1758,6 +1802,11 @@ static int prd_write_test_mode(struct siw_hal_prd_data *prd, int type)
 		break;
 	case CHIP_SW49407:
 		line_filter_option = 0;
+		break;
+	case CHIP_SW49106:
+		if(type == U0_JITTER_TEST) {
+			line_filter_option = 0;
+		}
 		break;
 	}
 
@@ -5607,6 +5656,7 @@ static int siw_hal_prd_alloc_buffer(struct device *dev)
 	case CHIP_LG4951:
 	case CHIP_SW1828:
 	case CHIP_SW49105:
+	case CHIP_SW49106:
 		prd->open_result_type = 0;
 		break;
 	default:
