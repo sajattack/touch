@@ -556,6 +556,7 @@ struct siw_touch_chip {
 #endif
 	struct siw_hal_reg_log reg_log[REG_LOG_MAX];
 	struct siw_hal_debug dbg;
+	int fw_abs_path;
 };
 
 static inline int hal_dbg_delay(struct siw_touch_chip *chip, int index)

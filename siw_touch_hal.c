@@ -3687,8 +3687,8 @@ static int siw_hal_fw_do_get_fw_abs(const struct firmware **fw_p,
 				const char *name,
                 struct device *dev)
 {
-	struct siw_touch_chip *chip = to_touch_chip(dev);
-	struct siw_ts *ts = chip->ts;
+//	struct siw_touch_chip *chip = to_touch_chip(dev);
+//	struct siw_ts *ts = chip->ts;
 	struct firmware *fw = NULL;
 	struct file *filp = NULL;
 	char *buf = NULL;
@@ -3734,7 +3734,6 @@ static int siw_hal_fw_do_get_fw_abs(const struct firmware **fw_p,
 
 	fw->data = buf;
 	fw->size = size;
-	fw->priv = ts;		//for identification
 
 	if (fw_p) {
 		*fw_p = fw;
@@ -3809,6 +3808,7 @@ static int siw_hal_fw_get_file(const struct firmware **fw_p,
 		src_path += 6;
 		src_len -= 6;
 	}
+	chip->fw_abs_path = abs_path;
 
 	strncpy(fwpath, src_path, src_len);
 	fwpath[src_len] = 0;
@@ -3843,9 +3843,10 @@ static void siw_hal_fw_release_firm(struct device *dev,
 			const struct firmware *fw)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
-	struct siw_ts *ts = chip->ts;
+//	struct siw_ts *ts = chip->ts;
 
-	if (fw->priv == (void *)ts) {
+	if (chip->fw_abs_path) {
+		chip->fw_abs_path = 0;
 		kfree(fw->data);
 		kfree(fw);
 		return;
@@ -3889,6 +3890,8 @@ static int siw_hal_upgrade(struct device *dev)
 	int i = 0;
 	int ret_val = 0;
 	int ret = 0;
+
+	chip->fw_abs_path = 0;
 
 	t_dev_info(dev, "fw type: %s\n", FW_TYPE_STR);
 
