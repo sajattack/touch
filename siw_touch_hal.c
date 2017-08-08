@@ -1728,6 +1728,7 @@ static const struct siw_ic_info_chip_proto siw_ic_info_chip_protos[] = {
 	{ CHIP_LG4951, 7, 4 },
 	{ CHIP_SW1828, 9, 4 },
 	{ CHIP_SW49105, 10, 4 },
+	{ CHIP_SW49106, 11, 4 },
 	{ CHIP_SW49406, 7, 4 },
 	{ CHIP_SW49407, 9, 4 },
 	{ CHIP_SW49408, 9, 4 },
@@ -7373,6 +7374,14 @@ static int siw_hal_chipset_option(struct siw_touch_chip *chip)
 		opt->t_sw_rst = 2;
 		opt->t_chk_sys_error = 1;
 		opt->t_chk_sys_fault = 1;
+		break;
+
+	case CHIP_SW49106:
+		opt->f_attn_opt = 1;
+		opt->t_boot_mode = 1;
+		opt->t_sts_mask = 1;
+		opt->t_sw_rst = 2;
+		opt->t_chk_tci_debug = 1;
 		break;
 
 	case CHIP_SW49406:
