@@ -43,6 +43,13 @@ config TOUCHSCREEN_SIW_SW1828
 	help
 	  If your device is SW1828, say Y
 
+config TOUCHSCREEN_SIW_SW49106
+	bool "Silicon Works Touch Driver for SW49106"
+	depends on TOUCHSCREEN_SIW
+	default n
+	help
+	  If your device is SW49106, say Y
+
 config TOUCHSCREEN_SIW_SW49407
 	bool "Silicon Works Touch Driver for SW49407"
 	depends on TOUCHSCREEN_SIW
