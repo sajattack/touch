@@ -460,7 +460,7 @@ int siw_touch_i2c_del_driver(void *data)
 #else	/* CONFIG_I2C */
 int siw_touch_i2c_add_driver(void *data)
 {
-	struct siw_touch_pdata *pdata = data;
+//	struct siw_touch_pdata *pdata = data;
 
 	t_pr_err("I2C : not supported in this system\n");
 	return -ENODEV;
@@ -468,7 +468,7 @@ int siw_touch_i2c_add_driver(void *data)
 
 int siw_touch_i2c_del_driver(void *data)
 {
-	struct siw_touch_pdata *pdata = data;
+//	struct siw_touch_pdata *pdata = data;
 
 	t_pr_err("I2C : not supported in this system\n");
 	return -ENODEV;
