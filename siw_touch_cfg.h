@@ -105,6 +105,10 @@
 #undef __SIW_SUPPORT_ABT
 #endif
 
+#ifdef __SIW_SUPPORT_PRD
+#undef __SIW_SUPPORT_PRD
+#endif
+
 #define __SIW_CONFIG_SYSTEM_PM
 #else	/* General case for Mobile */
 #define __SIW_CONFIG_PROX_ON_SUSPEND
