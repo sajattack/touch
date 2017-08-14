@@ -1093,6 +1093,61 @@ out:
 	return count;
 }
 
+static ssize_t _show_dbg_mon(struct device *dev, char *buf)
+{
+	struct siw_ts *ts = to_touch_core(dev);
+	struct siw_ts_thread *ts_thread = &ts->mon_thread;
+	const char *name = NULL;
+	int size = 0;
+
+	if (!(touch_flags(ts) & TOUCH_USE_MON_THREAD)) {
+		size += siw_snprintf(buf, size, "mon thread not enabled\n");
+		return (ssize_t)size;
+	}
+
+	name = (atomic_read(&ts_thread->state) == TS_THREAD_ON) ? "resume" : "pause";
+
+	size += siw_snprintf(buf, size, "mon thread is %s state\n", name);
+
+	size += siw_snprintf(buf, size, "\nUsage:\n");
+	size += siw_snprintf(buf, size, " pause  : echo 1 > dbg_mon\n");
+	size += siw_snprintf(buf, size, " resume : echo 0 > dbg_mon\n");
+
+	return (ssize_t)size;
+}
+
+static ssize_t _store_dbg_mon(struct device *dev,
+				const char *buf, size_t count)
+{
+	struct siw_ts *ts = to_touch_core(dev);
+	struct siw_touch_chip *chip = NULL;
+	int pause = 0;
+
+	if (!(touch_flags(ts) & TOUCH_USE_MON_THREAD)) {
+		t_dev_info(dev, "mon thread not enabled\n");
+		return count;
+	}
+
+	if (sscanf(buf, "%d", &pause) <= 0) {
+		siw_sysfs_err_invalid_param(dev);
+		return count;
+	}
+
+	chip = to_touch_chip(dev);
+
+	if (chip->driving_mode != LCD_MODE_U3) {
+		t_dev_info(dev, "can be controlled only in U3\n");
+		return count;
+	}
+
+	if (pause)
+		siw_touch_mon_pause(dev);
+	else
+		siw_touch_mon_resume(dev);
+
+	return count;
+}
+
 enum {
 	SYSFS_DBG_TEST_NONE = 0,
 	SYSFS_DBG_TEST_SYMLINK,
@@ -1316,6 +1371,9 @@ static SIW_TOUCH_ATTR(init_late, NULL,
 						_store_init_late);
 static SIW_TOUCH_ATTR(dbg_notify, NULL,
 						_store_dbg_notify);
+static SIW_TOUCH_ATTR(dbg_mon,
+						_show_dbg_mon,
+						_store_dbg_mon);
 static SIW_TOUCH_ATTR(dbg_test, NULL,
 						_store_dbg_test);
 static SIW_TOUCH_ATTR(glove_status,
@@ -1366,6 +1424,7 @@ static struct attribute *siw_touch_attribute_list[] = {
 	&_SIW_TOUCH_ATTR_T(irq_flag).attr,
 	&_SIW_TOUCH_ATTR_T(init_late).attr,
 	&_SIW_TOUCH_ATTR_T(dbg_notify).attr,
+	&_SIW_TOUCH_ATTR_T(dbg_mon).attr,
 	&_SIW_TOUCH_ATTR_T(dbg_test).attr,
 	&_SIW_TOUCH_ATTR_T(glove_status).attr,
 	&_SIW_TOUCH_ATTR_T(grab_status).attr,

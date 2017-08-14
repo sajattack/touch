@@ -186,6 +186,9 @@ enum {
 	/* */
 	DBG_FLAG_SKIP_IEVENT	= (1<<8),
 	DBG_FLAG_SKIP_UEVENT	= (1<<9),
+	/* */
+	DBG_FLAG_SKIP_MON_THREAD = (1<<24),
+	DBG_FLAG_TEST_MON_THREAD = (1<<25),
 };
 
 #define ETDBOOTFAIL			((ENOMEDIUM<<3) + 0x00)

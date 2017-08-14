@@ -957,6 +957,33 @@ static void siw_touch_finger_input_check_work_func(
 }
 #endif	/* __SIW_SUPPORT_ASC */
 
+static int siw_touch_mon_chk_pause(struct siw_ts *ts)
+{
+	struct siw_ts_thread *ts_thread = &ts->mon_thread;
+	int curr_state;
+
+	mutex_lock(&ts_thread->lock);
+	curr_state = (atomic_read(&ts->state.mon_ignore)) ?	\
+				TS_THREAD_PAUSE : TS_THREAD_ON;
+	atomic_set(&ts_thread->state, curr_state);
+	mutex_unlock(&ts_thread->lock);
+
+	return (curr_state == TS_THREAD_PAUSE);
+}
+
+static int siw_touch_mon_can_handler(struct siw_ts *ts)
+{
+	if (touch_get_dev_data(ts) == NULL) {
+		return 0;
+	}
+
+	if (atomic_read(&ts->state.core) != CORE_NORMAL) {
+		return 0;
+	}
+
+	return 1;
+}
+
 static int siw_touch_mon_thread(void *d)
 {
 	struct siw_ts *ts = d;
@@ -984,25 +1011,40 @@ static int siw_touch_mon_thread(void *d)
 
 		set_current_state(TASK_RUNNING);
 
-		if (atomic_read(&ts->state.core) != CORE_NORMAL) {
+		if (siw_touch_mon_chk_pause(ts)) {
 			continue;
 		}
 
-		if (atomic_read(&ts->state.mon_ignore)) {
-			atomic_set(&ts_thread->state, TS_THREAD_PAUSE);
-			continue;
+		if (siw_touch_mon_can_handler(ts)) {
+			ret = handler(dev, 0);
 		}
 
-		atomic_set(&ts_thread->state, TS_THREAD_ON);
-
-		ret = handler(dev, 0);
-
-		if (atomic_read(&ts->state.mon_ignore)) {
-			atomic_set(&ts_thread->state, TS_THREAD_PAUSE);
-		}
+		siw_touch_mon_chk_pause(ts);
 	}
 
 	atomic_set(&ts_thread->state, TS_THREAD_OFF);
+
+	return 0;
+}
+
+static int siw_touch_mon_hold_set(struct device *dev, int pause)
+{
+	struct siw_ts *ts = to_touch_core(dev);
+	struct siw_ts_thread *ts_thread = &ts->mon_thread;
+	char *name = (pause) ? "pause" : "resume";
+	int prev_state = (pause) ? TS_THREAD_ON : TS_THREAD_PAUSE;
+
+	if (ts_thread->thread == NULL) {
+		return -EINVAL;
+	}
+
+	if (atomic_read(&ts_thread->state) != prev_state) {
+		return -EINVAL;
+	}
+
+	t_dev_info(dev, "mon thread %s\n", name);
+
+	atomic_set(&ts->state.mon_ignore, !!pause);
 
 	return 0;
 }
@@ -1012,41 +1054,31 @@ static void siw_touch_mon_hold(struct device *dev, int pause)
 	struct siw_ts *ts = to_touch_core(dev);
 	struct siw_ts_thread *ts_thread = &ts->mon_thread;
 	char *name = (pause) ? "pause" : "resume";
-	int prev_state = (pause) ? TS_THREAD_ON : TS_THREAD_PAUSE;
 	int new_state = (pause) ? TS_THREAD_PAUSE : TS_THREAD_ON;
+	int ret = 0;
 
 	if (!(touch_flags(ts) & TOUCH_USE_MON_THREAD)) {
 		return;
 	}
 
 	mutex_lock(&ts_thread->lock);
-
-	if (ts_thread->thread == NULL) {
-		goto out;
+	ret = siw_touch_mon_hold_set(dev, pause);
+	mutex_unlock(&ts_thread->lock);
+	if (ret < 0) {
+		return;
 	}
-
-	if (atomic_read(&ts_thread->state) != prev_state) {
-		goto out;
-	}
-
-	t_dev_info(dev,
-			"mon thread %s\n", name);
-
-	atomic_set(&ts->state.mon_ignore, !!pause);
-
-	wake_up_process(ts_thread->thread);
 
 	while (1) {
+		wake_up_process(ts_thread->thread);
+
 		touch_msleep(1);
+
 		if (atomic_read(&ts_thread->state) == new_state)
 			break;
 
 		t_dev_info(dev,
 			"waiting for mon thread %s\n", name);
 	}
-
-out:
-	mutex_unlock(&ts_thread->lock);
 }
 
 void siw_touch_mon_pause(struct device *dev)
@@ -1082,6 +1114,13 @@ static int __used siw_touch_init_thread(struct siw_ts *ts)
 	int interval;
 	int ret = 0;
 
+	if (t_dbg_flag & DBG_FLAG_SKIP_MON_THREAD) {
+		ts->flags &= ~TOUCH_USE_MON_THREAD;
+	}
+	if (t_dbg_flag & DBG_FLAG_TEST_MON_THREAD) {
+		ts->flags |= TOUCH_USE_MON_THREAD;
+	}
+
 	if (!(touch_flags(ts) & TOUCH_USE_MON_THREAD)) {
 		goto out;
 	}
@@ -1112,9 +1151,11 @@ static int __used siw_touch_init_thread(struct siw_ts *ts)
 		goto out;
 	}
 
+/*
 	do {
 		touch_msleep(10);
 	} while (atomic_read(&ts->state.core) != CORE_NORMAL);
+*/
 
 	atomic_set(&ts_thread->state, TS_THREAD_OFF);
 	ts_thread->interval = interval;
