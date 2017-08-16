@@ -141,6 +141,7 @@ static int siw_touch_of_string(struct device *dev, void *np,
 	return ret;
 }
 
+#if defined(__SIW_SUPPORT_WATCH)
 static int siw_touch_parse_dts_watch(struct siw_ts *ts)
 {
 	struct device *dev = ts->dev;
@@ -156,7 +157,11 @@ static int siw_touch_parse_dts_watch(struct siw_ts *ts)
 out:
 	return 0;
 }
+#else	/* __SIW_SUPPORT_WATCH */
+#define siw_touch_parse_dts_watch(_ts)	({	int _r = 0;	_r; })
+#endif	/* __SIW_SUPPORT_WATCH */
 
+#if defined(__SIW_SUPPORT_PRD)
 /*
  * weak(dummy) function for PRD control
  * These are deactivated by enabling __SIW_SUPPORT_PRD
@@ -205,6 +210,9 @@ static int siw_touch_parse_dts_prd(struct siw_ts *ts)
 
 	return 0;
 }
+#else	/* __SIW_SUPPORT_PRD */
+#define siw_touch_parse_dts_prd(_ts)	({	int _r = 0;	_r; })
+#endif	/* __SIW_SUPPORT_PRD */
 
 static int siw_touch_do_parse_dts(struct siw_ts *ts)
 {
@@ -304,6 +312,7 @@ static int siw_touch_do_parse_dts(struct siw_ts *ts)
 		ts->i_id.version = tmp;
 
 	/* Role */
+#if defined(__SIW_CONFIG_KNOCK)
 	if (touch_test_quirks(ts, CHIP_QUIRK_NOT_SUPPORT_LPWG)) {
 		role->use_lpwg = 0;
 		role->use_lpwg_test = 0;
@@ -311,6 +320,10 @@ static int siw_touch_do_parse_dts(struct siw_ts *ts)
 		role->use_lpwg = siw_touch_of_bool(dev, np, "use_lpwg");
 		role->use_lpwg_test = siw_touch_of_u32(dev, np, "use_lpwg_test");
 	}
+#else	/* __SIW_CONFIG_KNOCK */
+	role->use_lpwg = 0;
+	role->use_lpwg_test = 0;
+#endif	/* __SIW_CONFIG_KNOCK */
 
 	/* Firmware */
 	role->use_firmware = siw_touch_of_bool(dev, np, "use_firmware");
@@ -402,7 +415,11 @@ static int siw_touch_parse_dts(struct siw_ts *ts)
 	memcpy((void *)&ts->i_id, (void *)&ts->pdata->i_id, sizeof(ts->i_id));
 
 	/* Role */
+#if defined(__SIW_CONFIG_KNOCK)
 	ts->role.use_lpwg = !touch_test_quirks(ts, CHIP_QUIRK_NOT_SUPPORT_LPWG);
+#else	/* __SIW_CONFIG_KNOCK */
+	ts->role.use_lpwg = 0;
+#endif	/* __SIW_CONFIG_KNOCK */
 
 	ts->role.use_firmware = 0;
 	ts->role.use_fw_upgrade = 0;
