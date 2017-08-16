@@ -4739,11 +4739,11 @@ static int siw_hal_tc_driving(struct device *dev, int mode)
 		return 0;
 	}
 
-	chip->driving_mode = mode;
-
 	if (touch_mode_not_allowed(ts, mode)) {
 		return -EPERM;
 	}
+
+	chip->driving_mode = mode;
 
 	switch (mode) {
 	case LCD_MODE_U0:
