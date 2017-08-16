@@ -1206,7 +1206,7 @@ static ssize_t __store_g_state(struct device *dev,
 
 	if (sscanf(buf, "%X", &value) <= 0) {
 		siw_sysfs_err_invalid_param(dev);
-		return count;
+		return -EINVAL;
 	}
 
 	t_dev_dbg_base(dev, "%s set: %s(%08Xh)\n",
@@ -1241,7 +1241,7 @@ static ssize_t _store_glove_state(struct device *dev,
 		mutex_unlock(&ts->lock);
 	}
 
-	return (ssize_t)ret;
+	return (ssize_t)count;
 }
 
 static ssize_t _show_grab_state(struct device *dev, char *buf)
@@ -1267,7 +1267,7 @@ static ssize_t _store_grab_state(struct device *dev,
 		mutex_unlock(&ts->lock);
 	}
 
-	return (ssize_t)ret;
+	return (ssize_t)count;
 }
 
 ssize_t __weak show_sys_con(struct device *dev, char *buf)
