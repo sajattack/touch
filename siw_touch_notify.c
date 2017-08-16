@@ -115,20 +115,6 @@ void siw_touch_notify_earjack(u32 type)
 }
 EXPORT_SYMBOL(siw_touch_notify_earjack);
 
-static int siw_touch_atomic_notifier_callback(struct notifier_block *this,
-				   unsigned long event, void *data)
-{
-	struct siw_ts *ts =
-		container_of(this, struct siw_ts, atomic_notif);
-
-	ts->notify_event = event;
-	ts->notify_data = (data == NULL) ? 0 : *(int *)data;
-
-	siw_touch_qd_notify_work_now(ts);
-
-	return 0;
-}
-
 static int _siw_touch_do_notify(struct siw_ts *ts,
 				   unsigned long event, void *data)
 {
@@ -139,12 +125,21 @@ static int _siw_touch_do_notify(struct siw_ts *ts,
 	u32 value = 0;
 	int ret = 0;
 
-	if (touch_get_dev_data(ts) == NULL) {
-		return 0;
-	}
-
 	if (data) {
 		value = *((int *)data);
+	}
+
+	switch (event) {
+	case LCD_EVENT_TOUCH_INIT_LATE:
+		ret = siw_touch_init_late(ts, value);
+
+		call_hal_notify = 0;
+		noti_str = "INIT_LATE";
+		goto out;
+	}
+
+	if (touch_get_dev_data(ts) == NULL) {
+		return 0;
 	}
 
 	if (siw_ops_is_null(ts, notify)) {
@@ -197,18 +192,12 @@ static int _siw_touch_do_notify(struct siw_ts *ts,
 		ret = siw_ops_notify(ts, event, data);
 		break;
 
-	case LCD_EVENT_TOUCH_INIT_LATE:
-		ret = siw_touch_init_late(ts);
-
-		call_hal_notify = 0;
-		noti_str = "INIT_LATE";
-		break;
-
 	default:
 		ret = siw_ops_notify(ts, event, data);
 		break;
 	}
 
+out:
 	if (!call_hal_notify) {
 		t_dev_info(dev, "notify: event %s(%Xh), value %Xh\n",
 			noti_str, (int)event, value);
@@ -221,19 +210,18 @@ static int _siw_touch_do_notify(struct siw_ts *ts,
 int siw_touch_notify(struct siw_ts *ts, unsigned long event, void *data)
 {
 	int noti_allowed = 0;
-	int core_state = 0;
+	int core_state = atomic_read(&ts->state.core);
 	int ret = 0;
 
-	if (siw_touch_get_boot_mode() == SIW_TOUCH_CHARGER_MODE) {
-		return 0;
-	}
-
-	core_state = atomic_read(&ts->state.core);
 	switch (event) {
 	case LCD_EVENT_TOUCH_INIT_LATE:
 		noti_allowed = !!(core_state == CORE_PROBE);
 		break;
 	default:
+		if (ts->is_charger) {
+			return 0;
+		}
+
 		noti_allowed = !!(core_state == CORE_NORMAL);
 		break;
 	}
@@ -258,6 +246,20 @@ static int siw_touch_blocking_notifier_callback(struct notifier_block *this,
 	struct siw_ts *ts =
 		container_of(this, struct siw_ts, blocking_notif);
 	return siw_touch_notify(ts, event, data);
+}
+
+static int siw_touch_atomic_notifier_callback(struct notifier_block *this,
+				   unsigned long event, void *data)
+{
+	struct siw_ts *ts =
+		container_of(this, struct siw_ts, atomic_notif);
+
+	ts->notify_event = event;
+	ts->notify_data = (data == NULL) ? 0 : *(int *)data;
+
+	siw_touch_qd_notify_work_now(ts);
+
+	return 0;
 }
 
 void siw_touch_atomic_notifer_work_func(struct work_struct *work)

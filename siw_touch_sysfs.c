@@ -1048,7 +1048,7 @@ static ssize_t _store_irq_flag(struct device *dev,
 static ssize_t _store_init_late(struct device *dev,
 				const char *buf, size_t count)
 {
-	struct siw_ts *ts = to_touch_core(dev);
+//	struct siw_ts *ts = to_touch_core(dev);
 	int value = 0;
 
 	if (sscanf(buf, "%X", &value) <= 0) {
@@ -1060,7 +1060,9 @@ static ssize_t _store_init_late(struct device *dev,
 		goto out;
 	}
 
-	siw_touch_init_late(ts);
+	siw_touch_atomic_notifier_call(
+		LCD_EVENT_TOUCH_INIT_LATE,
+		&value);
 
 out:
 	return count;
@@ -1390,6 +1392,19 @@ static SIW_TOUCH_ATTR(sys_con,
 static struct attribute *siw_touch_attribute_list[] = {
 	&_SIW_TOUCH_ATTR_T(platform_data).attr,
 	&_SIW_TOUCH_ATTR_T(driver_data).attr,
+	&_SIW_TOUCH_ATTR_T(module_info).attr,
+	&_SIW_TOUCH_ATTR_T(dbg_mask).attr,
+	&_SIW_TOUCH_ATTR_T(dbg_flag).attr,
+	&_SIW_TOUCH_ATTR_T(init_late).attr,
+	&_SIW_TOUCH_ATTR_T(dbg_notify).attr,
+	NULL,
+};
+
+static const struct attribute_group siw_touch_attribute_group = {
+	.attrs = siw_touch_attribute_list,
+};
+
+static struct attribute *siw_touch_attribute_list_normal[] = {
 	&_SIW_TOUCH_ATTR_T(fw_upgrade).attr,
 #if defined(__SIW_CONFIG_KNOCK)
 	&_SIW_TOUCH_ATTR_T(lpwg_data).attr,
@@ -1410,6 +1425,7 @@ static struct attribute *siw_touch_attribute_list[] = {
 	&_SIW_TOUCH_ATTR_T(sp_link_touch_off).attr,
 	&_SIW_TOUCH_ATTR_T(irq_state).attr,
 	&_SIW_TOUCH_ATTR_T(irq_level).attr,
+	&_SIW_TOUCH_ATTR_T(irq_flag).attr,
 	&_SIW_TOUCH_ATTR_T(debug_tool).attr,
 	&_SIW_TOUCH_ATTR_T(debug_tool_t).attr,
 	&_SIW_TOUCH_ATTR_T(debug_option).attr,
@@ -1418,12 +1434,6 @@ static struct attribute *siw_touch_attribute_list[] = {
 	&_SIW_TOUCH_ATTR_T(asc).attr,
 	&_SIW_TOUCH_ATTR_T(onhand).attr,
 #endif	/* __SIW_SUPPORT_ASC */
-	&_SIW_TOUCH_ATTR_T(module_info).attr,
-	&_SIW_TOUCH_ATTR_T(dbg_mask).attr,
-	&_SIW_TOUCH_ATTR_T(dbg_flag).attr,
-	&_SIW_TOUCH_ATTR_T(irq_flag).attr,
-	&_SIW_TOUCH_ATTR_T(init_late).attr,
-	&_SIW_TOUCH_ATTR_T(dbg_notify).attr,
 	&_SIW_TOUCH_ATTR_T(dbg_mon).attr,
 	&_SIW_TOUCH_ATTR_T(dbg_test).attr,
 	&_SIW_TOUCH_ATTR_T(glove_status).attr,
@@ -1432,8 +1442,20 @@ static struct attribute *siw_touch_attribute_list[] = {
 	NULL,
 };
 
-static const struct attribute_group siw_touch_attribute_group = {
-	.attrs = siw_touch_attribute_list,
+static const struct attribute_group siw_touch_attribute_group_normal = {
+	.attrs = siw_touch_attribute_list_normal,
+};
+
+static struct attribute *siw_touch_attribute_list_charger[] = {
+#if defined(__SIW_CONFIG_KNOCK)
+	&_SIW_TOUCH_ATTR_T(mfts).attr,
+	&_SIW_TOUCH_ATTR_T(mfts_lpwg).attr,
+#endif
+	NULL,
+};
+
+static const struct attribute_group siw_touch_attribute_group_charger = {
+	.attrs = siw_touch_attribute_list_charger,
 };
 
 static ssize_t siw_touch_attr_show(struct kobject *kobj,
@@ -1478,15 +1500,6 @@ static struct kobj_type siw_touch_kobj_type = {
 	.sysfs_ops = &siw_touch_sysfs_ops,
 };
 
-int __weak siw_touch_misc_init(struct device *dev)
-{
-	return 0;
-}
-
-void __weak siw_touch_misc_free(struct device *dev)
-{
-
-}
 
 int siw_touch_init_sysfs(struct siw_ts *ts)
 {
@@ -1511,22 +1524,11 @@ int siw_touch_init_sysfs(struct siw_ts *ts)
 
 	ret = sysfs_create_group(kobj, &siw_touch_attribute_group);
 	if (ret < 0) {
-		t_dev_err(dev, "failed to create sysfs\n");
+		t_dev_err(dev, "failed to add sysfs(initial)\n");
 		goto out_sys;
 	}
 
-	ret = siw_ops_sysfs(ts, DRIVER_INIT);
-	if (ret < 0) {
-		t_dev_err(dev, "failed to register sysfs\n");
-		goto out_sysfs;
-	}
-
-	siw_touch_misc_init(dev);
-
 	return 0;
-
-out_sysfs:
-	sysfs_remove_group(kobj, &siw_touch_attribute_group);
 
 out_sys:
 	kobject_del(kobj);
@@ -1545,12 +1547,137 @@ void siw_touch_free_sysfs(struct siw_ts *ts)
 		return;
 	}
 
-	siw_touch_misc_free(dev);
-
-	siw_ops_sysfs(ts, DRIVER_FREE);
-
 	sysfs_remove_group(&ts->kobj, &siw_touch_attribute_group);
 
 	kobject_del(&ts->kobj);
 }
+
+int __weak siw_touch_misc_init(struct device *dev)
+{
+	return 0;
+}
+
+void __weak siw_touch_misc_free(struct device *dev)
+{
+
+}
+
+static int siw_touch_add_sysfs_normal(struct siw_ts *ts)
+{
+	struct device *dev = ts->dev;
+	struct kobject *kobj = &ts->kobj;
+	int ret;
+
+	ret = sysfs_create_group(kobj, &siw_touch_attribute_group_normal);
+	if (ret < 0) {
+		t_dev_err(dev, "failed to add sysfs(normal)\n");
+		goto out;
+	}
+
+	ret = siw_ops_sysfs(ts, DRIVER_INIT);
+	if (ret < 0) {
+		t_dev_err(dev, "failed to add sysfs(ops)\n");
+		goto out_ops_sysfs;
+	}
+
+	return 0;
+
+out_ops_sysfs:
+	sysfs_remove_group(kobj, &siw_touch_attribute_group_normal);
+
+out:
+	return ret;
+}
+
+static void siw_touch_del_sysfs_normal(struct siw_ts *ts)
+{
+//	struct device *dev = ts->dev;
+	struct kobject *kobj = &ts->kobj;
+
+	siw_ops_sysfs(ts, DRIVER_FREE);
+
+	sysfs_remove_group(kobj, &siw_touch_attribute_group_normal);
+}
+
+static int siw_touch_add_sysfs_charger(struct siw_ts *ts)
+{
+	struct device *dev = ts->dev;
+	struct kobject *kobj = &ts->kobj;
+	int ret;
+
+	ret = sysfs_create_group(kobj, &siw_touch_attribute_group_charger);
+	if (ret < 0) {
+		t_dev_err(dev, "failed to add sysfs(charger)\n");
+		goto out;
+	}
+
+out:
+	return ret;
+}
+
+static void siw_touch_del_sysfs_charger(struct siw_ts *ts)
+{
+//	struct device *dev = ts->dev;
+	struct kobject *kobj = &ts->kobj;
+
+	sysfs_remove_group(kobj, &siw_touch_attribute_group_charger);
+}
+
+static int siw_touch_do_add_sysfs(struct siw_ts *ts)
+{
+	if (ts->is_charger) {
+		return siw_touch_add_sysfs_charger(ts);
+	}
+
+	return siw_touch_add_sysfs_normal(ts);
+}
+
+static void siw_touch_do_del_sysfs(struct siw_ts *ts)
+{
+	if (ts->is_charger) {
+		siw_touch_del_sysfs_charger(ts);
+		return;
+	}
+
+	siw_touch_del_sysfs_normal(ts);
+}
+
+int siw_touch_add_sysfs(struct siw_ts *ts)
+{
+	struct device *dev = ts->dev;
+	struct device *idev = &ts->input->dev;
+	struct kobject *kobj = &ts->kobj;
+	int ret = 0;
+
+	if (kobj->parent != idev->kobj.parent) {
+		t_dev_err(dev, "Invalid kobject\n");
+		return -EINVAL;
+	}
+
+	ret = siw_touch_do_add_sysfs(ts);
+	if (ret < 0) {
+		return ret;
+	}
+
+	siw_touch_misc_init(dev);
+
+	return 0;
+}
+
+void siw_touch_del_sysfs(struct siw_ts *ts)
+{
+	struct device *dev = ts->dev;
+	struct device *idev = &ts->input->dev;
+	struct kobject *kobj = &ts->kobj;
+
+	if (kobj->parent != idev->kobj.parent) {
+		t_dev_warn(dev, "Invalid kobject\n");
+		return;
+	}
+
+	siw_touch_misc_free(dev);
+
+	siw_touch_do_del_sysfs(ts);
+}
+
 

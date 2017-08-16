@@ -1027,6 +1027,7 @@ struct siw_ts {
 
 	struct mutex lock;
 	struct mutex reset_lock;
+	struct mutex probe_lock;
 	struct workqueue_struct *wq;
 	struct delayed_work init_work;
 	struct delayed_work upgrade_work;
@@ -1104,7 +1105,11 @@ struct siw_ts {
 	atomic_t recur_chk;
 
 	/* */
+	int is_charger;
+
+	/* */
 	int (*init_late)(void *data);
+	int init_late_done;
 };
 
 enum {
@@ -1678,7 +1683,7 @@ extern void siw_touch_mon_resume(struct device *dev);
 extern int siw_touch_probe(struct siw_ts *ts);
 extern int siw_touch_remove(struct siw_ts *ts);
 
-extern int siw_touch_init_late(void *data);
+extern int siw_touch_init_late(struct siw_ts *ts, int value);
 
 extern int siw_touch_notify(struct siw_ts *ts, unsigned long event, void *data);
 
