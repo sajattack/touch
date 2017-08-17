@@ -7124,6 +7124,42 @@ static int siw_hal_mon_hanlder_do_op(struct device *dev,
 	return ret;
 }
 
+static int siw_hal_mon_handler_skip(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+
+	if (atomic_read(&ts->state.sleep) != IC_NORMAL) {
+		return 1;
+	}
+
+	if (atomic_read(&ts->state.fb) != FB_RESUME) {
+		return 1;
+	}
+
+	if (atomic_read(&ts->state.pm) != DEV_PM_RESUME) {
+		return 1;
+	}
+
+	if (atomic_read(&ts->state.core) != CORE_NORMAL) {
+		return 1;
+	}
+
+	if (atomic_read(&chip->init) != IC_INIT_DONE) {
+		return 1;
+	}
+
+	if (chip->lcd_mode != LCD_MODE_U3) {
+		return 1;
+	}
+
+	if (chip->driving_mode != LCD_MODE_U3) {
+		return 1;
+	}
+
+	return 0;
+}
+
 static void siw_hal_mon_handler_self_reset(struct device *dev, char *title)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
@@ -7134,19 +7170,7 @@ static void siw_hal_mon_handler_self_reset(struct device *dev, char *title)
 	int step;
 	int ret = 0;
 
-	if (atomic_read(&ts->state.pm) > DEV_PM_RESUME) {
-		return;
-	}
-
-	if (atomic_read(&ts->state.core) != CORE_NORMAL) {
-		return;
-	}
-
-	if (atomic_read(&chip->init) == IC_INIT_NEED) {
-		return;
-	}
-
-	if (chip->lcd_mode != LCD_MODE_U3) {
+	if (siw_hal_mon_handler_skip(dev)) {
 		return;
 	}
 
