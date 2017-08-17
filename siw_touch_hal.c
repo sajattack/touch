@@ -2518,6 +2518,8 @@ static int siw_hal_reinit(struct device *dev,
 
 	siw_touch_irq_control(dev, INTERRUPT_DISABLE);
 
+	atomic_set(&chip->init, IC_INIT_NEED);
+
 	if (pwr_con) {
 		siw_hal_power(dev, POWER_OFF);
 		siw_hal_power(dev, POWER_ON);
@@ -2526,7 +2528,6 @@ static int siw_hal_reinit(struct device *dev,
 		touch_msleep(1 + hal_dbg_delay(chip, HAL_DBG_DLY_HW_RST_0));
 		siw_hal_set_gpio_reset(dev, GPIO_OUT_ONE);
 	}
-	atomic_set(&chip->init, IC_INIT_NEED);
 
 	touch_msleep(delay);
 
@@ -2632,6 +2633,8 @@ static int siw_hal_sw_reset(struct device *dev)
 
 	siw_touch_irq_control(dev, INTERRUPT_DISABLE);
 
+	atomic_set(&chip->init, IC_INIT_NEED);
+
 	switch (chip->opt.t_sw_rst) {
 	case 2:
 		ret = siw_hal_sw_reset_type_2(dev);
@@ -2645,8 +2648,6 @@ static int siw_hal_sw_reset(struct device *dev)
 		ret = siw_hal_sw_reset_default(dev);
 		break;
 	}
-
-	atomic_set(&chip->init, IC_INIT_NEED);
 
 	siw_touch_qd_init_work_sw(ts);
 
