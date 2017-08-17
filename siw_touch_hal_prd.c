@@ -5118,11 +5118,14 @@ static ssize_t prd_show_dbg_mask(struct device *dev, char *buf)
 	int size = 0;
 
 	size += siw_snprintf(buf, size,
-				"prd_dbg_mask %08Xh\n\n",
+				"prd->dbg_mask %08Xh\n",
 				prd->dbg_mask);
+	size += siw_snprintf(buf, size,
+				"t_prd_dbg_mask %08Xh\n",
+				t_prd_dbg_mask);
 
 	size += siw_snprintf(buf, size,
-				"Usage:\n");
+				"\nUsage:\n");
 	size += siw_snprintf(buf, size,
 				" prd->dbg_mask  : echo 0 {mask_value} > prd_dbg_mask\n");
 	size += siw_snprintf(buf, size,
