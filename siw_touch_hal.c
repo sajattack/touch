@@ -3899,6 +3899,24 @@ static void siw_hal_fw_release_firm(struct device *dev,
  * 2-3 echo {root}/.../fw_img > fw_upgrade
  *     do force-upgrade using normal file open control (absolute path)
  */
+static int siw_hal_upgrade_not_allowed(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+
+	if (atomic_read(&chip->init) == IC_INIT_NEED) {
+		t_dev_warn(dev, "Not Ready, Need IC init (fw)\n");
+		return 1;
+	}
+
+	if (atomic_read(&ts->state.fb) >= FB_SUSPEND) {
+		t_dev_warn(dev, "state.fb is not FB_RESUME\n");
+		return 1;
+	}
+
+	return 0;
+}
+
 static int siw_hal_upgrade(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
@@ -3918,8 +3936,7 @@ static int siw_hal_upgrade(struct device *dev)
 
 	t_dev_info(dev, "fw type: %s\n", FW_TYPE_STR);
 
-	if (atomic_read(&ts->state.fb) >= FB_SUSPEND) {
-		t_dev_warn(dev, "state.fb is not FB_RESUME\n");
+	if (siw_hal_upgrade_not_allowed(dev)) {
 		return -EPERM;
 	}
 
