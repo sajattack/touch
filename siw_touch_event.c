@@ -131,7 +131,7 @@ void siw_touch_report_event(void *ts_data)
 						ts->tdata[i].orientation);
 
 			if (press_mask & (1 << i)) {
-				t_dev_dbg_abs(idev, "%d finger press <%d> (%4d, %4d, %4d)\n",
+				t_dev_dbg_button(idev, "%d finger press <%d> (%4d, %4d, %4d)\n",
 						ts->tcount,
 						i,
 						ts->tdata[i].x,
@@ -141,7 +141,7 @@ void siw_touch_report_event(void *ts_data)
 		} else if (release_mask & (1 << i)) {
 			input_mt_slot(ts->input, i);
 			siw_input_report_abs(ts->input, ABS_MT_TRACKING_ID, -1);
-			t_dev_dbg_abs(idev, "finger release <%d> (%4d, %4d, %4d)\n",
+			t_dev_dbg_button(idev, "finger release <%d> (%4d, %4d, %4d)\n",
 					i,
 					ts->tdata[i].x,
 					ts->tdata[i].y,
