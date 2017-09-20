@@ -106,8 +106,9 @@ static int siw_touch_spi_init(struct device *dev)
 		return ret;
 	}
 
-	t_dev_info(dev, "spi init: %d Mhz, mode %d, bpw %d, cs %d (%s)\n",
-			spi->max_speed_hz/1000000,
+	t_dev_info(dev, "spi init: %d.%d Mhz, mode %d, bpw %d, cs %d (%s)\n",
+			freq_to_mhz_unit(spi->max_speed_hz),
+			freq_to_khz_top(spi->max_speed_hz),
 			spi->mode,
 			spi->bits_per_word,
 			spi->chip_select,
@@ -345,14 +346,16 @@ static int siw_touch_spi_cfg(struct spi_device *spi,
 	spi->mode = tmp;
 
 	tmp = pdata_max_freq(pdata);
-	if ((tmp == ~0) || (tmp < 1000000)) {
+	if (spi_freq_out_of_range(tmp)) {
 		t_dev_err(dev, "spi alloc: wrong spi setup: max_freq, %d\n", tmp);
 		return -EFAULT;
 	}
 	spi->max_speed_hz = tmp;
 
-	t_dev_info(dev, "spi alloc: %d Mhz, mode %d, bpw %d\n",
-			tmp/1000000, spi->mode, spi->bits_per_word);
+	t_dev_info(dev, "spi alloc: %d.%d Mhz, mode %d, bpw %d\n",
+			freq_to_mhz_unit(tmp),
+			freq_to_khz_top(tmp),
+			spi->mode, spi->bits_per_word);
 
 	return 0;
 }

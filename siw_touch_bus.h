@@ -48,6 +48,33 @@ enum {
 	SPI_BUS_RX_DUMMY_FLAG_128BIT = 0x10,
 };
 
+#define __CLOCK_1KHZ		1000
+#define __CLOCK_100KHZ		(100 * __CLOCK_1KHZ)
+#define __CLOCK_1MHZ		(__CLOCK_1KHZ * __CLOCK_1KHZ)
+
+#define SPI_MAX_FREQ		(20 * __CLOCK_1MHZ)
+#define SPI_MIN_FREQ		(1 * __CLOCK_1MHZ)
+
+static inline int spi_freq_out_of_range(u32 freq)
+{
+	return ((freq > SPI_MAX_FREQ) || (freq < SPI_MIN_FREQ));
+}
+
+static inline u32 freq_to_mhz_unit(u32 freq)
+{
+	return (freq / __CLOCK_1MHZ);
+}
+
+static inline u32 freq_to_khz_unit(u32 freq)
+{
+	return (freq / __CLOCK_1KHZ);
+}
+
+static inline u32 freq_to_khz_top(u32 freq)
+{
+	return ((freq % __CLOCK_1MHZ) / __CLOCK_100KHZ);
+}
+
 /* __SIW_SPI_TYPE_1 */
 
 struct touch_bus_msg {
