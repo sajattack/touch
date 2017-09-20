@@ -5602,7 +5602,7 @@ static int siw_hal_lpwg(struct device *dev, u32 code, void *param)
 	}
 
 	if (atomic_read(&chip->init) == IC_INIT_NEED) {
-		t_dev_info(dev, "Not Ready, Need IC init\n");
+		t_dev_warn(dev, "Not Ready, Need IC init (lpwg)\n");
 		return 0;
 	}
 
@@ -6564,7 +6564,7 @@ static int siw_hal_irq_handler(struct device *dev)
 	int ret = 0;
 
 	if (atomic_read(&chip->init) == IC_INIT_NEED) {
-		t_dev_warn(dev, "Not Ready, Need IC init\n");
+		t_dev_warn(dev, "Not Ready, Need IC init (irq)\n");
 		return 0;
 	}
 
