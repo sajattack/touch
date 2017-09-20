@@ -2794,14 +2794,19 @@ out:
 	return ret;
 }
 
+#define FW_DN_LOG_UNIT	(8<<10)
+
 static int siw_hal_fw_upgrade_fw_core(struct device *dev, u8 *dn_buf, int dn_size)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
-//	struct siw_ts *ts = chip->ts;
+	struct siw_ts *ts = chip->ts;
 	struct siw_hal_reg *reg = chip->reg;
+	int is_i2c = !!(touch_bus_type(ts) == BUS_IF_I2C);
 	u8 *fw_data;
 	int fw_size;
 	int fw_pos, curr_size;
+	int fw_size_org = dn_size;
+	int fw_dn_size = 0, fw_dn_percent;
 	int ret = 0;
 
 	fw_data = dn_buf;
@@ -2829,6 +2834,22 @@ static int siw_hal_fw_upgrade_fw_core(struct device *dev, u8 *dn_buf, int dn_siz
 		fw_data += curr_size;
 		fw_pos += curr_size;
 		fw_size -= curr_size;
+
+		/*
+		 * Show progress log for slow I2C case
+		 */
+		if (!is_i2c) {
+			continue;
+		}
+
+		fw_dn_size += curr_size;
+		if (fw_dn_size && !(fw_dn_size & (FW_DN_LOG_UNIT-1))) {
+			fw_dn_percent = (fw_dn_size * 100);
+			fw_dn_percent /= fw_size_org;
+
+			t_dev_info(dev, "FW upgrade: downloading...(%d%c)\n",
+				fw_dn_percent, '%');
+		}
 	}
 
 out:
