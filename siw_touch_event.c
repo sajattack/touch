@@ -39,6 +39,22 @@
 #include "siw_touch_event.h"
 
 
+#define __siw_input_report_key(_idev, _code, _value)	\
+	do {	\
+		if (t_dbg_flag & DBG_FLAG_SKIP_IEVENT) {	\
+			t_dev_dbg_event(&_idev->dev, "skip input report: c %d, v %d\n", _code, _value);	\
+		} else {	\
+			input_report_key(_idev, _code, _value);	\
+		}	\
+	} while (0)
+
+#define siw_input_report_key(_idev, _code, _value)	\
+	do {	\
+		__siw_input_report_key(_idev, _code, _value);	\
+		siwmon_submit_evt(&_idev->dev, "EV_KEY", EV_KEY, #_code, _code, _value, 0);	\
+	} while (0)
+
+
 #define __siw_input_report_abs(_idev, _code, _value)	\
 	do {	\
 		if (t_dbg_flag & DBG_FLAG_SKIP_IEVENT) {	\
@@ -54,7 +70,7 @@
 		siwmon_submit_evt(&_idev->dev, "EV_ABS", EV_ABS, #_code, _code, _value, 0);	\
 	} while (0)
 
-static void siw_touch_report_palm_event(struct siw_ts *ts)
+static void siw_touch_report_cancel_event(struct siw_ts *ts)
 {
 	u16 old_mask = ts->old_mask;
 	int i = 0;
@@ -65,6 +81,10 @@ static void siw_touch_report_palm_event(struct siw_ts *ts)
 	for (i = 0; i < touch_max_finger(ts); i++) {
 		if (old_mask & (1 << i)) {
 			input_mt_slot(ts->input, i);
+			input_mt_report_slot_state(ts->input,
+				MT_TOOL_FINGER, true);
+			siw_input_report_key(ts->input, BTN_TOUCH, 1);
+			siw_input_report_key(ts->input, BTN_TOOL_FINGER, 1);
 			siw_input_report_abs(ts->input,
 							ABS_MT_PRESSURE,
 							255);
@@ -108,13 +128,17 @@ void siw_touch_report_event(void *ts_data)
 
 	/* Palm state - Report Pressure value 255 */
 	if (ts->is_palm) {
-		siw_touch_report_palm_event(ts);
+		siw_touch_report_cancel_event(ts);
 		ts->is_palm = 0;
 	}
 
 	for (i = 0; i < touch_max_finger(ts); i++) {
 		if (new_mask & (1 << i)) {
 			input_mt_slot(ts->input, i);
+			input_mt_report_slot_state(ts->input,
+				MT_TOOL_FINGER, true);
+			siw_input_report_key(ts->input, BTN_TOUCH, 1);
+			siw_input_report_key(ts->input, BTN_TOOL_FINGER, 1);
 			siw_input_report_abs(ts->input, ABS_MT_TRACKING_ID,
 						ts->tdata[i].id);
 			siw_input_report_abs(ts->input, ABS_MT_POSITION_X,
@@ -140,13 +164,20 @@ void siw_touch_report_event(void *ts_data)
 			}
 		} else if (release_mask & (1 << i)) {
 			input_mt_slot(ts->input, i);
-			siw_input_report_abs(ts->input, ABS_MT_TRACKING_ID, -1);
+			input_mt_report_slot_state(ts->input,
+				MT_TOOL_FINGER, false);
+		//	siw_input_report_abs(ts->input, ABS_MT_TRACKING_ID, -1);
 			t_dev_dbg_button(idev, "finger release <%d> (%4d, %4d, %4d)\n",
 					i,
 					ts->tdata[i].x,
 					ts->tdata[i].y,
 					ts->tdata[i].pressure);
 		}
+	}
+
+	if (!ts->tcount) {
+		siw_input_report_key(ts->input, BTN_TOUCH, 0);
+		siw_input_report_key(ts->input, BTN_TOOL_FINGER, 0);
 	}
 
 	ts->old_mask = new_mask;
@@ -386,6 +417,9 @@ int siw_touch_init_input(void *ts_data)
 
 	set_bit(EV_SYN, input->evbit);
 	set_bit(EV_ABS, input->evbit);
+	set_bit(EV_KEY, input->evbit);
+	set_bit(BTN_TOUCH, input->keybit);
+	set_bit(BTN_TOOL_FINGER, input->keybit);
 	set_bit(INPUT_PROP_DIRECT, input->propbit);
 	input_set_abs_params(input, ABS_MT_POSITION_X, 0,
 				caps->max_x, 0, 0);
