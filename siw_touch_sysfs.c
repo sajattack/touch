@@ -1195,7 +1195,7 @@ static ssize_t __show_g_state(struct device *dev, char *buf,
 	int size = 0;
 
 	size += siw_snprintf(buf, size, "%s chk: %s(%08Xh)\n",
-				name, (value % 0x1) ? "ON" : "OFF", value);
+				name, (value & 0x1) ? "ON" : "OFF", value);
 
 	return (ssize_t)size;
 }
