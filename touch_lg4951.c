@@ -49,9 +49,7 @@
 #define CHIP_TYPE					CHIP_LG4951
 
 #define CHIP_MODE_ALLOWED			(0 |	\
-									LCD_MODE_BIT_U0 |	\
 									LCD_MODE_BIT_U3 |	\
-									LCD_MODE_BIT_U3_PARTIAL |	\
 									LCD_MODE_BIT_STOP |	\
 									0)
 
