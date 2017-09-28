@@ -2843,7 +2843,7 @@ static int siw_hal_fw_upgrade_fw_core(struct device *dev, u8 *dn_buf, int dn_siz
 		}
 
 		fw_dn_size += curr_size;
-		if (fw_dn_size && !(fw_dn_size & (FW_DN_LOG_UNIT-1))) {
+		if (!fw_size || !(fw_dn_size & (FW_DN_LOG_UNIT-1))) {
 			fw_dn_percent = (fw_dn_size * 100);
 			fw_dn_percent /= fw_size_org;
 
