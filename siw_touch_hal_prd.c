@@ -3874,7 +3874,6 @@ static ssize_t prd_show_sd(struct device *dev, char *buf)
 
 	t_prd_info(prd, "show_sd test terminated\n\n");
 
-	prd_chip_driving(dev, LCD_MODE_U3);
 	prd_chip_reset(dev);
 
 	siw_touch_mon_resume(dev);
@@ -4726,10 +4725,6 @@ static int prd_show_do_lpwg_sd(struct siw_hal_prd_data *prd, char *buf)
 	prd_write_file(prd, buf, TIME_INFO_SKIP);
 
 out:
-	prd_chip_driving(dev, LCD_MODE_U3);
-
-	prd_chip_reset(dev);
-
 	return size;
 }
 
@@ -4766,6 +4761,8 @@ static ssize_t prd_show_lpwg_sd(struct device *dev, char *buf)
 	prd_log_file_size_check(prd);
 
 	t_prd_info(prd, "show_lpwg_sd test terminated\n");
+
+	prd_chip_reset(dev);
 
 	siw_touch_mon_resume(dev);
 
