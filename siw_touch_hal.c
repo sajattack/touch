@@ -4881,6 +4881,12 @@ static int siw_hal_tc_driving(struct device *dev, int mode)
 		return -EPERM;
 	}
 
+	if (atomic_read(&ts->recur_chk)) {
+		/* keep the last value for retry case */
+		mode = chip->driving_mode;
+		t_dev_info(dev, "keep the last mode(%d) for retry\n", mode);
+	}
+
 	chip->driving_mode = mode;
 
 	switch (mode) {
