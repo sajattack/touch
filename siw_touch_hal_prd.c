@@ -410,6 +410,14 @@ static const char *prd_param_name_lg4894_k[] = {
 	"L0W53K6P", NULL
 };
 
+static const char *prd_param_name_lg4894_t[] = {
+	"T0W53CV3", NULL
+};
+
+static const char *prd_param_name_lg4894_cv[] = {
+	"L0W53CV3", "L0W53CV1", NULL
+};
+
 static const char *prd_param_name_lg4894_lv[] = {
 	"L0W53LV5", "L0W50LV3", NULL
 };
@@ -573,6 +581,40 @@ static const struct siw_hal_prd_param prd_params[] = {
 		__PRD_2ND_SCR(0, 0),
 		.sysfs_off_flag = (PRD_SYS_EN_DEBUG_BUF|PRD_SYS_EN_APP_DEBUG_BUF),
 		.sd_test_flag = SD_FLAG_LG4894,
+		.lpwg_sd_test_flag = LPWG_SD_FLAG_LG4894,
+	},
+	{	.chip_type = CHIP_LG4894,
+		.name = prd_param_name_lg4894_cv,
+		.cmd_type = PRD_CMD_TYPE_1,
+		.addr = {
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_RAW, 0xC0F),
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_BASELINE_EVEN, 0xCD2),
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_DELTA, 0xD95),
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_LABEL, 0xE83),
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_DEBUG, 0xA8C),
+			0,
+		},
+		__PRD_PARAM_DIMENSION(26, 15, 1, 32, PRD_M1_COL_SIZE, 1, 1),
+		__PRD_2ND_SCR(0, 0),
+		.sysfs_off_flag = 0,
+		.sd_test_flag = (SD_FLAG_LG4894 & ~U3_BLU_JITTER_TEST_FLAG),
+		.lpwg_sd_test_flag = LPWG_SD_FLAG_LG4894,
+	},
+	{	.chip_type = CHIP_LG4894,
+		.name = prd_param_name_lg4894_t,
+		.cmd_type = PRD_CMD_TYPE_1,
+		.addr = {
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_RAW, 0xA02),
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_BASELINE_EVEN, 0xB22),
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_DELTA, 0xC42),
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_LABEL, 0xD96),
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_DEBUG, 0x9CE),
+			0,
+		},
+		__PRD_PARAM_DIMENSION(32, 18, 0, 32, PRD_M1_COL_SIZE, 1, 1),
+		__PRD_2ND_SCR(0, 0),
+		.sysfs_off_flag = 0,
+		.sd_test_flag = (SD_FLAG_LG4894 & ~U3_BLU_JITTER_TEST_FLAG),
 		.lpwg_sd_test_flag = LPWG_SD_FLAG_LG4894,
 	},
 	{	.chip_type = CHIP_LG4894,
