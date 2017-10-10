@@ -113,16 +113,18 @@ enum {
 	U3_BLU_JITTER_TEST,
 	/* */
 	U3_JITTER_TEST,
+	U3_M1_JITTER_TEST,
 	U0_JITTER_TEST,
+	U0_M1_JITTER_TEST,
+	/* */
 	SHORT_FULL_TEST,
+	/* */
 	UX_INVALID,
 
 	/* for sd_test_flag */
 	OPEN_SHORT_RESULT_DATA_IDX = 24,
 	OPEN_SHORT_RESULT_RAWDATA_IDX,
 	OPEN_SHORT_RESULT_ALWAYS_IDX,
-
-	U0_JITTER_M1,
 };
 
 enum {
@@ -152,15 +154,17 @@ enum {
 	/* */
 	OPEN_SHORT_NODE_TEST_FLAG	= (1<<OPEN_SHORT_ALL_TEST),
 	U3_BLU_JITTER_TEST_FLAG 	= (1<<U3_BLU_JITTER_TEST),
+	/* */
 	U3_JITTER_TEST_FLAG			= (1<<U3_JITTER_TEST),
+	U3_M1_JITTER_TEST_FLAG		= (1<<U3_M1_JITTER_TEST),
 	U0_JITTER_TEST_FLAG			= (1<<U0_JITTER_TEST),
+	U0_M1_JITTER_TEST_FLAG		= (1<<U0_M1_JITTER_TEST),
+	/* */
 	SHORT_FULL_TEST_FLAG		= (1<<SHORT_FULL_TEST),
 	/* */
 	OPEN_SHORT_RESULT_DATA_FLAG		= (1<<OPEN_SHORT_RESULT_DATA_IDX),
 	OPEN_SHORT_RESULT_RAWDATA_FLAG	= (1<<OPEN_SHORT_RESULT_RAWDATA_IDX),
 	OPEN_SHORT_RESULT_ALWAYS_FLAG	= (1<<OPEN_SHORT_RESULT_ALWAYS_IDX),
-
-	U0_JITTER_M1_FLAG			= (1<<U0_JITTER_M1),
 };
 
 enum {
@@ -317,7 +321,7 @@ struct siw_hal_prd_sd_cmd {
 	u32 cmd_m2_rawdata;
 	u32 cmd_m1_rawdata;
 	u32 cmd_jitter;
-	u32 cmd_u0_jitter;
+	u32 cmd_m1_jitter;
 	u32 cmd_short_full;
 };
 
@@ -329,11 +333,14 @@ enum _SIW_PRD_DBG_MASK_FLAG {
 #if defined(__SIW_SUPPORT_PRD_SET_SD)
 struct siw_hal_prd_sd_param {
 	int u3_m2[2];	/* [0] = lower, [1] = upper */
+	int u3_m1[2];
 	int u0_m2[2];
 	int u0_m1[2];
 	int u3_blu_jitter[2];
 	int u3_jitter[2];
+	int u3_m1_jitter[2];
 	int u0_jitter[2];
+	int u0_m1_jitter[2];
 	int last_type;
 	int last_val[2];
 };
@@ -493,23 +500,22 @@ enum {
 	__LPWG_SD_FLAG_SW49XXX	=	(0 |	\
 								U0_M2_RAWDATA_TEST_FLAG |	\
 								U0_M1_RAWDATA_TEST_FLAG |	\
-								U0_JITTER_TEST_FLAG |	\
 								0),
 
 	SD_FLAG_SW49105			= __SD_FLAG_SW49XXX | OPEN_SHORT_RESULT_DATA_FLAG,
-	LPWG_SD_FLAG_SW49105	= __LPWG_SD_FLAG_SW49XXX,
+	LPWG_SD_FLAG_SW49105	= __LPWG_SD_FLAG_SW49XXX| U0_JITTER_TEST_FLAG,
 
 	SD_FLAG_SW49106			= __SD_FLAG_SW49XXX | OPEN_SHORT_RESULT_DATA_FLAG,
-	LPWG_SD_FLAG_SW49106	= __LPWG_SD_FLAG_SW49XXX,
+	LPWG_SD_FLAG_SW49106	= __LPWG_SD_FLAG_SW49XXX | U0_JITTER_TEST_FLAG,
 
 	SD_FLAG_SW49406			= __SD_FLAG_SW49XXX,
-	LPWG_SD_FLAG_SW49406	= __LPWG_SD_FLAG_SW49XXX,
+	LPWG_SD_FLAG_SW49406	= __LPWG_SD_FLAG_SW49XXX | U0_JITTER_TEST_FLAG,
 
 	SD_FLAG_SW49407			= __SD_FLAG_SW49XXX,
-	LPWG_SD_FLAG_SW49407	= __LPWG_SD_FLAG_SW49XXX | U0_JITTER_M1_FLAG,
+	LPWG_SD_FLAG_SW49407	= __LPWG_SD_FLAG_SW49XXX | U0_M1_JITTER_TEST_FLAG,
 
 	SD_FLAG_SW49408			= __SD_FLAG_SW49XXX,
-	LPWG_SD_FLAG_SW49408	= __LPWG_SD_FLAG_SW49XXX,
+	LPWG_SD_FLAG_SW49408	= __LPWG_SD_FLAG_SW49XXX | U0_JITTER_TEST_FLAG,
 
 	SD_FLAG_SW49501			= __SD_FLAG_SW49XXX,
 };
@@ -845,6 +851,8 @@ static const struct siw_hal_prd_param prd_params[] = {
 		__PRD_2ND_SCR(0, 0),
 		.sysfs_off_flag = PRD_SYS_EN_LPWG_SD,
 		.sd_test_flag = SD_FLAG_SW49501 |	\
+						U3_M1_RAWDATA_TEST_FLAG |	\
+						U3_M1_JITTER_TEST_FLAG |	\
 						SHORT_FULL_TEST_FLAG |	\
 						OPEN_SHORT_RESULT_DATA_FLAG |	\
 						OPEN_SHORT_RESULT_ALWAYS_FLAG,
@@ -944,6 +952,10 @@ static const char *prd_cmp_tool_str[][2] = {
 		[0] = "U3_M2_Lower",
 		[1] = "U3_M2_Upper",
 	},
+	[U3_M1_RAWDATA_TEST] = {
+		[0] = "U3_M1_Lower",
+		[1] = "U3_M1_Upper",
+	},
 	[U0_M2_RAWDATA_TEST] = {
 		[0] = "U0_M2_Lower",
 		[1] = "U0_M2_Upper",
@@ -960,9 +972,17 @@ static const char *prd_cmp_tool_str[][2] = {
 		[0] = "U3_Jitter_Lower",
 		[1] = "U3_Jitter_Upper",
 	},
+	[U3_M1_JITTER_TEST] = {
+		[0] = "U3_M1_Jitter_Lower",
+		[1] = "U3_M1_Jitter_Upper",
+	},
 	[U0_JITTER_TEST] = {
 		[0] = "U0_Jitter_Lower",
 		[1] = "U0_Jitter_Upper",
+	},
+	[U0_M1_JITTER_TEST] = {
+		[0] = "U0_M1_Jitter_Lower",
+		[1] = "U0_M1_Jitter_Upper",
 	},
 };
 
@@ -1617,6 +1637,35 @@ out:
 	return 0;
 }
 
+static int prd_check_type(struct siw_hal_prd_data *prd,
+			int type, int index)
+{
+	int ret = 0;
+
+	switch (type) {
+	case U3_M2_RAWDATA_TEST:
+	case U0_M2_RAWDATA_TEST:
+	case U3_BLU_JITTER_TEST:
+	case U3_JITTER_TEST:
+	case U0_JITTER_TEST:
+		break;
+
+	case U3_M1_RAWDATA_TEST:
+	case U0_M1_RAWDATA_TEST:
+	case U3_M1_JITTER_TEST:
+	case U0_M1_JITTER_TEST:
+		ret = 1;
+		break;
+
+	default:
+		t_prd_err(prd, "[%d] unsupported test mode, %d\n",
+			index, type);
+		ret = -EINVAL;
+	}
+
+	return ret;
+}
+
 static int prd_log_file_size_check(struct siw_hal_prd_data *prd)
 {
 	char *prd_out_fname[] = {
@@ -1842,6 +1891,7 @@ static int prd_write_test_mode(struct siw_hal_prd_data *prd, int type)
 			break;
 		}
 		break;
+	case CHIP_SW49501:
 	case CHIP_SW49407:
 		line_filter_option = 0;
 		break;
@@ -1855,6 +1905,9 @@ static int prd_write_test_mode(struct siw_hal_prd_data *prd, int type)
 	switch (type) {
 	case U3_M2_RAWDATA_TEST:
 		testmode = (U3_TEST_PRE_CMD << 8) + sd_cmd->cmd_m2_rawdata;
+		break;
+	case U3_M1_RAWDATA_TEST:
+		testmode = (U3_TEST_PRE_CMD << 8) + sd_cmd->cmd_m1_rawdata;
 		break;
 	case U0_M2_RAWDATA_TEST:
 		testmode = (U0_TEST_PRE_CMD << 8) + sd_cmd->cmd_m2_rawdata;
@@ -1883,8 +1936,14 @@ static int prd_write_test_mode(struct siw_hal_prd_data *prd, int type)
 	case U3_JITTER_TEST:
 		testmode = ((U3_TEST_PRE_CMD << 8) + sd_cmd->cmd_jitter) | line_filter_option;
 		break;
+	case U3_M1_JITTER_TEST:
+		testmode = ((U3_TEST_PRE_CMD << 8) + sd_cmd->cmd_m1_jitter) | line_filter_option;
+		break;
 	case U0_JITTER_TEST:
-		testmode = ((U0_TEST_PRE_CMD << 8) + sd_cmd->cmd_u0_jitter) | line_filter_option;
+		testmode = ((U0_TEST_PRE_CMD << 8) + sd_cmd->cmd_jitter) | line_filter_option;
+		break;
+	case U0_M1_JITTER_TEST:
+		testmode = ((U0_TEST_PRE_CMD << 8) + sd_cmd->cmd_m1_jitter) | line_filter_option;
 		break;
 	default:
 		t_prd_err(prd, "unsupported test mode, %d\n", type);
@@ -2745,7 +2804,7 @@ static int prd_compare_tool(struct siw_hal_prd_data *prd,
 	int curr_raw;
 	int curr_lower, curr_upper;
 	int raw_err = 0;
-	int	result = 0;
+	int result = 0;
 	int spec_by_param = 0;
 	int cnt = 0;
 
@@ -2775,8 +2834,16 @@ static int prd_compare_tool(struct siw_hal_prd_data *prd,
 				curr_lower, curr_upper,
 				(spec_by_param) ? STR_SPEC_BY_PARAM : "");
 
-	if (type != U0_M1_RAWDATA_TEST) {
+	switch (type) {
+	case U3_M1_RAWDATA_TEST:
+	case U0_M1_RAWDATA_TEST:
+	case U3_M1_JITTER_TEST:
+	case U0_M1_JITTER_TEST:
+		break;
+
+	default:
 		second_screen = &param->second_scr;
+		break;
 	}
 
 	for (k = 0; k < test_cnt; k++) {
@@ -2892,29 +2959,10 @@ static int prd_compare_rawdata(struct siw_hal_prd_data *prd, int type)
 	snprintf(lower_str, sizeof(lower_str), prd_cmp_tool_str[type][0]);
 	snprintf(upper_str, sizeof(upper_str), prd_cmp_tool_str[type][1]);
 
-	switch (type) {
-	case U3_M2_RAWDATA_TEST:
-		/* fall through */
-	case U0_M2_RAWDATA_TEST:
-		/* fall through */
-	case U3_BLU_JITTER_TEST:
-		/* fall through */
-	case U3_JITTER_TEST:
-		break;
-
-	case U0_JITTER_TEST:
-		sel_m1 = !!(param->lpwg_sd_test_flag & U0_JITTER_M1_FLAG);
-		break;
-
-	case U0_M1_RAWDATA_TEST:
-		sel_m1 = 1;
-		break;
-
-	default:
-		t_prd_err(prd, "unsupported test mode, %d\n", type);
-		return -EINVAL;
+	sel_m1 = prd_check_type(prd, type, 2);
+	if (sel_m1 < 0) {
+		return sel_m1;
 	}
-
 
 	if (sel_m1) {
 		row_size = param->row;
@@ -2933,6 +2981,10 @@ static int prd_compare_rawdata(struct siw_hal_prd_data *prd, int type)
 		lower = sd_param->u3_m2[0];
 		upper = sd_param->u3_m2[1];
 		break;
+	case U3_M1_RAWDATA_TEST:
+		lower = sd_param->u3_m1[0];
+		upper = sd_param->u3_m1[1];
+		break;
 	case U0_M2_RAWDATA_TEST:
 		lower = sd_param->u0_m2[0];
 		upper = sd_param->u0_m2[1];
@@ -2949,9 +3001,17 @@ static int prd_compare_rawdata(struct siw_hal_prd_data *prd, int type)
 		lower = sd_param->u3_jitter[0];
 		upper = sd_param->u3_jitter[1];
 		break;
+	case U3_M1_JITTER_TEST:
+		lower = sd_param->u3_m1_jitter[0];
+		upper = sd_param->u3_m1_jitter[1];
+		break;
 	case U0_JITTER_TEST:
 		lower = sd_param->u0_jitter[0];
 		upper = sd_param->u0_jitter[1];
+		break;
+	case U0_M1_JITTER_TEST:
+		lower = sd_param->u0_m1_jitter[0];
+		upper = sd_param->u0_m1_jitter[1];
 		break;
 	}
 	if (lower || upper) {
@@ -3142,24 +3202,10 @@ static int prd_read_rawdata(struct siw_hal_prd_data *prd, int type)
 	t_prd_info(prd, "test[%04Xh] type %d, even offset %04Xh, odd offset %04Xh\n",
 		addr, type, raw_data_offset[0], raw_data_offset[1]);
 
-	switch (type) {
-	case U3_BLU_JITTER_TEST:
-		/* fall through */
-	case U3_JITTER_TEST:
-		/* fall through */
-	case U3_M2_RAWDATA_TEST:
-		/* fall through */
-	case U0_M2_RAWDATA_TEST:
-		break;
-
- 	case U0_JITTER_TEST:
-		sel_m1 = !!(param->lpwg_sd_test_flag & U0_JITTER_M1_FLAG);
-		break;
-
-	case U0_M1_RAWDATA_TEST:
-		sel_m1 = 1;
-		break;
-
+	sel_m1 = prd_check_type(prd, type, 0);
+	if (sel_m1 < 0) {
+		ret = sel_m1;
+		goto out;
 	}
 
 	if (sel_m1) {
@@ -3342,6 +3388,7 @@ static int prd_do_read_tune_code(struct siw_hal_prd_data *prd, u8 *buf, int type
 	}
 
 	switch (type) {
+	case U3_M1_RAWDATA_TEST:
 	case U0_M1_RAWDATA_TEST:
 		prd_tune_display(prd, buf,
 					tune->code_l_goft_offset,
@@ -3437,23 +3484,8 @@ static int prd_conrtol_rawdata_result(struct siw_hal_prd_data *prd, int type, in
 	int size = 0;
 	int result = 0;
 
-	switch (type) {
-	case U3_M2_RAWDATA_TEST:
-	case U0_M2_RAWDATA_TEST:
-	case U3_BLU_JITTER_TEST:
-	case U3_JITTER_TEST:
-		break;
-
-	case U0_JITTER_TEST:
-		sel_m1 = !!(param->lpwg_sd_test_flag & U0_JITTER_M1_FLAG);
-		break;
-
-	case U0_M1_RAWDATA_TEST:
-		sel_m1 = 1;
-		break;
-
-	default:
-		t_prd_err(prd, "conrtol_rawdata_result Type not defined, %d\n", type);
+	sel_m1 = prd_check_type(prd, type, 1);
+	if (sel_m1 < 0) {
 		return 1;
 	}
 
@@ -3532,6 +3564,12 @@ static int prd_do_rawdata_test(struct siw_hal_prd_data *prd,
 			sprt_str = "[U3_M2_RAWDATA_TEST]";
 		}
 		break;
+	case U3_M1_RAWDATA_TEST:
+		info_str = "========U3_M1_RAWDATA_TEST========";
+		if (result_on) {
+			sprt_str = "[U3_M1_RAWDATA_TEST]";
+		}
+		break;
 	case U3_BLU_JITTER_TEST:
 		info_str = "========U3_BLU_JITTER_TEST========";
 		if (result_on) {
@@ -3544,13 +3582,24 @@ static int prd_do_rawdata_test(struct siw_hal_prd_data *prd,
 			sprt_str= "[U3_JITTER_TEST]";
 		}
 		break;
+	case U3_M1_JITTER_TEST:
+		info_str = "========U3_M1_JITTER_TEST========";
+		if (result_on) {
+			sprt_str= "[U3_M1_JITTER_TEST]";
+		}
+		break;
 	case U0_JITTER_TEST:
 		info_str = "========U0_JITTER_TEST========";
 		if (result_on) {
 			sprt_str= "[U0_JITTER_TEST]";
 		}
 		break;
-
+	case U0_M1_JITTER_TEST:
+		info_str = "========U0_M1_JITTER_TEST========";
+		if (result_on) {
+			sprt_str= "[U0_M1_JITTER_TEST]";
+		}
+		break;
 	case U0_M2_RAWDATA_TEST:
 		info_str = "========U0_M2_RAWDATA_TEST========";
 		if (result_on) {
@@ -3563,7 +3612,6 @@ static int prd_do_rawdata_test(struct siw_hal_prd_data *prd,
 			sprt_str = "[U0_M1_RAWDATA_TEST]";
 		}
 		break;
-
 	default:
 		t_prd_err(prd, "Test Type not defined, %d\n", type);
 		return 1;
@@ -3746,10 +3794,12 @@ static int prd_show_do_sd(struct siw_hal_prd_data *prd, char *buf)
 {
 	struct device *dev = prd->dev;
 	struct siw_hal_prd_param *param = &prd->param;
-	int rawdata_ret = 0;
+	int u3_rawdata_ret = 0;
+	int u3_m1_rawdata_ret = 0;
 	int openshort_ret = 0;
 	int blu_jitter_ret = 0;
 	int u3_jitter_ret = 0;
+	int u3_m1_jitter_ret = 0;
 	int size = 0;
 	int ret;
 
@@ -3769,20 +3819,44 @@ static int prd_show_do_sd(struct siw_hal_prd_data *prd, char *buf)
 	 * rawdata tunecode - pass : 0, fail : 2
 	 */
 	if(param->sd_test_flag & U3_M2_RAWDATA_TEST_FLAG) {
-		rawdata_ret = prd_rawdata_test(prd, U3_M2_RAWDATA_TEST, RESULT_ON);
-		if (rawdata_ret < 0) {
+		u3_rawdata_ret = prd_rawdata_test(prd, U3_M2_RAWDATA_TEST, RESULT_ON);
+		if (u3_rawdata_ret < 0) {
+			goto out;
+		}
+	}
+
+	/*
+	 * U3_M1_RAWDATA_TEST
+	 * rawdata - pass : 0, fail : 1
+	 * rawdata tunecode - pass : 0, fail : 2
+	 */
+	if(param->sd_test_flag & U3_M1_RAWDATA_TEST_FLAG) {
+		u3_m1_rawdata_ret = prd_rawdata_test(prd, U3_M1_RAWDATA_TEST, RESULT_ON);
+		if (u3_m1_rawdata_ret < 0) {
 			goto out;
 		}
 	}
 
 	/*
 	U3_JITTER_TEST
-	BLU Jitter - pass : 0, fail : 1
+	Jitter - pass : 0, fail : 1
 	This will be enabled later.
 	*/
 	if(param->sd_test_flag & U3_JITTER_TEST_FLAG) {
 		u3_jitter_ret = prd_rawdata_test(prd, U3_JITTER_TEST, RESULT_ON);
 		if (u3_jitter_ret < 0) {
+			goto out;
+		}
+	}
+
+	/*
+	U3_M1_JITTER_TEST
+	Jitter - pass : 0, fail : 1
+	This will be enabled later.
+	*/
+	if(param->sd_test_flag & U3_M1_JITTER_TEST_FLAG) {
+		u3_m1_jitter_ret = prd_rawdata_test(prd, U3_M1_JITTER_TEST, RESULT_ON);
+		if (u3_m1_jitter_ret < 0) {
 			goto out;
 		}
 	}
@@ -3817,12 +3891,22 @@ static int prd_show_do_sd(struct siw_hal_prd_data *prd, char *buf)
 	size += siw_snprintf(buf, size,
 				"\n========RESULT=======\n");
 	if(param->sd_test_flag & U3_M2_RAWDATA_TEST_FLAG) {
-		if (!rawdata_ret) {
+		if (!u3_rawdata_ret) {
 			size += siw_snprintf(buf, size,
-						"Raw Data : Pass\n");
+						"U3 Raw Data : Pass\n");
 		} else {
 			size += siw_snprintf(buf, size,
-						"Raw Data : Fail\n");
+						"U3 Raw Data : Fail\n");
+		}
+	}
+
+	if(param->sd_test_flag & U3_M1_RAWDATA_TEST_FLAG) {
+		if (!u3_m1_rawdata_ret) {
+			size += siw_snprintf(buf, size,
+						"U3 M1 Raw Data : Pass\n");
+		} else {
+			size += siw_snprintf(buf, size,
+						"U3 M1 Raw Data : Fail\n");
 		}
 	}
 
@@ -3834,6 +3918,16 @@ static int prd_show_do_sd(struct siw_hal_prd_data *prd, char *buf)
 		} else {
 			size += siw_snprintf(buf, size,
 						"U3 Jitter : Fail\n");
+		}
+	}
+
+	if(param->sd_test_flag & U3_M1_JITTER_TEST_FLAG) {
+		if (!u3_m1_jitter_ret) {
+			size += siw_snprintf(buf, size,
+						"U3 M1 Jitter : Pass\n");
+		} else {
+			size += siw_snprintf(buf, size,
+						"U3 M1 Jitter : Fail\n");
 		}
 	}
 
@@ -4678,6 +4772,7 @@ static int prd_show_do_lpwg_sd(struct siw_hal_prd_data *prd, char *buf)
 	int m1_rawdata_ret = 0;
 	int m2_rawdata_ret = 0;
 	int u0_jitter_ret = 0;
+	int u0_m1_jitter_ret = 0;
 	u32 sd_u0_test = 0;
 	int size = 0;
 	int ret = 0;
@@ -4715,12 +4810,24 @@ static int prd_show_do_lpwg_sd(struct siw_hal_prd_data *prd, char *buf)
 
 	/*
 	 * U0_JITTER_TEST
-	 * BLU Jitter - pass : 0, fail : 1
+	 * Jitter - pass : 0, fail : 1
 	 * This will be enabled later.
 	*/
 	if(param->lpwg_sd_test_flag & U0_JITTER_TEST_FLAG) {
 		u0_jitter_ret = prd_rawdata_test(prd, U0_JITTER_TEST, RESULT_ON);
 		if (u0_jitter_ret < 0) {
+			goto out;
+		}
+	}
+
+	/*
+	 * U0_M1_JITTER_TEST
+	 * Jitter - pass : 0, fail : 1
+	 * This will be enabled later.
+	*/
+	if(param->lpwg_sd_test_flag & U0_M1_JITTER_TEST_FLAG) {
+		u0_m1_jitter_ret = prd_rawdata_test(prd, U0_M1_JITTER_TEST, RESULT_ON);
+		if (u0_m1_jitter_ret < 0) {
 			goto out;
 		}
 	}
@@ -4761,6 +4868,16 @@ static int prd_show_do_lpwg_sd(struct siw_hal_prd_data *prd, char *buf)
 		} else {
 			size += siw_snprintf(buf, size,
 						"U0 Jitter : Fail\n");
+		}
+	}
+
+	if(param->lpwg_sd_test_flag & U0_M1_JITTER_TEST_FLAG) {
+		if (!u0_m1_jitter_ret) {
+			size += siw_snprintf(buf, size,
+						"U0 M1 Jitter : Pass\n");
+		} else {
+			size += siw_snprintf(buf, size,
+						"U0 M1 Jitter : Fail\n");
 		}
 	}
 
@@ -5273,6 +5390,10 @@ static ssize_t prd_show_set_sd(struct device *dev, char *buf)
 		siw_prd_set_sd_sprintf(title, U3_M2_RAWDATA_TEST);
 		size += prd_show_set_sd_item(buf, size, title, sd_param->u3_m2);
 	}
+	if(param->sd_test_flag & U3_M1_RAWDATA_TEST_FLAG) {
+		siw_prd_set_sd_sprintf(title, U3_M1_RAWDATA_TEST);
+		size += prd_show_set_sd_item(buf, size, title, sd_param->u3_m1);
+	}
 	if(param->sd_test_flag & U3_BLU_JITTER_TEST_FLAG) {
 		siw_prd_set_sd_sprintf(title, U3_BLU_JITTER_TEST);
 		size += prd_show_set_sd_item(buf, size, title, sd_param->u3_blu_jitter);
@@ -5280,6 +5401,10 @@ static ssize_t prd_show_set_sd(struct device *dev, char *buf)
 	if(param->sd_test_flag & U3_JITTER_TEST_FLAG) {
 		siw_prd_set_sd_sprintf(title, U3_JITTER_TEST);
 		size += prd_show_set_sd_item(buf, size, title, sd_param->u3_jitter);
+	}
+	if(param->sd_test_flag & U3_M1_JITTER_TEST_FLAG) {
+		siw_prd_set_sd_sprintf(title, U3_M1_JITTER_TEST);
+		size += prd_show_set_sd_item(buf, size, title, sd_param->u3_m1_jitter);
 	}
 skip_show_set_sd:
 
@@ -5301,6 +5426,10 @@ skip_show_set_sd:
 	if(param->lpwg_sd_test_flag & U0_JITTER_TEST_FLAG) {
 		siw_prd_set_sd_sprintf(title, U0_JITTER_TEST);
 		size += prd_show_set_sd_item(buf, size, title, sd_param->u0_jitter);
+	}
+	if(param->lpwg_sd_test_flag & U0_M1_JITTER_TEST_FLAG) {
+		siw_prd_set_sd_sprintf(title, U0_M1_JITTER_TEST);
+		size += prd_show_set_sd_item(buf, size, title, sd_param->u0_m1_jitter);
 	}
 skip_show_set_lpwg_sd:
 
@@ -5364,11 +5493,17 @@ static void prd_store_set_sd_usage(struct device *dev)
 	if(param->sd_test_flag & U3_M2_RAWDATA_TEST_FLAG) {
 		t_prd_info_set_sd(prd, U3_M2_RAWDATA_TEST);
 	}
+	if(param->sd_test_flag & U3_M1_RAWDATA_TEST_FLAG) {
+		t_prd_info_set_sd(prd, U3_M1_RAWDATA_TEST);
+	}
 	if(param->sd_test_flag & U3_BLU_JITTER_TEST_FLAG) {
 		t_prd_info_set_sd(prd, U3_BLU_JITTER_TEST);
 	}
 	if(param->sd_test_flag & U3_JITTER_TEST_FLAG) {
 		t_prd_info_set_sd(prd, U3_JITTER_TEST);
+	}
+	if(param->sd_test_flag & U3_M1_JITTER_TEST_FLAG) {
+		t_prd_info_set_sd(prd, U3_M1_JITTER_TEST);
 	}
 skip_store_set_sd_usage:
 
@@ -5385,6 +5520,9 @@ skip_store_set_sd_usage:
 	}
 	if(param->lpwg_sd_test_flag & U0_JITTER_TEST_FLAG) {
 		t_prd_info_set_sd(prd, U0_JITTER_TEST);
+	}
+	if(param->lpwg_sd_test_flag & U0_M1_JITTER_TEST_FLAG) {
+		t_prd_info_set_sd(prd, U0_M1_JITTER_TEST);
 	}
 }
 
@@ -5437,6 +5575,11 @@ static ssize_t prd_store_set_sd(struct device *dev,
 		sd_param->u3_m2[1] = upper;
 		set |= (1<<type);
 		break;
+	case U3_M1_RAWDATA_TEST:
+		sd_param->u3_m1[0] = lower;
+		sd_param->u3_m1[1] = upper;
+		set |= (1<<type);
+		break;
 	case U3_BLU_JITTER_TEST:
 		sd_param->u3_blu_jitter[0] = lower;
 		sd_param->u3_blu_jitter[1] = upper;
@@ -5445,6 +5588,11 @@ static ssize_t prd_store_set_sd(struct device *dev,
 	case U3_JITTER_TEST:
 		sd_param->u3_jitter[0] = lower;
 		sd_param->u3_jitter[1] = upper;
+		set |= (1<<type);
+		break;
+	case U3_M1_JITTER_TEST:
+		sd_param->u3_m1_jitter[0] = lower;
+		sd_param->u3_m1_jitter[1] = upper;
 		set |= (1<<type);
 		break;
 	}
@@ -5471,6 +5619,11 @@ skip_set_sd:
 	case U0_JITTER_TEST:
 		sd_param->u0_jitter[0] = lower;
 		sd_param->u0_jitter[1] = upper;
+		set |= (1<<type);
+		break;
+	case U0_M1_JITTER_TEST:
+		sd_param->u0_m1_jitter[0] = lower;
+		sd_param->u0_m1_jitter[1] = upper;
 		set |= (1<<type);
 		break;
 	}
@@ -5942,36 +6095,38 @@ static void siw_hal_prd_set_sd_cmd(struct siw_hal_prd_data *prd)
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
 	struct siw_hal_prd_sd_cmd *sd_cmd = &prd->sd_cmd;
+	int chip_type = touch_chip_type(ts);
 
 	sd_cmd->cmd_open_node = OPEN_NODE_TEST_POST_CMD;
 	sd_cmd->cmd_short_node = SHORT_NODE_TEST_POST_CMD;
 	sd_cmd->cmd_m2_rawdata = M2_RAWDATA_TEST_POST_CMD;
 	sd_cmd->cmd_m1_rawdata = M1_RAWDATA_TEST_POST_CMD;
 	sd_cmd->cmd_jitter = JITTER_TEST_POST_CMD;
-	sd_cmd->cmd_u0_jitter = JITTER_TEST_POST_CMD;
+	sd_cmd->cmd_m1_jitter = 0;
 	sd_cmd->cmd_short_full = 0;
 
-	switch (touch_chip_type(ts)) {
+	switch (chip_type) {
 	case CHIP_SW49407:
 		sd_cmd->cmd_open_node = 1;
 		sd_cmd->cmd_short_node = 2;
 		sd_cmd->cmd_m2_rawdata = 5;
 		sd_cmd->cmd_m1_rawdata = 3;
 		sd_cmd->cmd_jitter = 6;
-		sd_cmd->cmd_u0_jitter = 4;
+		sd_cmd->cmd_m1_jitter = 4;
 		break;
+	case CHIP_SW49408:
+	case CHIP_SW49409:
 	case CHIP_SW49501:
 		sd_cmd->cmd_open_node = 1;
 		sd_cmd->cmd_short_node = 2;
 		sd_cmd->cmd_m2_rawdata = 5;
 		sd_cmd->cmd_m1_rawdata = 3;
 		sd_cmd->cmd_jitter = 10;
-		sd_cmd->cmd_u0_jitter = 10;
+		sd_cmd->cmd_m1_jitter = 4;
 		sd_cmd->cmd_short_full = 12;
 		break;
 	case CHIP_LG4946:
 		sd_cmd->cmd_jitter = 10;
-		sd_cmd->cmd_u0_jitter = 10;
 		break;
 	}
 
@@ -5990,9 +6145,16 @@ static void siw_hal_prd_set_sd_cmd(struct siw_hal_prd_data *prd)
 	t_prd_info(prd,
 		"cmd_jitter     : %d\n",
 		sd_cmd->cmd_jitter);
-	t_prd_info(prd,
-		"cmd_jitter(u0) : %d\n",
-		sd_cmd->cmd_u0_jitter);
+	if (sd_cmd->cmd_m1_jitter) {
+		t_prd_info(prd,
+			"cmd_m1_jitter  : %d\n",
+			sd_cmd->cmd_m1_jitter);
+	}
+	if (sd_cmd->cmd_short_full) {
+		t_prd_info(prd,
+			"cmd_short_full : %d\n",
+			sd_cmd->cmd_short_full);
+	}
 }
 
 static void siw_hal_prd_parse_work(struct device *dev, struct siw_hal_prd_param *param)
