@@ -5841,7 +5841,7 @@ static int siw_hal_asc(struct device *dev, u32 code, u32 value)
 		({	\
 			int _n_size = 0;	\
 			_n_size = __siw_snprintf(_buf, _buf_max, _size, _fmt, ##_args);	\
-			t_dev_dbg_trace(_dev, (const char *)_fmt, ##_args);	\
+			t_dev_dbg_trace(_dev, _fmt, ##_args);	\
 			_n_size;	\
 		})
 
@@ -6025,7 +6025,7 @@ static int siw_hal_check_status_type_x(struct device *dev,
 			if (err_pre) {
 				len += siw_chk_sts_snprintf(dev, log, log_max, len, " & ");
 			}
-			len += siw_chk_sts_snprintf(dev, log, log_max, len, err_str[i]);
+			len += siw_chk_sts_snprintf(dev, log, log_max, len, "%s", err_str[i]);
 			err_pre |= err_val[i];
 		}
 
