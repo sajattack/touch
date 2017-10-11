@@ -4122,7 +4122,6 @@ static int prd_show_prd_get_data_raw_prd(struct device *dev)
 out:
 	mutex_unlock(&ts->lock);
 
-	prd_chip_driving(dev, LCD_MODE_U3);
 	prd_chip_reset(dev);
 
 	return ret;
@@ -4566,8 +4565,6 @@ static int prd_show_prd_get_data_blu_jitter(struct device *dev)
 
 out:
 	mutex_unlock(&ts->lock);
-
-	prd_chip_driving(dev, LCD_MODE_U3);
 
 	prd_chip_reset(dev);
 
