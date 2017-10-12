@@ -72,23 +72,23 @@
 
 static void siw_touch_report_cancel_event(struct siw_ts *ts)
 {
+	struct input_dev *input = ts->input;
 	u16 old_mask = ts->old_mask;
 	int i = 0;
 
-	if (!ts->input)
+	if (!input) {
+		t_dev_err(ts->dev, "no input device (cancel)\n");
 		return;
+	}
 
 	for (i = 0; i < touch_max_finger(ts); i++) {
 		if (old_mask & (1 << i)) {
-			input_mt_slot(ts->input, i);
-			input_mt_report_slot_state(ts->input,
-				MT_TOOL_FINGER, true);
-			siw_input_report_key(ts->input, BTN_TOUCH, 1);
-			siw_input_report_key(ts->input, BTN_TOOL_FINGER, 1);
-			siw_input_report_abs(ts->input,
-							ABS_MT_PRESSURE,
-							255);
-			t_dev_info(&ts->input->dev, "finger canceled <%d> (%4d, %4d, %4d)\n",
+			input_mt_slot(input, i);
+			input_mt_report_slot_state(input, MT_TOOL_FINGER, true);
+			siw_input_report_key(input, BTN_TOUCH, 1);
+			siw_input_report_key(input, BTN_TOOL_FINGER, 1);
+			siw_input_report_abs(input, ABS_MT_PRESSURE, 255);
+			t_dev_info(&input->dev, "finger canceled <%d> (%4d, %4d, %4d)\n",
 						i,
 						ts->tdata[i].x,
 						ts->tdata[i].y,
@@ -96,13 +96,15 @@ static void siw_touch_report_cancel_event(struct siw_ts *ts)
 		}
 	}
 
-	input_sync(ts->input);
+	input_sync(input);
 }
 
 void siw_touch_report_event(void *ts_data)
 {
 	struct siw_ts *ts = ts_data;
-	struct device *idev = &ts->input->dev;
+	struct input_dev *input = ts->input;
+	struct device *idev = NULL;
+	struct touch_data *tdata = NULL;
 	u16 old_mask = ts->old_mask;
 	u16 new_mask = ts->new_mask;
 	u16 press_mask = 0;
@@ -112,8 +114,12 @@ void siw_touch_report_event(void *ts_data)
 
 //	t_dev_trcf(idev);
 
-	if (!ts->input)
+	if (!input) {
+		t_dev_err(ts->dev, "no input device (report)\n");
 		return;
+	}
+
+	idev = &input->dev;
 
 	change_mask = old_mask ^ new_mask;
 	press_mask = new_mask & change_mask;
@@ -132,27 +138,20 @@ void siw_touch_report_event(void *ts_data)
 		ts->is_palm = 0;
 	}
 
-	for (i = 0; i < touch_max_finger(ts); i++) {
+	tdata = ts->tdata;
+	for (i = 0; i < touch_max_finger(ts); i++, tdata++) {
 		if (new_mask & (1 << i)) {
-			input_mt_slot(ts->input, i);
-			input_mt_report_slot_state(ts->input,
-				MT_TOOL_FINGER, true);
-			siw_input_report_key(ts->input, BTN_TOUCH, 1);
-			siw_input_report_key(ts->input, BTN_TOOL_FINGER, 1);
-			siw_input_report_abs(ts->input, ABS_MT_TRACKING_ID,
-						ts->tdata[i].id);
-			siw_input_report_abs(ts->input, ABS_MT_POSITION_X,
-						ts->tdata[i].x);
-			siw_input_report_abs(ts->input, ABS_MT_POSITION_Y,
-						ts->tdata[i].y);
-			siw_input_report_abs(ts->input, ABS_MT_PRESSURE,
-						ts->tdata[i].pressure);
-			siw_input_report_abs(ts->input, ABS_MT_WIDTH_MAJOR,
-						ts->tdata[i].width_major);
-			siw_input_report_abs(ts->input, ABS_MT_WIDTH_MINOR,
-						ts->tdata[i].width_minor);
-			siw_input_report_abs(ts->input, ABS_MT_ORIENTATION,
-						ts->tdata[i].orientation);
+			input_mt_slot(input, i);
+			input_mt_report_slot_state(input, MT_TOOL_FINGER, true);
+			siw_input_report_key(input, BTN_TOUCH, 1);
+			siw_input_report_key(input, BTN_TOOL_FINGER, 1);
+			siw_input_report_abs(input, ABS_MT_TRACKING_ID, tdata->id);
+			siw_input_report_abs(input, ABS_MT_POSITION_X, tdata->x);
+			siw_input_report_abs(input, ABS_MT_POSITION_Y, tdata->y);
+			siw_input_report_abs(input, ABS_MT_PRESSURE, tdata->pressure);
+			siw_input_report_abs(input, ABS_MT_WIDTH_MAJOR, tdata->width_major);
+			siw_input_report_abs(input, ABS_MT_WIDTH_MINOR, tdata->width_minor);
+			siw_input_report_abs(input, ABS_MT_ORIENTATION, tdata->orientation);
 
 			if (press_mask & (1 << i)) {
 				t_dev_dbg_button(idev, "%d finger press <%d> (%4d, %4d, %4d)\n",
@@ -162,10 +161,13 @@ void siw_touch_report_event(void *ts_data)
 						ts->tdata[i].y,
 						ts->tdata[i].pressure);
 			}
-		} else if (release_mask & (1 << i)) {
-			input_mt_slot(ts->input, i);
-			input_mt_report_slot_state(ts->input,
-				MT_TOOL_FINGER, false);
+
+			continue;
+		}
+
+		if (release_mask & (1 << i)) {
+			input_mt_slot(input, i);
+			input_mt_report_slot_state(input, MT_TOOL_FINGER, false);
 		//	siw_input_report_abs(ts->input, ABS_MT_TRACKING_ID, -1);
 			t_dev_dbg_button(idev, "finger release <%d> (%4d, %4d, %4d)\n",
 					i,
@@ -176,13 +178,13 @@ void siw_touch_report_event(void *ts_data)
 	}
 
 	if (!ts->tcount) {
-		siw_input_report_key(ts->input, BTN_TOUCH, 0);
-		siw_input_report_key(ts->input, BTN_TOOL_FINGER, 0);
+		siw_input_report_key(input, BTN_TOUCH, 0);
+		siw_input_report_key(input, BTN_TOOL_FINGER, 0);
 	}
 
 	ts->old_mask = new_mask;
 
-	input_sync(ts->input);
+	input_sync(input);
 }
 
 void siw_touch_report_all_event(void *ts_data)
@@ -249,9 +251,17 @@ static const struct siw_touch_uevent_ctrl siw_uevent_ctrl_default = {
 void siw_touch_send_uevent(void *ts_data, int type)
 {
 	struct siw_ts *ts = ts_data;
+	struct input_dev *input = ts->input;
+	struct device *idev = NULL;
 	struct siw_touch_uevent_ctrl *uevent_ctrl = touch_uevent_ctrl(ts);
-	struct device *idev = &ts->input->dev;
 	char *str = NULL;
+
+	if (!input) {
+		t_dev_err(ts->dev, "no input device (uevent)\n");
+		return;
+	}
+
+	idev = &ts->input->dev;
 
 	if (uevent_ctrl == NULL) {
 		uevent_ctrl = (struct siw_touch_uevent_ctrl *)&siw_uevent_ctrl_default;
@@ -283,7 +293,7 @@ void siw_touch_send_uevent(void *ts_data, int type)
 
 		atomic_set(&ts->state.uevent, UEVENT_BUSY);
 
-		siw_kobject_uevent_env(ts->input, type, &ts->udev.kobj,
+		siw_kobject_uevent_env(input, type, &ts->udev.kobj,
 						KOBJ_CHANGE, uevent_ctrl->str[type]);
 
 		t_dev_info(ts->dev, "%s\n", str);
