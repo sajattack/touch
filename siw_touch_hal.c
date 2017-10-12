@@ -1167,6 +1167,7 @@ static void siw_hal_get_tci_info(struct device *dev)
 	siw_hal_prt_tci_info(dev);
 }
 
+#if defined(__SIW_CONFIG_SWIPE)
 const struct siw_hal_swipe_ctrl siw_hal_swipe_info_default = {
 	.mode	= SWIPE_LEFT_BIT | SWIPE_RIGHT_BIT,
 	.info = {
@@ -1238,6 +1239,16 @@ static void siw_hal_get_swipe_info(struct device *dev)
 
 	siw_hal_prt_swipe_info(dev);
 }
+#else	/* __SIW_CONFIG_SWIPE */
+static void siw_hal_get_swipe_info(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+
+	memset(&chip->swipe, 0, sizeof(struct siw_hal_swipe_ctrl));
+
+	t_dev_info(dev, "swipe mode disabled\n");
+}
+#endif	/* __SIW_CONFIG_SWIPE */
 
 static const char *siw_hal_pwr_name[] = {
 	[POWER_OFF]		= "Power off",
