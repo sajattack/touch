@@ -4726,9 +4726,6 @@ static int siw_hal_tc_con(struct device *dev, u32 code, void *param)
 	return ret;
 }
 
-
-#define HAL_TC_DRIVING_DELAY	20
-
 static inline int __used siw_hal_tc_driving_u0(struct device *dev)
 {
 	return TC_DRIVE_CTL_START;
@@ -4928,14 +4925,7 @@ static int siw_hal_tc_driving(struct device *dev, int mode)
 
 	if ((mode == LCD_MODE_U0) ||
 		(mode == LCD_MODE_U2)) {
-		int middle_delay = 0;
-
-		switch (touch_chip_type(ts)) {
-		case CHIP_LG4895:
-			middle_delay = 200;
-			break;
-		}
-		touch_msleep(middle_delay);
+		touch_msleep(chip->drv_opt_delay);
 	}
 
 	touch_msleep(hal_dbg_delay(chip, HAL_DBG_DLY_TC_DRIVING_0));
@@ -4955,7 +4945,7 @@ static int siw_hal_tc_driving(struct device *dev, int mode)
 	t_dev_info(dev, "TC Driving[%04Xh] wr 0x%08X\n",
 			reg->tc_drive_ctl, ctrl);
 
-	rdata = HAL_TC_DRIVING_DELAY + hal_dbg_delay(chip, HAL_DBG_DLY_TC_DRIVING_1);
+	rdata = chip->drv_delay + hal_dbg_delay(chip, HAL_DBG_DLY_TC_DRIVING_1);
 	touch_msleep(rdata);
 	t_dev_dbg_base(dev, "waiting %d msecs\n", rdata);
 
@@ -7526,12 +7516,19 @@ static int siw_hal_chipset_option(struct siw_touch_chip *chip)
 	struct siw_touch_chip_opt *opt = &chip->opt;
 	struct siw_ts *ts = chip->ts;
 
+	chip->drv_delay = 20;
+	chip->drv_opt_delay = 0;
+
 	switch (touch_chip_type(ts)) {
 	case CHIP_LG4894:
+		chip->drv_delay = 60;
+
 		opt->t_chk_tci_debug = 1;
 		break;
 
 	case CHIP_LG4895:
+		chip->drv_opt_delay = 200;
+
 		opt->f_u2_blank_chg = 1;
 		opt->t_clock = 1;
 		opt->t_sw_rst = 1;
@@ -7631,6 +7628,9 @@ static int siw_hal_chipset_option(struct siw_touch_chip *chip)
 	t_dev_info(dev, " t_chk_sys_error : %d\n", opt->t_chk_sys_error);
 	t_dev_info(dev, " t_chk_sys_fault : %d\n", opt->t_chk_sys_fault);
 	t_dev_info(dev, " t_chk_fault     : %d\n", opt->t_chk_fault);
+
+	t_dev_info(dev, " drv_delay       : %d ms\n", chip->drv_delay);
+	t_dev_info(dev, " drv_opt_delay   : %d ms\n", chip->drv_opt_delay);
 
 	return 0;
 }
