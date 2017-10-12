@@ -257,6 +257,7 @@ static int siw_touch_do_parse_dts(struct siw_ts *ts)
 	} else {
 		pin_val = siw_touch_of_gpio(dev, np, "reset-gpio", &pin_flags);
 		if (!gpio_is_valid(pin_val)) {
+			t_dev_err(dev, "of gpio  : reset-gpio invalid, %d\n", pin_val);
 			return -EINVAL;
 		}
 		pins->reset_pin = pin_val;
@@ -265,6 +266,7 @@ static int siw_touch_do_parse_dts(struct siw_ts *ts)
 
 	pin_val = siw_touch_of_gpio(dev, np, "irq-gpio", NULL);
 	if (!gpio_is_valid(pin_val)) {
+		t_dev_err(dev, "of gpio  : irq-gpio invalid, %d\n", pin_val);
 		return -EINVAL;
 	}
 	pins->irq_pin= pin_val;
@@ -403,12 +405,16 @@ static int siw_touch_parse_dts(struct siw_ts *ts)
 		pins->reset_pin_pol = 0;
 	} else {
 		if (!gpio_is_valid(pins->reset_pin)) {
+			t_dev_err(dev, "reset_pin invalid, %d\n", pins->reset_pin);
 			return -EINVAL;
 		}
+		t_dev_info(dev, "reset_pin = %d\n", pins->reset_pin);
 	}
 	if (!gpio_is_valid(pins->irq_pin)) {
+		t_dev_err(dev, "irq_pin invalid, %d\n", pins->irq_pin);
 		return -EINVAL;
 	}
+	t_dev_info(dev, "irq_pin = %d\n", pins->irq_pin);
 
 	touch_set_caps(ts, &ts->pdata->caps);
 
