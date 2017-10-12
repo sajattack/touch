@@ -145,7 +145,7 @@ enum CHIP_CAPABILITY {
 #define CHIP_PIN_VIO			-1
 
 #if (CHIP_PIN_RESET == 0) || (CHIP_PIN_IRQ == 0)
-	#error Assign external pin & flag first!!!
+//	#error Assign external pin & flag first!!!
 #endif
 #endif	/* __SIW_CONFIG_OF */
 
