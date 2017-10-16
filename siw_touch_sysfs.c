@@ -120,6 +120,8 @@ static ssize_t _show_do_plat_data(struct device *dev, char *buf)
 	size += _plat_data_snprintf(buf, size,
 					"reset_pin", touch_reset_pin(ts));
 	size += _plat_data_snprintf(buf, size,
+					"reset_pin_pol", touch_reset_pin_pol(ts));
+	size += _plat_data_snprintf(buf, size,
 					"irq_pin", touch_irq_pin(ts));
 	size += _plat_data_snprintf(buf, size,
 					"maker_id_pin", touch_maker_id_pin(ts));
