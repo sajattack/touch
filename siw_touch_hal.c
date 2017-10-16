@@ -6568,6 +6568,7 @@ static int siw_hal_irq_handler(struct device *dev)
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
 	struct siw_hal_reg *reg = chip->reg;
+	int size = 0;
 	int ret = 0;
 
 	if (atomic_read(&chip->init) == IC_INIT_NEED) {
@@ -6578,9 +6579,10 @@ static int siw_hal_irq_handler(struct device *dev)
 #if defined(__SIW_SUPPORT_PM_QOS)
 	pm_qos_update_request(&chip->pm_qos_req, 10);
 #endif
+	size = 12 + (sizeof(struct siw_hal_touch_data) * touch_max_finger(ts));
 	ret = siw_hal_reg_read(dev,
 				reg->tc_ic_status,
-				(void *)&chip->info, sizeof(chip->info));
+				(void *)&chip->info, size);
 #if defined(__SIW_SUPPORT_PM_QOS)
 	pm_qos_update_request(&chip->pm_qos_req, PM_QOS_DEFAULT_VALUE);
 #endif
