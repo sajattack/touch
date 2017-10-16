@@ -1096,11 +1096,9 @@ void siw_touch_mon_resume(struct device *dev)
 	siw_touch_mon_hold(dev, 0);
 }
 
-#define siw_touch_kthread_run(__dev, __threadfn, __data, __namefmt, args...) \
+#define siw_touch_kthread_run(__dev, __threadfn, __data, __name) \
 ({	\
 	struct task_struct *__k;	\
-	char __name[64];	\
-	snprintf(__name, sizeof(__name), __namefmt, ##args);	\
 	__k = kthread_run(__threadfn, __data, "%s", __name);	\
 	if (IS_ERR(__k))	\
 		t_dev_err(__dev, "kthread_run failed : %s\n", __name);	\
@@ -1116,6 +1114,7 @@ static int __used siw_touch_init_thread(struct siw_ts *ts)
 	struct siw_ts_thread *ts_thread = NULL;
 	struct task_struct *thread;
 	siw_mon_handler_t handler;
+	char *thread_name;
 	int interval;
 	int ret = 0;
 
@@ -1166,9 +1165,11 @@ static int __used siw_touch_init_thread(struct siw_ts *ts)
 	ts_thread->interval = interval;
 	ts_thread->handler = handler;
 
+	thread_name = touch_drv_name(ts);
+	thread_name = (thread_name) ? thread_name : SIW_TOUCH_NAME;
 	thread = siw_touch_kthread_run(dev,
 					siw_touch_mon_thread, ts,
-					"siw_touch-%d", MINOR(dev->devt));
+					thread_name);
 	if (IS_ERR(thread)) {
 		ret = PTR_ERR(thread);
 		goto out;
