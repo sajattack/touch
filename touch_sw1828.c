@@ -49,6 +49,7 @@
 
 #define CHIP_MODE_ALLOWED			(0 |	\
 									LCD_MODE_BIT_U3 |	\
+									LCD_MODE_BIT_STOP |	\
 									0)
 
 #define CHIP_FW_SIZE				(64<<10)
