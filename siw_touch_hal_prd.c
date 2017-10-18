@@ -1322,7 +1322,9 @@ static int prd_vfs_uh_remove(struct siw_hal_prd_data *prd,
 	ret = call_usermodehelper(argv[0], argv, envp, UMH_WAIT_PROC);
 	if (ret < 0) {
 		t_prd_err_uh(prd, ret, "[%s %s]", argv[0], argv[1]);
+		return ret;
 	}
+
 	t_prd_dbg_uh(prd, "[%s %s]", argv[0], argv[1]);
 
 	return ret;
@@ -1345,7 +1347,9 @@ static int prd_vfs_uh_rename(struct siw_hal_prd_data *prd,
 	ret = call_usermodehelper(argv[0], argv, envp, UMH_WAIT_PROC);
 	if (ret < 0) {
 		t_prd_err_uh(prd, ret, "[%s %s %s]", argv[0], argv[1], argv[2]);
+		return ret;
 	}
+
 	t_prd_dbg_uh(prd, "[%s %s %s]", argv[0], argv[1], argv[2]);
 
 	return ret;
