@@ -4779,8 +4779,6 @@ static int prd_show_do_lpwg_sd(struct siw_hal_prd_data *prd, char *buf)
 		return ret;
 	}
 
-	siw_touch_irq_control(dev, INTERRUPT_DISABLE);
-
 	ret = prd_chip_driving(dev, LCD_MODE_STOP);
 	if (ret < 0) {
 		goto out;
@@ -4899,6 +4897,8 @@ static ssize_t prd_show_lpwg_sd(struct device *dev, char *buf)
 	}
 
 	siw_touch_mon_pause(dev);
+
+	siw_touch_irq_control(dev, INTERRUPT_DISABLE);
 
 	/* file create , time log */
 	prd_write_file(prd, "\nShow_lpwg_sd Test Start", TIME_INFO_SKIP);
