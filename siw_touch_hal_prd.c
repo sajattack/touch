@@ -3792,6 +3792,9 @@ out:
 	return ret;
 }
 
+#define siw_snprintf_sd_result(_buf, _size, _item, _ret) \
+		siw_snprintf(_buf, _size, "%s : %s\n", _item, (_ret) ? "Fail" : "Pass")
+
 #define __PRD_LOG_VIA_SHELL
 
 static int prd_show_do_sd(struct siw_hal_prd_data *prd, char *buf)
@@ -3895,56 +3898,29 @@ static int prd_show_do_sd(struct siw_hal_prd_data *prd, char *buf)
 	size += siw_snprintf(buf, size,
 				"\n========RESULT=======\n");
 	if(param->sd_test_flag & U3_M2_RAWDATA_TEST_FLAG) {
-		if (!u3_rawdata_ret) {
-			size += siw_snprintf(buf, size,
-						"U3 Raw Data : Pass\n");
-		} else {
-			size += siw_snprintf(buf, size,
-						"U3 Raw Data : Fail\n");
-		}
+		size += siw_snprintf_sd_result(buf, size,
+				"U3 Raw Data", u3_rawdata_ret);
 	}
 
 	if(param->sd_test_flag & U3_M1_RAWDATA_TEST_FLAG) {
-		if (!u3_m1_rawdata_ret) {
-			size += siw_snprintf(buf, size,
-						"U3 M1 Raw Data : Pass\n");
-		} else {
-			size += siw_snprintf(buf, size,
-						"U3 M1 Raw Data : Fail\n");
-		}
+		size += siw_snprintf_sd_result(buf, size,
+				"U3 M1 Raw Data", u3_m1_rawdata_ret);
 	}
 
-
 	if(param->sd_test_flag & U3_JITTER_TEST_FLAG) {
-		if (!u3_jitter_ret) {
-			size += siw_snprintf(buf, size,
-						"U3 Jitter : Pass\n");
-		} else {
-			size += siw_snprintf(buf, size,
-						"U3 Jitter : Fail\n");
-		}
+		size += siw_snprintf_sd_result(buf, size,
+				"U3 Jitter", u3_jitter_ret);
 	}
 
 	if(param->sd_test_flag & U3_M1_JITTER_TEST_FLAG) {
-		if (!u3_m1_jitter_ret) {
-			size += siw_snprintf(buf, size,
-						"U3 M1 Jitter : Pass\n");
-		} else {
-			size += siw_snprintf(buf, size,
-						"U3 M1 Jitter : Fail\n");
-		}
+		size += siw_snprintf_sd_result(buf, size,
+				"U3 M1 Jitter", u3_m1_jitter_ret);
 	}
 
 	if(param->sd_test_flag & U3_BLU_JITTER_TEST_FLAG) {
-		if (!blu_jitter_ret) {
-			size += siw_snprintf(buf, size,
-						"Blu Jitter : Pass\n");
-		} else {
-			size += siw_snprintf(buf, size,
-						"Blu Jitter : Fail\n");
-		}
+		size += siw_snprintf_sd_result(buf, size,
+				"Blu Jitter", blu_jitter_ret);
 	}
-
 
 	if(param->sd_test_flag & OPEN_SHORT_NODE_TEST_FLAG) {
 		if (!openshort_ret) {
@@ -4861,23 +4837,13 @@ static int prd_show_do_lpwg_sd(struct siw_hal_prd_data *prd, char *buf)
 	}
 
 	if(param->lpwg_sd_test_flag & U0_JITTER_TEST_FLAG) {
-		if (!u0_jitter_ret) {
-			size += siw_snprintf(buf, size,
-						"U0 Jitter : Pass\n");
-		} else {
-			size += siw_snprintf(buf, size,
-						"U0 Jitter : Fail\n");
-		}
+		size += siw_snprintf_sd_result(buf, size,
+				"U0 Jitter", u0_jitter_ret);
 	}
 
 	if(param->lpwg_sd_test_flag & U0_M1_JITTER_TEST_FLAG) {
-		if (!u0_m1_jitter_ret) {
-			size += siw_snprintf(buf, size,
-						"U0 M1 Jitter : Pass\n");
-		} else {
-			size += siw_snprintf(buf, size,
-						"U0 M1 Jitter : Fail\n");
-		}
+		size += siw_snprintf_sd_result(buf, size,
+				"U0 M1 Jitter", u0_m1_jitter_ret);
 	}
 
 	prd_write_file(prd, buf, TIME_INFO_SKIP);
