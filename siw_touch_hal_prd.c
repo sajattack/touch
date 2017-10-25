@@ -1135,6 +1135,29 @@ enum {
 		t_prd_err(_prd, "Invalid param\n");
 
 
+static int prd_drv_exception_check(struct siw_hal_prd_data *prd)
+{
+	struct device *dev = prd->dev;
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+
+	if (atomic_read(&chip->init) != IC_INIT_DONE) {
+		t_dev_warn(dev, "Not Ready, Need IC init (prd)\n");
+		return 1;
+	}
+
+	return 0;
+}
+
+static int prd_ic_exception_check(struct siw_hal_prd_data *prd, char *buf)
+{
+	struct device *dev = prd->dev;
+	int boot_mode = 0;
+
+	boot_mode = siw_touch_boot_mode_check(dev);
+
+	return boot_mode;
+}
+
 static int prd_chip_reset(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
@@ -3746,17 +3769,6 @@ static void prd_ic_run_info_print(struct siw_hal_prd_data *prd)
 	prd_write_file(prd, log_buf, TIME_INFO_SKIP);
 }
 
-
-static int prd_ic_exception_check(struct siw_hal_prd_data *prd, char *buf)
-{
-	struct device *dev = prd->dev;
-	int boot_mode = 0;
-
-	boot_mode = siw_touch_boot_mode_check(dev);
-
-	return boot_mode;
-}
-
 static int prd_write_test_control(struct siw_hal_prd_data *prd, u32 mode)
 {
 	struct device *dev = prd->dev;
@@ -3951,6 +3963,14 @@ static ssize_t prd_show_sd(struct device *dev, char *buf)
 	struct siw_hal_prd_data *prd = (struct siw_hal_prd_data *)ts->prd;
 	int size = 0;
 	int ret = 0;
+
+	ret = prd_drv_exception_check(prd);
+	if (ret) {
+		size += siw_snprintf(buf, size,
+					"drv exception(%d) detected, test canceled\n", ret);
+		t_prd_err(prd, "%s", buf);
+		goto out;
+	}
 
 	/* LCD mode check */
 	if (chip->lcd_mode != LCD_MODE_U3) {
@@ -4649,6 +4669,14 @@ static ssize_t prd_show_get_data_common(struct device *dev, char *buf, int type)
 	int size = 0;
 	int ret = 0;
 
+	ret = prd_drv_exception_check(prd);
+	if (ret) {
+		size += siw_snprintf(buf, size,
+					"drv exception(%d) detected, test canceled\n", ret);
+		t_prd_err(prd, "%s", buf);
+		return (ssize_t)size;
+	}
+
 	siw_touch_mon_pause(dev);
 	ret = prd_show_prd_get_data(dev, type);
 	siw_touch_mon_resume(dev);
@@ -4858,6 +4886,15 @@ static ssize_t prd_show_lpwg_sd(struct device *dev, char *buf)
 	struct siw_ts *ts = chip->ts;
 	struct siw_hal_prd_data *prd = (struct siw_hal_prd_data *)ts->prd;
 	int size = 0;
+	int ret = 0;
+
+	ret = prd_drv_exception_check(prd);
+	if (ret) {
+		size += siw_snprintf(buf, size,
+					"drv exception(%d) detected, test canceled\n", ret);
+		t_prd_err(prd, "%s", buf);
+		goto out;
+	}
 
 	/* LCD mode check */
 	if (chip->lcd_mode != LCD_MODE_U0) {
