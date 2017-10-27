@@ -418,11 +418,11 @@ static const char *prd_param_name_lg4894_k[] = {
 };
 
 static const char *prd_param_name_lg4894_t[] = {
-	"T0W53CV3", NULL
+	"T0W53CV3", "TJW53CV3", NULL
 };
 
 static const char *prd_param_name_lg4894_cv[] = {
-	"L0W53CV3", "L0W50CV1", NULL
+	"L0W53CV3", "L0W50CV1", "LJW53CV3", NULL
 };
 
 static const char *prd_param_name_lg4894_lv[] = {
