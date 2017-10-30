@@ -6455,6 +6455,35 @@ static int siw_hal_prd_parse_param(struct device *dev, struct siw_hal_prd_param 
 	return siw_hal_prd_alloc_buffer(dev);
 }
 
+static void siw_hal_prd_param_quirks(struct device *dev,
+			struct siw_hal_prd_param *param)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	struct siw_hal_fw_info *fw = &chip->fw;
+	struct siw_hal_reg *reg = chip->reg;
+	struct siw_hal_prd_data *prd = (struct siw_hal_prd_data *)ts->prd;
+	int data = 0;
+
+	switch (touch_chip_type(ts)) {
+	case CHIP_LG4894:
+		data = (param->name == prd_param_name_lg4894_k) |
+			(param->name == prd_param_name_lg4894_lv) |
+			(param->name == prd_param_name_lg4894_sf);
+
+		reg->prd_m1_m2_raw_offset = (data) ? PRD_M1_M2_RAW_OFFSET : 0x286;
+
+		if (PRD_M1_M2_RAW_OFFSET != reg->prd_m1_m2_raw_offset) {
+			t_prd_info(prd, "%s[%s] reg quirks: %04Xh -> %04Xh\n",
+				touch_chip_name(ts), fw->product_id,
+				PRD_M1_M2_RAW_OFFSET, reg->prd_m1_m2_raw_offset);
+		}
+		break;
+	default:
+		break;
+	}
+}
+
 static int siw_hal_prd_init_param(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
@@ -6501,6 +6530,8 @@ static int siw_hal_prd_init_param(struct device *dev)
 
 				t_prd_dbg_base(prd, "%s[%s] param %d selected\n",
 					touch_chip_name(ts), fw->product_id, idx);
+
+				siw_hal_prd_param_quirks(dev, param);
 
 				t_prd_info(prd, "sd_test_flag %Xh, lpwg_sd_test_flag %Xh\n",
 					param->sd_test_flag, param->lpwg_sd_test_flag);
