@@ -1338,6 +1338,11 @@ static irqreturn_t __used siw_touch_irq_thread(int irq, void *dev_id)
 		goto out;
 	}
 
+	if (ts->ops->irq_dbg_handler) {
+		ret = ts->ops->irq_dbg_handler(dev);
+		goto out;
+	}
+
 	mutex_lock(&ts->lock);
 	ret = _siw_touch_do_irq_thread(ts);
 	mutex_unlock(&ts->lock);

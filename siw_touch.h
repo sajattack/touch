@@ -489,6 +489,7 @@ struct siw_touch_operations {
 	int (*tc_con)(struct device *dev,	u32 code, void *param);
 	int (*tc_driving)(struct device *dev, int mode);
 	int (*chk_status)(struct device *dev);
+	int (*irq_dbg_handler)(struct device *dev);
 	int (*irq_handler)(struct device *dev);
 	int (*irq_abs)(struct device *dev);
 	int (*irq_lpwg)(struct device *dev);

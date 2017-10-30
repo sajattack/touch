@@ -118,6 +118,7 @@ enum {
 	U0_M1_JITTER_TEST,
 	/* */
 	SHORT_FULL_TEST,
+	IRQ_TEST,
 	/* */
 	UX_INVALID,
 
@@ -161,6 +162,7 @@ enum {
 	U0_M1_JITTER_TEST_FLAG		= (1<<U0_M1_JITTER_TEST),
 	/* */
 	SHORT_FULL_TEST_FLAG		= (1<<SHORT_FULL_TEST),
+	IRQ_TEST_FLAG				= (1<<IRQ_TEST),
 	/* */
 	OPEN_SHORT_RESULT_DATA_FLAG		= (1<<OPEN_SHORT_RESULT_DATA_IDX),
 	OPEN_SHORT_RESULT_RAWDATA_FLAG	= (1<<OPEN_SHORT_RESULT_RAWDATA_IDX),
@@ -395,6 +397,9 @@ struct siw_hal_prd_data {
 	char log_buf[PRD_LOG_BUF_SIZE + PRD_BUF_DUMMY];
 	char line[PRD_LINE_NUM + PRD_BUF_DUMMY];
 	char buf_write[PRD_BUF_SIZE + PRD_BUF_DUMMY];
+	/* */
+	int irq_test;
+	int irq_cnt;
 };
 
 enum {
@@ -854,6 +859,7 @@ static const struct siw_hal_prd_param prd_params[] = {
 						U3_M1_RAWDATA_TEST_FLAG |	\
 						U3_M1_JITTER_TEST_FLAG |	\
 						SHORT_FULL_TEST_FLAG |	\
+						IRQ_TEST_FLAG |	\
 						OPEN_SHORT_RESULT_DATA_FLAG |	\
 						OPEN_SHORT_RESULT_ALWAYS_FLAG,
 		.lpwg_sd_test_flag = 0,
@@ -2177,6 +2183,198 @@ static int __used prd_get_limit(struct siw_hal_prd_data *prd,
 	}
 
 out:
+	return ret;
+}
+
+#define PRD_IRQ_TEST_CNT	10
+
+static int prd_irq_test_handler(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	struct siw_hal_reg *reg = chip->reg;
+	struct siw_hal_prd_data *prd = (struct siw_hal_prd_data *)ts->prd;
+	int size = 0;
+
+	if (!prd->irq_test) {
+		return -ESRCH;
+	}
+
+	size = 12 + (sizeof(struct siw_hal_touch_data) * touch_max_finger(ts));
+	siw_hal_reg_read(dev, reg->tc_ic_status, (void *)&chip->info, size);
+
+	t_prd_info(prd, "irq_test: irq detected %d (h/w:%Xh, f/w:%Xh)\n",
+		++prd->irq_cnt, chip->info.ic_status, chip->info.device_status);
+
+	return 0;
+}
+
+struct prd_irq_setup {
+	int addr;
+	u32 data;
+};
+
+static const struct prd_irq_setup prd_irq_test_setup_sw49501[] = {
+	{ 0x34, 0 },
+	{ 0xB8, 0 },
+	{ -1, 0 }	/* end mark */
+};
+
+static const struct prd_irq_setup prd_irq_test_ctrl_sw49501 = { 0x02, 0 };
+
+static int prd_do_irq_test_setup(struct siw_hal_prd_data *prd,
+			struct prd_irq_setup *ctrl)
+{
+	struct device *dev = prd->dev;
+	int addr;
+	u32 data;
+	int ret = 0;
+
+	while (ctrl) {
+		addr = ctrl->addr;
+		data = ctrl->data;
+		if (addr == -1) {
+			break;
+		}
+
+		if (addr) {
+			t_prd_info(prd, "irq_test: setup wr[%04Xh] = %08Xh\n",
+				addr, data);
+			ret = siw_hal_write_value(dev, addr, data);
+			if (ret < 0) {
+				return ret;
+			}
+		}
+
+		ctrl++;
+	}
+
+	return 0;
+
+}
+
+static int prd_do_irq_test_trigger(struct siw_hal_prd_data *prd,
+			struct prd_irq_setup *ctrl)
+{
+	struct device *dev = prd->dev;
+	int addr;
+	u32 data;
+	int i;
+	int ret;
+
+	addr = ctrl->addr;
+	data = ctrl->data;
+
+	prd->irq_cnt = 0;
+
+	for (i = 0; i < PRD_IRQ_TEST_CNT; i++) {
+		if (prd->irq_cnt != i) {
+			t_prd_warn(prd,
+				"irq_test: ctrl: irq cnt mismatch, trigger(%d) != detection(%d)\n",
+				i, prd->irq_cnt);
+		}
+
+		t_prd_info(prd, "irq_test: ctrl: irq trigger %d (wr[%04Xh] = %d)\n",
+				i + 1, addr, data);
+		ret = siw_hal_write_value(dev, addr, data);
+		if (ret < 0) {
+			return ret;
+		}
+
+		touch_msleep(20);
+	}
+
+	return 0;
+}
+
+static int prd_do_irq_test(struct siw_hal_prd_data *prd, char *buf)
+{
+	struct device *dev = prd->dev;
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	struct prd_irq_setup *irq_test_setup = NULL;
+	struct prd_irq_setup *irq_test_ctrl = NULL;
+	int irq_cnt;
+	int ret = 0;
+
+	switch (touch_chip_type(ts)) {
+	case CHIP_SW49501:
+		irq_test_setup = (struct prd_irq_setup *)prd_irq_test_setup_sw49501;
+		irq_test_ctrl = (struct prd_irq_setup *)&prd_irq_test_ctrl_sw49501;
+		break;
+	default:
+		t_prd_info(prd, "IRQ Test not supported, skip\n");
+		return 0;
+	}
+
+	ret = prd_do_irq_test_setup(prd, irq_test_setup);
+	if (ret < 0) {
+		return ret;
+	}
+
+	/* temporary setup */
+	atomic_set(&chip->init, IC_INIT_NEED);
+
+	ts->ops->irq_dbg_handler = prd_irq_test_handler;
+
+	/* temporary enable */
+	siw_touch_irq_control(dev, INTERRUPT_ENABLE);
+
+	prd->irq_test = 1;
+
+	ret = prd_do_irq_test_trigger(prd, irq_test_ctrl);
+
+	prd->irq_test = 0;
+
+	/* restore */
+	siw_touch_irq_control(dev, INTERRUPT_DISABLE);
+
+	ts->ops->irq_dbg_handler = NULL;
+
+	/* restore */
+	atomic_set(&chip->init, IC_INIT_DONE);
+
+	if (ret < 0) {
+		siw_snprintf(buf, 0, "IRQ : Fail(trigger io failed)\n");
+		goto out;
+	}
+
+	irq_cnt = prd->irq_cnt;
+
+	ret = (irq_cnt == PRD_IRQ_TEST_CNT) ? 0 : 1;
+
+	if (ret) {
+		siw_snprintf(buf, 0, "IRQ : Fail, trigger(%d) != detection(%d)\n",
+			PRD_IRQ_TEST_CNT, irq_cnt);
+	} else {
+		siw_snprintf(buf, 0, "IRQ : Pass\n");
+	}
+
+out:
+	t_prd_info(prd, "%s", buf);
+
+	return ret;
+}
+
+static int __used prd_irq_test(struct siw_hal_prd_data *prd, int result_on)
+{
+	char test_type[32] = {0, };
+	int ret;
+
+	t_prd_info(prd, "========IRQ_TEST========\n");
+
+	memset(prd->buf_write, 0, PRD_BUF_SIZE);
+
+	ret = prd_do_irq_test(prd, prd->buf_write);
+
+	if (result_on == RESULT_ON) {
+		snprintf(test_type, sizeof(test_type), "\n\n%s\n", "[IRQ_TEST]");
+		/* Test Type Write */
+		prd_write_file(prd, test_type, TIME_INFO_SKIP);
+
+		prd_write_file(prd, prd->buf_write, TIME_INFO_SKIP);
+	}
+
 	return ret;
 }
 
@@ -3819,6 +4017,7 @@ static int prd_show_do_sd(struct siw_hal_prd_data *prd, char *buf)
 	int blu_jitter_ret = 0;
 	int u3_jitter_ret = 0;
 	int u3_m1_jitter_ret = 0;
+	int irq_ret = 0;
 	int size = 0;
 	int ret;
 
@@ -3830,6 +4029,17 @@ static int prd_show_do_sd(struct siw_hal_prd_data *prd, char *buf)
 	ret = prd_chip_driving(dev, LCD_MODE_STOP);
 	if (ret < 0) {
 		goto out;
+	}
+
+	/*
+	 * IRQ_TEST
+	 * ret - pass : 0, fail : 1
+	 */
+	if (param->sd_test_flag & IRQ_TEST_FLAG) {
+		irq_ret = prd_irq_test(prd, RESULT_ON);
+		if (irq_ret < 0) {
+			goto out;
+		}
 	}
 
 	/*
@@ -3909,6 +4119,12 @@ static int prd_show_do_sd(struct siw_hal_prd_data *prd, char *buf)
 
 	size += siw_snprintf(buf, size,
 				"\n========RESULT=======\n");
+
+	if (param->sd_test_flag & IRQ_TEST_FLAG) {
+		size += siw_snprintf_sd_result(buf, size,
+				"IRQ", irq_ret);
+	}
+
 	if(param->sd_test_flag & U3_M2_RAWDATA_TEST_FLAG) {
 		size += siw_snprintf_sd_result(buf, size,
 				"U3 Raw Data", u3_rawdata_ret);
