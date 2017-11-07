@@ -1674,6 +1674,8 @@ static int siw_touch_probe_post(struct siw_ts *ts)
 
 	ts->init_late = NULL;
 
+	touch_msleep(200);
+
 	return siw_touch_probe_init(ts);
 }
 
