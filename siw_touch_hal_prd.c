@@ -1234,8 +1234,9 @@ static int __used prd_chk_file_mode(struct siw_hal_prd_data *prd,
 						char *fname)
 {
 	struct dentry *fentry = filp->f_path.dentry;
+	unsigned int accmode = filp->f_flags & O_ACCMODE;
 
-	if (filp->f_flags & (O_RDWR|O_WRONLY)) {
+	if (accmode & (O_RDWR|O_WRONLY)) {
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,19,0))
 		if (!(filp->f_mode & FMODE_CAN_WRITE)) {
 			t_prd_err(prd, "file not writeable : %s\n", fname);
@@ -1244,7 +1245,7 @@ static int __used prd_chk_file_mode(struct siw_hal_prd_data *prd,
 #endif
 	}
 
-	if (filp->f_flags & (O_RDWR|O_RDONLY)) {
+	if ((accmode == O_RDONLY) || (accmode & O_RDWR)){
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,19,0))
 		if (!(filp->f_mode & FMODE_CAN_READ)) {
 			t_prd_err(prd, "file not readable : %s\n", fname);
