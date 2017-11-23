@@ -531,11 +531,6 @@ enum {
 								OPEN_SHORT_NODE_TEST_FLAG |	\
 								U3_JITTER_TEST_FLAG |	\
 								0),
-	LPWG_SD_FLAG_SW1828		=	(0 |	\
-								U0_M2_RAWDATA_TEST_FLAG |	\
-								U0_M1_RAWDATA_TEST_FLAG |	\
-								U0_JITTER_TEST_FLAG |	\
-								0),
 };
 
 static const struct siw_hal_prd_param prd_params[] = {
@@ -897,9 +892,9 @@ static const struct siw_hal_prd_param prd_params[] = {
 		},
 		__PRD_PARAM_DIMENSION(20, 32, 0, 48, PRD_M1_COL_SIZE, 1, 1),
 		__PRD_2ND_SCR(0, 0),
-		.sysfs_off_flag = (PRD_SYS_EN_DEBUG_BUF|PRD_SYS_EN_APP_DEBUG_BUF),
+		.sysfs_off_flag = (PRD_SYS_EN_DEBUG_BUF|PRD_SYS_EN_APP_DEBUG_BUF|PRD_SYS_EN_LPWG_SD),
 		.sd_test_flag = SD_FLAG_SW1828,
-		.lpwg_sd_test_flag = LPWG_SD_FLAG_SW1828,
+		.lpwg_sd_test_flag = 0,
 	},
 	/*
 	 * End
