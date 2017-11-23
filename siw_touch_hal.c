@@ -281,7 +281,7 @@ static void siw_hal_trigger_gpio_reset(struct device *dev)
 //	struct siw_ts *ts = chip->ts;
 
 	siw_hal_set_gpio_reset(dev, GPIO_OUT_ZERO);
-	touch_msleep(1 + hal_dbg_delay(chip, HAL_DBG_DLY_HW_RST_0));
+	touch_msleep(chip->drv_reset_low + hal_dbg_delay(chip, HAL_DBG_DLY_HW_RST_0));
 	siw_hal_set_gpio_reset(dev, GPIO_OUT_ONE);
 
 	t_dev_info(dev, "trigger gpio reset\n");
@@ -1278,7 +1278,7 @@ static int siw_hal_power(struct device *dev, int ctrl)
 		siw_hal_set_gpio_reset(dev, GPIO_OUT_ZERO);
 		siw_hal_power_vio(dev, 0);
 		siw_hal_power_vdd(dev, 0);
-		touch_msleep(1 + hal_dbg_delay(chip, HAL_DBG_DLY_HW_RST_0));
+		touch_msleep(chip->drv_reset_low + hal_dbg_delay(chip, HAL_DBG_DLY_HW_RST_0));
 		break;
 
 	case POWER_ON:
@@ -2536,7 +2536,7 @@ static int siw_hal_reinit(struct device *dev,
 		siw_hal_power(dev, POWER_ON);
 	} else {
 		siw_hal_set_gpio_reset(dev, GPIO_OUT_ZERO);
-		touch_msleep(1 + hal_dbg_delay(chip, HAL_DBG_DLY_HW_RST_0));
+		touch_msleep(chip->drv_reset_low + hal_dbg_delay(chip, HAL_DBG_DLY_HW_RST_0));
 		siw_hal_set_gpio_reset(dev, GPIO_OUT_ONE);
 	}
 
@@ -6843,7 +6843,7 @@ static int siw_hal_notify(struct device *dev, ulong event, void *data)
 		t_dev_info(dev, "notify: lcd_event: touch reset start\n");
 		siw_touch_irq_control(ts->dev, INTERRUPT_DISABLE);
 		siw_hal_set_gpio_reset(dev, GPIO_OUT_ZERO);
-		touch_msleep(1 + hal_dbg_delay(chip, HAL_DBG_DLY_HW_RST_0));
+		touch_msleep(chip->drv_reset_low + hal_dbg_delay(chip, HAL_DBG_DLY_HW_RST_0));
 
 		noti_str = "TOUCH_RESET_START";
 		break;
@@ -7533,6 +7533,7 @@ static int siw_hal_chipset_option(struct siw_touch_chip *chip)
 	struct siw_touch_chip_opt *opt = &chip->opt;
 	struct siw_ts *ts = chip->ts;
 
+	chip->drv_reset_low = 1;
 	chip->drv_delay = 20;
 	chip->drv_opt_delay = 0;
 
@@ -7560,6 +7561,8 @@ static int siw_hal_chipset_option(struct siw_touch_chip *chip)
 		break;
 
 	case CHIP_SW1828 :
+		chip->drv_reset_low = 10;	//following LGD CAS recommendation
+
 		opt->f_ver_ext = 1;
 		opt->f_dbg_report = 1;
 		opt->t_chk_frame = 1;
@@ -7646,6 +7649,7 @@ static int siw_hal_chipset_option(struct siw_touch_chip *chip)
 	t_dev_info(dev, " t_chk_sys_fault : %d\n", opt->t_chk_sys_fault);
 	t_dev_info(dev, " t_chk_fault     : %d\n", opt->t_chk_fault);
 
+	t_dev_info(dev, " drv_reset_low   : %d ms\n", chip->drv_reset_low);
 	t_dev_info(dev, " drv_delay       : %d ms\n", chip->drv_delay);
 	t_dev_info(dev, " drv_opt_delay   : %d ms\n", chip->drv_opt_delay);
 

@@ -534,6 +534,7 @@ struct siw_touch_chip {
 	struct siw_hal_status_mask_bit status_mask_bit;
 	struct siw_hal_status_filter *status_filter;
 	/* */
+	int drv_reset_low;
 	int drv_delay;
 	int drv_opt_delay;
 	u8 prev_lcd_mode;
