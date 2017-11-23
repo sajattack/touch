@@ -4203,6 +4203,8 @@ static ssize_t prd_show_sd(struct device *dev, char *buf)
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
 	struct siw_hal_prd_data *prd = (struct siw_hal_prd_data *)ts->prd;
+	struct siw_hal_prd_param *param = &prd->param;
+	char log_tmp[64] = {0, };
 	int size = 0;
 	int ret = 0;
 
@@ -4235,10 +4237,13 @@ static ssize_t prd_show_sd(struct device *dev, char *buf)
 	siw_touch_irq_control(dev, INTERRUPT_DISABLE);
 
 	/* file create , time log */
-	prd_write_file(prd, "\nShow_sd Test Start", TIME_INFO_SKIP);
+	snprintf(log_tmp, sizeof(log_tmp), "\nShow_sd(%Xh) Test Start",
+		param->sd_test_flag);
+	prd_write_file(prd, log_tmp, TIME_INFO_SKIP);
 	prd_write_file(prd, "\n", TIME_INFO_WRITE);
 
-	t_prd_info(prd, "show_sd test begins\n");
+	t_prd_info(prd, "show_sd test(%Xh) begins\n",
+		param->sd_test_flag);
 
 	prd_firmware_version_log(prd);
 	prd_ic_run_info_print(prd);
@@ -5128,6 +5133,8 @@ static ssize_t prd_show_lpwg_sd(struct device *dev, char *buf)
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
 	struct siw_hal_prd_data *prd = (struct siw_hal_prd_data *)ts->prd;
+	struct siw_hal_prd_param *param = &prd->param;
+	char log_tmp[64] = {0, };
 	int size = 0;
 	int ret = 0;
 
@@ -5151,10 +5158,13 @@ static ssize_t prd_show_lpwg_sd(struct device *dev, char *buf)
 	siw_touch_irq_control(dev, INTERRUPT_DISABLE);
 
 	/* file create , time log */
-	prd_write_file(prd, "\nShow_lpwg_sd Test Start", TIME_INFO_SKIP);
+	snprintf(log_tmp, sizeof(log_tmp), "\nShow_lpwg_sd(%Xh) Test Start",
+		param->lpwg_sd_test_flag);
+	prd_write_file(prd, log_tmp, TIME_INFO_SKIP);
 	prd_write_file(prd, "\n", TIME_INFO_WRITE);
 
-	t_prd_info(prd, "show_lpwg_sd test begins\n");
+	t_prd_info(prd, "show_lpwg_sd(%Xh) test begins\n",
+		param->lpwg_sd_test_flag);
 
 	prd_firmware_version_log(prd);
 	prd_ic_run_info_print(prd);
