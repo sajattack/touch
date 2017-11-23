@@ -170,6 +170,13 @@ enum {
 };
 
 enum {
+	CTRL_FLAG_RESULT_OFF			= (1<<0),
+	/* */
+	CTRL_FLAG_FILE_WR_OFF			= (1<<8),
+	CTRL_FLAG_FILE_RD_OFF			= (1<<9),
+};
+
+enum {
 	/*
 	 * [Caution]
 	 * Do not touch this ordering
@@ -284,6 +291,8 @@ struct siw_hal_prd_param {
 	//
 	u32 sd_test_flag;
 	u32 lpwg_sd_test_flag;
+	//
+	u32 ctrl_flag;
 };
 
 struct siw_hal_prd_ctrl {
@@ -350,6 +359,9 @@ struct siw_hal_prd_sd_param {
 
 struct siw_hal_prd_data {
 	struct device *dev;
+	int result_on;
+	int file_wr_off;
+	int file_rd_off;
 	struct siw_hal_prd_sd_cmd sd_cmd;
 	u32 dbg_mask;
 	/* */
@@ -1257,6 +1269,19 @@ static struct file __used *prd_vfs_file_open(struct siw_hal_prd_data *prd,
 				char *fname, int flags, umode_t mode)
 {
 	struct file *filp;
+	unsigned int accmode = mode & O_ACCMODE;
+
+	if (accmode & (O_WRONLY|O_RDWR)) {
+		if (prd->file_wr_off) {
+			return NULL;
+		}
+	}
+
+	if ((accmode == O_RDONLY) || (accmode & O_RDWR)) {
+		if (prd->file_rd_off) {
+			return NULL;
+		}
+	}
 
 	filp = filp_open((const char *)fname, flags, mode);
 	if (IS_ERR(filp)) {
@@ -2746,10 +2771,7 @@ static int prd_do_open_short_test(struct siw_hal_prd_data *prd)
 	int ret = 0;
 
 	/* Test Type Write */
-	ret = prd_write_file(prd, "\n\n[OPEN_SHORT_ALL_TEST]\n", TIME_INFO_SKIP);
-	if (ret < 0) {
-		return ret;
-	}
+	prd_write_file(prd, "\n\n[OPEN_SHORT_ALL_TEST]\n", TIME_INFO_SKIP);
 
 	t_prd_dbg_base(prd, "result resister:%d \n", reg->tc_tsp_test_pf_result);
 
@@ -3245,6 +3267,13 @@ static int prd_compare_rawdata(struct siw_hal_prd_data *prd, int type)
 	}
 
 #if !defined(__SIW_SUPPORT_PRD_SET_SD_ONLY)
+	if (prd->file_rd_off) {
+		t_prd_info(prd, "skip data comparison by file_rd_off\n");
+		siw_prd_buf_snprintf(prd->buf_write, 0,
+			"skip data comparison by file_rd_off\n");
+		return 0;
+	}
+
 	ret = prd_get_limit(prd,
 				lower_str, &lower);
 	if (ret < 0) {
@@ -4006,6 +4035,7 @@ static int prd_show_do_sd(struct siw_hal_prd_data *prd, char *buf)
 {
 	struct device *dev = prd->dev;
 	struct siw_hal_prd_param *param = &prd->param;
+	int result_on = prd->result_on;
 	int u3_rawdata_ret = 0;
 	int u3_m1_rawdata_ret = 0;
 	int openshort_ret = 0;
@@ -4031,7 +4061,7 @@ static int prd_show_do_sd(struct siw_hal_prd_data *prd, char *buf)
 	 * ret - pass : 0, fail : 1
 	 */
 	if (param->sd_test_flag & IRQ_TEST_FLAG) {
-		irq_ret = prd_irq_test(prd, RESULT_ON);
+		irq_ret = prd_irq_test(prd, result_on);
 		if (irq_ret < 0) {
 			goto out;
 		}
@@ -4043,7 +4073,7 @@ static int prd_show_do_sd(struct siw_hal_prd_data *prd, char *buf)
 	 * rawdata tunecode - pass : 0, fail : 2
 	 */
 	if(param->sd_test_flag & U3_M2_RAWDATA_TEST_FLAG) {
-		u3_rawdata_ret = prd_rawdata_test(prd, U3_M2_RAWDATA_TEST, RESULT_ON);
+		u3_rawdata_ret = prd_rawdata_test(prd, U3_M2_RAWDATA_TEST, result_on);
 		if (u3_rawdata_ret < 0) {
 			goto out;
 		}
@@ -4055,7 +4085,7 @@ static int prd_show_do_sd(struct siw_hal_prd_data *prd, char *buf)
 	 * rawdata tunecode - pass : 0, fail : 2
 	 */
 	if(param->sd_test_flag & U3_M1_RAWDATA_TEST_FLAG) {
-		u3_m1_rawdata_ret = prd_rawdata_test(prd, U3_M1_RAWDATA_TEST, RESULT_ON);
+		u3_m1_rawdata_ret = prd_rawdata_test(prd, U3_M1_RAWDATA_TEST, result_on);
 		if (u3_m1_rawdata_ret < 0) {
 			goto out;
 		}
@@ -4067,7 +4097,7 @@ static int prd_show_do_sd(struct siw_hal_prd_data *prd, char *buf)
 	This will be enabled later.
 	*/
 	if(param->sd_test_flag & U3_JITTER_TEST_FLAG) {
-		u3_jitter_ret = prd_rawdata_test(prd, U3_JITTER_TEST, RESULT_ON);
+		u3_jitter_ret = prd_rawdata_test(prd, U3_JITTER_TEST, result_on);
 		if (u3_jitter_ret < 0) {
 			goto out;
 		}
@@ -4079,7 +4109,7 @@ static int prd_show_do_sd(struct siw_hal_prd_data *prd, char *buf)
 	This will be enabled later.
 	*/
 	if(param->sd_test_flag & U3_M1_JITTER_TEST_FLAG) {
-		u3_m1_jitter_ret = prd_rawdata_test(prd, U3_M1_JITTER_TEST, RESULT_ON);
+		u3_m1_jitter_ret = prd_rawdata_test(prd, U3_M1_JITTER_TEST, result_on);
 		if (u3_m1_jitter_ret < 0) {
 			goto out;
 		}
@@ -4094,7 +4124,7 @@ static int prd_show_do_sd(struct siw_hal_prd_data *prd, char *buf)
 	 *   Read RawData & Compare with BLU Jitter Spec
 	 */
 	if(param->sd_test_flag & U3_BLU_JITTER_TEST_FLAG) {
-		blu_jitter_ret = prd_rawdata_test(prd, U3_BLU_JITTER_TEST, RESULT_ON);
+		blu_jitter_ret = prd_rawdata_test(prd, U3_BLU_JITTER_TEST, result_on);
 		if (blu_jitter_ret < 0) {
 			goto out;
 		}
@@ -4985,6 +5015,7 @@ static int prd_show_do_lpwg_sd(struct siw_hal_prd_data *prd, char *buf)
 {
 	struct device *dev = prd->dev;
 	struct siw_hal_prd_param *param = &prd->param;
+	int result_on = prd->result_on;
 	int m1_rawdata_ret = 0;
 	int m2_rawdata_ret = 0;
 	int u0_jitter_ret = 0;
@@ -5009,14 +5040,14 @@ static int prd_show_do_lpwg_sd(struct siw_hal_prd_data *prd, char *buf)
 	 * rawdata tunecode - pass : 0, fail : 2
 	 */
 	if(param->lpwg_sd_test_flag & U0_M2_RAWDATA_TEST_FLAG) {
-		m2_rawdata_ret = prd_rawdata_test(prd, U0_M2_RAWDATA_TEST, RESULT_ON);
+		m2_rawdata_ret = prd_rawdata_test(prd, U0_M2_RAWDATA_TEST, result_on);
 		if (m2_rawdata_ret < 0) {
 			goto out;
 		}
 	}
 
 	if(param->lpwg_sd_test_flag & U0_M1_RAWDATA_TEST_FLAG) {
-		m1_rawdata_ret = prd_rawdata_test(prd, U0_M1_RAWDATA_TEST, RESULT_ON);
+		m1_rawdata_ret = prd_rawdata_test(prd, U0_M1_RAWDATA_TEST, result_on);
 		if (m1_rawdata_ret < 0) {
 			goto out;
 		}
@@ -5028,7 +5059,7 @@ static int prd_show_do_lpwg_sd(struct siw_hal_prd_data *prd, char *buf)
 	 * This will be enabled later.
 	*/
 	if(param->lpwg_sd_test_flag & U0_JITTER_TEST_FLAG) {
-		u0_jitter_ret = prd_rawdata_test(prd, U0_JITTER_TEST, RESULT_ON);
+		u0_jitter_ret = prd_rawdata_test(prd, U0_JITTER_TEST, result_on);
 		if (u0_jitter_ret < 0) {
 			goto out;
 		}
@@ -5040,7 +5071,7 @@ static int prd_show_do_lpwg_sd(struct siw_hal_prd_data *prd, char *buf)
 	 * This will be enabled later.
 	*/
 	if(param->lpwg_sd_test_flag & U0_M1_JITTER_TEST_FLAG) {
-		u0_m1_jitter_ret = prd_rawdata_test(prd, U0_M1_JITTER_TEST, RESULT_ON);
+		u0_m1_jitter_ret = prd_rawdata_test(prd, U0_M1_JITTER_TEST, result_on);
 		if (u0_m1_jitter_ret < 0) {
 			goto out;
 		}
@@ -5211,7 +5242,7 @@ static ssize_t prd_store_file_test(struct device *dev,
 
 	ret = prd_vfs_file_chk(prd, fname, O_RDONLY, 0666, NULL);
 	if (ret < 0) {
-		/* */
+		goto out;
 	}
 
 	/* Check mode */
@@ -6549,6 +6580,12 @@ static int siw_hal_prd_init_param(struct device *dev)
 				if (param->sd_test_flag & OPEN_SHORT_RESULT_ALWAYS_FLAG) {
 					prd->dbg_mask |= PRD_DBG_OPEN_SHORT_DATA;
 				}
+
+				prd->result_on = (param->ctrl_flag & CTRL_FLAG_RESULT_OFF) ?	\
+								RESULT_OFF : RESULT_ON;
+
+				prd->file_wr_off = !!(param->ctrl_flag & CTRL_FLAG_FILE_WR_OFF);
+				prd->file_rd_off = !!(param->ctrl_flag & CTRL_FLAG_FILE_RD_OFF);
 
 				ret = siw_hal_prd_parse_param(dev, param);
 				if (ret < 0) {
