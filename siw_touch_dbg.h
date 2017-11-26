@@ -74,7 +74,10 @@ extern u32 t_dev_dbg_mask;
 		} while (0)
 
 
-#define __t_dev_none()		do{ } while (0)
+#define __t_dev_none(_dev, fmt, args...)	\
+		do{	\
+			if (0) dev_printk(KERN_DEBUG, _dev, fmt, ##args);	\
+		} while (0)
 
 #define __t_dev_info(_dev, fmt, args...)	dev_info(_dev, fmt,	##args)
 #define __t_dev_warn(_dev, fmt, args...)	dev_warn(_dev, fmt, ##args)
@@ -84,8 +87,8 @@ extern u32 t_dev_dbg_mask;
 #define t_dev_info(_dev, fmt, args...)		__t_dev_info(_dev, fmt, ##args)
 #define t_dev_warn(_dev, fmt, args...)		__t_dev_warn(_dev, fmt, ##args)
 #else
-#define t_dev_info(_dev, fmt, args...)		__t_dev_none()
-#define t_dev_warn(_dev, fmt, args...)		__t_dev_none()
+#define t_dev_info(_dev, fmt, args...)		__t_dev_none(_dev, fmt, ##args)
+#define t_dev_warn(_dev, fmt, args...)		__t_dev_none(_dev, fmt, ##args)
 #endif
 
 #define t_dev_trace(_dev, fmt, args...)		__t_dev_info(_dev, fmt, ##args)
