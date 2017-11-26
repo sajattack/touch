@@ -2224,8 +2224,10 @@ static int prd_irq_test_handler(struct device *dev)
 	size = 12 + (sizeof(struct siw_hal_touch_data) * touch_max_finger(ts));
 	siw_hal_reg_read(dev, reg->tc_ic_status, (void *)&chip->info, size);
 
+	++prd->irq_cnt;
+
 	t_prd_info(prd, "irq_test: irq detected %d (h/w:%Xh, f/w:%Xh)\n",
-		++prd->irq_cnt, chip->info.ic_status, chip->info.device_status);
+		prd->irq_cnt, chip->info.ic_status, chip->info.device_status);
 
 	return 0;
 }
@@ -2372,7 +2374,11 @@ static int prd_do_irq_test(struct siw_hal_prd_data *prd, char *buf)
 	}
 
 out:
-	t_prd_info(prd, "%s", buf);
+	if (ret) {
+		t_prd_err(prd, "%s", buf);
+	} else {
+		t_prd_info(prd, "%s", buf);
+	}
 
 	return ret;
 }
