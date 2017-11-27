@@ -242,6 +242,8 @@ static ssize_t _show_reg_list(struct device *dev, char *buf)
 				fw->product_id);
 
 	switch (chip->opt.t_boot_mode) {
+	case 2:
+		/* fall through */
 	case 1:
 		boot_chk_offset = 0;
 		break;
