@@ -4032,9 +4032,38 @@ out:
 
 #define __PRD_LOG_VIA_SHELL
 
-static int prd_show_do_sd(struct siw_hal_prd_data *prd, char *buf)
+static int __prd_sd_pre(struct siw_hal_prd_data *prd, char *buf)
 {
 	struct device *dev = prd->dev;
+	int ret = 0;
+
+	ret = prd_write_test_control(prd, CMD_TEST_ENTER);
+	if (ret < 0) {
+		goto out;
+	}
+
+	ret = prd_chip_driving(dev, LCD_MODE_STOP);
+	if (ret < 0) {
+		goto out;
+	}
+
+out:
+	return ret;
+}
+
+static int __prd_sd_post(struct siw_hal_prd_data *prd, char *buf)
+{
+	prd_write_file(prd, buf, TIME_INFO_SKIP);
+	t_prd_info(prd, "%s \n", buf);
+
+	prd_write_test_control(prd, CMD_TEST_EXIT);
+
+	return 0;
+}
+
+static int prd_show_do_sd(struct siw_hal_prd_data *prd, char *buf)
+{
+//	struct device *dev = prd->dev;
 	struct siw_hal_prd_param *param = &prd->param;
 	int result_on = prd->result_on;
 	int u3_rawdata_ret = 0;
@@ -4047,12 +4076,7 @@ static int prd_show_do_sd(struct siw_hal_prd_data *prd, char *buf)
 	int size = 0;
 	int ret;
 
-	ret = prd_write_test_control(prd, CMD_TEST_ENTER);
-	if (ret < 0) {
-		goto out;
-	}
-
-	ret = prd_chip_driving(dev, LCD_MODE_STOP);
+	ret = __prd_sd_pre(prd, buf);
 	if (ret < 0) {
 		goto out;
 	}
@@ -4190,9 +4214,7 @@ static int prd_show_do_sd(struct siw_hal_prd_data *prd, char *buf)
 		}
 	}
 
-	prd_write_file(prd, buf, TIME_INFO_SKIP);
-	t_prd_info(prd, "%s \n", buf);
-	prd_write_test_control(prd, CMD_TEST_EXIT);
+	__prd_sd_post(prd, buf);
 
 out:
 	return size;
@@ -5019,7 +5041,7 @@ static ssize_t prd_show_basedata(struct device *dev, char *buf)
 
 static int prd_show_do_lpwg_sd(struct siw_hal_prd_data *prd, char *buf)
 {
-	struct device *dev = prd->dev;
+//	struct device *dev = prd->dev;
 	struct siw_hal_prd_param *param = &prd->param;
 	int result_on = prd->result_on;
 	int m1_rawdata_ret = 0;
@@ -5030,12 +5052,7 @@ static int prd_show_do_lpwg_sd(struct siw_hal_prd_data *prd, char *buf)
 	int size = 0;
 	int ret = 0;
 
-	ret = prd_write_test_control(prd, CMD_TEST_ENTER);
-	if (ret < 0) {
-		return ret;
-	}
-
-	ret = prd_chip_driving(dev, LCD_MODE_STOP);
+	ret = __prd_sd_pre(prd, buf);
 	if (ret < 0) {
 		goto out;
 	}
@@ -5083,7 +5100,7 @@ static int prd_show_do_lpwg_sd(struct siw_hal_prd_data *prd, char *buf)
 		}
 	}
 
-	size = siw_snprintf(buf, size, "========RESULT=======\n");
+	size = siw_snprintf(buf, size, "\n========RESULT=======\n");
 
 	sd_u0_test = param->lpwg_sd_test_flag &	\
 			 (U0_M2_RAWDATA_TEST_FLAG | U0_M1_RAWDATA_TEST_FLAG);
@@ -5122,7 +5139,7 @@ static int prd_show_do_lpwg_sd(struct siw_hal_prd_data *prd, char *buf)
 				"U0 M1 Jitter", u0_m1_jitter_ret);
 	}
 
-	prd_write_file(prd, buf, TIME_INFO_SKIP);
+	__prd_sd_post(prd, buf);
 
 out:
 	return size;
