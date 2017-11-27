@@ -203,7 +203,7 @@ static const struct siw_hal_reg_quirk chip_reg_quirks[] = {
 	{ .old_addr = SWIPE_DIST_W, .new_addr = 0xC41, },
 	{ .old_addr = SWIPE_RATIO_THR_W, .new_addr = 0xC42, },
 	{ .old_addr = SWIPE_RATIO_DIST_W, .new_addr = 0xC43, },
-	{ .old_addr = SWIPE_RATIO_PERIOD_W, .new_addr = 0xC443, },
+	{ .old_addr = SWIPE_RATIO_PERIOD_W, .new_addr = 0xC44, },
 	{ .old_addr = SWIPE_TIME_MIN_W, .new_addr = 0xC45, },
 	{ .old_addr = SWIPE_TIME_MAX_W, .new_addr = 0xC46, },
 	{ .old_addr = SWIPE_ACT_AREA_X1_W, .new_addr = 0xC47, },
