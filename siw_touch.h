@@ -953,6 +953,7 @@ struct siw_ts {
 	char *ext_watch_name;	//ext_watch name
 	int max_finger;
 	int chip_type;
+	u32 mode_allowed;
 
 	int irq;
 	unsigned long irqflags;
@@ -1313,14 +1314,14 @@ static inline u32 touch_chip_type(struct siw_ts *ts)
 
 static inline u32 touch_mode_allowed(struct siw_ts *ts, u32 mode)
 {
-	return pdata_mode_allowed(ts->pdata, mode);
+	return (ts->mode_allowed & BIT(mode));
 }
 
 static inline u32 touch_mode_not_allowed(struct siw_ts *ts, u32 mode)
 {
 	int ret;
 
-	ret = !pdata_mode_allowed(ts->pdata, mode);
+	ret = !touch_mode_allowed(ts, mode);
 	if (ret) {
 		t_dev_warn(ts->dev, "target mode(%d) not supported\n", mode);
 	}

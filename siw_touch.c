@@ -183,6 +183,7 @@ int siw_setup_params(struct siw_ts *ts, struct siw_touch_pdata *pdata)
 	struct device *dev = ts->dev;
 	int max_finger = 0;
 	int type = 0;
+	u32 mode_allowed = 0;
 	int ret = 0;
 
 	max_finger = pdata_max_finger(pdata);
@@ -199,6 +200,17 @@ int siw_setup_params(struct siw_ts *ts, struct siw_touch_pdata *pdata)
 	}
 	ts->chip_type = type;
 	t_dev_info(dev, "chip type  : 0x%04X\n", type);
+
+	mode_allowed = pdata->mode_allowed;
+	if (!mode_allowed) {
+		return -EFAULT;
+	}
+#if defined(__SIW_CONFIG_SYSTEM_PM)
+	mode_allowed &= ~(LCD_MODE_BIT_U0|LCD_MODE_BIT_U3_PARTIAL);
+	mode_allowed &= ~(LCD_MODE_BIT_U2|LCD_MODE_BIT_U2_UNBLANK);
+#endif	/* __SIW_CONFIG_SYSTEM_PM */
+	ts->mode_allowed = mode_allowed;
+	t_dev_info(dev, "mode bit   : 0x%08X\n", mode_allowed);
 
 	ret = siw_setup_names(ts, pdata);
 	if (ret < 0) {
