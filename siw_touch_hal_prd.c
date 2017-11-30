@@ -6491,6 +6491,7 @@ static int siw_hal_prd_init_param(struct device *dev)
 	struct siw_hal_fw_info *fw = &chip->fw;
 	struct siw_hal_prd_data *prd = (struct siw_hal_prd_data *)ts->prd;
 	struct siw_hal_prd_param *param = (struct siw_hal_prd_param *)prd_params;
+	struct siw_hal_prd_param __param = {0, };
 	int len, found;
 	int idx;
 	int ret;
@@ -6530,6 +6531,20 @@ static int siw_hal_prd_init_param(struct device *dev)
 
 				t_prd_dbg_base(prd, "%s[%s] param %d selected\n",
 					touch_chip_name(ts), fw->product_id, idx);
+
+				memcpy(&__param, param, sizeof(__param));
+				param = &__param;
+
+				if (!touch_mode_allowed(ts, LCD_MODE_U0)) {
+					param->lpwg_sd_test_flag = 0;
+				}
+
+				if (!param->sd_test_flag) {
+					param->sysfs_off_flag |= PRD_SYS_EN_SD;
+				}
+				if (!param->lpwg_sd_test_flag) {
+					param->sysfs_off_flag |= PRD_SYS_EN_LPWG_SD;
+				}
 
 				siw_hal_prd_param_quirks(dev, param);
 
