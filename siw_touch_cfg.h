@@ -27,7 +27,7 @@
 //#define __SIW_SUPPORT_ASC
 
 #if defined(CONFIG_NET)
-#define __SIW_SUPPORT_ABT
+//#define __SIW_SUPPORT_ABT
 #endif
 
 #define __SIW_SUPPORT_PRD
