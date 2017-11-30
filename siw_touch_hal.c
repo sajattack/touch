@@ -3915,6 +3915,10 @@ static int siw_hal_upgrade_not_allowed(struct device *dev)
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
 
+	if (atomic_read(&chip->boot) == IC_BOOT_FAIL) {
+		return 0;
+	}
+
 	if (atomic_read(&chip->init) == IC_INIT_NEED) {
 		t_dev_warn(dev, "Not Ready, Need IC init (fw)\n");
 		return 1;
