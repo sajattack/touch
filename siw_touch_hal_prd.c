@@ -81,6 +81,8 @@ enum {
 	/* */
 	PRD_BUF_DUMMY		= 128,		//dummy for avoiding memory panic
 	PRD_APP_INFO_SIZE	= 32,
+	/* */
+	PRD_SHORT_COL_SZ	= 4,
 };
 
 enum {
@@ -153,7 +155,9 @@ enum {
 	U0_M2_RAWDATA_TEST_FLAG		= (1<<U0_M2_RAWDATA_TEST),
 	U0_M1_RAWDATA_TEST_FLAG 	= (1<<U0_M1_RAWDATA_TEST),
 	/* */
-	OPEN_SHORT_NODE_TEST_FLAG	= (1<<OPEN_SHORT_ALL_TEST),
+	OPEN_NODE_TEST_FLAG			= (1<<OPEN_NODE_TEST),
+	SHORT_NODE_TEST_FLAG		= (1<<SHORT_NODE_TEST),
+	OPEN_SHORT_NODE_TEST_FLAG	= (OPEN_NODE_TEST_FLAG|SHORT_NODE_TEST_FLAG),
 	U3_BLU_JITTER_TEST_FLAG 	= (1<<U3_BLU_JITTER_TEST),
 	/* */
 	U3_JITTER_TEST_FLAG			= (1<<U3_JITTER_TEST),
@@ -307,6 +311,19 @@ struct siw_hal_prd_ctrl {
 	//
 	u32 label_tmp_size;
 	u32 debug_buf_size;
+	//
+	u32 open_result_size;
+	u32 open_result_col;
+	u32 open_rawdata_size;
+	u32 open_rawdata_col;
+	u32 short_result_size;
+	u32 short_result_col;
+	u32 short_rawdata_size;
+	u32 short_rawdata_col;
+	u32 short_full_result_size;
+	u32 short_full_result_col;
+	u32 short_full_rawdata_size;
+	u32 short_full_rawdata_col;
 };
 
 struct siw_hal_prd_tune {
@@ -393,6 +410,7 @@ struct siw_hal_prd_data {
 	int16_t	*short_buf_result_data;
 	/* */
 	int open_result_type;
+	int short_result_type;
 	int image_lower;
 	int image_upper;
 	/* */
@@ -2439,7 +2457,7 @@ static int prd_os_result_rawdata_get(struct siw_hal_prd_data *prd, int type)
 
 		buf_result_data = prd->open_buf_result_rawdata;
 
-		read_size = ctrl->m2_row_col_buf_size * PRD_RAWDATA_SIZE;
+		read_size = ctrl->open_rawdata_size;
 		break;
 	case SHORT_NODE_TEST:
 		info_str_title = "\n[SHORT_NODE_TEST Result Rawdata]\n";
@@ -2449,7 +2467,7 @@ static int prd_os_result_rawdata_get(struct siw_hal_prd_data *prd, int type)
 
 		buf_result_data = prd->short_buf_result_rawdata;
 
-		read_size = ctrl->m2_row_col_buf_size * PRD_RAWDATA_SIZE;
+		read_size = ctrl->short_rawdata_size;
 		break;
 	case SHORT_FULL_TEST:
 		info_str_title = "\n[SHORT_FULL_TEST Result Rawdata]\n";
@@ -2459,7 +2477,7 @@ static int prd_os_result_rawdata_get(struct siw_hal_prd_data *prd, int type)
 
 		buf_result_data = prd->short_buf_result_rawdata;
 
-		read_size = ctrl->m2_row_col_buf_size * PRD_RAWDATA_SIZE;
+		read_size = ctrl->short_full_rawdata_size;
 		break;
 	}
 
@@ -2521,9 +2539,7 @@ static int prd_os_result_data_get(struct siw_hal_prd_data *prd, int type)
 
 		buf_result_data = prd->open_buf_result_data;
 
-		read_size = (prd->open_result_type) ?	\
-				ctrl->m2_row_col_buf_size :	ctrl->m1_row_col_size;
-		read_size *= PRD_RAWDATA_SIZE;
+		read_size = ctrl->open_result_size;
 		break;
 	case SHORT_NODE_TEST:
 		info_str_title = "\n[SHORT_NODE_TEST Result Data]\n";
@@ -2531,7 +2547,7 @@ static int prd_os_result_data_get(struct siw_hal_prd_data *prd, int type)
 
 		buf_result_data = prd->short_buf_result_data;
 
-		read_size = ctrl->m1_row_col_size * PRD_RAWDATA_SIZE;
+		read_size = ctrl->short_result_size;
 		break;
 	case SHORT_FULL_TEST:
 		info_str_title = "\n[SHORT_FULL_TEST Result Data]\n";
@@ -2539,7 +2555,7 @@ static int prd_os_result_data_get(struct siw_hal_prd_data *prd, int type)
 
 		buf_result_data = prd->short_buf_result_data;
 
-		read_size = ctrl->m2_row_col_buf_size * PRD_RAWDATA_SIZE;
+		read_size = ctrl->short_full_result_size;
 		break;
 	}
 
@@ -2572,13 +2588,10 @@ out:
 	return ret;
 }
 
-enum {
-	PRD_OS_RESULT_TMP_BUF_SZ = 64,
-};
-
 static int prd_print_os_data(struct siw_hal_prd_data *prd, int type)
 {
 	struct siw_hal_prd_param *param = &prd->param;
+	struct siw_hal_prd_ctrl *ctrl = &prd->ctrl;
 	int i = 0, j = 0;
 	int size = 0;
 	int log_size = 0;
@@ -2590,16 +2603,15 @@ static int prd_print_os_data(struct siw_hal_prd_data *prd, int type)
 
 	switch (type) {
 	case OPEN_NODE_TEST:
-		col_size = (prd->open_result_type) ?	\
-				param->col + param->col_add : param->m1_col;
+		col_size = ctrl->open_result_col;
 		os_buf = prd->open_buf_result_data;
 		break;
 	case SHORT_NODE_TEST:
-		col_size = param->m1_col;
+		col_size = ctrl->short_result_col;
 		os_buf = prd->short_buf_result_data;
 		break;
 	case SHORT_FULL_TEST:
-		col_size = param->col + param->col_add;
+		col_size = ctrl->short_full_result_col;
 		os_buf = prd->short_buf_result_data;
 		break;
 	}
@@ -2656,15 +2668,15 @@ static int prd_print_os_rawdata(struct siw_hal_prd_data *prd, u8 type)
 
 	switch (type) {
 	case OPEN_NODE_TEST:
-		col_size = param->col + param->col_add;
+		col_size = ctrl->open_rawdata_col;
 		os_buf = prd->open_buf_result_rawdata;
 		break;
 	case SHORT_NODE_TEST:
-		col_size = 4;
+		col_size = ctrl->short_rawdata_col;
 		os_buf = prd->short_buf_result_rawdata;
 		break;
 	case SHORT_FULL_TEST:
-		col_size = param->col + param->col_add;
+		col_size = ctrl->short_full_rawdata_col;
 		os_buf = prd->short_buf_result_rawdata;
 		break;
 	}
@@ -2683,7 +2695,7 @@ static int prd_print_os_rawdata(struct siw_hal_prd_data *prd, u8 type)
 	/*
 	 * short data replace algorithm
 	 */
-	if(type == SHORT_NODE_TEST) {
+	if (type == SHORT_NODE_TEST) {
 		memcpy(short_temp_buf, os_buf, sizeof(short_temp_buf));
 		memset(os_buf, 0, os_buf_size);
 
@@ -2725,13 +2737,13 @@ static int prd_os_xline_result_read(struct siw_hal_prd_data *prd, int type)
 	int ret = 0;
 
 
-	if(param->sd_test_flag & OPEN_SHORT_RESULT_DATA_FLAG) {
+	if (param->sd_test_flag & OPEN_SHORT_RESULT_DATA_FLAG) {
 		//open short fail reason "result data"
 		ret = prd_os_result_data_get(prd, type);
 		prd_print_os_data(prd, type);
 	}
 
-	if(param->sd_test_flag & OPEN_SHORT_RESULT_RAWDATA_FLAG) {
+	if (param->sd_test_flag & OPEN_SHORT_RESULT_RAWDATA_FLAG) {
 		//open short fail reason "result raw data"
 		ret = prd_os_result_rawdata_get(prd, type);
 		prd_print_os_rawdata(prd, type);
@@ -2739,98 +2751,87 @@ static int prd_os_xline_result_read(struct siw_hal_prd_data *prd, int type)
 	return ret;
 }
 
-#define PRD_SD_ERROR_RET_FLAG	0x07
-
-static int prd_do_open_short_test(struct siw_hal_prd_data *prd)
+static int prd_do_open_short_test(struct siw_hal_prd_data *prd,
+				int type, int result_on)
 {
 	struct device *dev = prd->dev;
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_hal_reg *reg = chip->reg;
-	u32 openshort_all_result = 0;
-	u32 result;
-	int type = 0;
-	struct prd_os_con {
-		int type;
-		char *str;
-		int cmd;
-		int enable;
-	} os_con[3] = {
-		[0] = {
-			.type 	= OPEN_NODE_TEST,
-			.str 	= "open",
-			.cmd	= prd->sd_cmd.cmd_open_node,
-			.enable	= 1,
-		},
-		[1] = {
-			.type 	= SHORT_NODE_TEST,
-			.str 	= "short",
-			.cmd	= prd->sd_cmd.cmd_short_node,
-			.enable	= 1,
-		},
-		[2] = {
-			.type 	= SHORT_FULL_TEST,
-			.str 	= "short max",
-			.cmd	= prd->sd_cmd.cmd_short_full,
-			.enable	= prd->param.sd_test_flag & SHORT_FULL_TEST_FLAG,
-		},
-	};
-	int i;
+	u32 result = 0;
+	char *title = NULL;
+	char *str = NULL;
+	int cmd = 0;
 	int ret = 0;
 
+	switch (type) {
+	case OPEN_NODE_TEST:
+		title = "\n\n[OPEN_NODE_TEST]\n";
+		str = "open";
+		cmd = prd->sd_cmd.cmd_open_node;
+		break;
+	case SHORT_NODE_TEST:
+		title = "\n\n[SHORT_NODE_TEST]\n";
+		str = "short";
+		cmd = prd->sd_cmd.cmd_short_node;
+		break;
+	case SHORT_FULL_TEST:
+		title = "\n\n[SHORT_FULL_TEST]\n";
+		str = "short full";
+		cmd = prd->sd_cmd.cmd_short_full;
+		break;
+	default:
+		t_prd_err(prd, "Test Type not defined, %d\n", type);
+		return 1;
+	}
+
 	/* Test Type Write */
-	prd_write_file(prd, "\n\n[OPEN_SHORT_ALL_TEST]\n", TIME_INFO_SKIP);
+	if (result_on == RESULT_ON) {
+		prd_write_file(prd, title, TIME_INFO_SKIP);
+	}
 
 	t_prd_dbg_base(prd, "result resister:%d \n", reg->tc_tsp_test_pf_result);
 
-	for (i = 0; i < ARRAY_SIZE(os_con); i++) {
-		type = os_con[i].type;
-
-		if (!type) {
-			break;
-		}
-
-		if (!os_con[i].cmd || !os_con[i].enable) {
-			continue;
-		}
-
-		ret = prd_write_test_mode(prd, type);
-		if (ret < 0) {
-			return ret;
-		}
-		if (!ret) {
-			t_prd_err(prd, "write test mode failed\n");
-			return PRD_SD_ERROR_RET_FLAG;
-		}
-
-		ret = siw_hal_read_value(dev,
-					reg->tc_tsp_test_pf_result,
-					&result);
-		if (ret < 0) {
-			return ret;
-		}
-		t_prd_info(prd, "%s result = %d\n", os_con[i].str, result);
-
-		if (result | (prd->dbg_mask & PRD_DBG_OPEN_SHORT_DATA)) {
-			ret = prd_os_xline_result_read(prd, type);
-			if (ret < 0) {
-				return ret;
-			}
-		}
-
-		openshort_all_result |= (result<<i);
+	if (!cmd) {
+		t_prd_err(prd, "Test Type %d, but command is zero\n", type);
+		return 1;
 	}
 
-	return openshort_all_result;
+	ret = prd_write_test_mode(prd, type);
+	if (ret < 0) {
+		return ret;
+	}
+	if (!ret) {
+		t_prd_err(prd, "write test mode failed\n");
+		return 1;
+	}
+
+	ret = siw_hal_read_value(dev,
+				reg->tc_tsp_test_pf_result,
+				&result);
+	if (ret < 0) {
+		return ret;
+	}
+	t_prd_info(prd, "%s result = %d\n", str, result);
+
+	if (result | (prd->dbg_mask & PRD_DBG_OPEN_SHORT_DATA)) {
+		ret = prd_os_xline_result_read(prd, type);
+		if (ret < 0) {
+			return ret;
+		}
+	}
+
+	return result;
 }
 
-static int prd_open_short_test(struct siw_hal_prd_data *prd)
+static int prd_open_short_test(struct siw_hal_prd_data *prd,
+				int type, int result_on)
 {
 	int ret;
 
-	ret = prd_do_open_short_test(prd);
+	ret = prd_do_open_short_test(prd, type, result_on);
 	if (ret < 0) {
-		t_prd_err(prd, "prd_open_short_test failed, %d\n",
-				 ret);
+		t_prd_err(prd, "prd_open_short_test(%d) failed, %d\n",
+			type, ret);
 	}
 
 	return ret;
@@ -4074,7 +4075,9 @@ static int prd_show_do_sd(struct siw_hal_prd_data *prd, char *buf)
 	int result_on = prd->result_on;
 	int u3_rawdata_ret = 0;
 	int u3_m1_rawdata_ret = 0;
-	int openshort_ret = 0;
+	int open_ret = 0;
+	int short_ret = 0;
+	int short_full_ret = 0;
 	int blu_jitter_ret = 0;
 	int u3_jitter_ret = 0;
 	int u3_m1_jitter_ret = 0;
@@ -4162,13 +4165,34 @@ static int prd_show_do_sd(struct siw_hal_prd_data *prd, char *buf)
 	 }
 
 	/*
-	 * OPEN_SHORT_ALL_TEST
+	 * OPEN_NODE_TEST
 	 * open - pass : 0, fail : 1
-	 * short - pass : 0, fail : 2
 	 */
-	if(param->sd_test_flag & OPEN_SHORT_NODE_TEST_FLAG) {
-		openshort_ret = prd_open_short_test(prd);
-		if (openshort_ret < 0) {
+	if (param->sd_test_flag & OPEN_NODE_TEST_FLAG) {
+		open_ret = prd_open_short_test(prd, OPEN_NODE_TEST, result_on);
+		if (open_ret < 0) {
+			goto out;
+		}
+	}
+
+	/*
+	 * SHORT_NODE_TEST
+	 * short - pass : 0, fail : 1
+	 */
+	if (param->sd_test_flag & SHORT_NODE_TEST_FLAG) {
+		short_ret = prd_open_short_test(prd, SHORT_NODE_TEST, result_on);
+		if (short_ret < 0) {
+			goto out;
+		}
+	}
+
+	/*
+	 * SHORT_FULL_TEST
+	 * short full - pass : 0, fail : 1
+	 */
+	if (param->sd_test_flag & SHORT_FULL_TEST_FLAG) {
+		short_full_ret = prd_open_short_test(prd, SHORT_FULL_TEST, result_on);
+		if (short_full_ret < 0) {
 			goto out;
 		}
 	}
@@ -4206,17 +4230,16 @@ static int prd_show_do_sd(struct siw_hal_prd_data *prd, char *buf)
 				"Blu Jitter", blu_jitter_ret);
 	}
 
-	if(param->sd_test_flag & OPEN_SHORT_NODE_TEST_FLAG) {
-		if (!openshort_ret) {
+	if (param->sd_test_flag & \
+		(OPEN_NODE_TEST_FLAG | SHORT_NODE_TEST_FLAG | SHORT_FULL_TEST_FLAG)) {
+		if (!open_ret && !short_ret && !short_full_ret) {
 			size += siw_snprintf(buf, size,
 						"Channel Status : Pass\n");
 		} else {
-			int open_failed = (openshort_ret & 0x1);
-			int short_failed = ((openshort_ret>>1) & 0x3);
 			size += siw_snprintf(buf, size,
 						"Channel Status : Fail (open:%s/short:%s)\n",
-						(open_failed) ? "F" : "P",
-						(short_failed) ? "F" : "P");
+						(open_ret) ? "F" : "P",
+						(short_full_ret | short_ret) ? "F" : "P");
 		}
 	}
 
@@ -6124,21 +6147,6 @@ static int siw_hal_prd_alloc_buffer(struct device *dev)
 	total_size += ctrl->label_tmp_size;
 	total_size += ctrl->m2_row_col_size;
 
-	switch (touch_chip_type(ts)) {
-	case CHIP_LG4894:
-	case CHIP_LG4895:
-	case CHIP_LG4946:
-	case CHIP_LG4951:
-	case CHIP_SW1828:
-	case CHIP_SW49105:
-	case CHIP_SW49106:
-		prd->open_result_type = 0;
-		break;
-	default:
-		prd->open_result_type = 1;
-		break;
-	}
-
 	buf = kzalloc(total_size + 128, GFP_KERNEL);
 	if (buf == NULL) {
 		t_prd_err(prd, "falied to allocate buffer(%d)\n", total_size);
@@ -6222,6 +6230,71 @@ static void siw_hal_prd_parse_ctrl(struct device *dev, struct siw_hal_prd_param 
 		ctrl->m2_frame_size, ctrl->m1_frame_size);
 	t_prd_dbg_base(prd, "ctrl: delta %d, label_tmp %d\n",
 		ctrl->delta_size, ctrl->label_tmp_size);
+
+	switch (touch_chip_type(ts)) {
+	case CHIP_LG4894:
+	case CHIP_LG4895:
+	case CHIP_LG4946:
+	case CHIP_LG4951:
+	case CHIP_SW1828:
+	case CHIP_SW49105:
+	case CHIP_SW49106:
+		prd->open_result_type = 0;
+		break;
+	default:
+		prd->open_result_type = 1;
+		break;
+	}
+
+	prd->short_result_type = prd->open_result_type;
+
+	switch (prd->open_result_type) {
+	case 1:
+		ctrl->open_result_size = ctrl->m2_frame_size;
+		ctrl->open_result_col = col_size + param->col_add;
+		break;
+	default:
+		ctrl->open_result_size = ctrl->m1_frame_size;
+		ctrl->open_result_col = param->m1_col;
+		break;
+	}
+
+	ctrl->open_rawdata_size = ctrl->m2_frame_size;
+	ctrl->open_rawdata_col = col_size + param->col_add;
+
+	t_prd_dbg_base(prd, "ctrl: open: result: size %d, col %d\n",
+		ctrl->open_result_size, ctrl->open_result_col);
+	t_prd_dbg_base(prd, "ctrl: open: rawdata: size %d, col %d\n",
+		ctrl->open_rawdata_size, ctrl->open_rawdata_col);
+
+	switch (prd->short_result_type) {
+	case 1:
+		ctrl->short_result_size = (row_size * PRD_SHORT_COL_SZ)<<PRD_RAWDATA_SZ_POW;
+		ctrl->short_result_col = PRD_SHORT_COL_SZ;
+		break;
+	default:
+		ctrl->short_result_size = ctrl->m1_frame_size;
+		ctrl->short_result_col = param->m1_col;
+		break;
+	}
+
+	ctrl->short_rawdata_size = (row_size * PRD_SHORT_COL_SZ)<<PRD_RAWDATA_SZ_POW;
+	ctrl->short_rawdata_col = PRD_SHORT_COL_SZ;
+
+	t_prd_dbg_base(prd, "ctrl: short: result: size %d, col %d\n",
+		ctrl->short_result_size, ctrl->short_result_col);
+	t_prd_dbg_base(prd, "ctrl: short: rawdata: size %d, col %d\n",
+		ctrl->short_rawdata_size, ctrl->short_rawdata_col);
+
+	ctrl->short_full_result_size = ctrl->m2_frame_size;
+	ctrl->short_full_result_col = col_size + param->col_add;
+	ctrl->short_full_rawdata_size = ctrl->m2_frame_size;
+	ctrl->short_full_rawdata_col = col_size + param->col_add;
+
+	t_prd_dbg_base(prd, "ctrl: short full: result: size %d, col %d\n",
+		ctrl->short_full_result_size, ctrl->short_full_result_col);
+	t_prd_dbg_base(prd, "ctrl: short full: rawdata: size %d, col %d\n",
+		ctrl->short_full_rawdata_size, ctrl->short_full_rawdata_col);
 }
 
 static void siw_hal_prd_parse_tune(struct device *dev, struct siw_hal_prd_param *param)
