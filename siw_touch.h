@@ -1593,7 +1593,7 @@ static inline void *touch_kzalloc(struct device *dev, size_t size, gfp_t gfp)
 
 static inline void touch_kfree(struct device *dev, void *p)
 {
-	return devm_kfree(dev, p);
+	devm_kfree(dev, p);
 }
 
 static inline void *touch_getname(void)
