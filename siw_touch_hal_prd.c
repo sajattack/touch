@@ -6140,10 +6140,10 @@ static int siw_hal_prd_alloc_buffer(struct device *dev)
 
 	t_prd_dbg_base(prd, "[param alloc buffer]\n");
 
-	total_size = (ctrl->m2_row_col_buf_size * 6);
-	total_size += (ctrl->m1_row_col_size * 3);
-	total_size += ctrl->delta_size;
-	total_size += ctrl->debug_buf_size;
+	total_size = (ctrl->m2_frame_size * 6);
+	total_size += (ctrl->m1_frame_size * 3);
+	total_size += (ctrl->delta_size<<PRD_RAWDATA_SZ_POW);
+	total_size += (ctrl->debug_buf_size<<PRD_RAWDATA_SZ_POW);
 	total_size += ctrl->label_tmp_size;
 	total_size += ctrl->m2_row_col_size;
 
@@ -6169,31 +6169,31 @@ static int siw_hal_prd_alloc_buffer(struct device *dev)
 #endif
 
 	prd->m2_buf_even_rawdata = (int16_t *)buf;
-	buf += ctrl->m2_row_col_buf_size;
+	buf += ctrl->m2_frame_size;
 	prd->m2_buf_odd_rawdata = (int16_t *)buf;
-	buf += ctrl->m2_row_col_buf_size;
+	buf += ctrl->m2_frame_size;
 
 	prd->m1_buf_even_rawdata = (int16_t *)buf;
-	buf += ctrl->m1_row_col_size;
+	buf += ctrl->m1_frame_size;
 	prd->m1_buf_odd_rawdata = (int16_t *)buf;
-	buf += ctrl->m1_row_col_size;
+	buf += ctrl->m1_frame_size;
 	prd->m1_buf_tmp = (int16_t *)buf;
-	buf += ctrl->m1_row_col_size;
+	buf += ctrl->m1_frame_size;
 
 	prd->open_buf_result_rawdata = (int16_t *)buf;
-	buf += ctrl->m2_row_col_buf_size;
+	buf += ctrl->m2_frame_size;
 	prd->short_buf_result_rawdata = (int16_t *)buf;
-	buf += ctrl->m2_row_col_buf_size;
+	buf += ctrl->m2_frame_size;
 	prd->open_buf_result_data = (int16_t *)buf;
-	buf += ctrl->m2_row_col_buf_size;
+	buf += ctrl->m2_frame_size;
 	prd->short_buf_result_data = (int16_t *)buf;
-	buf += ctrl->m2_row_col_buf_size;
+	buf += ctrl->m2_frame_size;
 
 	prd->buf_delta = (int16_t *)buf;
-	buf += ctrl->delta_size;
+	buf += (ctrl->delta_size<<PRD_RAWDATA_SZ_POW);
 
 	prd->buf_debug = (int16_t *)buf;
-	buf += ctrl->debug_buf_size;
+	buf += (ctrl->debug_buf_size<<PRD_RAWDATA_SZ_POW);
 
 	prd->buf_label_tmp = (u8 *)buf;
 	buf += ctrl->label_tmp_size;
