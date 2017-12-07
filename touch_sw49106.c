@@ -105,6 +105,8 @@ static const struct siw_hal_reg_quirk chip_reg_quirks[] = {
 	{ .old_addr = PRD_TCM_BASE_ADDR, .new_addr = 0xFD3, },
 	{ .old_addr = SERIAL_DATA_OFFSET, .new_addr = 0x0AF, },
 	/* */
+	{ .old_addr = (1<<31), .new_addr = 0, },
+	/* */
 	{ .old_addr = TCI_DEBUG_FAIL_CTRL, .new_addr = 0xC70, },
 	{ .old_addr = TCI_DEBUG_FAIL_STATUS, .new_addr = 0xC73, },
 	{ .old_addr = TCI_DEBUG_FAIL_BUFFER, .new_addr = 0xC74, },
@@ -114,6 +116,10 @@ static const struct siw_hal_reg_quirk chip_reg_quirks[] = {
 	{ .old_addr = PRD_SERIAL_TCM_OFFSET, .new_addr = 0x0B0, },
 	{ .old_addr = PRD_TC_MEM_SEL, .new_addr = 0x84A, },
 	{ .old_addr = PRD_M1_M2_RAW_OFFSET, .new_addr = 0x286, },
+	/* */
+	{ .old_addr = GLOVE_EN, .new_addr = 0xC5C, },
+	{ .old_addr = GRAB_EN, .new_addr = 0xC5D, },
+	/* */
 	{ .old_addr = ~0, .new_addr = ~0 },		// End signal
 };
 
@@ -126,9 +132,14 @@ static const struct of_device_id chip_match_ids[] = {
 	{ },
 };
 #else
+/* Resolution
+ *     <L0W59HRT> [16:9] [18:9]
+ * X :	  1080     1080   1080
+ * Y :	  2252     1920   2190
+ */
 enum CHIP_CAPABILITY {
 	CHIP_MAX_X			= 1080,
-	CHIP_MAX_Y			= 1920,		//1920 for 16:9, 2160 for 18:9
+	CHIP_MAX_Y			= 2252,
 	CHIP_MAX_PRESSURE	= 255,
 	CHIP_MAX_WIDTH		= 15,
 	CHIP_MAX_ORI		= 1,
