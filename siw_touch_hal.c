@@ -3727,6 +3727,7 @@ static int siw_hal_fw_do_get_fw_abs(const struct firmware **fw_p,
 	filp = filp_open(name, O_RDONLY, 0);
 	if (IS_ERR(filp)) {
 		dev_err(dev, "can't open %s\n", name);
+		kfree(fw);
 		return (int)PTR_ERR(filp);
 	}
 
@@ -3867,6 +3868,10 @@ static void siw_hal_fw_release_firm(struct device *dev,
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 //	struct siw_ts *ts = chip->ts;
 
+	if (fw == NULL) {
+		return;
+	}
+
 	if (chip->fw_abs_path) {
 		chip->fw_abs_path = 0;
 		kfree(fw->data);
@@ -3993,13 +3998,13 @@ static int siw_hal_upgrade(struct device *dev)
 
 	if ((fw_buf == NULL) || !fw_size) {
 		t_dev_err(dev, "invalid fw info\n");
-		goto out;
+		goto out_fw;
 	}
 
 	if (fw_size < fw_max_size) {
 		t_dev_err(dev, "invalid fw size: %Xh < %Xh\n",
 			fw_size, fw_max_size);
-		goto out;
+		goto out_fw;
 	}
 
 	t_dev_info(dev, "fw size: %d\n", fw_size);
@@ -4014,9 +4019,8 @@ static int siw_hal_upgrade(struct device *dev)
 		}
 	}
 
-	if (fw) {
-		siw_hal_fw_release_firm(dev, fw);
-	}
+out_fw:
+	siw_hal_fw_release_firm(dev, fw);
 
 out:
 	if (ret) {
