@@ -3925,6 +3925,29 @@ static int siw_hal_upgrade_not_allowed(struct device *dev)
 	return 0;
 }
 
+static int siw_hal_upgrade_pre(struct device * dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	struct siw_hal_reg *reg = chip->reg;
+	int ret = 0;
+
+	if (!touch_mode_allowed(ts, LCD_MODE_STOP)) {
+		goto out;
+	}
+
+	/*
+	 * TC_STOP before fw upgrade
+	 * to avoid unexpected IRQ drop by internal watchdog
+	 */
+	ret = siw_hal_write_value(dev,
+			reg->tc_drive_ctl,
+			TC_DRIVE_CTL_STOP);
+
+out:
+	return ret;
+}
+
 static int siw_hal_upgrade(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
@@ -4013,6 +4036,8 @@ static int siw_hal_upgrade(struct device *dev)
 	if (ret_val < 0) {
 		ret = ret_val;
 	} else if (ret_val) {
+		siw_hal_upgrade_pre(dev);
+
 		touch_msleep(200);
 		for (i = 0; i < 2 && ret; i++) {
 			ret = siw_hal_fw_upgrade(dev, fw_buf, fw_size, i);
