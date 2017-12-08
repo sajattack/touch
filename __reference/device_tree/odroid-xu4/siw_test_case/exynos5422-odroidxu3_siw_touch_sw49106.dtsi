@@ -25,8 +25,13 @@
 		irq-gpio = <&gpx1 6 GPIO_ACTIVE_LOW>;	// index 6 in gpx1
 
 		// Caps
+		/* Resolution
+		 *     <L0W59HRT>  [16:9] [18:9]
+		 * X :	  1080      1080   1080
+		 * Y :	  2252      1920   2190
+		 */
 		max_x = <1080>;
-		max_y = <1920>;				//<1920> for 16:9, <2160> for 18:9
+		max_y = <2252>;
 		max_pressure = <0xff>;
 		max_width = <15>;
 		max_orientation = <1>;
