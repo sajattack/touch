@@ -6199,7 +6199,7 @@ static void siw_hal_prd_parse_ctrl(struct device *dev, struct siw_hal_prd_param 
 	ctrl->m1_frame_size = (ctrl->m1_row_col_size<<PRD_RAWDATA_SZ_POW);
 	ctrl->delta_size = ((row_size + 2) * (col_size + 2));
 	ctrl->label_tmp_size = ((row_size + 2) * (col_size + 2));
-	ctrl->debug_buf_size = PRD_DEBUG_BUF_SIZE;
+	ctrl->debug_buf_size = ctrl->m2_row_col_buf_size;
 
 	t_prd_dbg_base(prd, "ctrl: m2_row_col %d, m2_row_col_buf %d, m1_row_col %d\n",
 		ctrl->m2_row_col_size, ctrl->m2_row_col_buf_size, ctrl->m1_row_col_size);
