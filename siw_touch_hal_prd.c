@@ -130,6 +130,34 @@ enum {
 	OPEN_SHORT_RESULT_ALWAYS_IDX,
 };
 
+#define PRD_SET_TEST_STR(_name)		[_name] = #_name
+
+static const char *__prd_test_str[] = {
+	PRD_SET_TEST_STR(U3_M2_RAWDATA_TEST),
+	PRD_SET_TEST_STR(U3_M1_RAWDATA_TEST),
+	PRD_SET_TEST_STR(U0_M2_RAWDATA_TEST),
+	PRD_SET_TEST_STR(U0_M1_RAWDATA_TEST),
+	/* */
+	PRD_SET_TEST_STR(OPEN_SHORT_ALL_TEST),
+	PRD_SET_TEST_STR(OPEN_NODE_TEST),
+	PRD_SET_TEST_STR(SHORT_NODE_TEST),
+	PRD_SET_TEST_STR(U3_BLU_JITTER_TEST),
+	/* */
+	PRD_SET_TEST_STR(U3_JITTER_TEST),
+	PRD_SET_TEST_STR(U3_M1_JITTER_TEST),
+	PRD_SET_TEST_STR(U0_JITTER_TEST),
+	PRD_SET_TEST_STR(U0_M1_JITTER_TEST),
+	/* */
+	PRD_SET_TEST_STR(SHORT_FULL_TEST),
+	PRD_SET_TEST_STR(IRQ_TEST),
+};
+
+static inline const char *prd_get_test_str(int type)
+{
+	int valid = (type < ARRAY_SIZE(__prd_test_str)) & (__prd_test_str[type] != NULL);
+	return (valid) ? __prd_test_str[type] : "";
+}
+
 enum {
 	U3_TEST_PRE_CMD = 0x3,
 	U0_TEST_PRE_CMD = 0x0,
@@ -2404,17 +2432,20 @@ out:
 
 static int __used prd_irq_test(struct siw_hal_prd_data *prd, int result_on)
 {
+	const char *test_str = NULL;
 	char test_type[32] = {0, };
 	int ret;
 
-	t_prd_info(prd, "========IRQ_TEST========\n");
+	test_str = prd_get_test_str(IRQ_TEST);
+
+	t_prd_info(prd, "========%s========\n", test_str);
 
 	memset(prd->buf_write, 0, PRD_BUF_SIZE);
 
 	ret = prd_do_irq_test(prd, prd->buf_write);
 
 	if (result_on == RESULT_ON) {
-		snprintf(test_type, sizeof(test_type), "\n\n%s\n", "[IRQ_TEST]");
+		snprintf(test_type, sizeof(test_type), "\n\n[%s]\n", test_str);
 		/* Test Type Write */
 		prd_write_file(prd, test_type, TIME_INFO_SKIP);
 
@@ -2436,8 +2467,8 @@ static int prd_os_result_rawdata_get(struct siw_hal_prd_data *prd, int type)
 	u32 data_offset;
 	u32 read_size;
 	int16_t *buf_result_data = NULL;
-	char *info_str_title = NULL;
-	char *info_str_log = NULL;
+	const char *test_str = NULL;
+	char info_str[64] = {0, };
 	int ret = 0;
 
 	ret = siw_hal_read_value(dev,
@@ -2451,9 +2482,6 @@ static int prd_os_result_rawdata_get(struct siw_hal_prd_data *prd, int type)
 
 	switch (type) {
 	case OPEN_NODE_TEST:
-		info_str_title = "\n[OPEN_NODE_TEST Result Rawdata]\n";
-		info_str_log = "OPEN_NODE_TEST";
-
 		data_offset = open_data_offset;
 
 		buf_result_data = prd->open_buf_result_rawdata;
@@ -2461,9 +2489,6 @@ static int prd_os_result_rawdata_get(struct siw_hal_prd_data *prd, int type)
 		read_size = ctrl->open_rawdata_size;
 		break;
 	case SHORT_NODE_TEST:
-		info_str_title = "\n[SHORT_NODE_TEST Result Rawdata]\n";
-		info_str_log = "SHORT_NODE_TEST";
-
 		data_offset = short_data_offset;
 
 		buf_result_data = prd->short_buf_result_rawdata;
@@ -2471,26 +2496,25 @@ static int prd_os_result_rawdata_get(struct siw_hal_prd_data *prd, int type)
 		read_size = ctrl->short_rawdata_size;
 		break;
 	case SHORT_FULL_TEST:
-		info_str_title = "\n[SHORT_FULL_TEST Result Rawdata]\n";
-		info_str_log = "SHORT_FULL_TEST";
-
 		data_offset = short_data_offset;
 
 		buf_result_data = prd->short_buf_result_rawdata;
 
 		read_size = ctrl->short_full_rawdata_size;
 		break;
-	}
-
-	if (info_str_log == NULL) {
-		t_prd_err(prd, "[result_rawdata_get] unknown type, %d\n", type);
+	default:
+		t_prd_err(prd, "os test: [result_rawdata_get] unknown type, %d\n", type);
 		goto out;
 	}
 
-	prd_write_file(prd, info_str_title, TIME_INFO_SKIP);
+	test_str = prd_get_test_str(type);
 
-	t_prd_info(prd, "%s Rawdata Offset = %xh\n", info_str_log, data_offset);
-	t_prd_info(prd, "%s", &info_str_title[1]);
+	snprintf(info_str, sizeof(info_str), "\n[%s Result Rawdata]\n", test_str);
+
+	prd_write_file(prd, info_str, TIME_INFO_SKIP);
+
+	t_prd_info(prd, "%s Rawdata Offset = %xh\n", test_str, data_offset);
+	t_prd_info(prd, "%s", &info_str[1]);
 
 	//offset write
 	ret = siw_hal_write_value(dev, reg->serial_data_offset,
@@ -2521,8 +2545,8 @@ static int prd_os_result_data_get(struct siw_hal_prd_data *prd, int type)
 	u32 os_result_offset;
 	u32 read_size;
 	int16_t *buf_result_data = NULL;
-	char *info_str_title = NULL;
-	char *info_str_log = NULL;
+	const char *test_str = NULL;
+	char info_str[64] = { 0, };
 	int ret = 0;
 
 	ret = siw_hal_read_value(dev,
@@ -2535,40 +2559,33 @@ static int prd_os_result_data_get(struct siw_hal_prd_data *prd, int type)
 
 	switch (type) {
 	case OPEN_NODE_TEST:
-		info_str_title = "\n[OPEN_NODE_TEST Result Data]\n";
-		info_str_log = "OPEN_NODE_TEST";
-
 		buf_result_data = prd->open_buf_result_data;
 
 		read_size = ctrl->open_result_size;
 		break;
 	case SHORT_NODE_TEST:
-		info_str_title = "\n[SHORT_NODE_TEST Result Data]\n";
-		info_str_log = "SHORT_NODE_TEST";
-
 		buf_result_data = prd->short_buf_result_data;
 
 		read_size = ctrl->short_result_size;
 		break;
 	case SHORT_FULL_TEST:
-		info_str_title = "\n[SHORT_FULL_TEST Result Data]\n";
-		info_str_log = "SHORT_FULL_TEST";
-
 		buf_result_data = prd->short_buf_result_data;
 
 		read_size = ctrl->short_full_result_size;
 		break;
-	}
-
-	if (info_str_log == NULL) {
-		t_prd_err(prd, "[result_data_get] unknown type, %d\n", type);
+	default:
+		t_prd_err(prd, "os test: [result_data_get] unknown type, %d\n", type);
 		goto out;
 	}
 
-	prd_write_file(prd, info_str_title, TIME_INFO_SKIP);
+	test_str = prd_get_test_str(type);
 
-	t_prd_info(prd, "%s Data Offset = %xh\n", info_str_log, open_short_data_offset);
-	t_prd_info(prd, "%s", &info_str_title[1]);
+	snprintf(info_str, sizeof(info_str), "\n[%s Result Data]\n", test_str);
+
+	prd_write_file(prd, info_str, TIME_INFO_SKIP);
+
+	t_prd_info(prd, "%s Data Offset = %xh\n", test_str, open_short_data_offset);
+	t_prd_info(prd, "%s", &info_str[1]);
 
 	//offset write
 	ret = siw_hal_write_value(dev, reg->serial_data_offset,
@@ -2759,42 +2776,46 @@ static int prd_do_open_short_test(struct siw_hal_prd_data *prd,
 	struct device *dev = prd->dev;
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_hal_reg *reg = chip->reg;
-	u32 result = 0;
-	char *title = NULL;
+	const char *test_str = NULL;
+	char test_type[32] = {0, };
 	char *str = NULL;
+	u32 result = 0;
 	int cmd = 0;
 	int ret = 0;
 
 	switch (type) {
 	case OPEN_NODE_TEST:
-		title = "\n\n[OPEN_NODE_TEST]\n";
 		str = "open";
 		cmd = prd->sd_cmd.cmd_open_node;
 		break;
 	case SHORT_NODE_TEST:
-		title = "\n\n[SHORT_NODE_TEST]\n";
 		str = "short";
 		cmd = prd->sd_cmd.cmd_short_node;
 		break;
 	case SHORT_FULL_TEST:
-		title = "\n\n[SHORT_FULL_TEST]\n";
 		str = "short full";
 		cmd = prd->sd_cmd.cmd_short_full;
 		break;
 	default:
-		t_prd_err(prd, "Test Type not defined, %d\n", type);
+		t_prd_err(prd, "os test: test type not defined, %d\n", type);
 		return 1;
 	}
 
+	test_str = prd_get_test_str(type);
+
+	t_prd_info(prd, "========%s========\n", test_str);
+
 	/* Test Type Write */
 	if (result_on == RESULT_ON) {
-		prd_write_file(prd, title, TIME_INFO_SKIP);
+		snprintf(test_type, sizeof(test_type), "\n\n[%s]\n", test_str);
+		/* Test Type Write */
+		prd_write_file(prd, test_type, TIME_INFO_SKIP);
 	}
 
 	t_prd_dbg_base(prd, "result resister:%d \n", reg->tc_tsp_test_pf_result);
 
 	if (!cmd) {
-		t_prd_err(prd, "Test Type %d, but command is zero\n", type);
+		t_prd_err(prd, "os test: test type %d, but command is zero\n", type);
 		return 1;
 	}
 
@@ -3811,76 +3832,35 @@ static int prd_do_rawdata_test(struct siw_hal_prd_data *prd,
 				int type, int result_on)
 {
 //	struct device *dev = prd->dev;
-	char *info_str = NULL;
-	char *sprt_str = NULL;
+	const char *test_str = NULL;
 	char test_type[32] = {0, };
+	int check_tune_code = 0;
 	int ret = 0;
 
 	switch (type) {
 	case U3_M2_RAWDATA_TEST:
-		info_str = "========U3_M2_RAWDATA_TEST========";
-		if (result_on) {
-			sprt_str = "[U3_M2_RAWDATA_TEST]";
-		}
-		break;
 	case U3_M1_RAWDATA_TEST:
-		info_str = "========U3_M1_RAWDATA_TEST========";
-		if (result_on) {
-			sprt_str = "[U3_M1_RAWDATA_TEST]";
-		}
-		break;
-	case U3_BLU_JITTER_TEST:
-		info_str = "========U3_BLU_JITTER_TEST========";
-		if (result_on) {
-			sprt_str= "[U3_BLU_JITTER_TEST]";
-		}
-		break;
-	case U3_JITTER_TEST:
-		info_str = "========U3_JITTER_TEST========";
-		if (result_on) {
-			sprt_str= "[U3_JITTER_TEST]";
-		}
-		break;
-	case U3_M1_JITTER_TEST:
-		info_str = "========U3_M1_JITTER_TEST========";
-		if (result_on) {
-			sprt_str= "[U3_M1_JITTER_TEST]";
-		}
-		break;
-	case U0_JITTER_TEST:
-		info_str = "========U0_JITTER_TEST========";
-		if (result_on) {
-			sprt_str= "[U0_JITTER_TEST]";
-		}
-		break;
-	case U0_M1_JITTER_TEST:
-		info_str = "========U0_M1_JITTER_TEST========";
-		if (result_on) {
-			sprt_str= "[U0_M1_JITTER_TEST]";
-		}
-		break;
 	case U0_M2_RAWDATA_TEST:
-		info_str = "========U0_M2_RAWDATA_TEST========";
-		if (result_on) {
-			sprt_str = "[U0_M2_RAWDATA_TEST]";
-		}
-		break;
 	case U0_M1_RAWDATA_TEST:
-		info_str = "========U0_M1_RAWDATA_TEST========";
-		if (result_on) {
-			sprt_str = "[U0_M1_RAWDATA_TEST]";
-		}
+		check_tune_code = 1;
+		/* fall thorugh */
+	case U3_BLU_JITTER_TEST:
+	case U3_JITTER_TEST:
+	case U3_M1_JITTER_TEST:
+	case U0_JITTER_TEST:
+	case U0_M1_JITTER_TEST:
 		break;
 	default:
-		t_prd_err(prd, "Test Type not defined, %d\n", type);
+		t_prd_err(prd, "rawdata: test type not defined, %d\n", type);
 		return 1;
 	}
 
-	if (info_str) {
-		t_prd_info(prd, "%s\n", info_str);
-	}
-	if (sprt_str) {
-		snprintf(test_type, sizeof(test_type), "\n\n%s\n", sprt_str);
+	test_str = prd_get_test_str(type);
+
+	t_prd_info(prd, "========%s========\n", test_str);
+
+	if (result_on == RESULT_ON) {
+		snprintf(test_type, sizeof(test_type), "\n\n[%s]\n", test_str);
 		/* Test Type Write */
 		prd_write_file(prd, test_type, TIME_INFO_SKIP);
 	}
@@ -3901,15 +3881,8 @@ static int prd_do_rawdata_test(struct siw_hal_prd_data *prd,
 	ret = prd_conrtol_rawdata_result(prd, type, result_on);
 
 	/* tune code result check */
-	switch (type) {
-	case U3_M2_RAWDATA_TEST:
-	case U3_M1_RAWDATA_TEST:
-	case U0_M2_RAWDATA_TEST:
-	case U0_M1_RAWDATA_TEST:
+	if (check_tune_code) {
 		prd_read_tune_code(prd, type, result_on);
-		break;
-	default:
-		break;
 	}
 
 	return ret;
