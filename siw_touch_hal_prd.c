@@ -2967,7 +2967,7 @@ static int prd_print_xxx(struct siw_hal_prd_data *prd, char *buf,
 							log_size,
 							"%4d ", curr_raw);
 
-			if (curr_raw && (curr_raw < min)) {
+			if (curr_raw < min) {
 				min = curr_raw;
 			}
 			if (curr_raw > max) {
