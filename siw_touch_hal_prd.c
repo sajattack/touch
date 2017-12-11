@@ -399,6 +399,7 @@ struct siw_hal_prd_data {
 	int buf_size;
 	int16_t	*m2_buf_even_rawdata;
 	int16_t	*m2_buf_odd_rawdata;
+	int16_t	*m2_buf_tmp;
 	/* */
 	int16_t	*m1_buf_even_rawdata;
 	int16_t	*m1_buf_odd_rawdata;
@@ -2659,10 +2660,8 @@ static int prd_print_os_rawdata(struct siw_hal_prd_data *prd, u8 type)
 	int size = 0;
 	int log_size = 0;
 	u16 *os_buf = NULL;
-	int os_buf_size = ctrl->m2_row_col_buf_size;
 	int col_size = 0;
 	char *log_buf = prd->log_buf;
-	u16 short_temp_buf[os_buf_size];
 
 	memset(prd->buf_write, 0, PRD_BUF_SIZE);
 
@@ -2696,8 +2695,11 @@ static int prd_print_os_rawdata(struct siw_hal_prd_data *prd, u8 type)
 	 * short data replace algorithm
 	 */
 	if (type == SHORT_NODE_TEST) {
-		memcpy(short_temp_buf, os_buf, sizeof(short_temp_buf));
-		memset(os_buf, 0, os_buf_size);
+		u16 *short_temp_buf = prd->m2_buf_tmp;
+		int short_buf_size = ctrl->short_rawdata_size;
+
+		memcpy(short_temp_buf, os_buf, short_buf_size);
+		memset(os_buf, 0, short_buf_size);
 
 		for (i = 0; i < col_size; i++) {
 			for (j = 0; j < param->row; j++) {
@@ -6140,7 +6142,7 @@ static int siw_hal_prd_alloc_buffer(struct device *dev)
 
 	t_prd_dbg_base(prd, "[param alloc buffer]\n");
 
-	total_size = (ctrl->m2_frame_size * 6);
+	total_size = (ctrl->m2_frame_size * 7);
 	total_size += (ctrl->m1_frame_size * 3);
 	total_size += (ctrl->delta_size<<PRD_RAWDATA_SZ_POW);
 	total_size += (ctrl->debug_buf_size<<PRD_RAWDATA_SZ_POW);
@@ -6171,6 +6173,8 @@ static int siw_hal_prd_alloc_buffer(struct device *dev)
 	prd->m2_buf_even_rawdata = (int16_t *)buf;
 	buf += ctrl->m2_frame_size;
 	prd->m2_buf_odd_rawdata = (int16_t *)buf;
+	buf += ctrl->m2_frame_size;
+	prd->m2_buf_tmp = (int16_t *)buf;
 	buf += ctrl->m2_frame_size;
 
 	prd->m1_buf_even_rawdata = (int16_t *)buf;
