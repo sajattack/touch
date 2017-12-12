@@ -1688,8 +1688,8 @@ static int siw_hal_chk_status_type(struct device *dev)
 
 	switch (chip->opt.t_sts_mask) {
 	case 1:
-		chip->status_mask_ic_abnormal |= (0x3<<6);
 		chip->status_mask_ic_valid = 0xFFFF;
+		chip->status_mask_ic_disp_err = (0x3<<6);
 		break;
 	case 2:
 		chip->status_mask_ic_abnormal |= (0x3<<1);
