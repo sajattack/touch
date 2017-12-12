@@ -5215,6 +5215,39 @@ struct lpwg_mode_ctrl {
 	int sleep;
 };
 
+static void __t_dev_lpwg_info(struct device *dev, int lcd_mode,
+				char *label, char *title, char *str)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	int drv_mode = chip->driving_mode;
+	char *_str = (str) ? str : "";
+
+	if ((drv_mode == lcd_mode) || (lcd_mode == LPWG_SET_SKIP)) {
+		t_dev_info(dev, "lpwg %s: %s(%d) %s\n",
+			label, title,
+			drv_mode,
+			_str);
+		return;
+	}
+
+	t_dev_info(dev, "lpwg %s: %s(%d -> %d) %s\n",
+		label, title,
+		drv_mode, lcd_mode,
+		_str);
+}
+
+static void t_dev_lpwg_suspend_info(struct device *dev, int lcd_mode,
+				char *title, char *str)
+{
+	__t_dev_lpwg_info(dev, lcd_mode, "suspend", title, str);
+}
+
+static void t_dev_lpwg_resume_info(struct device *dev, int lcd_mode,
+				char *title, char *str)
+{
+	__t_dev_lpwg_info(dev, lcd_mode, "resume", title, str);
+}
+
 static void siw_hal_lpwg_ctrl_init(struct lpwg_mode_ctrl *ctrl)
 {
 	ctrl->clk = LPWG_SET_SKIP;
@@ -5301,7 +5334,7 @@ static int siw_hal_lpwg_mode_suspend(struct device *dev)
 		ctrl.lpwg = LPWG_DOUBLE_TAP,
 		ctrl.lcd = chip->lcd_mode;
 
-		t_dev_info(dev, "lpwg suspend: mfts_lpwg\n");
+		t_dev_lpwg_suspend_info(dev, ctrl.lcd, "mfts_lpwg", NULL);
 		goto out_con;
 	}
 
@@ -5309,13 +5342,13 @@ static int siw_hal_lpwg_mode_suspend(struct device *dev)
 		if (ts->lpwg.screen) {
 			ctrl.clk = 1;
 
-			t_dev_info(dev, "lpwg suspend: mode\n");
+			t_dev_lpwg_suspend_info(dev, ctrl.lcd, "mode", NULL);
 			goto out_con;
 		}
 	}
 
 	if (ts->lpwg.screen) {
-		t_dev_info(dev, "lpwg suspend: screen\n");
+		t_dev_lpwg_suspend_info(dev, ctrl.lcd, "screen", NULL);
 		siw_hal_lpwg_ctrl_skip(dev);
 		goto out;
 	}
@@ -5323,7 +5356,7 @@ static int siw_hal_lpwg_mode_suspend(struct device *dev)
 #if defined(__SIW_CONFIG_PROX_ON_SUSPEND)
 	if (ts->lpwg.sensor == PROX_NEAR) {
 		ctrl.sleep = 1;
-		t_dev_info(dev, "lpwg suspend: sensor\n");
+		t_dev_lpwg_suspend_info(dev, ctrl.lcd, "sensor", NULL);
 		goto out_con;
 	}
 #endif
@@ -5336,7 +5369,7 @@ static int siw_hal_lpwg_mode_suspend(struct device *dev)
 			ctrl.lpwg = ts->lpwg.mode;
 			ctrl.lcd = lcd_mode;
 
-			t_dev_info(dev, "lpwg suspend: qcover\n");
+			t_dev_lpwg_suspend_info(dev, ctrl.lcd, "qcover", NULL);
 			goto out_con;
 		}
 	}
@@ -5356,7 +5389,7 @@ static int siw_hal_lpwg_mode_suspend(struct device *dev)
 
 	ctrl.lcd = lcd_mode;
 
-	t_dev_info(dev, "lpwg suspend: default %s\n",
+	t_dev_lpwg_suspend_info(dev, ctrl.lcd, "default",
 		(ctrl.sleep == 1) ? "(sleep)" : "");
 
 out_con:
@@ -5396,7 +5429,7 @@ static int siw_hal_lpwg_mode_resume(struct device *dev)
 	if (ts->lpwg.sensor == PROX_NEAR) {
 		ctrl.lcd = LCD_MODE_STOP;
 
-		t_dev_info(dev, "lpwg resume: sensor\n");
+		t_dev_lpwg_resume_info(dev, ctrl.lcd, "sensor", NULL);
 		goto out_con;
 	}
 #endif
@@ -5411,7 +5444,7 @@ static int siw_hal_lpwg_mode_resume(struct device *dev)
 		ctrl.lpwg = LPWG_NONE;
 		ctrl.lcd = lcd_mode;
 
-		t_dev_info(dev, "lpwg resume: screen\n");
+		t_dev_lpwg_resume_info(dev, ctrl.lcd, "screen", NULL);
 		goto out_con;
 	}
 
@@ -5419,7 +5452,7 @@ static int siw_hal_lpwg_mode_resume(struct device *dev)
 		ctrl.lpwg = LPWG_NONE;
 		ctrl.lcd = LCD_MODE_STOP;
 
-		t_dev_info(dev, "lpwg resume: mode (LPWG_NONE)\n");
+		t_dev_lpwg_resume_info(dev, ctrl.lcd, "mode", "(LPWG_NONE)");
 		goto out_con;
 	}
 
@@ -5433,13 +5466,13 @@ static int siw_hal_lpwg_mode_resume(struct device *dev)
 			}
 			ctrl.lcd = lcd_mode;
 
-			t_dev_info(dev, "lpwg resume: qcover\n");
+			t_dev_lpwg_resume_info(dev, ctrl.lcd, "qcover", NULL);
 			goto out_con;
 		}
 	}
 
-	t_dev_info(dev, "lpwg resume: %s\n",
-		(mode_allowed_partial) ? "partial" : "default");
+	t_dev_lpwg_resume_info(dev, ctrl.lcd,
+		(mode_allowed_partial) ? "partial" : "default", NULL);
 
 	if (mode_allowed_qcover) {
 		ctrl.qcover = QUICKCOVER_OPEN;
@@ -7838,6 +7871,7 @@ static int siw_hal_probe(struct device *dev)
 		goto out;
 	}
 
+	chip->driving_mode = LCD_MODE_U3;
 	chip->lcd_mode = LCD_MODE_U3;
 	chip->tci_debug_type = 1;
 
