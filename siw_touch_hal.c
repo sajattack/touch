@@ -7800,7 +7800,7 @@ static int siw_hal_probe(struct device *dev)
 	siw_hal_init_gpios(dev);
 	siw_hal_power_init(dev);
 
-	if (siw_touch_get_boot_mode() == SIW_TOUCH_CHARGER_MODE) {
+	if (ts->is_charger) {
 		if (chip->mode_allowed_partial) {
 			/* U3P driving and maintain 100ms before Deep sleep */
 			ret = siw_hal_tc_driving(dev, LCD_MODE_U3_PARTIAL);
@@ -7904,7 +7904,7 @@ static int siw_hal_do_suspend(struct device *dev)
 	int mfst_mode = 0;
 	int ret = 0;
 
-	if (siw_touch_get_boot_mode() == SIW_TOUCH_CHARGER_MODE)
+	if (ts->is_charger)
 		return -EPERM;
 
 	mfst_mode = siw_touch_boot_mode_check(dev);
@@ -7951,7 +7951,7 @@ static int siw_hal_do_resume(struct device *dev)
 		}
 	}
 
-	if (siw_touch_get_boot_mode() == SIW_TOUCH_CHARGER_MODE) {
+	if (ts->is_charger) {
 		if (chip->mode_allowed_partial) {
 			/* U3P driving and maintain 100ms at Resume */
 			ret = siw_hal_tc_driving(dev, LCD_MODE_U3_PARTIAL);
