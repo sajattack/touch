@@ -505,12 +505,16 @@ static const char *prd_param_name_lg4946_g[] = {
 	"L0L53P1", "L0W53P1", NULL
 };
 
-static const char *prd_param_name_sw49501_type_1[] = {
-	"AURORA58", NULL
+static const char *prd_param_name_sw49106_type_2[] = {
+	"L0W59HRT", NULL
 };
 
 static const char *prd_param_name_sw49106_type_1[] = {
 	"CSOTDEMO", NULL
+};
+
+static const char *prd_param_name_sw49501_type_1[] = {
+	"AURORA58", NULL
 };
 
 enum {
@@ -798,6 +802,23 @@ static const struct siw_hal_prd_param prd_params[] = {
 	/*
 	 * SW49106 group (Not fixed)
 	 */
+	{	.chip_type = CHIP_SW49106,
+		.name = prd_param_name_sw49106_type_2,
+		.cmd_type = PRD_CMD_TYPE_1,
+		.addr = {
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_RAW, 0xD82),
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_BASELINE_EVEN, 0xEA2),
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_DELTA, 0xFC2),
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_LABEL, 0x1116),
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_DEBUG, 0xC3F),
+			0,
+		},
+		__PRD_PARAM_DIMENSION(32, 16, 0, 32, PRD_M1_COL_SIZE, 1, 1),
+		__PRD_2ND_SCR(0, 0),
+		.sysfs_off_flag = 0,
+		.sd_test_flag = SD_FLAG_SW49106,
+		.lpwg_sd_test_flag = LPWG_SD_FLAG_SW49106,
+	},
 	{	.chip_type = CHIP_SW49106,
 		.name = prd_param_name_sw49106_type_1,
 		.cmd_type = PRD_CMD_TYPE_1,
