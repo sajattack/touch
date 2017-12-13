@@ -7702,6 +7702,8 @@ static int siw_hal_chipset_option(struct siw_touch_chip *chip)
 
 	case CHIP_SW49106:
 		opt->f_attn_opt = 1;
+		opt->f_glove_en = 1;
+		opt->f_grab_en = 1;
 		opt->t_boot_mode = 1;
 		opt->t_sts_mask = 1;
 		opt->t_sw_rst = 2;
