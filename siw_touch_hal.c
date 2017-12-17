@@ -384,8 +384,6 @@ static void siw_hal_init_gpios(struct device *dev)
 	siw_hal_init_gpio_irq(dev);
 
 	siw_hal_init_gpio_maker_id(dev);
-
-	siw_hal_trigger_gpio_reset(dev);
 }
 
 static void siw_hal_free_gpios(struct device *dev)
@@ -7793,6 +7791,8 @@ static void __siw_hal_do_remove(struct device *dev)
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
 
+	siw_hal_power(dev, POWER_OFF);
+
 #if defined(__SIW_SUPPORT_PM_QOS)
 	pm_qos_remove_request(&chip->pm_qos_req);
 #endif
@@ -7812,6 +7812,7 @@ static int siw_hal_probe(struct device *dev)
 {
 	struct siw_ts *ts = to_touch_core(dev);
 	struct siw_touch_chip *chip = NULL;
+	char log_str[64] = {0, };
 	int ret = 0;
 
 	chip = touch_kzalloc(dev, sizeof(*chip), GFP_KERNEL);
@@ -7835,62 +7836,55 @@ static int siw_hal_probe(struct device *dev)
 	siw_hal_init_gpios(dev);
 	siw_hal_power_init(dev);
 
-	if (ts->is_charger) {
-		if (chip->mode_allowed_partial) {
-			/* U3P driving and maintain 100ms before Deep sleep */
-			ret = siw_hal_tc_driving(dev, LCD_MODE_U3_PARTIAL);
-			if (ret < 0) {
-				__siw_hal_do_remove(dev);
-				siwmon_submit_ops_step_chip_wh_name(dev,
-						"%s probe failed(charger mode)",
-						touch_chip_name(ts), 0);
-				return ret;
-			}
-			touch_msleep(80);
-		}
-
-		/* Deep Sleep */
-		siw_hal_deep_sleep(dev);
-
-		siwmon_submit_ops_step_chip_wh_name(dev,
-				"%s probe done(charger mode)",
-				touch_chip_name(ts), 0);
-		return 0;
-	}
-
-	siw_hal_get_tci_info(dev);
-	siw_hal_get_swipe_info(dev);
-
 #if defined(__SIW_SUPPORT_PM_QOS)
 	pm_qos_add_request(&chip->pm_qos_req,
 				PM_QOS_CPU_DMA_LATENCY,
 				PM_QOS_DEFAULT_VALUE);
 #endif
 
+	siw_hal_power(dev, POWER_ON);
+	siw_hal_trigger_gpio_reset(dev);
+
 	ret = siw_hal_chipset_check(dev);
 	if (ret < 0) {
-		__siw_hal_do_remove(dev);
 		goto out;
 	}
+
+	if (ts->is_charger) {
+		if (chip->mode_allowed_partial) {
+			/* U3P driving and maintain 100ms before Deep sleep */
+			ret = siw_hal_tc_driving(dev, LCD_MODE_U3_PARTIAL);
+			if (ret < 0) {
+				goto out;
+			}
+			touch_msleep(80);
+		}
+
+		/* Deep Sleep */
+		siw_hal_deep_sleep(dev);
+		goto out;
+	}
+
+	siw_hal_get_tci_info(dev);
+	siw_hal_get_swipe_info(dev);
 
 	chip->driving_mode = LCD_MODE_U3;
 	chip->lcd_mode = LCD_MODE_U3;
 	chip->tci_debug_type = 1;
 
-	t_dev_dbg_base(dev, "%s probe done\n",
-				touch_chip_name(ts));
-
-	siwmon_submit_ops_step_chip_wh_name(dev, "%s probe done",
-			touch_chip_name(ts), 0);
-
-	return 0;
-
 out:
-	t_dev_dbg_base(dev, "%s probe failed\n",
-				touch_chip_name(ts));
+	snprintf(log_str, sizeof(log_str), "%s hal probe %s%s",
+		touch_chip_name(ts),
+		(ret < 0) ? "failed" : "done",
+		(ts->is_charger) ? " (charger)" : "");
 
-	siwmon_submit_ops_step_chip_wh_name(dev, "%s probe failed",
-			touch_chip_name(ts), 0);
+	t_dev_dbg_base(dev, "%s\n", log_str);
+
+	siwmon_submit_ops_step_chip_wh_name(dev, "%s", log_str, 0);
+
+	if (ret < 0) {
+		__siw_hal_do_remove(dev);
+	}
 
 	return ret;
 }

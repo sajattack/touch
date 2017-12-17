@@ -1559,9 +1559,6 @@ static int __siw_touch_probe_init(void *data)
 		goto skip_charger;
 	}
 
-	siw_ops_power(ts, POWER_OFF);
-	siw_ops_power(ts, POWER_ON);
-
 #if defined(__SIW_TEST_IRQ_OFF)
 	ts->irq = 0;
 #else	/* __SIW_TEST_IRQ_OFF */
@@ -1589,8 +1586,7 @@ static int __siw_touch_probe_init(void *data)
 		goto out_init_thread;
 	}
 
-	t_dev_dbg_base(dev, "hw_reset_delay : %d ms\n", ts->caps.hw_reset_delay);
-	siw_touch_qd_init_work_hw(ts);
+	siw_touch_qd_init_work_now(ts);
 
 skip_charger:
 	ts->init_late_done = 1;
@@ -1601,8 +1597,6 @@ out_init_thread:
 	siw_touch_free_irq(ts);
 
 out_request_irq:
-	siw_ops_power(ts, POWER_OFF);
-
 	siw_touch_free_pm(ts);
 
 out_init_pm:
@@ -1633,8 +1627,6 @@ static void __siw_touch_probe_free(void *data)
 	siw_touch_free_thread(ts);
 
 	siw_touch_free_irq(ts);
-
-	siw_ops_power(ts, POWER_OFF);
 
 skip_charger:
 	siw_touch_free_pm(ts);
