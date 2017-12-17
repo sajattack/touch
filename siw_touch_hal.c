@@ -5018,7 +5018,7 @@ static int siw_hal_tc_driving(struct device *dev, int mode)
 				reg->spr_subdisp_status,
 				&rdata);
 
-		if (atomic_read(&ts->recur_chk)) {
+		if (ts->is_charger || atomic_read(&ts->recur_chk)) {
 			t_dev_err(dev, "command failed: mode %d, tc_status %08Xh, DDI %08Xh\n",
 				mode, tc_status, rdata);
 			atomic_set(&ts->recur_chk, 0);
