@@ -3800,12 +3800,6 @@ static int siw_hal_fw_get_file(const struct firmware **fw_p,
 	int abs_path = 0;
 	int ret = 0;
 
-	if (atomic_read(&ts->state.fb) >= FB_SUSPEND) {
-		t_dev_warn(dev, "state.fb is not FB_RESUME\n");
-		ret = -EPERM;
-		goto out;
-	}
-
 	if (ts->test_fwpath[0]) {
 		src_path = (char *)ts->test_fwpath;
 	} else if (ts->def_fwcnt) {
@@ -3905,18 +3899,33 @@ static int siw_hal_upgrade_not_allowed(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
+	int fb_state = atomic_read(&ts->state.fb);
+	int pm_state = atomic_read(&ts->state.pm);
 
 	if (atomic_read(&chip->boot) == IC_BOOT_FAIL) {
 		return 0;
 	}
 
 	if (atomic_read(&chip->init) == IC_INIT_NEED) {
-		t_dev_warn(dev, "Not Ready, Need IC init (fw)\n");
+		t_dev_warn(dev, "FW upgrade: not ready, need IC init\n");
 		return 1;
 	}
 
-	if (atomic_read(&ts->state.fb) >= FB_SUSPEND) {
-		t_dev_warn(dev, "state.fb is not FB_RESUME\n");
+	if (chip->lcd_mode != LCD_MODE_U3) {
+		t_dev_warn(dev, "FW upgrade: not U3 mode, %s(%d)\n",
+			siw_lcd_driving_mode_str(chip->lcd_mode),
+			chip->lcd_mode);
+		return 1;
+	}
+
+	if ((fb_state != FB_RESUME) || (pm_state != DEV_PM_RESUME)) {
+		t_dev_warn(dev, "FW upgrade: not resume state(%d, %d)\n",
+			fb_state, pm_state);
+		return 1;
+	}
+
+	if (atomic_read(&ts->state.sleep) != IC_NORMAL) {
+		t_dev_warn(dev, "FW upgrade: not IC normal\n");
 		return 1;
 	}
 
@@ -3963,11 +3972,12 @@ static int siw_hal_upgrade(struct device *dev)
 
 	chip->fw_abs_path = 0;
 
-	t_dev_info(dev, "fw type: %s\n", FW_TYPE_STR);
-
 	if (siw_hal_upgrade_not_allowed(dev)) {
-		return -EPERM;
+		t_dev_warn(dev, "FW upgrade: not granted\n");
+		return EACCES;
 	}
+
+	t_dev_info(dev, "fw type: %s\n", FW_TYPE_STR);
 
 	fwpath = touch_getname();
 	if (fwpath == NULL) {

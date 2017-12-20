@@ -789,12 +789,11 @@ static void siw_touch_init_work_func(struct work_struct *work)
 	t_dev_dbg_base(dev, "init work done\n");
 }
 
-static void siw_touch_upgrade_work_func(struct work_struct *work)
+static int siw_touch_upgrade_work(struct siw_ts *ts)
 {
-	struct siw_ts *ts =
-			container_of(to_delayed_work(work),
-						struct siw_ts, upgrade_work);
 	struct device *dev = ts->dev;
+	int core_state = atomic_read(&ts->state.core);
+	int irq_state = atomic_read(&ts->state.irq_enable);
 	int ret = 0;
 
 	t_dev_info(dev, "FW upgrade work func\n");
@@ -812,26 +811,35 @@ static void siw_touch_upgrade_work_func(struct work_struct *work)
 	ts->force_fwup = FORCE_FWUP_CLEAR;
 	ts->test_fwpath[0] = '\0';
 
+	/* upgrade not granted */
+	if (ret == EACCES) {
+		atomic_set(&ts->state.core, core_state);
+		if (irq_state) {
+			siw_touch_irq_control(dev, INTERRUPT_ENABLE);
+		}
+		return 0;	/* skip reset */
+	}
+
 	if (ret < 0) {
 		if (ret == -EPERM) {
 			t_dev_err(dev, "FW upgrade skipped\n");
 		} else {
 			t_dev_err(dev, "FW upgrade halted, %d\n", ret);
 		}
-	//	siw_touch_qd_init_work_now(ts);
-	//	atomic_set(&ts->state.core, CORE_NORMAL);
-	//	return;
 	}
 
-#if 1
-	siw_ops_reset(ts, HW_RESET_ASYNC);
-#else
-	siw_ops_power(ts, POWER_OFF);
-	touch_msleep(1);
-	siw_ops_power(ts, POWER_ON);
+	return 1;		/* do reset */
+}
 
-	siw_touch_qd_init_work_now(ts);
-#endif
+static void siw_touch_upgrade_work_func(struct work_struct *work)
+{
+	struct siw_ts *ts =
+			container_of(to_delayed_work(work),
+						struct siw_ts, upgrade_work);
+
+	if (siw_touch_upgrade_work(ts)) {
+		siw_ops_reset(ts, HW_RESET_ASYNC);
+	}
 }
 
 static void siw_touch_fb_work_func(struct work_struct *work)
