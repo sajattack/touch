@@ -78,6 +78,12 @@ config TOUCHSCREEN_SIW_SW42101
 	help
 	  If your device is SW42101, say Y
 
+config TOUCHSCREEN_SIW_SW42103
+	bool "Silicon Works Touch Driver for SW42103"
+	depends on TOUCHSCREEN_SIW
+	default n
+	help
+	  If your device is SW42103, say Y
 
 source "drivers/input/touchscreen/siw/mon/Kconfig"
 
