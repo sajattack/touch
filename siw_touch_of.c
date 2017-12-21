@@ -243,6 +243,11 @@ static int siw_touch_do_parse_dts(struct siw_ts *ts)
 		ts->flags = chip_flags & 0xFFFF;
 		ts->flags |= p_flags & (0xFFFFUL<<16);
 	}
+
+	if (ts->flags & TOUCH_SKIP_RESET_PIN) {
+		t_dev_info(dev, "reset pin ignored\n");
+	}
+
 	if (chip_flags >= 0) {
 		t_dev_info(dev, "flags(of) = 0x%08X (0x%08X, 0x%08X)\n",
 			ts->flags, p_flags, chip_flags);
@@ -382,6 +387,11 @@ static int siw_touch_parse_dts(struct siw_ts *ts)
 	ts->irqflags = pdata_irqflags(ts->pdata);
 
 	ts->flags = pdata_flags(ts->pdata);
+
+	if (ts->flags & TOUCH_SKIP_RESET_PIN) {
+		t_dev_info(dev, "reset pin ignored\n");
+	}
+
 	t_dev_info(dev, "flags = 0x%08X", ts->flags);
 
 	touch_set_pins(ts, &ts->pdata->pins);
