@@ -263,16 +263,18 @@ static void siw_hal_init_gpio_reset(struct device *dev)
 			reset_pin, GPIO_NO_PULL);
 }
 
-static void siw_hal_trigger_gpio_reset(struct device *dev)
+static void siw_hal_trigger_gpio_reset(struct device *dev, int delay)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
-//	struct siw_ts *ts = chip->ts;
+	struct siw_ts *ts = chip->ts;
 
 	siw_hal_set_gpio_reset(dev, GPIO_OUT_ZERO);
 	touch_msleep(chip->drv_reset_low + hal_dbg_delay(chip, HAL_DBG_DLY_HW_RST_0));
 	siw_hal_set_gpio_reset(dev, GPIO_OUT_ONE);
 
 	t_dev_info(dev, "trigger gpio reset\n");
+
+	touch_msleep((delay) ? delay : ts->caps.hw_reset_delay);
 }
 
 static void siw_hal_free_gpio_reset(struct device *dev)
@@ -5024,6 +5026,8 @@ static int siw_hal_tc_driving(struct device *dev, int mode)
 	}
 
 	if (re_init) {
+		int delay = ts->caps.hw_reset_delay + hal_dbg_delay(chip, HAL_DBG_DLY_HW_RST_2);
+
 		ret = siw_hal_read_value(dev,
 				reg->spr_subdisp_status,
 				&rdata);
@@ -5040,7 +5044,7 @@ static int siw_hal_tc_driving(struct device *dev, int mode)
 
 		atomic_set(&ts->recur_chk, 1);
 
-		ret = siw_hal_reinit(dev, 1, 100 + hal_dbg_delay(chip, HAL_DBG_DLY_HW_RST_2), 1, siw_hal_init);
+		ret = siw_hal_reinit(dev, 1, delay, 1, siw_hal_init);
 		if (ret < 0) {
 			return ret;
 		}
@@ -7619,11 +7623,9 @@ static int siw_hal_get_product_id(struct device *dev)
 
 static int siw_hal_chipset_check(struct device *dev)
 {
-	struct siw_touch_chip *chip = to_touch_chip(dev);
-	struct siw_ts *ts = chip->ts;
+//	struct siw_touch_chip *chip = to_touch_chip(dev);
+//	struct siw_ts *ts = chip->ts;
 	int ret = 0;
-
-	touch_msleep(ts->caps.hw_reset_delay);
 
 	ret = siw_hal_init_quirk(dev);
 	if (ret < 0) {
@@ -7853,7 +7855,7 @@ static int siw_hal_probe(struct device *dev)
 #endif
 
 	siw_hal_power(dev, POWER_ON);
-	siw_hal_trigger_gpio_reset(dev);
+	siw_hal_trigger_gpio_reset(dev, 0);
 
 	ret = siw_hal_chipset_check(dev);
 	if (ret < 0) {
@@ -7926,13 +7928,11 @@ static int siw_hal_do_suspend(struct device *dev)
 
 static int siw_hal_do_resume(struct device *dev)
 {
-	struct siw_ts *ts = to_touch_core(dev);
+//	struct siw_ts *ts = to_touch_core(dev);
 
 	siw_hal_power(dev, POWER_ON);
 
-	siw_hal_trigger_gpio_reset(dev);	//Double check for reset
-
-	touch_msleep(ts->caps.hw_reset_delay);
+	siw_hal_trigger_gpio_reset(dev, 0);	//Double check for reset
 
 	return 0;
 }
