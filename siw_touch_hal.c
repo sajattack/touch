@@ -2392,6 +2392,35 @@ static int siw_hal_init_quirk(struct device *dev)
 	return 0;
 }
 
+static int siw_hal_init_charger(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	int ret = 0;
+
+	if (!ts->is_charger) {
+		return 0;
+	}
+
+	ret = siw_hal_init_quirk(dev);
+	if (ret < 0) {
+		return ret;
+	}
+
+	if (chip->mode_allowed_partial) {
+		ret = siw_hal_tc_driving(dev, LCD_MODE_U3_PARTIAL);
+		if (ret < 0) {
+			return ret;
+		}
+		touch_msleep(100);
+	}
+
+	/* Deep Sleep */
+	siw_hal_deep_sleep(dev);
+
+	return 0;
+}
+
 static int siw_hal_init(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
@@ -7863,17 +7892,7 @@ static int siw_hal_probe(struct device *dev)
 	}
 
 	if (ts->is_charger) {
-		if (chip->mode_allowed_partial) {
-			/* U3P driving and maintain 100ms before Deep sleep */
-			ret = siw_hal_tc_driving(dev, LCD_MODE_U3_PARTIAL);
-			if (ret < 0) {
-				goto out;
-			}
-			touch_msleep(80);
-		}
-
-		/* Deep Sleep */
-		siw_hal_deep_sleep(dev);
+		ret = siw_hal_init_charger(dev);
 		goto out;
 	}
 
@@ -7917,7 +7936,10 @@ static int siw_hal_remove(struct device *dev)
 #if defined(__SIW_CONFIG_SYSTEM_PM)
 static int siw_hal_do_suspend(struct device *dev)
 {
-//	struct siw_ts *ts = to_touch_core(dev);
+	struct siw_ts *ts = to_touch_core(dev);
+
+	if (ts->is_charger)
+		return -EPERM;
 
 	siw_touch_irq_control(dev, INTERRUPT_DISABLE);
 
@@ -7928,11 +7950,16 @@ static int siw_hal_do_suspend(struct device *dev)
 
 static int siw_hal_do_resume(struct device *dev)
 {
-//	struct siw_ts *ts = to_touch_core(dev);
+	struct siw_ts *ts = to_touch_core(dev);
 
 	siw_hal_power(dev, POWER_ON);
 
 	siw_hal_trigger_gpio_reset(dev, 0);	//Double check for reset
+
+	if (ts->is_charger) {
+		siw_hal_init_charger(dev);
+		return -EPERM;
+	}
 
 	return 0;
 }
@@ -7992,16 +8019,7 @@ static int siw_hal_do_resume(struct device *dev)
 	}
 
 	if (ts->is_charger) {
-		if (chip->mode_allowed_partial) {
-			/* U3P driving and maintain 100ms at Resume */
-			ret = siw_hal_tc_driving(dev, LCD_MODE_U3_PARTIAL);
-			if (ret < 0) {
-				return ret;
-			}
-			touch_msleep(80);
-		}
-
-		siw_hal_deep_sleep(dev);
+		siw_hal_init_charger(dev);
 		return -EPERM;
 	}
 
