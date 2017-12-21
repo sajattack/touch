@@ -478,6 +478,52 @@ static void *__siw_hal_get_curr_buf(struct siw_ts *ts, dma_addr_t *dma, int tx)
 	return buf;
 }
 
+#if defined(__SIW_RW_OPT_1)
+static int __siw_hal_reg_addr_check(struct siw_touch_chip *chip,
+			u32 addr, u32 size, int wr)
+{
+	struct siw_ts *ts = chip->ts;
+	struct device *dev = ts->dev;
+	int chip_type = touch_chip_type(ts);
+	int bus_type = touch_bus_type(ts);
+	int last = addr + size - 1;
+	int invalid_s = 0;
+	int invalid_e = 0;
+	int detected = 0;
+	int xfer = (wr>>1) & 0x1;
+
+	wr &= 0x1;
+
+	switch (chip_type) {
+	case CHIP_SW42103:
+		invalid_s = (bus_type == BUS_IF_I2C) ? 0x400 : 0x200;
+		invalid_e = invalid_s + 0x200;
+
+		if ((addr >= invalid_s) && (addr < invalid_e)) {
+			detected |= 0x1;
+		}
+		if ((last >= invalid_s) && (last < invalid_e)) {
+			detected |= (0x1<<1);
+		}
+
+		if (detected) {
+			t_dev_info(dev,
+				"invalid access(%s%s) : %04Xh, %04Xh (%X, %04Xh, %04Xh)\n",
+				(xfer) ? "xfer " : "",
+				(wr) ? "wr" : "rd",
+				addr, last,
+				detected, invalid_s, invalid_e);
+			return -EINVAL;
+		}
+		break;
+	}
+
+	return 0;
+}
+#else	/* __SIW_RW_OPT_1 */
+#define __siw_hal_reg_addr_check(_c, _a, _s, _w)	({ int _r = 0; _r; })
+#endif	/* __SIW_RW_OPT_1 */
+
 //#define __SIW_CONFIG_CLR_RX_BUFFER
 
 static int __used __siw_hal_do_reg_read(struct device *dev, u32 addr, void *data, int size)
@@ -508,6 +554,11 @@ static int __used __siw_hal_do_reg_read(struct device *dev, u32 addr, void *data
 	if (!data) {
 		t_dev_err(dev, "NULL data(0x%04X, 0x%04X)\n", addr, size);
 		return -EFAULT;
+	}
+
+	ret = __siw_hal_reg_addr_check(chip, addr, size, 0);
+	if (ret < 0) {
+		return -EINVAL;
 	}
 
 #if defined(__SIW_I2C_TYPE_1)
@@ -637,6 +688,11 @@ static int __used __siw_hal_do_reg_write(struct device *dev, u32 addr, void *dat
 		return -EFAULT;
 	}
 
+	ret = __siw_hal_reg_addr_check(chip, addr, size, 1);
+	if (ret < 0) {
+		return -EINVAL;
+	}
+
 	tx_buf = __siw_hal_get_curr_buf(ts, &tx_dma, 1);
 
 #if defined(__SIW_BUS_ADDR_16BIT)
@@ -734,7 +790,8 @@ static int __used __siw_hal_do_xfer_to_single(struct device *dev, struct touch_x
 
 static int __used __siw_hal_do_xfer_msg(struct device *dev, struct touch_xfer_msg *xfer)
 {
-	struct siw_ts *ts = to_touch_core(dev);
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
 	struct touch_xfer_data_t *tx = NULL;
 	struct touch_xfer_data_t *rx = NULL;
 	int bus_tx_hdr_size = touch_tx_hdr_size(ts);
@@ -773,6 +830,12 @@ static int __used __siw_hal_do_xfer_msg(struct device *dev, struct touch_xfer_ms
 
 		if (rx->size) {
 			t_dev_dbg_base(dev, "xfer: rd set(%d)\n", i);
+
+			ret = __siw_hal_reg_addr_check(chip, rx->addr, rx->size, (1<<1) | 0);
+			if (ret < 0) {
+				return -EINVAL;
+			}
+
 		#if 0
 			if (!rx->addr) {
 				t_dev_err(dev, "NULL xfer rx->addr(%i)\n", i);
@@ -795,6 +858,11 @@ static int __used __siw_hal_do_xfer_msg(struct device *dev, struct touch_xfer_ms
 		}
 
 		t_dev_dbg_base(dev, "xfer: wr set(%d)\n", i);
+
+		ret = __siw_hal_reg_addr_check(chip, tx->addr, tx->size, (1<<1) | 1);
+		if (ret < 0) {
+			return -EINVAL;
+		}
 
 	#if 0
 		if (!tx->addr) {
@@ -1063,6 +1131,22 @@ static void siw_hal_free_locks(struct siw_touch_chip *chip)
 	mutex_destroy(&chip->bus_lock);
 }
 
+static u32 siw_hal_get_subdisp_sts(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+//	struct siw_ts *ts = chip->ts;
+	struct siw_hal_reg *reg = chip->reg;
+	u32 rdata = 3;	//dummy value
+
+	if (chip->opt.f_no_disp_sts) {
+		goto out;
+	}
+
+	siw_hal_read_value(dev, reg->spr_subdisp_status, &rdata);
+
+out:
+	return rdata;
+}
 
 const struct tci_info siw_hal_tci_info_default[2] = {
 	[TCI_1] = {
@@ -1083,6 +1167,7 @@ const struct tci_info siw_hal_tci_info_default[2] = {
 	},
 };
 
+#if defined(__SIW_CONFIG_KNOCK)
 #define siw_prt_tci_info(_dev, _idx, _info)	\
 	do {	\
 		t_dev_info(_dev,	\
@@ -1108,20 +1193,27 @@ static void siw_hal_prt_tci_info(struct device *dev)
 	struct active_area *area;
 	struct reset_area *tci_qcover;
 
+	if (!ts->role.use_lpwg) {
+		return;
+	}
+
 	info = &tci->info[TCI_1];
 	siw_prt_tci_info(dev, "TCI_1", info);
 	info = &tci->info[TCI_2];
 	siw_prt_tci_info(dev, "TCI_2", info);
 
-	area = &ts->tci.area;
+	area = &tci->area;
 	siw_prt_area_info(dev, "tci active area ", area);
 
-	tci_qcover = &ts->tci.qcover_open;
+	tci_qcover = &tci->qcover_open;
 	siw_prt_area_info(dev, "tci qcover_open ", tci_qcover);
 
-	tci_qcover = &ts->tci.qcover_close;
+	tci_qcover = &tci->qcover_close;
 	siw_prt_area_info(dev, "tci qcover_close", tci_qcover);
 }
+#else	/* __SIW_CONFIG_KNOCK */
+#define siw_hal_prt_tci_info(_d)	do {	} while (0)
+#endif	/* __SIW_CONFIG_KNOCK */
 
 static void siw_hal_get_tci_info(struct device *dev)
 {
@@ -1585,6 +1677,23 @@ static void siw_hal_chk_report_type(struct device *dev)
 	t_dev_info(dev, "report type  : %d\n", chip->report_type);
 }
 
+static void siw_hal_chk_status_type_quirks(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	struct siw_hal_fw_info *fw = &chip->fw;
+
+	switch (touch_chip_type(ts)) {
+	case CHIP_SW42103:
+		if (!strncmp(fw->product_id, "LA145WF1", 8)) {
+			chip->status_filter++;
+			t_dev_info(dev, "%s[%s] status quirk adopted\n",
+				touch_chip_name(ts), fw->product_id);
+		}
+		break;
+	}
+}
+
 static int siw_hal_chk_status_type(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
@@ -1629,6 +1738,8 @@ static int siw_hal_chk_status_type(struct device *dev)
 		chip->status_filter = (struct siw_hal_status_filter *)status_filter_type_1;
 		break;
 	}
+
+	siw_hal_chk_status_type_quirks(dev);
 
 	mask_bit->valid_dev_ctl = siw_hal_get_status_mask(dev, STS_ID_VALID_DEV_CTL);
 	mask_bit->valid_code_crc = siw_hal_get_status_mask(dev, STS_ID_VALID_CODE_CRC);
@@ -1697,6 +1808,11 @@ static int siw_hal_chk_status_type(struct device *dev)
 		chip->status_mask_ic_valid = 0x7FFFF;
 		chip->status_mask_ic_disp_err = (0x3<<8);
 		break;
+	case 3:
+		chip->status_mask_ic_abnormal = 0;
+		chip->status_mask_ic_error = ((1<<3) | (1<<1));
+		chip->status_mask_ic_valid = 0x7FFFF;
+		break;
 	default:
 		chip->status_mask_ic_valid = 0xFF;
 		break;
@@ -1733,6 +1849,7 @@ static const struct siw_ic_info_chip_proto siw_ic_info_chip_protos[] = {
 	{ CHIP_SW49408, 9, 4 },
 	{ CHIP_SW49501, 14, 4 },
 	{ CHIP_SW42101, 15, 4 },
+	{ CHIP_SW42103, 17, 4 },
 	{ CHIP_NONE, 0, 0 },	//End mark
 };
 
@@ -2312,9 +2429,6 @@ static void siw_hal_lcd_event_read_reg(struct device *dev)
 			reg->tc_status,
 			(void *)&rdata[1], sizeof(rdata[1]));
 	siw_hal_xfer_add_rx(xfer,
-			reg->spr_subdisp_status,
-			(void *)&rdata[2], sizeof(rdata[2]));
-	siw_hal_xfer_add_rx(xfer,
 			reg->tc_version,
 			(void *)&rdata[3], sizeof(rdata[3]));
 	siw_hal_xfer_add_rx(xfer,
@@ -2326,6 +2440,8 @@ static void siw_hal_lcd_event_read_reg(struct device *dev)
 		t_dev_err(dev, "xfer failed, %d\n", ret);
 		return;
 	}
+
+	rdata[2] = siw_hal_get_subdisp_sts(dev);
 
 	t_dev_info(dev,
 		"r[%04X] %08Xh, r[%04X] %08Xh, r[%04X] %08Xh, r[%04X] %08Xh, r[%04X] %08Xh\n",
@@ -2794,6 +2910,10 @@ static int siw_hal_fw_sram_wr_enable(struct device *dev, int onoff)
 	u32 data;
 	int ret = 0;
 
+	if (chip->opt.f_no_sram_ctl) {
+		return 0;
+	}
+
 #if 0
 	ret = siw_hal_fw_rd_value(dev, reg->spr_sram_ctl, &data);
 	if (ret < 0) {
@@ -3042,12 +3162,19 @@ static void siw_hal_fw_var_init(struct device *dev)
 	fw->conf_idx_addr = FW_S_CONF_IDX_ADDR;
 	fw->conf_dn_addr = FW_S_CONF_DN_ADDR;
 	fw->boot_code_addr = FW_BOOT_CODE_ADDR;
+	fw->conf_skip = 0;
 
 	switch (touch_chip_type(ts)) {
 	case CHIP_SW49501:
 		fw->conf_idx_addr = 0x316;
 		fw->conf_dn_addr = 0x31D;
 		fw->boot_code_addr = 0x03F;
+		break;
+	case CHIP_SW42103:
+		if (!strncmp(fw->product_id, "LA145WF1", 8)) {
+			fw->boot_code_addr = 0x03F;
+			fw->conf_skip = 1;
+		}
 		break;
 	}
 
@@ -3064,6 +3191,10 @@ static int siw_hal_fw_size_check(struct device *dev, int fw_size)
 	int size_max = (fw_size_max + (NUM_C_CONF<<POW_C_CONF) + (MAX_S_CONF<<POW_S_CONF));
 
 	siw_hal_fw_var_init(dev);
+
+	if (chip->fw.conf_skip) {
+		return 0;
+	}
 
 	if ((fw_size < size_min) || (fw_size > size_max)) {
 		t_dev_err(dev, "FW upgrade: wrong file size - %Xh,\n",
@@ -3085,6 +3216,10 @@ static int siw_hal_fw_size_check_post(struct device *dev, int fw_size)
 	u32 index = 0;
 	u32 conf_idx_addr = chip->fw.conf_idx_addr;
 	int ret = 0;
+
+	if (chip->fw.conf_skip) {
+		return 0;
+	}
 
 #if (S_CFG_DBG_IDX != 0)
 	index =  S_CFG_DBG_IDX;
@@ -3114,7 +3249,7 @@ static int siw_hal_fw_size_check_post(struct device *dev, int fw_size)
 
 	return 0;
 }
-#else	/* __FW_TYPE_1 */
+#else	/* __SIW_FW_TYPE_1 */
 #define FW_TYPE_STR		"FW_TYPE_0"
 
 #define FLASH_CONF_DNCHK_VALUE_TYPE_X	(FLASH_CONF_DNCHK_VALUE)
@@ -3192,7 +3327,7 @@ static int siw_hal_fw_size_check_post(struct device *dev, int fw_size)
 {
 	return 0;
 }
-#endif	/* __FW_TYPE_1 */
+#endif	/* __SIW_FW_TYPE_1 */
 
 enum {
 	BIN_VER_OFFSET_POS = 0xE8,
@@ -3582,6 +3717,19 @@ out:
 	return ret;
 }
 
+static int siw_hal_fw_upgrade_release_cm3(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+//	struct siw_ts *ts = chip->ts;
+	struct siw_hal_reg *reg = chip->reg;
+	int ret;
+
+	/* Release & Reset CM3 */
+	ret = siw_hal_fw_wr_value(dev, reg->spr_rst_ctl, 1);
+
+	return ret;
+}
+
 #define	CONF_POST_DELAY		20
 #define CONF_POST_COUNT		200
 
@@ -3616,10 +3764,7 @@ static int siw_hal_fw_upgrade_conf_post(struct device *dev)
 	t_dev_info(dev, "FW upgrade: conf check done\n");
 
 	/* Release & Reset CM3 */
-	ret = siw_hal_fw_wr_value(dev, reg->spr_rst_ctl, 1);
-	if (ret < 0) {
-		goto out;
-	}
+	ret = siw_hal_fw_upgrade_release_cm3(dev);
 
 out:
 	return ret;
@@ -3722,6 +3867,11 @@ static int siw_hal_fw_upgrade(struct device *dev,
 
 	if (include_conf) {
 		ret = siw_hal_fw_upgrade_conf(dev, fw_buf, fw_size);
+		if (ret < 0) {
+			goto out;
+		}
+	} else {
+		ret = siw_hal_fw_upgrade_release_cm3(dev);
 		if (ret < 0) {
 			goto out;
 		}
@@ -5004,9 +5154,7 @@ static int siw_hal_tc_driving(struct device *dev, int mode)
 	t_dev_info(dev, "current driving mode is %s\n",
 			siw_lcd_driving_mode_str(mode));
 
-	ret = siw_hal_read_value(dev,
-				reg->spr_subdisp_status,
-				&rdata);
+	rdata = siw_hal_get_subdisp_sts(dev);
 	t_dev_info(dev, "DDI Display Mode[%04Xh] = 0x%08X\n",
 			reg->spr_subdisp_status, rdata);
 
@@ -5057,9 +5205,7 @@ static int siw_hal_tc_driving(struct device *dev, int mode)
 	if (re_init) {
 		int delay = ts->caps.hw_reset_delay + hal_dbg_delay(chip, HAL_DBG_DLY_HW_RST_2);
 
-		ret = siw_hal_read_value(dev,
-				reg->spr_subdisp_status,
-				&rdata);
+		rdata = siw_hal_get_subdisp_sts(dev);
 
 		if (ts->is_charger || atomic_read(&ts->recur_chk)) {
 			t_dev_err(dev, "command failed: mode %d, tc_status %08Xh, DDI %08Xh\n",
@@ -7847,6 +7993,20 @@ static int siw_hal_chipset_option(struct siw_touch_chip *chip)
 		opt->t_clock = 2;
 		opt->t_chk_tci_debug = 1;
 		break;
+
+	case CHIP_SW42103:
+		chip->drv_reset_low = 10;	//following LGD CAS recommendation
+
+		if (touch_bus_type(ts) == BUS_IF_I2C) {
+			opt->f_flex_report = 1;
+		}
+
+		opt->f_no_disp_sts = 1;
+		opt->f_no_sram_ctl = 1;
+
+		opt->t_boot_mode = 1;
+		opt->t_sts_mask = 3;
+		break;
 	}
 
 	t_dev_info(dev, "[opt summary]\n");
@@ -7858,6 +8018,9 @@ static int siw_hal_chipset_option(struct siw_touch_chip *chip)
 	t_dev_info(dev, " f_dbg_report    : %d\n", opt->f_dbg_report);
 	t_dev_info(dev, " f_u2_blank_chg  : %d\n", opt->f_u2_blank_chg);
 	t_dev_info(dev, " f_flex_report   : %d\n", opt->f_flex_report);
+	t_dev_info(dev, " f_no_disp_sts   : %d\n", opt->f_no_disp_sts);
+	t_dev_info(dev, " f_no_sram_ctl   : %d\n", opt->f_no_sram_ctl);
+
 	t_dev_info(dev, " t_boot_mode     : %d\n", opt->t_boot_mode);
 	t_dev_info(dev, " t_sts_mask      : %d\n", opt->t_sts_mask);
 	t_dev_info(dev, " t_chk_mode      : %d\n", opt->t_chk_mode);
