@@ -6730,12 +6730,69 @@ out:
 	return -EINVAL;
 }
 
-static int siw_hal_irq_handler(struct device *dev)
+#define GET_REPORT_BASE_PKT		(1)
+#define GET_REPORT_BASE_HDR		(3)
+
+static int siw_hal_irq_get_report(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
 	struct siw_hal_reg *reg = chip->reg;
+	struct siw_hal_touch_info *info = &chip->info;
+	u32 addr = reg->tc_ic_status;
+	char *buf = (char *)&chip->info;
 	int size = 0;
+	int pkt_unit = 0;
+	int pkt_cnt = 0;
+	int touch_cnt = 0;
+	int ret = 0;
+
+	pkt_unit = sizeof(struct siw_hal_touch_data);
+	pkt_cnt = GET_REPORT_BASE_PKT;
+	touch_cnt = touch_max_finger(ts) - pkt_cnt;
+
+	size = (GET_REPORT_BASE_HDR<<2);
+	size += (pkt_unit * pkt_cnt);
+
+	/*
+	 * Dynamic read access
+	 */
+	if (chip->opt.f_flex_report) {
+		ret = siw_hal_reg_read(dev, addr, (void *)buf, size);
+		if (ret < 0) {
+			return ret;
+		}
+
+		if (info->wakeup_type != ABS_MODE) {
+			/* No need to read more */
+			return 0;
+		}
+
+		if ((info->touch_cnt <= pkt_cnt) ||
+			(info->touch_cnt > ts->caps.max_id)) {
+			/* No need to read more */
+			return 0;
+		}
+
+		addr += (size>>2);
+		buf += size;
+		size = 0;
+
+		touch_cnt = chip->info.touch_cnt - pkt_cnt;
+	}
+
+	size += (pkt_unit * touch_cnt);
+
+	ret = siw_hal_reg_read(dev, addr, (void *)buf, size);
+
+	return ret;
+}
+
+static int siw_hal_irq_handler(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+//	struct siw_hal_reg *reg = chip->reg;
 	int ret = 0;
 
 	if (atomic_read(&chip->init) == IC_INIT_NEED) {
@@ -6746,10 +6803,7 @@ static int siw_hal_irq_handler(struct device *dev)
 #if defined(__SIW_SUPPORT_PM_QOS)
 	pm_qos_update_request(&chip->pm_qos_req, 10);
 #endif
-	size = 12 + (sizeof(struct siw_hal_touch_data) * touch_max_finger(ts));
-	ret = siw_hal_reg_read(dev,
-				reg->tc_ic_status,
-				(void *)&chip->info, size);
+	ret = siw_hal_irq_get_report(dev);
 #if defined(__SIW_SUPPORT_PM_QOS)
 	pm_qos_update_request(&chip->pm_qos_req, PM_QOS_DEFAULT_VALUE);
 #endif
@@ -7803,6 +7857,7 @@ static int siw_hal_chipset_option(struct siw_touch_chip *chip)
 	t_dev_info(dev, " f_grab_en       : %d\n", opt->f_grab_en);
 	t_dev_info(dev, " f_dbg_report    : %d\n", opt->f_dbg_report);
 	t_dev_info(dev, " f_u2_blank_chg  : %d\n", opt->f_u2_blank_chg);
+	t_dev_info(dev, " f_flex_report   : %d\n", opt->f_flex_report);
 	t_dev_info(dev, " t_boot_mode     : %d\n", opt->t_boot_mode);
 	t_dev_info(dev, " t_sts_mask      : %d\n", opt->t_sts_mask);
 	t_dev_info(dev, " t_chk_mode      : %d\n", opt->t_chk_mode);

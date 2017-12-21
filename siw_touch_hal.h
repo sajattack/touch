@@ -460,8 +460,12 @@ struct siw_touch_chip_opt {
 	u32 f_dbg_report:1;
 	u32 f_u2_blank_chg:1;
 	u32 f_rsvd00:1;
-	u32 f_rsvd01:8;
+	/* */
+	u32 f_flex_report:1;
+	u32 f_rsvd01:7;
+	/* */
 	u32 f_rsvd02:8;
+	/* */
 	u32 f_rsvd03:8;
 	/* */
 	u32 t_boot_mode:4;
