@@ -3171,8 +3171,8 @@ static void siw_hal_fw_var_init(struct device *dev)
 		fw->boot_code_addr = 0x03F;
 		break;
 	case CHIP_SW42103:
+		fw->boot_code_addr = 0x03F;
 		if (!strncmp(fw->product_id, "LA145WF1", 8)) {
-			fw->boot_code_addr = 0x03F;
 			fw->conf_skip = 1;
 		}
 		break;
