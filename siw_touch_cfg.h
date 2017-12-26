@@ -182,7 +182,7 @@ enum _SIW_CHIP_TYPE {
 
 //#define __SIW_TEST_IRQ_OFF
 
-#if (LINUX_VERSION_CODE <= KERNEL_VERSION(3, 6, 0))
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 7, 0))
 #define mod_delayed_work	queue_delayed_work
 #endif
 
