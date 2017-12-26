@@ -1675,6 +1675,9 @@ extern int siw_touch_get(struct device *dev, u32 cmd, void *buf);
 extern void siw_touch_suspend_call(struct device *dev);
 extern void siw_touch_resume_call(struct device *dev);
 
+extern void siw_touch_suspend_bus(struct device *dev);
+extern void siw_touch_resume_bus(struct device *dev);
+
 extern void siw_touch_change_sensitivity(struct siw_ts *ts,
 						int target);
 

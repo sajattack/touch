@@ -433,27 +433,36 @@ static void siw_touch_resume(struct device *dev)
 	}
 }
 
-/**
- * siw_touch_suspend_call() - Helper function for touch suspend
- * @dev: device to use
- *
- */
 void siw_touch_suspend_call(struct device *dev)
 {
-#if !defined(__SIW_CONFIG_EARLYSUSPEND) && !defined(__SIW_CONFIG_FB)
 	siw_touch_suspend(dev);
+}
+
+void siw_touch_resume_call(struct device *dev)
+{
+	siw_touch_resume(dev);
+}
+
+#if !defined(__SIW_CONFIG_EARLYSUSPEND) &&	\
+	!defined(__SIW_CONFIG_FB)
+#define __SIW_CONFIG_PM_BUS
+#endif
+
+void siw_touch_suspend_bus(struct device *dev)
+{
+#if defined(__SIW_CONFIG_PM_BUS)
+	siw_touch_suspend(dev);
+#else
+	t_dev_info(dev, "touch_suspend_bus(noop)\n");
 #endif
 }
 
-/**
- * siw_touch_resume_call() - Helper function for touch resume
- * @dev: device to use
- *
- */
-void siw_touch_resume_call(struct device *dev)
+void siw_touch_resume_bus(struct device *dev)
 {
-#if !defined(__SIW_CONFIG_EARLYSUSPEND) && !defined(__SIW_CONFIG_FB)
+#if defined(__SIW_CONFIG_PM_BUS)
 	siw_touch_resume(dev);
+#else
+	t_dev_info(dev, "touch_resume_bus(noop)\n");
 #endif
 }
 
