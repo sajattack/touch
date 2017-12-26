@@ -3380,6 +3380,11 @@ static int prd_stop_firmware(struct siw_hal_prd_data *prd, u32 wdata, int flag)
 	int try_cnt = 0;
 	int ret = 0;
 
+	if (!reg->prd_ic_ait_start_reg ||
+		!reg->prd_ic_ait_data_readystatus) {
+		return 0;
+	}
+
 	/*
 	 * STOP F/W to check
 	 */
@@ -3426,6 +3431,11 @@ static int prd_start_firmware(struct siw_hal_prd_data *prd)
 	u32 check_data = 0;
 	u32 read_val = 0;
 	int ret = 0;
+
+	if (!reg->prd_ic_ait_start_reg ||
+		!reg->prd_ic_ait_data_readystatus) {
+		return 0;
+	}
 
 	/* Release F/W to operate */
 	ret = siw_hal_write_value(dev, reg->prd_ic_ait_start_reg, cmd);
