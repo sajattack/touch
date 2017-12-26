@@ -304,6 +304,11 @@ static int siw_touch_do_parse_dts(struct siw_ts *ts)
 	caps->max_width = siw_touch_of_u32(dev, np, "max_width");
 	caps->max_orientation = siw_touch_of_u32(dev, np, "max_orientation");
 	caps->max_id = siw_touch_of_u32(dev, np, "max_id");
+	tmp = siw_touch_of_int(dev, np, "mt_slots_flags");
+	if (tmp >= 0) {
+		caps->mt_slots_flags = tmp;
+	}
+
 	caps->hw_reset_delay = siw_touch_of_u32(dev, np, "hw_reset_delay");
 	caps->sw_reset_delay = siw_touch_of_u32(dev, np, "sw_reset_delay");
 
@@ -449,18 +454,22 @@ int siw_touch_parse_data(struct siw_ts *ts)
 		goto out;
 	}
 
-	t_dev_info(dev, "caps max_x           = %d\n", caps->max_x);
-	t_dev_info(dev, "caps max_y           = %d\n", caps->max_y);
-	t_dev_info(dev, "caps max_pressure    = %d\n", caps->max_pressure);
-	t_dev_info(dev, "caps max_width       = %d\n", caps->max_width);
-	t_dev_info(dev, "caps max_orientation = %d\n", caps->max_orientation);
-	t_dev_info(dev, "caps max_id          = %d\n", caps->max_id);
-	t_dev_info(dev, "caps hw_reset_delay  = %d ms\n", caps->hw_reset_delay);
-	t_dev_info(dev, "caps sw_reset_delay  = %d ms\n", caps->sw_reset_delay);
-	t_dev_info(dev, "role use_lpwg        = %d\n", role->use_lpwg);
-	t_dev_info(dev, "role use_lpwg_test   = %d\n", role->use_lpwg_test);
-	t_dev_info(dev, "role use_firmware    = %d\n", role->use_firmware);
-	t_dev_info(dev, "role use_fw_upgrade  = %d\n", role->use_fw_upgrade);
+	t_dev_info(dev, "[caps summary]\n");
+	t_dev_info(dev, " max_x           = %d\n", caps->max_x);
+	t_dev_info(dev, " max_y           = %d\n", caps->max_y);
+	t_dev_info(dev, " max_pressure    = %d\n", caps->max_pressure);
+	t_dev_info(dev, " max_width       = %d\n", caps->max_width);
+	t_dev_info(dev, " max_orientation = %d\n", caps->max_orientation);
+	t_dev_info(dev, " max_id          = %d\n", caps->max_id);
+	t_dev_info(dev, " mt_slots_flags  = 0x%X\n", caps->mt_slots_flags);
+	t_dev_info(dev, " hw_reset_delay  = %d ms\n", caps->hw_reset_delay);
+	t_dev_info(dev, " sw_reset_delay  = %d ms\n", caps->sw_reset_delay);
+
+	t_dev_info(dev, "[role summary]\n");
+	t_dev_info(dev, " use_lpwg        = %d\n", role->use_lpwg);
+	t_dev_info(dev, " use_lpwg_test   = %d\n", role->use_lpwg_test);
+	t_dev_info(dev, " use_firmware    = %d\n", role->use_firmware);
+	t_dev_info(dev, " use_fw_upgrade  = %d\n", role->use_fw_upgrade);
 
 out:
 	return ret;

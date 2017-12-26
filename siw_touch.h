@@ -374,11 +374,13 @@ struct touch_device_caps {
 	u32 max_width;
 	u32 max_orientation;
 	u32 max_id;
-	u32 hw_reset_delay;
-	u32 sw_reset_delay;
+	int mt_slots_flags;
 //	u32 button_support;
 //	u32 number_of_button;
 //	u32 button_name[MAX_BUTTON];
+	/* */
+	u32 hw_reset_delay;
+	u32 sw_reset_delay;
 };
 
 struct touch_operation_role {
@@ -1444,6 +1446,8 @@ static inline void touch_set_caps(struct siw_ts *ts,
 	caps->max_width = caps_src->max_width;
 	caps->max_orientation = caps_src->max_orientation;
 	caps->max_id = caps_src->max_id;
+	caps->mt_slots_flags = caps_src->mt_slots_flags;
+
 	caps->hw_reset_delay = caps_src->hw_reset_delay;
 	caps->sw_reset_delay = caps_src->sw_reset_delay;
 }
