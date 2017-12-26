@@ -127,6 +127,21 @@ module_param_named(lpwg_sensor, t_lpwg_sensor, uint, S_IRUGO|S_IWUSR|S_IWGRP);
 module_param_named(lpwg_qcover, t_lpwg_qcover, uint, S_IRUGO|S_IWUSR|S_IWGRP);
 
 
+static void siw_config_status(struct device *dev)
+{
+#if defined(__SIW_CONFIG_FB)
+	t_dev_info(dev, "cfg status : __SIW_CONFIG_FB\n");
+#endif
+
+#if defined(__SIW_CONFIG_SYSTEM_PM)
+	t_dev_info(dev, "cfg status : __SIW_CONFIG_SYSTEM_PM\n");
+#endif
+
+#if defined(__SIW_CONFIG_FASTBOOT)
+	t_dev_info(dev, "cfg status : __SIW_CONFIG_FASTBOOT\n");
+#endif
+}
+
 static int siw_setup_names(struct siw_ts *ts, struct siw_touch_pdata *pdata)
 {
 	struct device *dev = ts->dev;
@@ -185,6 +200,8 @@ int siw_setup_params(struct siw_ts *ts, struct siw_touch_pdata *pdata)
 	int type = 0;
 	u32 mode_allowed = 0;
 	int ret = 0;
+
+	siw_config_status(dev);
 
 	max_finger = pdata_max_finger(pdata);
 	if ((max_finger < 0) || (max_finger > MAX_FINGER)) {
