@@ -698,6 +698,13 @@ struct siw_touch_pdata {
 	void *font_bin;
 
 	int senseless_margin;
+
+	/*
+	 * Auto-execution for ts->init_late_work
+	 * 0: disabled, non-zero: auto execution time delay(msec)
+	 * To ts->init_late_time
+	 */
+	int init_late_time;
 };
 
 struct siw_touch_chip_data {
@@ -1114,6 +1121,13 @@ struct siw_ts {
 	/* */
 	int (*init_late)(void *data);
 	int init_late_done;
+	/*
+	 * Auto-execution for ts->init_late_work
+	 * 0: disabled, non-zero: auto execution time delay(msec)
+	 * From pdata->init_late_time
+	 */
+	int init_late_time;
+	struct delayed_work init_late_work;
 };
 
 enum {

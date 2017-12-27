@@ -1691,8 +1691,65 @@ static void siw_touch_probe_free(void *data)
 	mutex_unlock(&ts->probe_lock);
 }
 
+enum {
+	INIT_LATE_SIG_WQ	= 0x5A5A,
+	INIT_LATE_SIG_DONE	= 0xAA55,
+};
+
+static void siw_touch_init_late_work_func(struct work_struct *work)
+{
+	struct siw_ts *ts =
+			container_of(to_delayed_work(work),
+						struct siw_ts, init_late_work);
+	int ret = 0;
+
+	mutex_lock(&ts->lock);
+
+	if (ts->init_late == NULL) {
+		goto out;
+	}
+
+	ret = siw_touch_init_late(ts, INIT_LATE_SIG_WQ);
+	t_dev_info(ts->dev, "init_late_work done, %d\n", ret);
+
+out:
+	mutex_unlock(&ts->lock);
+}
+
+static int siw_touch_init_late_work_trigger(struct siw_ts *ts)
+{
+	int init_late_time = 0;
+
+	if (t_dbg_flag & DBG_FLAG_SKIP_INIT_LATE_WORK) {
+		ts->init_late_time = 0;
+	}
+	if (t_dbg_flag & DBG_FLAG_TEST_INIT_LATE_WORK) {
+		ts->init_late_time = 5000;
+	}
+
+	init_late_time = ts->init_late_time;
+
+	if (!init_late_time) {
+		return 0;
+	}
+
+	INIT_DELAYED_WORK(&ts->init_late_work, siw_touch_init_late_work_func);
+
+	queue_delayed_work(ts->wq,
+		&ts->init_late_work,
+		msecs_to_jiffies(init_late_time));
+
+	t_dev_info(ts->dev,
+		"init_late_work triggered, %d msec\n",
+		init_late_time);
+
+	return 0;
+}
+
 static int siw_touch_probe_post(struct siw_ts *ts)
 {
+	ts->init_late_time = ts->pdata->init_late_time;
+
 	if (t_dbg_flag & DBG_FLAG_SKIP_INIT_LATE) {
 		ts->flags &= ~TOUCH_USE_PROBE_INIT_LATE;
 	}
@@ -1707,6 +1764,8 @@ static int siw_touch_probe_post(struct siw_ts *ts)
 		 * shall be controlled by MIPI via notifier
 		 */
 		ts->init_late = siw_touch_probe_init;
+
+		siw_touch_init_late_work_trigger(ts);
 		return 0;
 	}
 
@@ -1719,6 +1778,13 @@ static int siw_touch_probe_post(struct siw_ts *ts)
 
 static void siw_touch_remove_post(struct siw_ts *ts)
 {
+	if (ts->init_late) {
+		if (ts->init_late_time) {
+			t_dev_info(ts->dev, "init_late_work canceled\n");
+			cancel_delayed_work_sync(&ts->init_late_work);
+		}
+	}
+
 	siw_touch_probe_free(ts);
 }
 
@@ -1808,7 +1874,7 @@ int siw_touch_init_late(struct siw_ts *ts, int value)
 		goto out;
 	}
 
-	t_dev_info(dev, "trigger init_late\n");
+	t_dev_info(dev, "trigger init_late(%Xh)\n", value);
 
 	ret = ts->init_late(ts);
 	if (ret < 0) {
@@ -1817,11 +1883,11 @@ int siw_touch_init_late(struct siw_ts *ts, int value)
 		goto out;
 	}
 
-	t_dev_info(dev, "init_late done\n");
+	t_dev_info(dev, "init_late done(%Xh)\n", value);
 
 	ts->init_late = NULL;
 
-	value = 0xAA55;
+	value = INIT_LATE_SIG_DONE;
 	siw_touch_atomic_notifier_call(
 		LCD_EVENT_TOUCH_INIT_LATE,
 		&value);
