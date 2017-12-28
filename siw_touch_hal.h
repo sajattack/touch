@@ -621,10 +621,20 @@ static inline struct siw_touch_chip *to_touch_chip_from_kobj(struct kobject *kob
 								struct siw_touch_chip, kobj);
 }
 
+enum {
+	ADDR_SKIP_MASK	= 0xFFFF,
+};
+
 extern int siw_hal_read_value(struct device *dev, u32 addr, u32 *value);
 extern int siw_hal_write_value(struct device *dev, u32 addr, u32 value);
 extern int siw_hal_reg_read(struct device *dev, u32 addr, void *data, int size);
 extern int siw_hal_reg_write(struct device *dev, u32 addr, void *data, int size);
+
+extern int siw_hal_read_value_chk(struct device *dev, u32 addr, u32 *value);
+extern int siw_hal_write_value_chk(struct device *dev, u32 addr, u32 value);
+extern int siw_hal_reg_read_chk(struct device *dev, u32 addr, void *data, int size);
+extern int siw_hal_reg_write_chk(struct device *dev, u32 addr, void *data, int size);
+
 extern void siw_hal_xfer_init(struct device *dev, void *xfer_data);
 extern int siw_hal_xfer_msg(struct device *dev, struct touch_xfer_msg *xfer);
 extern void siw_hal_xfer_add_rx(void *xfer_data, u32 reg, void *buf, u32 size);

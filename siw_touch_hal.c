@@ -957,6 +957,42 @@ int siw_hal_reg_write(struct device *dev, u32 addr, void *data, int size)
 	return ret;
 }
 
+int siw_hal_read_value_chk(struct device *dev, u32 addr, u32 *value)
+{
+	if (addr == ADDR_SKIP_MASK) {
+		return 0;
+	}
+
+	return siw_hal_read_value(dev, addr, value);
+}
+
+int siw_hal_write_value_chk(struct device *dev, u32 addr, u32 value)
+{
+	if (addr == ADDR_SKIP_MASK) {
+		return 0;
+	}
+
+	return siw_hal_write_value(dev, addr, value);
+}
+
+int siw_hal_reg_read_chk(struct device *dev, u32 addr, void *data, int size)
+{
+	if (addr == ADDR_SKIP_MASK) {
+		return 0;
+	}
+
+	return siw_hal_reg_read(dev, addr, data, size);
+}
+
+int siw_hal_reg_write_chk(struct device *dev, u32 addr, void *data, int size)
+{
+	if (addr == ADDR_SKIP_MASK) {
+		return 0;
+	}
+
+	return siw_hal_reg_write(dev, addr, data, size);
+}
+
 void siw_hal_xfer_init(struct device *dev, void *xfer_data)
 {
 	struct touch_xfer_msg *xfer = xfer_data;
@@ -1136,13 +1172,13 @@ static u32 siw_hal_get_subdisp_sts(struct device *dev)
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 //	struct siw_ts *ts = chip->ts;
 	struct siw_hal_reg *reg = chip->reg;
-	u32 rdata = 3;	//dummy value
+	u32 rdata = LCD_MODE_U3;	//dummy value
 
 	if (chip->opt.f_no_disp_sts) {
 		goto out;
 	}
 
-	siw_hal_read_value(dev, reg->spr_subdisp_status, &rdata);
+	siw_hal_read_value_chk(dev, reg->spr_subdisp_status, &rdata);
 
 out:
 	return rdata;
@@ -2251,7 +2287,7 @@ static int siw_hal_init_reg_set(struct device *dev)
 
 	data = atomic_read(&ts->state.ime);
 
-	ret = siw_hal_write_value(dev,
+	ret = siw_hal_write_value_chk(dev,
 				reg->ime_state,
 				data);
 	if (ret < 0) {
@@ -2915,7 +2951,7 @@ static int siw_hal_fw_sram_wr_enable(struct device *dev, int onoff)
 	}
 
 #if 0
-	ret = siw_hal_fw_rd_value(dev, reg->spr_sram_ctl, &data);
+	ret = siw_hal_read_value_chk(dev, reg->spr_sram_ctl, &data);
 	if (ret < 0) {
 		goto out;
 	}
@@ -2925,14 +2961,14 @@ static int siw_hal_fw_sram_wr_enable(struct device *dev, int onoff)
 	else
 		data &= ~0x01;
 
-	ret = siw_hal_fw_wr_value(dev, reg->spr_sram_ctl, data);
+	ret = siw_hal_write_value_chk(dev, reg->spr_sram_ctl, data);
 	if (ret < 0) {
 		goto out;
 	}
 #else
 //	data = !!onoff;
 	data = (onoff) ? 0x03 : 0x00;
-	ret = siw_hal_fw_wr_value(dev, reg->spr_sram_ctl, data);
+	ret = siw_hal_write_value_chk(dev, reg->spr_sram_ctl, data);
 	if (ret < 0) {
 		goto out;
 	}
