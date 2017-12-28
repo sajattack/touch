@@ -3370,6 +3370,19 @@ skip_file:
 /*
  * SIW TOUCH IC F/W Stop HandShake
  */
+static int prd_ctrl_firm_not_allowed(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_hal_reg *reg = chip->reg;
+
+	if ((reg->prd_ic_ait_start_reg == ADDR_SKIP_MASK) ||
+		(reg->prd_ic_ait_data_readystatus == ADDR_SKIP_MASK)) {
+		return 1;
+	}
+
+	return 0;
+}
+
 static int prd_stop_firmware(struct siw_hal_prd_data *prd, u32 wdata, int flag)
 {
 	struct device *dev = prd->dev;
@@ -3380,8 +3393,7 @@ static int prd_stop_firmware(struct siw_hal_prd_data *prd, u32 wdata, int flag)
 	int try_cnt = 0;
 	int ret = 0;
 
-	if (!reg->prd_ic_ait_start_reg ||
-		!reg->prd_ic_ait_data_readystatus) {
+	if (prd_ctrl_firm_not_allowed(dev)) {
 		return 0;
 	}
 
@@ -3432,8 +3444,7 @@ static int prd_start_firmware(struct siw_hal_prd_data *prd)
 	u32 read_val = 0;
 	int ret = 0;
 
-	if (!reg->prd_ic_ait_start_reg ||
-		!reg->prd_ic_ait_data_readystatus) {
+	if (prd_ctrl_firm_not_allowed(dev)) {
 		return 0;
 	}
 
