@@ -121,9 +121,9 @@ static const struct siw_hal_reg_quirk chip_reg_quirks[] = {
 	{ .old_addr = SPR_CHIP_TEST, .new_addr = 0x0BF, },
 	{ .old_addr = SPR_RST_CTL, .new_addr = 0x003, },
 	{ .old_addr = SPR_BOOT_CTL, .new_addr = 0x007, },
-//	{ .old_addr = SPR_SRAM_CTL, .new_addr = 0x00F, },
+	{ .old_addr = SPR_SRAM_CTL, .new_addr = ADDR_SKIP_MASK, },
 	{ .old_addr = SPR_BOOT_STS, .new_addr = 0x008, },
-
+	{ .old_addr = SPR_SUBDISP_STS, .new_addr = ADDR_SKIP_MASK, },
 	{ .old_addr = INFO_CHIP_VERSION, .new_addr = 0x001, },
 	{ .old_addr = TC_CONFDN_BASE_ADDR, .new_addr = 0x284 },
 	/* */
@@ -150,7 +150,7 @@ static const struct siw_hal_reg_quirk chip_reg_quirks[] = {
 	{ .old_addr = TC_FLASH_DN_STS, .new_addr = 0x265, },
 #endif	/* CHIP_SW42103_SPI */
 	/* */
-	{ .old_addr = IME_STATE, .new_addr = 0xC61, },
+	{ .old_addr = IME_STATE, .new_addr = ADDR_SKIP_MASK, },
 	/* */
 	{ .old_addr = ~0, .new_addr = ~0 },		// End signal
 };
