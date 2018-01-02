@@ -1736,6 +1736,7 @@ static int siw_hal_chk_status_type(struct device *dev)
 	struct siw_ts *ts = chip->ts;
 	struct siw_hal_fw_info *fw = &chip->fw;
 	struct siw_hal_status_mask_bit *mask_bit = &chip->status_mask_bit;
+	int t_sts_mask = chip->opt.t_sts_mask;
 
 	if (chip->status_type) {
 		return 0;
@@ -1833,15 +1834,16 @@ static int siw_hal_chk_status_type(struct device *dev)
 	chip->status_mask_ic_error = INT_IC_ERROR_STATUS;
 	chip->status_mask_ic_disp_err = 0;
 
-	switch (chip->opt.t_sts_mask) {
+	switch (t_sts_mask) {
 	case 1:
 		chip->status_mask_ic_valid = 0xFFFF;
 		chip->status_mask_ic_disp_err = (0x3<<6);
 		break;
+	case 4:
 	case 2:
 		chip->status_mask_ic_abnormal |= (0x3<<1);
 		chip->status_mask_ic_error = ((1<<7) | (1<<5));
-		chip->status_mask_ic_valid = 0x7FFFF;
+		chip->status_mask_ic_valid = (t_sts_mask == 4) ? 0x1FFFFF : 0x7FFFF;
 		chip->status_mask_ic_disp_err = (0x3<<8);
 		break;
 	case 3:
@@ -1861,6 +1863,7 @@ static int siw_hal_chk_status_type(struct device *dev)
 	t_dev_info(dev, " reset       : %08Xh\n", chip->status_mask_reset);
 	t_dev_info(dev, " ic abnormal : %08Xh\n", chip->status_mask_ic_abnormal);
 	t_dev_info(dev, " ic error    : %08Xh\n", chip->status_mask_ic_error);
+	t_dev_info(dev, " ic valid    : %08Xh\n", chip->status_mask_ic_valid);
 	t_dev_info(dev, " ic disp err : %08Xh\n", chip->status_mask_ic_disp_err);
 
 	return 0;
@@ -1878,6 +1881,7 @@ static const struct siw_ic_info_chip_proto siw_ic_info_chip_protos[] = {
 	{ CHIP_LG4946, 7, 4 },
 	{ CHIP_LG4951, 7, 4 },
 	{ CHIP_SW1828, 9, 4 },
+	{ CHIP_SW46104, 15, 4 },
 	{ CHIP_SW49105, 10, 4 },
 	{ CHIP_SW49106, 11, 4 },
 	{ CHIP_SW49406, 7, 4 },
@@ -2230,6 +2234,14 @@ static int siw_hal_init_reg_set_pre(struct device *dev)
 				goto out;
 			}
 		}
+
+		switch (touch_chip_type(ts)) {
+		case CHIP_SW46104:
+			goto out;
+		default:
+			break;
+		}
+
 		ret = siw_hal_init_reg_verify(dev,
 				0xFF3, ABNORMAL_IC_DETECTION, 3,
 				"spi_tattn_opt");
@@ -3153,11 +3165,12 @@ static int siw_hal_fw_upgrade_conf_quirk(struct device *dev,
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
 	int fw_size_max;
+	u32 conf_index = chip->fw.conf_index;
 	u32 conf_dn_addr;
 	u32 data;
 	int ret = 0;
 
-	if (!chip->fw.conf_index) {
+	if (!conf_index) {
 		goto out;
 	}
 
@@ -3175,7 +3188,7 @@ static int siw_hal_fw_upgrade_conf_quirk(struct device *dev,
 
 	data = fw_size_max +	\
 		(NUM_C_CONF<<POW_C_CONF) +	\
-		((chip->fw.conf_index - 1)<<POW_S_CONF);
+		((conf_index - 1)<<POW_S_CONF);
 	ret = siw_hal_fw_upgrade_conf_core(dev, conf_dn_addr,
 				(u8 *)&fw_buf[data], FLASH_CONF_SIZE);
 	if (ret < 0) {
@@ -3201,6 +3214,11 @@ static void siw_hal_fw_var_init(struct device *dev)
 	fw->conf_skip = 0;
 
 	switch (touch_chip_type(ts)) {
+	case CHIP_SW46104:
+		fw->conf_idx_addr = 0x316;
+		fw->conf_dn_addr = 0x31D;
+		fw->boot_code_addr = 0x0BD;
+		break;
 	case CHIP_SW49501:
 		fw->conf_idx_addr = 0x316;
 		fw->conf_dn_addr = 0x31D;
@@ -3258,7 +3276,7 @@ static int siw_hal_fw_size_check_post(struct device *dev, int fw_size)
 	}
 
 #if (S_CFG_DBG_IDX != 0)
-	index =  S_CFG_DBG_IDX;
+	index = S_CFG_DBG_IDX;
 	t_dev_warn(dev, "FW upgrade: conf_index fixed for debugging: %d\n", index);
 #else
 	ret = siw_hal_read_value(dev, conf_idx_addr, &index);
@@ -7966,6 +7984,11 @@ static int siw_hal_chipset_option(struct siw_touch_chip *chip)
 		opt->f_ver_ext = 1;
 		opt->f_dbg_report = 1;
 		opt->t_chk_frame = 1;
+		break;
+
+	case CHIP_SW46104:
+		opt->t_boot_mode = 2;
+		opt->t_sts_mask = 4;
 		break;
 
 	case CHIP_SW49105:
