@@ -780,6 +780,26 @@ static const struct siw_hal_prd_param prd_params[] = {
 		.lpwg_sd_test_flag = LPWG_SD_FLAG_LG4946,
 	},
 	/*
+	 * SW46104 group (Not fixed)
+	 */
+	{	.chip_type = CHIP_SW46104,
+		.name = NULL,	//NULL meas 'Last & Default'
+		.cmd_type = PRD_CMD_TYPE_1,
+		.addr = {
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_RAW, 0x1182),
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_BASELINE_EVEN, 0x12A2),
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_DELTA, 0x13C2),
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_LABEL, 0x1516),
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_DEBUG, 0x10FC),
+			0,
+		},
+		__PRD_PARAM_DIMENSION(32, 18, 0, 32, PRD_M1_COL_SIZE, 1, 1),
+		__PRD_2ND_SCR(0, 0),
+		.sysfs_off_flag = 0,
+		.sd_test_flag = 0,			/* temorary disabled */
+		.lpwg_sd_test_flag = 0,		/* temorary disabled */
+	},
+	/*
 	 * SW49105 group (Not fixed)
 	 */
 	{	.chip_type = CHIP_SW49105,
@@ -6486,6 +6506,7 @@ static void siw_hal_prd_set_sd_cmd(struct siw_hal_prd_data *prd)
 		sd_cmd->cmd_jitter = 6;
 		sd_cmd->cmd_m1_jitter = 4;
 		break;
+	case CHIP_SW46104:
 	case CHIP_SW49408:
 	case CHIP_SW49409:
 	case CHIP_SW49501:
