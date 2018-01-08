@@ -4141,10 +4141,12 @@ static int siw_hal_upgrade_not_allowed(struct device *dev)
 		return 0;
 	}
 
+#if 0	/* requires more consideration */
 	if (atomic_read(&chip->init) == IC_INIT_NEED) {
 		t_dev_warn(dev, "FW upgrade: not ready, need IC init\n");
 		return 1;
 	}
+#endif
 
 	if (chip->lcd_mode != LCD_MODE_U3) {
 		t_dev_warn(dev, "FW upgrade: not U3 mode, %s(%d)\n",
