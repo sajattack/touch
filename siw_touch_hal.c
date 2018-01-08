@@ -2909,7 +2909,7 @@ static int siw_hal_fw_rd_value(struct device *dev,
 		return ret;
 	}
 
-	t_dev_dbg_base(dev, "FW upgrade: reg rd: addr[%04Xh], value[%08Xh], %d\n",
+	t_dev_dbg_fwup(dev, "FW upgrade: reg rd: addr[%04Xh], value[%08Xh], %d\n",
 			addr, data, ret);
 
 	if (value)
@@ -2928,7 +2928,7 @@ static int siw_hal_fw_wr_value(struct device *dev,
 		return ret;
 	}
 
-	t_dev_dbg_base(dev, "FW upgrade: reg wr: addr[%04Xh], value[%08Xh], %d\n",
+	t_dev_dbg_fwup(dev, "FW upgrade: reg wr: addr[%04Xh], value[%08Xh], %d\n",
 			addr, value, ret);
 
 	return 0;
@@ -2944,7 +2944,7 @@ static int siw_hal_fw_wr_seq(struct device *dev,
 		return ret;
 	}
 
-	t_dev_dbg_base(dev, "FW upgrade: reg wr: addr[%04Xh], data[%02X ...], %d\n",
+	t_dev_dbg_fwup(dev, "FW upgrade: reg wr: addr[%04Xh], data[%02X ...], %d\n",
 			addr, data[0], ret);
 
 	return 0;
@@ -3009,7 +3009,7 @@ static int siw_hal_fw_upgrade_fw_core(struct device *dev, u8 *dn_buf, int dn_siz
 	fw_size = dn_size;
 	fw_pos = 0;
 	while (fw_size) {
-		t_dev_dbg_base(dev, "FW upgrade: fw_pos[%06Xh ...] = %02X %02X %02X %02X ...\n",
+		t_dev_dbg_fwup(dev, "FW upgrade: fw_pos[%06Xh ...] = %02X %02X %02X %02X ...\n",
 				fw_pos,
 				fw_data[0], fw_data[1], fw_data[2], fw_data[3]);
 
@@ -3183,7 +3183,7 @@ static int siw_hal_fw_upgrade_conf_quirk(struct device *dev,
 	}
 
 	conf_dn_addr = (data & 0xFFFF);
-	t_dev_dbg_base(dev, "FW upgrade: s_conf_dn_addr %04Xh (%08Xh)\n",
+	t_dev_dbg_fwup(dev, "FW upgrade: s_conf_dn_addr %04Xh (%08Xh)\n",
 			conf_dn_addr, data);
 
 	data = fw_size_max +	\
@@ -3471,7 +3471,7 @@ static int siw_hal_fw_compare(struct device *dev, u8 *fw_buf)
 	}
 
 	memcpy(pid, &fw_buf[bin_pid_offset], 8);
-	t_dev_dbg_base(dev, "pid %s\n", pid);
+	t_dev_dbg_fwup(dev, "pid %s\n", pid);
 
 	if ((bin_ver_offset > fw_max_size) ||
 		(bin_ver_ext_offset > fw_max_size) ||
@@ -3481,7 +3481,7 @@ static int siw_hal_fw_compare(struct device *dev, u8 *fw_buf)
 		return -EINVAL;
 	}
 
-	t_dev_dbg_base(dev, "ver %06Xh, ver_ext %06Xh, pid %06Xh\n",
+	t_dev_dbg_fwup(dev, "ver %06Xh, ver_ext %06Xh, pid %06Xh\n",
 			bin_ver_offset, bin_ver_ext_offset, bin_pid_offset);
 
 	bin_ver = (struct siw_hal_tc_version_bin *)&fw_buf[bin_ver_offset];
@@ -3846,7 +3846,7 @@ static int siw_hal_fw_upgrade_conf(struct device *dev,
 
 	conf_dn_addr = ((data >> 16) & 0xFFFF);
 
-	t_dev_dbg_base(dev, "FW upgrade: conf_dn_addr %04Xh (%08Xh)\n",
+	t_dev_dbg_fwup(dev, "FW upgrade: conf_dn_addr %04Xh (%08Xh)\n",
 		conf_dn_addr, data);
 #if 0
 	if (conf_dn_addr >= (0x1200) || conf_dn_addr < (0x8C0)) {
@@ -3911,7 +3911,7 @@ static int siw_hal_fw_upgrade(struct device *dev,
 	t_dev_info(dev, "FW upgrade:%s include conf data\n",
 			(include_conf) ? "" : " not");
 
-	t_dev_dbg_base(dev, "FW upgrade: fw size %08Xh, fw_size_max %08Xh\n",
+	t_dev_dbg_fwup(dev, "FW upgrade: fw size %08Xh, fw_size_max %08Xh\n",
 			fw_size, fw_size_max);
 
 	ret = siw_hal_fw_upgrade_fw(dev, fw_buf, fw_size);
