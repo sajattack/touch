@@ -272,7 +272,6 @@ static ssize_t _show_reg_list(struct device *dev, char *buf)
 }
 
 #define REG_BURST_MAX			512
-#define REG_BURST_LOG_BUF_SZ	(1<<10)
 #define REG_BURST_COL_PWR		4
 
 static int __show_reg_ctrl_log_history(struct device *dev, char *buf)
@@ -345,26 +344,15 @@ static void __store_reg_ctrl_log_add(struct device *dev,
 }
 
 static inline void __store_reg_ctrl_rd_burst_log(struct device *dev,
-					u8 *row_buf, u8 *log_buf, int log_buf_sz, int row, int col)
+					u8 *row_buf, int row, int col)
 {
-	int log_size = 0;
-	int i;
-
-	if (!col)
-		return;
-
-	for (i = 0; i < col ; i++) {
-		log_size += snprintf(log_buf + log_size, log_buf_sz - log_size,
-						"%02X ", *row_buf++);
-	}
-	t_dev_info(dev, "rd: [%3Xh] %s\n", row, log_buf);
+	if (col)
+		t_dev_info(dev, "rd: [%3Xh] %*ph\n", row, col, row_buf);
 }
 
 static int __store_reg_ctrl_rd_burst(struct device *dev, u32 addr, int size)
 {
 	u8 *rd_buf, *row_buf;
-	u8 *log_buf;
-	int log_buf_sz = REG_BURST_LOG_BUF_SZ;
 	int col_power = REG_BURST_COL_PWR;
 	int col_width = (1<<col_power);
 	int row_curr, col_curr;
@@ -372,12 +360,11 @@ static int __store_reg_ctrl_rd_burst(struct device *dev, u32 addr, int size)
 
 	size = min(size, REG_BURST_MAX);
 
-	rd_buf = (u8 *)kzalloc(size + log_buf_sz, GFP_KERNEL);
+	rd_buf = (u8 *)kzalloc(size, GFP_KERNEL);
 	if (rd_buf == NULL) {
 		t_dev_err(dev, "failed to allocate rd_buf\n");
 		return -ENOMEM;
 	}
-	log_buf = rd_buf + size;
 
 	ret = siw_hal_reg_read(dev, addr, rd_buf, size);
 	if (ret < 0) {
@@ -391,8 +378,7 @@ static int __store_reg_ctrl_rd_burst(struct device *dev, u32 addr, int size)
 	while (size) {
 		col_curr = min(col_width, size);
 
-		__store_reg_ctrl_rd_burst_log(dev, row_buf, log_buf,
-			log_buf_sz, row_curr, col_curr);
+		__store_reg_ctrl_rd_burst_log(dev, row_buf, row_curr, col_curr);
 
 		row_buf += col_curr;
 		row_curr += col_curr;
