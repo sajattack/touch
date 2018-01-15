@@ -1240,9 +1240,21 @@ static int prd_drv_exception_check(struct siw_hal_prd_data *prd)
 {
 	struct device *dev = prd->dev;
 	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+
+	if (atomic_read(&chip->boot) == IC_BOOT_FAIL) {
+		t_prd_warn(prd, "boot failed\n");
+		return 1;
+	}
 
 	if (atomic_read(&chip->init) != IC_INIT_DONE) {
-		t_dev_warn(dev, "Not Ready, Need IC init (prd)\n");
+		t_prd_warn(prd, "not ready, need IC init\n");
+		return 1;
+	}
+
+	if (atomic_read(&ts->state.sleep) != IC_NORMAL) {
+		t_prd_warn(prd, "not IC normal\n");
+		return 1;
 		return 1;
 	}
 
