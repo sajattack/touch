@@ -2120,67 +2120,6 @@ static int siw_hal_ic_info(struct device *dev)
 	return siw_hal_do_ic_info(dev, 1);
 }
 
-#if defined(__SIW_CONFIG_FB) && !defined(__SIW_CONFIG_SYSTEM_PM)
-static int siw_hal_fb_notifier_callback(struct notifier_block *self,
-		unsigned long event, void *data)
-{
-	struct siw_ts *ts =
-			container_of(self, struct siw_ts, fb_notif);
-	struct fb_event *ev = (struct fb_event *)data;
-	int *blank;
-
-	if (!ev || !ev->data) {
-		return 0;
-	}
-
-	blank = (int *)ev->data;
-
-	if (event == FB_EARLY_EVENT_BLANK) {
-		if (*blank == FB_BLANK_UNBLANK) {
-			t_dev_info(ts->dev, "FB_UNBLANK(early)\n");
-		} else if (*blank == FB_BLANK_POWERDOWN) {
-			t_dev_info(ts->dev, "FB_BLANK(early)\n");
-		}
-	}
-
-	if (event == FB_EVENT_BLANK) {
-		if (*blank == FB_BLANK_UNBLANK) {
-			t_dev_info(ts->dev, "FB_UNBLANK\n");
-		} else if (*blank == FB_BLANK_POWERDOWN) {
-			t_dev_info(ts->dev, "FB_BLANK\n");
-		}
-	}
-
-	return 0;
-}
-
-/*
- * Change notifier to siw_hal_fb_notifier_callback
- * instead of siw_touch_fb_notifier_callback and
- * siw_touch_suspend/resume will be called via
- * siw_touch_fb_work_func
- * : siw_touch_notify -> siw_touch_qd_fb_work_now
- */
-static int siw_hal_fb_notifier_init(struct device *dev)
-{
-	struct siw_touch_chip *chip = to_touch_chip(dev);
-	struct siw_ts *ts = chip->ts;
-
-	t_dev_dbg_base(dev, "fb_notif change\n");
-
-	fb_unregister_client(&ts->fb_notif);
-	ts->fb_notif.notifier_call = siw_hal_fb_notifier_callback;
-	fb_register_client(&ts->fb_notif);
-
-	return 0;
-}
-#else	/* __SIW_CONFIG_FB */
-static int siw_hal_fb_notifier_init(struct device *dev)
-{
-	return 0;
-}
-#endif	/* __SIW_CONFIG_FB */
-
 static int siw_hal_init_reg_verify(struct device *dev,
 				u32 addr, u32 data, int retry,
 				const char *name)
@@ -2596,7 +2535,6 @@ static int siw_hal_init(struct device *dev)
 	atomic_set(&chip->boot, IC_BOOT_DONE);
 
 	if (atomic_read(&ts->state.core) == CORE_PROBE) {
-		siw_hal_fb_notifier_init(dev);
 		init_retry = CHIP_INIT_RETRY_PROBE;
 	} else {
 		ret = siw_hal_init_quirk(dev);

@@ -521,6 +521,78 @@ static int __used siw_touch_free_pm(struct siw_ts *ts)
  * touch pm control using FB notifier
  *
  */
+#if defined(__SIW_CONFIG_SYSTEM_PM)
+static int siw_touch_fb_notifier_work(
+			struct siw_ts *ts,
+			unsigned long event, int blank)
+{
+	struct device *dev = ts->dev;
+	int ret = -EPERM;
+
+	if (event == FB_EARLY_EVENT_BLANK) {
+		switch (blank) {
+		case FB_BLANK_UNBLANK:
+			t_dev_info(dev, "fb_unblank(early)\n");
+			break;
+		case FB_BLANK_POWERDOWN:
+			t_dev_info(dev, "fb_blank(early)\n");
+			ret = FB_SUSPEND;
+			break;
+		}
+		goto out;
+	}
+
+	if (event == FB_EVENT_BLANK) {
+		switch (blank) {
+		case FB_BLANK_UNBLANK:
+			t_dev_info(dev, "fb_unblank\n");
+			ret = FB_RESUME;
+			break;
+		case FB_BLANK_POWERDOWN:
+			t_dev_info(dev, "fb_blank\n");
+			break;
+		}
+	}
+
+out:
+	return ret;
+}
+#else
+static int siw_touch_fb_notifier_work(
+			struct siw_ts *ts,
+			unsigned long event, int blank)
+{
+	struct device *dev = ts->dev;
+	int ret = -EPERM;
+
+	if (event == FB_EARLY_EVENT_BLANK) {
+		switch (blank) {
+		case FB_BLANK_UNBLANK:
+			t_dev_info(dev, "FB_UNBLANK(early)\n");
+			break;
+		case FB_BLANK_POWERDOWN:
+			t_dev_info(dev, "FB_BLANK(early)\n");
+			break;
+		}
+		goto out;
+	}
+
+	if (event == FB_EVENT_BLANK) {
+		switch (blank) {
+		case FB_BLANK_UNBLANK:
+			t_dev_info(dev, "FB_UNBLANK\n");
+			break;
+		case FB_BLANK_POWERDOWN:
+			t_dev_info(dev, "FB_BLANK\n");
+			break;
+		}
+	}
+
+out:
+	return ret;
+}
+#endif
+
 static int siw_touch_fb_notifier_callback(
 			struct notifier_block *self,
 			unsigned long event, void *data)
@@ -528,7 +600,9 @@ static int siw_touch_fb_notifier_callback(
 	struct siw_ts *ts =
 		container_of(self, struct siw_ts, fb_notif);
 	struct fb_event *ev = (struct fb_event *)data;
+	struct device *dev = ts->dev;
 	int *blank;
+	int ret = 0;
 
 	if (!ev || !ev->data) {
 		return 0;
@@ -536,35 +610,15 @@ static int siw_touch_fb_notifier_callback(
 
 	blank = (int *)ev->data;
 
-#if defined(__SIW_CONFIG_SYSTEM_PM)
-	if (event == FB_EARLY_EVENT_BLANK) {
-		if (*blank == FB_BLANK_UNBLANK) {
-			t_dev_info(ts->dev, "fb_unblank(early)\n");
-		} else if (*blank == FB_BLANK_POWERDOWN) {
-			t_dev_info(ts->dev, "fb_blank(early)\n");
-			siw_touch_suspend(ts->dev);
-		}
+	ret = siw_touch_fb_notifier_work(ts, event, *blank);
+	switch (ret) {
+	case FB_RESUME:
+		siw_touch_resume(dev);
+		break;
+	case FB_SUSPEND:
+		siw_touch_suspend(dev);
+		break;
 	}
-
-	if (event == FB_EVENT_BLANK) {
-		if (*blank == FB_BLANK_UNBLANK) {
-			t_dev_info(ts->dev, "fb_unblank\n");
-			siw_touch_resume(ts->dev);
-		} else if (*blank == FB_BLANK_POWERDOWN) {
-			t_dev_info(ts->dev, "fb_blank\n");
-		}
-	}
-#else	/* __SIW_CONFIG_SYSTEM_PM */
-	if (event == FB_EVENT_BLANK) {
-		if (*blank == FB_BLANK_UNBLANK) {
-			t_dev_info(ts->dev, "fb_unblank\n");
-			siw_touch_resume(ts->dev);
-		} else if (*blank == FB_BLANK_POWERDOWN) {
-			t_dev_info(ts->dev, "fb_blank\n");
-			siw_touch_suspend(ts->dev);
-		}
-	}
-#endif	/* __SIW_CONFIG_SYSTEM_PM */
 
 	return 0;
 }
