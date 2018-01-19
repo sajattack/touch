@@ -62,6 +62,13 @@ enum _SIW_TOUCH_DBG_FLAG {
 extern u32 t_pr_dbg_mask;
 extern u32 t_dev_dbg_mask;
 
+#define LOG_SIG_INFO		"(I) "
+#define LOG_SIG_NOTI		"(N) "
+#define LOG_SIG_WARN		"(W) "
+#define LOG_SIG_ERR			"(E) "
+#define LOG_SIG_TRACE		"(T) "
+#define LOG_SIG_DBG			"(D) "
+
 #define t_pr_info(fmt, args...)		pr_info(fmt, ##args)
 #define t_pr_noti(fmt, args...)		pr_notice(fmt, ##args)
 #define t_pr_warn(fmt, args...)		pr_warning(fmt, ##args)
@@ -79,25 +86,33 @@ extern u32 t_dev_dbg_mask;
 			if (0) dev_printk(KERN_DEBUG, _dev, fmt, ##args);	\
 		} while (0)
 
-#define __t_dev_info(_dev, fmt, args...)	dev_info(_dev, fmt,	##args)
+#define __t_dev_info(_dev, fmt, args...)	dev_info(_dev, fmt, ##args)
 #define __t_dev_warn(_dev, fmt, args...)	dev_warn(_dev, fmt, ##args)
 #define __t_dev_err(_dev, fmt, args...)		dev_err(_dev, fmt, ##args)
+#define __t_dev_trace(_dev, fmt, args...)	dev_info(_dev, fmt, ##args)
+#define __t_dev_dbg(_dev, fmt, args...)		dev_info(_dev, fmt, ##args)
+
+#define _t_dev_info(_dev, fmt, args...)		dev_info(_dev, fmt, ##args)
+#define _t_dev_warn(_dev, fmt, args...)		dev_warn(_dev, LOG_SIG_WARN fmt, ##args)
+#define _t_dev_err(_dev, fmt, args...)		dev_err(_dev, LOG_SIG_ERR fmt, ##args)
+#define _t_dev_trace(_dev, fmt, args...)	dev_info(_dev, LOG_SIG_TRACE fmt, ##args)
+#define _t_dev_dbg(_dev, fmt, args...)		dev_info(_dev, LOG_SIG_DBG fmt, ##args)
 
 #if 1
-#define t_dev_info(_dev, fmt, args...)		__t_dev_info(_dev, fmt, ##args)
-#define t_dev_warn(_dev, fmt, args...)		__t_dev_warn(_dev, fmt, ##args)
+#define t_dev_info(_dev, fmt, args...)		_t_dev_info(_dev, fmt, ##args)
+#define t_dev_warn(_dev, fmt, args...)		_t_dev_warn(_dev, fmt, ##args)
 #else
 #define t_dev_info(_dev, fmt, args...)		__t_dev_none(_dev, fmt, ##args)
 #define t_dev_warn(_dev, fmt, args...)		__t_dev_none(_dev, fmt, ##args)
 #endif
 
-#define t_dev_trace(_dev, fmt, args...)		__t_dev_info(_dev, fmt, ##args)
-#define t_dev_err(_dev, fmt, args...)		__t_dev_err(_dev, fmt, ##args)
+#define t_dev_trace(_dev, fmt, args...)		_t_dev_trace(_dev, fmt, ##args)
+#define t_dev_err(_dev, fmt, args...)		_t_dev_err(_dev, fmt, ##args)
 
 #define t_dev_info_sel(_dev, _prt, fmt, args...)	\
 		do {	\
 			if (_prt)	\
-				t_dev_info(_dev, fmt, ##args);	\
+				_t_dev_info(_dev, fmt, ##args);	\
 		} while (0)
 
 #define t_dev_trcf(_dev)					t_dev_trace(_dev, "[%s]\n", __func__);
@@ -105,7 +120,7 @@ extern u32 t_dev_dbg_mask;
 #define t_dev_dbg(condition, _dev, fmt, args...)			\
 		do {							\
 			if (unlikely(t_dev_dbg_mask & (condition)))	\
-				__t_dev_info(_dev, fmt, ##args);	\
+				_t_dev_dbg(_dev, fmt, ##args);	\
 		} while (0)
 
 #define t_dev_dbg_base(_dev, fmt, args...)	\
