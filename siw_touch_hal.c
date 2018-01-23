@@ -2592,6 +2592,11 @@ static int siw_hal_init(struct device *dev)
 
 		t_dev_dbg_base(dev, "retry getting ic info (%d)\n", i);
 
+		if (chip->fquirks.hw_reset_quirk != NULL) {
+			chip->fquirks.hw_reset_quirk(dev, 0);
+			continue;
+		}
+
 		siw_touch_irq_control(dev, INTERRUPT_DISABLE);
 		siw_hal_power(dev, POWER_OFF);
 		siw_hal_power(dev, POWER_ON);
@@ -2645,6 +2650,14 @@ static int siw_hal_reinit(struct device *dev,
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	int ret = 0;
+	int skip_quirk = !!(pwr_con & 0x10);
+
+	pwr_con &= 0x0F;
+
+	if (!skip_quirk && (chip->fquirks.hw_reset_quirk != NULL)) {
+		ret = chip->fquirks.hw_reset_quirk(dev, delay);
+		goto reset_done;
+	}
 
 	siw_touch_irq_control(dev, INTERRUPT_DISABLE);
 
@@ -2660,6 +2673,7 @@ static int siw_hal_reinit(struct device *dev,
 	}
 
 	touch_msleep(delay);
+reset_done:
 
 	if (do_call) {
 		ret = do_call(dev);
@@ -2671,14 +2685,44 @@ static int siw_hal_reinit(struct device *dev,
 	return ret;
 }
 
+#define SIW_SW_RST_TYPE_NONE	0x0F
+#define SIW_SW_RST_TYPE_MAX		3
+
+static int siw_hal_sw_reset_type_3(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+//	struct siw_ts *ts = chip->ts;
+	struct siw_hal_reg *reg = chip->reg;
+	int addr = 0;
+	int value = 0x03;
+
+	if (chip->fquirks.hw_reset_quirk != NULL) {
+		value |= 0x08;
+	}
+
+	if (value & 0x08) {
+		addr = reg->spr_boot_ctl;
+		t_dev_dbg_trace(dev, "spr_boot_ctl[%04Xh] = %08Xh\n",
+			addr, 0);
+		siw_hal_write_value(dev, addr, 0);
+	}
+
+	addr = reg->spr_rst_ctl;
+	t_dev_dbg_trace(dev, "spr_rst_ctl[%04Xh] = %08Xh\n",
+		addr, value);
+	siw_hal_write_value(dev, addr, value);
+
+	touch_msleep(10);
+
+	return 0;
+}
+
 #define SIW_SW_RST_CTL_T2		0xFE0
 
 static int siw_hal_sw_reset_type_2(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
-	struct siw_ts *ts = chip->ts;
-
-	t_dev_info(dev, "SW Reset(2)\n");
+//	struct siw_ts *ts = chip->ts;
 
 	siw_hal_write_value(dev, SIW_SW_RST_CTL_T2, 0);
 
@@ -2686,18 +2730,13 @@ static int siw_hal_sw_reset_type_2(struct device *dev)
 
 	siw_hal_write_value(dev, SIW_SW_RST_CTL_T2, 1);
 
-	touch_msleep(ts->caps.sw_reset_delay +	\
-		hal_dbg_delay(chip, HAL_DBG_DLY_SW_RST_1));
-
 	return 0;
 }
 
 static int siw_hal_sw_reset_type_1(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
-	struct siw_ts *ts = chip->ts;
-
-	t_dev_info(dev, "SW Reset(1)\n");
+//	struct siw_ts *ts = chip->ts;
 
 	siw_hal_cmd_write(dev, CMD_ENA);
 	siw_hal_cmd_write(dev, CMD_RESET_LOW);
@@ -2706,9 +2745,6 @@ static int siw_hal_sw_reset_type_1(struct device *dev)
 
 	siw_hal_cmd_write(dev, CMD_RESET_HIGH);
 	siw_hal_cmd_write(dev, CMD_DIS);
-
-	touch_msleep(ts->caps.sw_reset_delay +	\
-		hal_dbg_delay(chip, HAL_DBG_DLY_SW_RST_1));
 
 	return 0;
 }
@@ -2726,18 +2762,12 @@ static int siw_hal_sw_reset_default(struct device *dev)
 	* Siliconworks does not recommend to use SW reset    *
 	* due to ist limitation in stability in LG4894.      *
 	******************************************************/
-	t_dev_info(dev, "SW Reset\n");
-	ret = siw_hal_write_value(dev,
-				reg->spr_rst_ctl,
-				7);
-	ret = siw_hal_write_value(dev,
-				reg->spr_rst_ctl,
-				0);
+
+	siw_hal_write_value(dev, reg->spr_rst_ctl, 7);
+	siw_hal_write_value(dev, reg->spr_rst_ctl, 0);
 
 	/* Boot Start */
-	ret = siw_hal_write_value(dev,
-				reg->spr_boot_ctl,
-				1);
+	siw_hal_write_value(dev, reg->spr_boot_ctl, 1);
 
 	/* firmware boot done check */
 	chk_resp = FLASH_BOOTCHK_VALUE;
@@ -2755,31 +2785,76 @@ out:
 	return ret;
 }
 
+static int __siw_hal_sw_reset(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+//	struct siw_ts *ts = chip->ts;
+	int type = chip->opt.t_sw_rst;
+	int ret = 0;
+
+	if (type > SIW_SW_RST_TYPE_MAX) {
+		t_dev_warn(dev, "sw reset not supported\n");
+		ret = -EPERM;
+		goto out;
+	}
+
+	siw_touch_irq_control(dev, INTERRUPT_DISABLE);
+
+	atomic_set(&chip->init, IC_INIT_NEED);
+
+	t_dev_info(dev, "SW Reset(%d)\n", type);
+
+	touch_msleep(chip->drv_reset_low + 10);
+
+	switch (type) {
+	case 3:
+		ret = siw_hal_sw_reset_type_3(dev);
+		break;
+	case 2:
+		ret = siw_hal_sw_reset_type_2(dev);
+		break;
+	case 1:
+		ret = siw_hal_sw_reset_type_1(dev);
+		break;
+	default:
+		ret = siw_hal_sw_reset_default(dev);
+		break;
+	}
+
+out:
+	return ret;
+}
+
 static int siw_hal_sw_reset(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
 	int ret = 0;
 
-	siw_touch_irq_control(dev, INTERRUPT_DISABLE);
+	ret = __siw_hal_sw_reset(dev);
 
-	atomic_set(&chip->init, IC_INIT_NEED);
+	touch_msleep(hal_dbg_delay(chip, HAL_DBG_DLY_SW_RST_1));
 
-	switch (chip->opt.t_sw_rst) {
-	case 2:
-		ret = siw_hal_sw_reset_type_2(dev);
-		break;
-
-	case 1:
-		ret = siw_hal_sw_reset_type_1(dev);
-		break;
-
-	default:
-		ret = siw_hal_sw_reset_default(dev);
-		break;
+	if (chip->fquirks.hw_reset_quirk != NULL) {
+		siw_touch_qd_init_work_hw(ts);
+	} else {
+		siw_touch_qd_init_work_sw(ts);
 	}
 
-	siw_touch_qd_init_work_sw(ts);
+	return ret;
+}
+
+static int siw_hal_hw_reset_quirk(struct device *dev, int delay)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	int ret = 0;
+
+	t_dev_info(dev, "run sw reset (reset gpio deactivated)\n");
+
+	ret = __siw_hal_sw_reset(dev);
+
+	touch_msleep((delay) ? delay : ts->caps.hw_reset_delay);
 
 	return ret;
 }
@@ -2788,17 +2863,21 @@ static int siw_hal_hw_reset(struct device *dev, int ctrl)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
+	int skip_quirk = 0;
+
+	skip_quirk = ctrl & 0x10;
+	ctrl &= 0x0F;
 
 	t_dev_info(dev, "HW Reset(%s)\n",
 		(ctrl == HW_RESET_ASYNC) ? "Async" : "Sync");
 
 	if (ctrl == HW_RESET_ASYNC) {
-		siw_hal_reinit(dev, 0, hal_dbg_delay(chip, HAL_DBG_DLY_HW_RST_1), 0, NULL);
+		siw_hal_reinit(dev, skip_quirk, hal_dbg_delay(chip, HAL_DBG_DLY_HW_RST_1), 0, NULL);
 		siw_touch_qd_init_work_hw(ts);
 		return 0;
 	}
 
-	siw_hal_reinit(dev, 0, ts->caps.hw_reset_delay, 1, siw_hal_init);
+	siw_hal_reinit(dev, skip_quirk, ts->caps.hw_reset_delay, 1, siw_hal_init);
 
 	return 0;
 }
@@ -2811,7 +2890,7 @@ static int siw_hal_reset_ctrl(struct device *dev, int ctrl)
 
 	mutex_lock(&ts->reset_lock);
 
-	t_dev_info(dev, "%s reset control(%d)\n",
+	t_dev_info(dev, "%s reset control(0x%X)\n",
 			touch_chip_name(ts), ctrl);
 
 	siw_hal_watch_set_rtc_clear(dev);
@@ -2821,13 +2900,20 @@ static int siw_hal_reset_ctrl(struct device *dev, int ctrl)
 		ret = siw_hal_sw_reset(dev);
 		break;
 
+	/*
+	 * skip quirk for sysfs access.
+	 * e.g.) echo 0x11 > reset_ctrl
+	 */
+	case (HW_RESET_ASYNC | 0x10):
+	case (HW_RESET_SYNC | 0x10):
+		/* fall through */
 	case HW_RESET_ASYNC:
 	case HW_RESET_SYNC:
 		ret = siw_hal_hw_reset(dev, ctrl);
 		break;
 
 	default:
-		t_dev_err(dev, "unknown reset type, %d\n", ctrl);
+		t_dev_err(dev, "unknown reset type, 0x%X\n", ctrl);
 		break;
 	}
 
@@ -7895,10 +7981,13 @@ static int siw_hal_chipset_option(struct siw_touch_chip *chip)
 	chip->drv_delay = 20;
 	chip->drv_opt_delay = 0;
 
+	opt->t_sw_rst = SIW_SW_RST_TYPE_NONE;
+
 	switch (touch_chip_type(ts)) {
 	case CHIP_LG4894:
 		chip->drv_delay = 60;
 
+		opt->t_sw_rst = 0;
 		opt->t_chk_tci_debug = 1;
 		break;
 
@@ -8005,6 +8094,7 @@ static int siw_hal_chipset_option(struct siw_touch_chip *chip)
 
 		opt->t_boot_mode = 1;
 		opt->t_sts_mask = 3;
+		opt->t_sw_rst = 3;
 		break;
 	}
 
@@ -8042,6 +8132,17 @@ static int siw_hal_chipset_option(struct siw_touch_chip *chip)
 		(chip->mode_allowed_qcover) ? "enabled" : "disabled");
 
 	return 0;
+}
+
+static void siw_hal_chipset_quirks(struct siw_touch_chip *chip)
+{
+	struct siw_ts *ts = chip->ts;
+	struct device *dev = chip->dev;
+
+	if (touch_flags(ts) & TOUCH_SKIP_RESET_PIN) {
+		t_dev_info(dev, "hw_reset_quirk activated\n");
+		chip->fquirks.hw_reset_quirk = siw_hal_hw_reset_quirk;
+	}
 }
 
 static void __siw_hal_do_remove(struct device *dev)
@@ -8085,6 +8186,8 @@ static int siw_hal_probe(struct device *dev)
 	chip->ts = ts;
 
 	touch_set_dev_data(ts, chip);
+
+	siw_hal_chipset_quirks(chip);
 
 	siw_hal_chipset_option(chip);
 

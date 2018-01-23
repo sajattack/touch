@@ -517,6 +517,10 @@ struct siw_hal_debug {
 	/* group 3 : rsvd */
 };
 
+struct siw_hal_fquirks {	//function quirks
+	int (*hw_reset_quirk)(struct device *dev, int delay);
+};
+
 struct siw_touch_chip {
 	void *ts;			//struct siw_ts
 	struct siw_touch_chip_opt opt;
@@ -569,6 +573,8 @@ struct siw_touch_chip {
 	struct siw_hal_reg_log reg_log[REG_LOG_MAX];
 	struct siw_hal_debug dbg;
 	int fw_abs_path;
+	/* */
+	struct siw_hal_fquirks fquirks;
 };
 
 static inline int hal_dbg_delay(struct siw_touch_chip *chip, int index)
