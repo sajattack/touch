@@ -7556,6 +7556,7 @@ static int siw_hal_mon_handler_chk_frame(struct device *dev)
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 //	struct siw_ts *ts = chip->ts;
 //	struct siw_hal_reg *reg = chip->reg;
+	struct siw_hal_fw_info *fw = &chip->fw;
 	u32 frame_addr = 0;
 	u32 frame_s = 0;
 	u32 frame_e = 0;
@@ -7565,12 +7566,25 @@ static int siw_hal_mon_handler_chk_frame(struct device *dev)
 	int ret = 0;
 
 	switch (chip->opt.t_chk_frame) {
+	case 2:
+		if (!strncmp(fw->product_id, "LA145WF1", 8)) {
+			if (chip->fw.v.version.major || (chip->fw.v.version.minor > 2)) {
+				frame_addr = 0x271;
+				cnt = 20;
+				delay = 1;
+			}
+		}
+		break;
 	case 1:
 		frame_addr = 0x24F;
 		cnt = 20;
 		delay = 1;
 		break;
 	default:
+		break;
+	}
+
+	if (!frame_addr) {
 		return 0;
 	}
 
@@ -8095,6 +8109,7 @@ static int siw_hal_chipset_option(struct siw_touch_chip *chip)
 		opt->t_boot_mode = 1;
 		opt->t_sts_mask = 3;
 		opt->t_sw_rst = 3;
+		opt->t_chk_frame = 2;
 		break;
 	}
 
