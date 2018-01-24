@@ -237,7 +237,7 @@ static int siw_touch_request_irq_queue_work(struct siw_ts *ts,
      */
 	ts->irq = irq_of_parse_and_map(node, 0);
 	ret = request_irq(ts->irq, siw_touch_work_irq_handler,
-					touch_irqflags(ts), name, (void *)ts);
+					flags, name, (void *)ts);
 	if (ret) {
 		t_dev_err(dev, "request_irq IRQ LINE NOT AVAILABLE!, %d\n", ret);
 		goto out;
@@ -268,8 +268,6 @@ int siw_touch_request_irq(struct siw_ts *ts,
 		goto out;
 	}
 
-	ts->irqflags_curr = flags;
-
 	if (irq_use_scheule_work) {
 		ret = siw_touch_request_irq_queue_work(ts,
 									handler, thread_fn,
@@ -282,6 +280,8 @@ int siw_touch_request_irq(struct siw_ts *ts,
 				ts->irq, name, (u32)flags, ret);
 		goto out;
 	}
+
+	ts->irqflags_curr = flags;
 
 	t_dev_info(dev, "%s irq request done(%d, %s, 0x%X)\n",
 			(irq_use_scheule_work) ?	\
@@ -296,10 +296,10 @@ void siw_touch_free_irq(struct siw_ts *ts)
 {
 	struct device *dev = ts->dev;
 
-	if (ts->irq) {
+	if (ts->irqflags_curr) {
 		free_irq(ts->irq, (void *)ts);
 		t_dev_info(dev, "irq(%d) release done\n", ts->irq);
-		ts->irq = 0;
+		ts->irqflags_curr = 0;
 		return;
 	}
 
