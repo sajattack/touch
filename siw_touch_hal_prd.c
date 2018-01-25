@@ -836,7 +836,8 @@ static const struct siw_hal_prd_param prd_params[] = {
 		__PRD_PARAM_DIMENSION(32, 16, 0, 32, PRD_M1_COL_SIZE, 1, 1),
 		__PRD_2ND_SCR(0, 0),
 		.sysfs_off_flag = 0,
-		.sd_test_flag = SD_FLAG_SW49106,
+		.sd_test_flag = (SD_FLAG_SW49106 & ~SHORT_NODE_TEST_FLAG) |	\
+						SHORT_FULL_TEST_FLAG,
 		.lpwg_sd_test_flag = LPWG_SD_FLAG_SW49106,
 	},
 	{	.chip_type = CHIP_SW49106,
@@ -2508,6 +2509,40 @@ static int __used prd_irq_test(struct siw_hal_prd_data *prd, int result_on)
 	return ret;
 }
 
+static int __prd_os_result_rawdata_get(struct siw_hal_prd_data *prd,
+			u32 offset, int16_t *buf, u32 size, const char *test_str)
+{
+	struct device *dev = prd->dev;
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_hal_reg *reg = chip->reg;
+	char info_str[64] = {0, };
+	int ret = 0;
+
+	if (test_str) {
+		snprintf(info_str, sizeof(info_str), "\n[%s Result Rawdata]\n", test_str);
+
+		prd_write_file(prd, info_str, TIME_INFO_SKIP);
+
+		t_prd_info(prd, "%s Rawdata Offset = %xh\n", test_str, offset);
+		t_prd_info(prd, "%s", &info_str[1]);
+	}
+
+	//offset write
+	ret = siw_hal_write_value(dev, reg->serial_data_offset, offset);
+	if (ret < 0) {
+		goto out;
+	}
+
+	//read open raw data
+	ret = siw_hal_reg_read(dev, reg->data_i2cbase_addr, buf, size);
+	if (ret < 0) {
+		goto out;
+	}
+
+out:
+	return ret;
+}
+
 static int prd_os_result_rawdata_get(struct siw_hal_prd_data *prd, int type)
 {
 	struct siw_hal_prd_ctrl *ctrl = &prd->ctrl;
@@ -2521,7 +2556,6 @@ static int prd_os_result_rawdata_get(struct siw_hal_prd_data *prd, int type)
 	u32 read_size;
 	int16_t *buf_result_data = NULL;
 	const char *test_str = NULL;
-	char info_str[64] = {0, };
 	int ret = 0;
 
 	ret = siw_hal_read_value(dev,
@@ -2562,24 +2596,72 @@ static int prd_os_result_rawdata_get(struct siw_hal_prd_data *prd, int type)
 
 	test_str = prd_get_test_str(type);
 
-	snprintf(info_str, sizeof(info_str), "\n[%s Result Rawdata]\n", test_str);
-
-	prd_write_file(prd, info_str, TIME_INFO_SKIP);
-
-	t_prd_info(prd, "%s Rawdata Offset = %xh\n", test_str, data_offset);
-	t_prd_info(prd, "%s", &info_str[1]);
-
-	//offset write
-	ret = siw_hal_write_value(dev, reg->serial_data_offset,
-			data_offset);
+	ret = __prd_os_result_rawdata_get(prd,
+			data_offset, buf_result_data, read_size, test_str);
 	if (ret < 0) {
 		goto out;
 	}
 
-	//read open raw data
-	ret = siw_hal_reg_read(dev, reg->data_i2cbase_addr,
-			buf_result_data,
-			read_size);
+out:
+	return ret;
+}
+
+static int prd_os_result_rawdata_get_sf_dual(struct siw_hal_prd_data *prd)
+{
+	struct siw_hal_prd_param *param = &prd->param;
+	struct siw_hal_prd_ctrl *ctrl = &prd->ctrl;
+	struct device *dev = prd->dev;
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	struct siw_hal_reg *reg = chip->reg;
+	struct siw_hal_fw_info *fw = &chip->fw;
+//	u16 open_data_offset = 0;
+	u16 short_data_offset = 0;
+	u32 os_result_offset;
+	u32 data_offset;
+	u32 read_size;
+	int16_t *buf_result_data = NULL;
+	const char *test_str = NULL;
+	int offset_reg = 0;
+	int offset_pos = 0;
+	int ret = 0;
+
+	switch (touch_chip_type(ts)) {
+	case CHIP_SW49106:
+		if (param->name == prd_param_name_sw49106_type_2) {
+			if (!fw->v.version.major && (fw->v.version.minor <= 3)) {
+				break;
+			}
+
+			offset_reg = reg->prd_open3_short_offset;
+		}
+		break;
+	}
+
+	if (!offset_reg) {
+		return -EINVAL;
+	}
+
+	offset_pos = offset_reg>>16;
+	offset_reg &= 0xFFFF;
+
+	ret = siw_hal_read_value(dev, offset_reg, &os_result_offset);
+	if (ret < 0) {
+		goto out;
+	}
+//	open_data_offset = os_result_offset & 0xFFFF;
+	short_data_offset = (os_result_offset >> offset_pos) & 0xFFFF;
+
+	test_str = "SHORT_FULL_TEST (2nd)";
+
+	data_offset = short_data_offset;
+
+	buf_result_data = prd->short_buf_result_rawdata;
+
+	read_size = ctrl->short_full_rawdata_size;
+
+	ret = __prd_os_result_rawdata_get(prd,
+			data_offset, buf_result_data, read_size, test_str);
 	if (ret < 0) {
 		goto out;
 	}
@@ -2819,6 +2901,14 @@ static int prd_os_xline_result_read(struct siw_hal_prd_data *prd, int type)
 		//open short fail reason "result raw data"
 		ret = prd_os_result_rawdata_get(prd, type);
 		prd_print_os_rawdata(prd, type);
+
+		if (type == SHORT_FULL_TEST) {
+			int ret_sf = 0;
+			ret_sf = prd_os_result_rawdata_get_sf_dual(prd);
+			if (ret_sf >= 0) {
+				prd_print_os_rawdata(prd, type);
+			}
+		}
 	}
 	return ret;
 }
@@ -6532,6 +6622,9 @@ static void siw_hal_prd_set_sd_cmd(struct siw_hal_prd_data *prd)
 		break;
 	case CHIP_LG4946:
 		sd_cmd->cmd_jitter = 10;
+		break;
+	case CHIP_SW49106:
+		sd_cmd->cmd_short_full = 13;
 		break;
 	}
 
