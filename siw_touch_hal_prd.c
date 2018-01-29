@@ -1196,21 +1196,24 @@ enum {
 	PRD_SHOW_FLAG_DISABLE_PRT_RAW	= (1<<0),
 };
 
-#define SIW_PRD_TAG 	"prd: "
+#define SIW_PRD_TAG 		"prd: "
+#define SIW_PRD_TAG_ERR 	"prd(E): "
+#define SIW_PRD_TAG_WARN	"prd(W): "
+#define SIW_PRD_TAG_DBG		"prd(D): "
 
 #define t_prd_info(_prd, fmt, args...)	\
 		__t_dev_info(_prd->dev, SIW_PRD_TAG fmt, ##args)
 
 #define t_prd_err(_prd, fmt, args...)	\
-		__t_dev_err(_prd->dev, SIW_PRD_TAG fmt, ##args)
+		__t_dev_err(_prd->dev, SIW_PRD_TAG_ERR fmt, ##args)
 
 #define t_prd_warn(_prd, fmt, args...)	\
-		__t_dev_warn(_prd->dev, SIW_PRD_TAG fmt, ##args)
+		__t_dev_warn(_prd->dev, SIW_PRD_TAG_WARN fmt, ##args)
 
 #define t_prd_dbg(condition, _prd, fmt, args...)	\
 		do {	\
 			if (unlikely(t_prd_dbg_mask & (condition)))	\
-				t_prd_info(_prd, fmt, ##args);	\
+				__t_dev_info(_prd->dev, SIW_PRD_TAG_DBG fmt, ##args);	\
 		} while (0)
 
 #define t_prd_dbg_base(_prd, fmt, args...)	\
