@@ -2512,12 +2512,51 @@ static int __used prd_irq_test(struct siw_hal_prd_data *prd, int result_on)
 	return ret;
 }
 
-static int __prd_os_result_rawdata_get(struct siw_hal_prd_data *prd,
-			u32 offset, int16_t *buf, u32 size, const char *test_str)
+static int prd_read_raw_memory(struct siw_hal_prd_data *prd,
+			u32 offset, void *buf, u32 size)
 {
 	struct device *dev = prd->dev;
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_hal_reg *reg = chip->reg;
+	int ret = 0;
+
+	if (!offset) {
+		t_prd_err(prd, "raw memory failed: zero offset\n");
+		ret = -EFAULT;
+		goto out;
+	}
+
+	if (!size) {
+		t_prd_err(prd, "raw memory failed: zero size\n");
+		ret = -EFAULT;
+		goto out;
+	}
+
+	if (buf == NULL) {
+		t_prd_err(prd, "raw memory failed: NULL buf\n");
+		ret = -EFAULT;
+		goto out;
+	}
+
+	//offset write
+	ret = siw_hal_write_value(dev, reg->serial_data_offset, offset);
+	if (ret < 0) {
+		goto out;
+	}
+
+	//read raw data
+	ret = siw_hal_reg_read(dev, reg->data_i2cbase_addr, buf, size);
+	if (ret < 0) {
+		goto out;
+	}
+
+out:
+	return ret;
+}
+
+static int __prd_os_result_rawdata_get(struct siw_hal_prd_data *prd,
+			u32 offset, int16_t *buf, u32 size, const char *test_str)
+{
 	char info_str[64] = {0, };
 	int ret = 0;
 
@@ -2530,14 +2569,7 @@ static int __prd_os_result_rawdata_get(struct siw_hal_prd_data *prd,
 		t_prd_info(prd, "%s", &info_str[1]);
 	}
 
-	//offset write
-	ret = siw_hal_write_value(dev, reg->serial_data_offset, offset);
-	if (ret < 0) {
-		goto out;
-	}
-
-	//read open raw data
-	ret = siw_hal_reg_read(dev, reg->data_i2cbase_addr, buf, size);
+	ret = prd_read_raw_memory(prd, offset, buf, size);
 	if (ret < 0) {
 		goto out;
 	}
@@ -2725,17 +2757,7 @@ static int prd_os_result_data_get(struct siw_hal_prd_data *prd, int type)
 	t_prd_info(prd, "%s Data Offset = %xh\n", test_str, open_short_data_offset);
 	t_prd_info(prd, "%s", &info_str[1]);
 
-	//offset write
-	ret = siw_hal_write_value(dev, reg->serial_data_offset,
-			open_short_data_offset);
-	if (ret < 0) {
-		goto out;
-	}
-
-	//read data
-	ret = siw_hal_reg_read(dev, reg->data_i2cbase_addr,
-			buf_result_data,
-			read_size);
+	ret = prd_read_raw_memory(prd, open_short_data_offset, buf_result_data, read_size);
 	if (ret < 0) {
 		goto out;
 	}
@@ -3668,21 +3690,11 @@ static int prd_read_rawdata(struct siw_hal_prd_data *prd, int type)
 				goto out;
 			}
 
-			/* raw data offset write */
-			ret = siw_hal_write_value(dev,
-						reg->serial_data_offset,
-						raw_data_offset[i]);
-			if (ret < 0) {
-				goto out;
-			}
-
 			/* raw data read */
 			memset(raw_buf, 0, __m1_frame_size);
 			memset(tmp_buf, 0, __m1_frame_size);
 
-			ret = siw_hal_reg_read(dev,
-						reg->data_i2cbase_addr,
-						(void *)tmp_buf, __m1_frame_size);
+			ret = prd_read_raw_memory(prd, raw_data_offset[i], tmp_buf, __m1_frame_size);
 			if (ret < 0) {
 				goto out;
 			}
@@ -3695,14 +3707,6 @@ static int prd_read_rawdata(struct siw_hal_prd_data *prd, int type)
 		}
 	} else {
 		for (i = 0; i < param->m2_cnt; i++) {
-			/* raw data offset write */
-			ret = siw_hal_write_value(dev,
-						reg->serial_data_offset,
-						raw_data_offset[i]);
-			if (ret < 0) {
-				goto out;
-			}
-
 			if (buf_rawdata[i] == NULL) {
 				t_prd_err(prd, "reading rawdata(%d) failed: NULL buf\n", type);
 				ret = -EFAULT;
@@ -3712,9 +3716,7 @@ static int prd_read_rawdata(struct siw_hal_prd_data *prd, int type)
 			/* raw data read */
 			memset(buf_rawdata[i], 0, __m2_frame_size);
 
-			ret = siw_hal_reg_read(dev,
-						reg->data_i2cbase_addr,
-						(void *)buf_rawdata[i], __m2_frame_size);
+			ret = prd_read_raw_memory(prd, raw_data_offset[i], buf_rawdata[i], __m2_frame_size);
 			if (ret < 0) {
 				goto out;
 			}
@@ -3817,15 +3819,7 @@ static int prd_do_read_tune_code(struct siw_hal_prd_data *prd, u8 *buf, int type
 	t_prd_info(prd, "tune_code_offset = %Xh", offset);
 //	t_prd_dbg_base(prd, "tune_code_offset = %Xh", offset);
 
-	ret = siw_hal_write_value(dev,
-				reg->serial_data_offset,
-				offset);
-	if (ret < 0) {
-		goto out;
-	}
-	ret = siw_hal_reg_read(dev,
-				reg->data_i2cbase_addr,
-				(void *)buf, tune->code_size);
+	ret = prd_read_raw_memory(prd, offset, buf, tune->code_size);
 	if (ret < 0) {
 		goto out;
 	}
@@ -4459,32 +4453,13 @@ out:
 }
 
 static int prd_show_prd_get_data_raw_core(struct device *dev,
-					u8*buf, int size,
+					u8 *buf, int size,
 					u32 cmd, u32 offset, int flag)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
-	struct siw_hal_reg *reg = chip->reg;
 	struct siw_hal_prd_data *prd = (struct siw_hal_prd_data *)ts->prd;
 	int ret = 0;
-
-	if (!offset) {
-		t_prd_err(prd, "raw core(cmd %d) failed: zero offset\n", cmd);
-		ret = -EFAULT;
-		goto out;
-	}
-
-	if (!size) {
-		t_prd_err(prd, "raw core(cmd %d) failed: zero size\n", cmd);
-		ret = -EFAULT;
-		goto out;
-	}
-
-	if (buf == NULL) {
-		t_prd_err(prd, "raw core(cmd %d) failed: NULL buf\n", cmd);
-		ret = -EFAULT;
-		goto out;
-	}
 
 	if (cmd != IT_DONT_USE_CMD) {
 		ret = prd_stop_firmware(prd, cmd, flag);
@@ -4493,18 +4468,10 @@ static int prd_show_prd_get_data_raw_core(struct device *dev,
 		}
 	}
 
-	ret = siw_hal_write_value(dev,
-				reg->serial_data_offset,
-				offset);
-	if (ret < 0) {
-		goto out;
-	}
+	if (buf)
+		memset(buf, 0, size);
 
-	memset(buf, 0, size);
-
-	ret = siw_hal_reg_read(dev, reg->data_i2cbase_addr,
-					(void *)buf,
-					size);
+	ret = prd_read_raw_memory(prd, offset, buf, size);
 	if (ret < 0) {
 		goto out;
 	}
