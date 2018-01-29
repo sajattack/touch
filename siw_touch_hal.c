@@ -152,15 +152,6 @@ static int siw_hal_reset_ctrl(struct device *dev, int ctrl);
 static int siw_hal_tc_driving(struct device *dev, int mode);
 
 
-#define t_hal_bus_info(_dev, fmt, args...)	\
-		__t_dev_info(_dev, "hal(bus) : " fmt, ##args)
-
-#define t_hal_bus_err(_dev, fmt, args...)	\
-		__t_dev_err(_dev, "hal(bus) : " fmt, ##args)
-
-#define t_hal_bus_warn(_abt, fmt, args...)	\
-		__t_dev_warn(_dev, "hal(bus) : " fmt, ##args)
-
 #if defined(__SIW_CONFIG_SWIPE)
 #define SWIPE_FAIL_NUM 7
 static const char const *siw_hal_swipe_debug_str[SWIPE_FAIL_NUM] = {
@@ -405,34 +396,43 @@ u32 t_bus_dbg_mask = 0;
  */
 module_param_named(bus_dbg_mask, t_bus_dbg_mask, uint, S_IRUGO|S_IWUSR|S_IWGRP);
 
+#define SIW_HAL_BUS_TAG 		"hal(bus): "
+#define SIW_HAL_BUS_TAG_ERR 	"hal(bus)(E): "
+#define SIW_HAL_BUS_TAG_WARN	"hal(bus)(W): "
+#define SIW_HAL_BUS_TAG_DBG		"hal(bus)(D): "
+
 #if 1
-#define t_bus_info(_dev, fmt, args...)		__t_dev_info(_dev, "bus: " fmt, ##args)
-#define t_bus_warn(_dev, fmt, args...)		__t_dev_warn(_dev, "bus: " fmt, ##args)
+#define t_hal_bus_info(_dev, fmt, args...)	\
+		__t_dev_info(_dev, SIW_HAL_BUS_TAG fmt, ##args)
+
+#define t_hal_bus_warn(_abt, fmt, args...)	\
+		__t_dev_warn(_dev, SIW_HAL_BUS_TAG_WARN fmt, ##args)
 #else
-#define t_bus_info(_dev, fmt, args...)		__t_dev_none()
-#define t_bus_warn(_dev, fmt, args...)		__t_dev_none()
+#define t_hal_bus_info(_dev, fmt, args...)	__t_dev_none(_dev, fmt, ##args)
+#define t_hal_bus_warn(_dev, fmt, args...)	__t_dev_none(_dev, fmt, ##args)
 #endif
 
-#define t_bus_err(_dev, fmt, args...)		__t_dev_err(_dev, "bus: " fmt, ##args)
+#define t_hal_bus_err(_dev, fmt, args...)	\
+		__t_dev_err(_dev, SIW_HAL_BUS_TAG_ERR fmt, ##args)
 
-#define t_bus_dbg(condition, _dev, fmt, args...)			\
+#define t_hal_bus_dbg(condition, _dev, fmt, args...)			\
 		do {							\
 			if (unlikely(t_bus_dbg_mask & (condition)))	\
-				__t_dev_info(_dev, "bus: " fmt, ##args);	\
+				__t_dev_info(_dev, SIW_HAL_BUS_TAG_DBG fmt, ##args);	\
 		} while (0)
 
-#define t_bus_dbg_base(_dev, fmt, args...)	\
-		t_bus_dbg(DBG_BASE, _dev, fmt, ##args)
+#define t_hal_bus_dbg_base(_dev, fmt, args...)	\
+		t_hal_bus_dbg(DBG_BASE, _dev, fmt, ##args)
 
-#define t_bus_dbg_trace(_dev, fmt, args...)	\
-		t_bus_dbg(DBG_TRACE, _dev, fmt, ##args)
+#define t_hal_bus_dbg_trace(_dev, fmt, args...)	\
+		t_hal_bus_dbg(DBG_TRACE, _dev, fmt, ##args)
 
 static inline void __siw_hal_bus_dbg(struct device *dev, u32 addr, u8 *buf, int size,
 		int wr, int xfer)
 {
 	if (!wr && !xfer &&
 		(size == sizeof(struct siw_hal_touch_info))) {
-		t_bus_dbg_trace(dev, "%s(%s) 0x%04X, 0x%04X: %02X %02X %02X %02X %02X %02X %02X %02X%s\n",
+		t_hal_bus_dbg_trace(dev, "%s(%s) 0x%04X, 0x%04X: %02X %02X %02X %02X %02X %02X %02X %02X%s\n",
 			(wr) ? "wr" : "rd",
 			(xfer) ? "x" : "s",
 			(u32)addr, (u32)size,
@@ -443,7 +443,7 @@ static inline void __siw_hal_bus_dbg(struct device *dev, u32 addr, u8 *buf, int 
 	}
 
 	if (size > 4) {
-		t_bus_dbg_base(dev, "%s(%s) 0x%04X, 0x%04X: %02X %02X %02X %02X %02X %02X %02X %02X%s\n",
+		t_hal_bus_dbg_base(dev, "%s(%s) 0x%04X, 0x%04X: %02X %02X %02X %02X %02X %02X %02X %02X%s\n",
 			(wr) ? "wr" : "rd",
 			(xfer) ? "x" : "s",
 			(u32)addr, (u32)size,
@@ -451,7 +451,7 @@ static inline void __siw_hal_bus_dbg(struct device *dev, u32 addr, u8 *buf, int 
 			buf[4], buf[5],buf[6], buf[7],
 			(size > 8) ? " ..." : "");
 	} else {
-		t_bus_dbg_base(dev, "%s(%s) 0x%04X, 0x%04X: %02X %02X %02X %02X\n",
+		t_hal_bus_dbg_base(dev, "%s(%s) 0x%04X, 0x%04X: %02X %02X %02X %02X\n",
 			(wr) ? "wr" : "rd",
 			(xfer) ? "x" : "s",
 			(u32)addr, (u32)size,
@@ -7529,20 +7529,25 @@ u32 t_mon_dbg_mask = 0;
  */
 module_param_named(mon_dbg_mask, t_mon_dbg_mask, uint, S_IRUGO|S_IWUSR|S_IWGRP);
 
+#define SIW_HAL_MON_TAG 		"mon: "
+#define SIW_HAL_MON_TAG_ERR 	"mon(E): "
+#define SIW_HAL_MON_TAG_WARN	"mon(W): "
+#define SIW_HAL_MON_TAG_DBG		"mon(D): "
+
 #if 1
-#define t_mon_info(_dev, fmt, args...)		__t_dev_info(_dev, "mon: " fmt, ##args)
-#define t_mon_warn(_dev, fmt, args...)		__t_dev_warn(_dev, "mon: " fmt, ##args)
+#define t_mon_info(_dev, fmt, args...)		__t_dev_info(_dev, SIW_HAL_MON_TAG fmt, ##args)
+#define t_mon_warn(_dev, fmt, args...)		__t_dev_warn(_dev, SIW_HAL_MON_TAG_WARN fmt, ##args)
 #else
-#define t_mon_info(_dev, fmt, args...)		__t_dev_none()
-#define t_mon_warn(_dev, fmt, args...)		__t_dev_none()
+#define t_mon_info(_dev, fmt, args...)		__t_dev_none(_dev, fmt, ##args)
+#define t_mon_warn(_dev, fmt, args...)		__t_dev_none(_dev, fmt, ##args)
 #endif
 
-#define t_mon_err(_dev, fmt, args...)		__t_dev_err(_dev, "mon: " fmt, ##args)
+#define t_mon_err(_dev, fmt, args...)		__t_dev_err(_dev, SIW_HAL_MON_TAG_ERR fmt, ##args)
 
 #define t_mon_dbg(condition, _dev, fmt, args...)			\
 		do {							\
 			if (unlikely(t_mon_dbg_mask & (condition)))	\
-				__t_dev_info(_dev, "mon: " fmt, ##args);	\
+				__t_dev_info(_dev, SIW_HAL_MON_TAG_DBG fmt, ##args);	\
 		} while (0)
 
 #define t_mon_dbg_base(_dev, fmt, args...)	\
