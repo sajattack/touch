@@ -592,7 +592,7 @@ static void __siw_mon_txt_read_evt(struct siw_mon_reader_txt *rp,
 		type = &evt->type[1];
 	}
 
-	p->cnt += siw_mon_prt_snprintf(p, "%s(%02X) %20s(%02X) %d",
+	p->cnt += siw_mon_prt_snprintf(p, "%s(%02X) %20s(%03X) %d",
 					type, evt->type_v,
 					evt->code, evt->code_v,
 					evt->value);
