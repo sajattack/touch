@@ -1570,6 +1570,9 @@ static int siw_hal_chk_boot(struct device *dev)
 	return boot_failed;
 }
 
+//#define __SIW_SUPPORT_STATUS_OPT_IGNORE_ABNORMAL
+#define __SIW_SUPPORT_STATUS_OPT_IGNORE_DISP_ERR
+
 #if defined(CONFIG_TOUCHSCREEN_SIW_SW49408)
 #define __SIW_SUPPORT_STATUS_ERROR_MEM
 #endif
@@ -1790,6 +1793,15 @@ static int siw_hal_chk_status_type(struct device *dev)
 	mask_bit->valid_tv_drv = siw_hal_get_status_mask(dev, STS_ID_VALID_TC_DRV);
 	mask_bit->error_disp = siw_hal_get_status_mask(dev, STS_ID_ERROR_DISP);
 
+#if defined(__SIW_SUPPORT_STATUS_OPT_IGNORE_ABNORMAL)
+	mask_bit->error_abnormal = 0;
+	mask_bit->error_system = 0;
+#endif
+
+#if defined(__SIW_SUPPORT_STATUS_OPT_IGNORE_DISP_ERR)
+	mask_bit->error_disp = 0;
+#endif
+
 	t_dev_dbg_base(dev, "mask[v_dev]  : %08Xh\n", mask_bit->valid_dev_ctl);
 	t_dev_dbg_base(dev, "mask[v_code] : %08Xh\n", mask_bit->valid_code_crc);
 	t_dev_dbg_base(dev, "mask[v_cfg]  : %08Xh\n", mask_bit->valid_cfg_crc);
@@ -1855,6 +1867,14 @@ static int siw_hal_chk_status_type(struct device *dev)
 		chip->status_mask_ic_valid = 0xFF;
 		break;
 	}
+
+#if defined(__SIW_SUPPORT_STATUS_OPT_IGNORE_ABNORMAL)
+	chip->status_mask_ic_abnormal = 0;
+#endif
+
+#if defined(__SIW_SUPPORT_STATUS_OPT_IGNORE_DISP_ERR)
+	chip->status_mask_ic_disp_err = 0;
+#endif
 
 	t_dev_info(dev, "status type  : %d\n", chip->status_type);
 	t_dev_info(dev, "status mask  : %08Xh\n", chip->status_mask);
