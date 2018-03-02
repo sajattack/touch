@@ -3841,9 +3841,6 @@ static int siw_hal_fw_upgrade_conf_post(struct device *dev)
 
 	t_dev_info(dev, "FW upgrade: conf check done\n");
 
-	/* Release & Reset CM3 */
-	ret = siw_hal_fw_upgrade_release_cm3(dev);
-
 out:
 	return ret;
 }
@@ -3948,11 +3945,11 @@ static int siw_hal_fw_upgrade(struct device *dev,
 		if (ret < 0) {
 			goto out;
 		}
-	} else {
-		ret = siw_hal_fw_upgrade_release_cm3(dev);
-		if (ret < 0) {
-			goto out;
-		}
+	}
+
+	ret = siw_hal_fw_upgrade_release_cm3(dev);
+	if (ret < 0) {
+		goto out;
 	}
 
 out_done:
