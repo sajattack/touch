@@ -598,8 +598,12 @@ static int siw_touch_bus_do_pm_resume(struct device *dev)
 
 int siw_touch_bus_pm_suspend(struct device *dev, int freeze)
 {
-//	struct siw_ts *ts = to_touch_core(dev);
+	struct siw_ts *ts = to_touch_core(dev);
 	int ret = 0;
+
+	if (atomic_read(&ts->state.core) != CORE_NORMAL) {
+		return 0;
+	}
 
 	if (freeze) {
 		siw_touch_mon_pause(dev);
@@ -619,7 +623,12 @@ int siw_touch_bus_pm_suspend(struct device *dev, int freeze)
 
 int siw_touch_bus_pm_resume(struct device *dev, int thaw)
 {
+	struct siw_ts *ts = to_touch_core(dev);
 	int ret = 0;
+
+	if (atomic_read(&ts->state.core) != CORE_NORMAL) {
+		return 0;
+	}
 
 	ret = siw_touch_bus_do_pm_resume(dev);
 
