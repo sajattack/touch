@@ -215,6 +215,8 @@ static ssize_t _store_upgrade(struct device *dev,
 		return count;
 	}
 
+	t_dev_info(dev, "Manual F/W upgrade with %s\n", ts->test_fwpath);
+
 	ts->force_fwup |= FORCE_FWUP_SYS_STORE;
 
 	siw_touch_qd_upgrade_work_now(ts);
