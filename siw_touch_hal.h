@@ -486,6 +486,12 @@ struct siw_touch_chip_opt {
 	u32 rsvd21:4;
 	u32 rsvd22:8;
 	u32 rsvd23:8;
+	/* */
+	u32 t_tc_cmd:4;
+	u32 rsvd30:4;
+	u32 rsvd31:8;
+	u32 rsvd32:8;
+	u32 rsvd33:8;
 };
 
 enum {
@@ -523,6 +529,7 @@ struct siw_hal_fquirks {	//function quirks
 
 struct siw_touch_chip {
 	void *ts;			//struct siw_ts
+	int tc_cmd_table[LCD_MODE_MAX];
 	struct siw_touch_chip_opt opt;
 	struct siw_hal_reg *reg;
 	struct device *dev;

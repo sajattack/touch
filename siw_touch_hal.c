@@ -5044,46 +5044,6 @@ static int siw_hal_tc_con(struct device *dev, u32 code, void *param)
 	return ret;
 }
 
-static inline int __used siw_hal_tc_driving_u0(struct device *dev)
-{
-	return TC_DRIVE_CTL_START;
-}
-
-static inline int __used siw_hal_tc_driving_u2(struct device *dev)
-{
-	return (TC_DRIVE_CTL_DISP_U2 | TC_DRIVE_CTL_START);	//0x101
-}
-
-static inline int __used siw_hal_tc_driving_u3(struct device *dev)
-{
-	struct siw_touch_chip *chip = to_touch_chip(dev);
-	struct siw_ts *ts = chip->ts;
-	int ctrl = (TC_DRIVE_CTL_DISP_U3 | TC_DRIVE_CTL_MODE_6LHB | TC_DRIVE_CTL_START);
-
-	if (touch_flags(ts) & TOUCH_USE_VBLANK)
-		ctrl &= ~TC_DRIVE_CTL_MODE_6LHB;
-
-	if (atomic_read(&ts->state.debug_option_mask) & DEBUG_OPTION_1)
-		ctrl &= ~TC_DRIVE_CTL_MODE_6LHB;
-
-	return ctrl;
-}
-
-static inline int __used siw_hal_tc_driving_u3_partial(struct device *dev)
-{
-	return (TC_DRIVE_CTL_PARTIAL | siw_hal_tc_driving_u3(dev));
-}
-
-static inline int __used siw_hal_tc_driving_u3_qcover(struct device *dev)
-{
-	return (TC_DRIVE_CTL_QCOVER | siw_hal_tc_driving_u3(dev));
-}
-
-static inline int siw_hal_tc_driving_stop(struct device *dev)
-{
-	return TC_DRIVE_CTL_STOP;
-}
-
 static void siw_hal_chk_dbg_report(struct device *dev, u32 status, int irq)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
@@ -5182,7 +5142,7 @@ static int siw_hal_tc_driving(struct device *dev, int mode)
 	struct siw_hal_reg *reg = chip->reg;
 	u32 tc_status = 0;
 	u32 running_status = 0;
-	u32 ctrl = 0;
+	int ctrl = 0;
 	u32 rdata;
 	int re_init = 0;
 	int ret = 0;
@@ -5202,38 +5162,19 @@ static int siw_hal_tc_driving(struct device *dev, int mode)
 		t_dev_info(dev, "keep the last mode(%d) for retry\n", mode);
 	}
 
-	chip->driving_mode = mode;
-
-	switch (mode) {
-	case LCD_MODE_U0:
-		ctrl = siw_hal_tc_driving_u0(dev);
-		break;
-
-	case LCD_MODE_U2_UNBLANK:
-	case LCD_MODE_U2:
-		ctrl = siw_hal_tc_driving_u2(dev);
-		break;
-
-	case LCD_MODE_U3:
-		ctrl = siw_hal_tc_driving_u3(dev);
-		break;
-
-	case LCD_MODE_U3_PARTIAL:
-		ctrl = siw_hal_tc_driving_u3_partial(dev);
-		break;
-
-	case LCD_MODE_U3_QUICKCOVER:
-		ctrl = siw_hal_tc_driving_u3_qcover(dev);
-		break;
-
-	case LCD_MODE_STOP:
-		ctrl = siw_hal_tc_driving_stop(dev);
-		break;
-
-	default:
+	if ((mode >= LCD_MODE_U0) && (mode < LCD_MODE_MAX)) {
+		ctrl = chip->tc_cmd_table[mode];
+	} else {
 		t_dev_err(dev, "mode(%d) not supported\n", mode);
 		return -ESRCH;
 	}
+
+	if (ctrl < 0) {
+		t_dev_err(dev, "mode(%d) not granted\n", mode);
+		return -ESRCH;
+	}
+
+	chip->driving_mode = mode;
 
 	/* swipe set */
 	ret = siw_hal_swipe_mode(dev, mode);
@@ -8004,7 +7945,64 @@ out:
 	return ret;
 }
 
-static int siw_hal_chipset_option(struct siw_touch_chip *chip)
+static void siw_hal_tc_cmd_set_default(struct siw_touch_chip *chip)
+{
+	struct siw_ts *ts = chip->ts;
+	int *tc_cmd_table = chip->tc_cmd_table;
+	int ctrl;
+
+	ctrl = (TC_DRIVE_CTL_DISP_U3 | TC_DRIVE_CTL_MODE_6LHB | TC_DRIVE_CTL_START);
+
+	if (touch_flags(ts) & TOUCH_USE_VBLANK)
+		ctrl &= ~TC_DRIVE_CTL_MODE_6LHB;
+
+	tc_cmd_table[LCD_MODE_U0] = TC_DRIVE_CTL_START;
+	tc_cmd_table[LCD_MODE_U2] = (TC_DRIVE_CTL_DISP_U2 | TC_DRIVE_CTL_START);
+	tc_cmd_table[LCD_MODE_U2_UNBLANK] = tc_cmd_table[LCD_MODE_U2];
+	tc_cmd_table[LCD_MODE_U3] = ctrl;
+	tc_cmd_table[LCD_MODE_U3_PARTIAL] = TC_DRIVE_CTL_PARTIAL | ctrl;
+	tc_cmd_table[LCD_MODE_U3_QUICKCOVER] = TC_DRIVE_CTL_QCOVER | ctrl;
+	tc_cmd_table[LCD_MODE_STOP] = TC_DRIVE_CTL_STOP;
+}
+
+static void siw_hal_tc_cmd_set(struct siw_touch_chip *chip)
+{
+	struct siw_ts *ts = chip->ts;
+	struct device *dev = chip->dev;
+	int *tc_cmd_table = chip->tc_cmd_table;
+	char *mode_str = NULL;
+	char *ext_str = NULL;
+	int ctrl = 0;
+	int t_tc_cmd = chip->opt.t_tc_cmd;
+	int i = 0;
+
+	switch (t_tc_cmd) {
+	default:
+		siw_hal_tc_cmd_set_default(chip);
+		break;
+	}
+
+	t_dev_info(dev, "[tc cmd set] (mode bit %04Xh)\n",
+		ts->mode_allowed);
+
+	for (i = 0; i < LCD_MODE_MAX; i++) {
+		mode_str = (char *)siw_lcd_driving_mode_str(i);
+		ctrl = tc_cmd_table[i];
+
+		if (ctrl < 0) {
+			ext_str = "(not granted)";
+		} else if (!touch_mode_allowed(ts, i)) {
+			ext_str = "(not allowed)";
+		} else {
+			ext_str = "";
+		}
+
+		t_dev_info(dev, " %04Xh [%-13s] %s\n",
+			ctrl, mode_str, ext_str);
+	}
+}
+
+static void siw_hal_chipset_option(struct siw_touch_chip *chip)
 {
 	struct device *dev = chip->dev;
 	struct siw_touch_chip_opt *opt = &chip->opt;
@@ -8159,6 +8157,8 @@ static int siw_hal_chipset_option(struct siw_touch_chip *chip)
 	t_dev_info(dev, " t_chk_sys_fault : %d\n", opt->t_chk_sys_fault);
 	t_dev_info(dev, " t_chk_fault     : %d\n", opt->t_chk_fault);
 
+	t_dev_info(dev, " t_tc_cmd        : %d\n", opt->t_tc_cmd);
+
 	t_dev_info(dev, " drv_reset_low   : %d ms\n", chip->drv_reset_low);
 	t_dev_info(dev, " drv_delay       : %d ms\n", chip->drv_delay);
 	t_dev_info(dev, " drv_opt_delay   : %d ms\n", chip->drv_opt_delay);
@@ -8168,7 +8168,7 @@ static int siw_hal_chipset_option(struct siw_touch_chip *chip)
 	t_dev_info(dev, " mode_qcover     : %s\n",
 		(chip->mode_allowed_qcover) ? "enabled" : "disabled");
 
-	return 0;
+	siw_hal_tc_cmd_set(chip);
 }
 
 static void siw_hal_chipset_quirks(struct siw_touch_chip *chip)
