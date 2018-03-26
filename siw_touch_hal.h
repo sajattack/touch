@@ -638,6 +638,57 @@ enum {
 	ADDR_SKIP_MASK	= 0xFFFF,
 };
 
+enum {
+	BOOT_STS_POS_MODE = 0,
+	BOOT_STS_POS_BUSY,
+	BOOT_STS_POS_DUMP_DONE,
+	BOOT_STS_POS_DUMP_ERR,
+	BOOT_STS_POS_MAGIC_ERR,
+};
+
+static inline u32 siw_hal_boot_sts_pos_busy(struct siw_touch_chip *chip)
+{
+	u32 pos = BOOT_STS_POS_BUSY;
+
+	switch (chip->opt.t_boot_mode) {
+	case 2:
+	case 1:
+		pos = 0;
+		break;
+	}
+
+	return pos;
+}
+
+static inline u32 siw_hal_boot_sts_pos_dump_err(struct siw_touch_chip *chip)
+{
+	u32 pos = BOOT_STS_POS_DUMP_ERR;
+
+	switch (chip->opt.t_boot_mode) {
+	case 2:
+	case 1:
+		pos = 2;
+		break;
+	}
+
+	return pos;
+}
+
+static inline u32 siw_hal_boot_sts_mask_empty(struct siw_touch_chip *chip)
+{
+	u32 mask = 0;
+
+	switch (chip->opt.t_boot_mode) {
+	case 2:
+		mask = BIT(6);
+		break;
+	}
+
+	return mask;
+}
+
+extern u32 siw_hal_get_boot_status(struct device *dev, u32 *boot_st);
+
 extern int siw_hal_read_value(struct device *dev, u32 addr, u32 *value);
 extern int siw_hal_write_value(struct device *dev, u32 addr, u32 value);
 extern int siw_hal_reg_read(struct device *dev, u32 addr, void *data, int size);

@@ -1184,6 +1184,26 @@ out:
 	return rdata;
 }
 
+u32 siw_hal_get_boot_status(struct device *dev, u32 *boot_st)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+//	struct siw_ts *ts = chip->ts;
+	struct siw_hal_reg *reg = chip->reg;
+	u32 bootmode = 0;
+	int ret = 0;
+
+	ret = siw_hal_read_value(dev, reg->spr_boot_status, &bootmode);
+	if (ret < 0) {
+		return ret;
+	}
+
+	if (boot_st) {
+		*boot_st = bootmode;
+	}
+
+	return 0;
+}
+
 const struct tci_info siw_hal_tci_info_default[2] = {
 	[TCI_1] = {
 		.tap_count		= 2,
@@ -1428,31 +1448,15 @@ static int siw_hal_chk_boot_mode(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 //	struct siw_ts *ts = chip->ts;
-	struct siw_hal_reg *reg = chip->reg;
+//	struct siw_hal_reg *reg = chip->reg;
 	u32 boot_failed = 0;
 	u32 bootmode = 0;
-	u32 boot_chk_offset_busy = 0;
-	u32 boot_chk_offset_err = 0;
-	u32 boot_chk_empty_mask = 0;
+	u32 boot_chk_offset_busy = siw_hal_boot_sts_pos_busy(chip);
+	u32 boot_chk_offset_err = siw_hal_boot_sts_pos_dump_err(chip);
+	u32 boot_chk_empty_mask = siw_hal_boot_sts_mask_empty(chip);
 	int ret = 0;
 
-	switch (chip->opt.t_boot_mode) {
-	case 2:
-		boot_chk_empty_mask = (1<<6);
-		/* fall through */
-	case 1:
-		boot_chk_offset_busy = 0;
-		boot_chk_offset_err = 2;
-		break;
-	default:
-		boot_chk_offset_busy = 1;
-		boot_chk_offset_err = 3;
-		break;
-	}
-
-	ret = siw_hal_read_value(dev,
-			reg->spr_boot_status,
-			&bootmode);
+	ret = siw_hal_get_boot_status(dev, &bootmode);
 	if (ret < 0) {
 		return ret;
 	}
@@ -1964,7 +1968,7 @@ static int siw_hal_do_ic_info(struct device *dev, int prt_on)
 	u32 version_ext = 0;
 	u32 revision = 0;
 	u32 bootmode = 0;
-	u32 boot_chk_offset;
+	u32 boot_chk_offset = 0;
 	int ret = 0;
 
 	siw_hal_xfer_init(dev, xfer);
@@ -1986,13 +1990,16 @@ static int siw_hal_do_ic_info(struct device *dev, int prt_on)
 				reg->tc_version_ext,
 				(void *)&version_ext, sizeof(version_ext));
 	}
-	siw_hal_xfer_add_rx(xfer,
-			reg->spr_boot_status,
-			(void *)&bootmode, sizeof(bootmode));
 
 	ret = siw_hal_xfer_msg(dev, ts->xfer);
 	if (ret < 0) {
 		t_dev_err(dev, "ic_info(1): xfer failed, %d\n", ret);
+		return ret;
+	}
+
+	ret = siw_hal_get_boot_status(dev, &bootmode);
+	if (ret < 0) {
+		t_dev_err(dev, "ic_info(1): failed to get boot status, %d\n", ret);
 		return ret;
 	}
 
@@ -2057,16 +2064,7 @@ static int siw_hal_do_ic_info(struct device *dev, int prt_on)
 				version, fw->revision);
 	}
 
-	switch (chip->opt.t_boot_mode) {
-	case 2:
-		/* fall through */
-	case 1:
-		boot_chk_offset = 0;
-		break;
-	default:
-		boot_chk_offset = 1;
-		break;
-	}
+	boot_chk_offset = siw_hal_boot_sts_pos_busy(chip);
 	t_dev_info_sel(dev, prt_on,
 			"[T] product id %s, flash boot %s(%s), crc %s (0x%08X)\n",
 			fw->product_id,

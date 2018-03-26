@@ -200,16 +200,14 @@ static ssize_t _show_reg_list(struct device *dev, char *buf)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 //	struct siw_ts *ts = chip->ts;
-	struct siw_hal_reg *reg = chip->reg;
+//	struct siw_hal_reg *reg = chip->reg;
 	struct siw_hal_fw_info *fw = &chip->fw;
 	u32 bootmode = 0;
 	u32 boot_chk_offset = 0;
 	int size = 0;
 	int ret = 0;
 
-	ret = siw_hal_read_value(dev,
-				reg->spr_boot_status,
-				&bootmode);
+	ret = siw_hal_get_boot_status(dev, &bootmode);
 	if (ret < 0) {
 		return (ssize_t)ret;
 	}
@@ -241,17 +239,7 @@ static ssize_t _show_reg_list(struct device *dev, char *buf)
 				">> product id : %s\n",
 				fw->product_id);
 
-	switch (chip->opt.t_boot_mode) {
-	case 2:
-		/* fall through */
-	case 1:
-		boot_chk_offset = 0;
-		break;
-	default:
-		boot_chk_offset = 1;
-		break;
-	}
-
+	boot_chk_offset = siw_hal_boot_sts_pos_busy(chip);
 	size += siw_snprintf(buf, size,
 				">> flash boot : %s(%s), crc %s  (0x%08X)\n",
 				(bootmode >> (boot_chk_offset) & 0x1) ? "BUSY" : "idle",
