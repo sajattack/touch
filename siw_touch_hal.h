@@ -20,6 +20,14 @@
 
 #include "siw_touch_hal_reg.h"
 
+struct siw_hal_rw_multi {
+	int wr;
+	int addr;
+	void *data;
+	int size;
+	char *name;
+};
+
 enum {
 	NON_FAULT_INT 	= -1,
 	NON_FAULT_U32	= ~0,
@@ -699,10 +707,8 @@ extern int siw_hal_write_value_chk(struct device *dev, u32 addr, u32 value);
 extern int siw_hal_reg_read_chk(struct device *dev, u32 addr, void *data, int size);
 extern int siw_hal_reg_write_chk(struct device *dev, u32 addr, void *data, int size);
 
-extern void siw_hal_xfer_init(struct device *dev, void *xfer_data);
-extern int siw_hal_xfer_msg(struct device *dev, struct touch_xfer_msg *xfer);
-extern void siw_hal_xfer_add_rx(void *xfer_data, u32 reg, void *buf, u32 size);
-extern void siw_hal_xfer_add_tx(void *xfer_data, u32 reg, void *buf, u32 size);
+extern int siw_hal_reg_rw_multi(struct device *dev,
+			struct siw_hal_rw_multi *multi, char *title);
 
 extern int siw_hal_ic_test_unit(struct device *dev, u32 data);
 

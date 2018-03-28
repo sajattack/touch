@@ -740,187 +740,6 @@ static int __used __siw_hal_reg_write(struct device *dev, u32 addr, void *data, 
 	return ret;
 }
 
-static void __used __siw_hal_do_xfer_dbg(struct device *dev, struct touch_xfer_msg *xfer)
-{
-	struct touch_xfer_data_t *tx = NULL;
-	struct touch_xfer_data_t *rx = NULL;
-	int i;
-
-	for (i = 0; i < xfer->msg_count; i++) {
-		tx = &xfer->data[i].tx;
-		rx = &xfer->data[i].rx;
-
-		t_dev_err(dev, "[%d] rx(0x%04X, 0x%04X) tx(0x%04X, 0x%04X)\n",
-				i,
-				(u32)rx->addr, (u32)rx->size,
-				(u32)tx->addr, (u32)tx->size);
-	}
-}
-
-static int __used __siw_hal_do_xfer_to_single(struct device *dev, struct touch_xfer_msg *xfer)
-{
-	struct touch_xfer_data_t *tx = NULL;
-	struct touch_xfer_data_t *rx = NULL;
-	int i = 0;
-	int ret = 0;
-
-	for (i = 0; i < xfer->msg_count; i++) {
-		tx = &xfer->data[i].tx;
-		rx = &xfer->data[i].rx;
-
-		if (rx->size) {
-			ret = __siw_hal_do_reg_read(dev, rx->addr, rx->buf, rx->size);
-			t_dev_dbg_trace(dev, "xfer single [%d/%d] - rd(%04Xh, %d), %d\n",
-				i, xfer->msg_count, rx->addr, rx->size, ret);
-			if (ret < 0) {
-				return ret;
-			}
-		} else if (tx->size) {
-			ret = __siw_hal_do_reg_write(dev, tx->addr, tx->buf, tx->size);
-			t_dev_dbg_trace(dev, "xfer single [%d/%d] - wr(%04Xh, %d), %d\n",
-				i, xfer->msg_count, rx->addr, rx->size, ret);
-			if (ret < 0) {
-				return ret;
-			}
-		}
-	}
-
-	return 0;
-}
-
-static int __used __siw_hal_do_xfer_msg(struct device *dev, struct touch_xfer_msg *xfer)
-{
-	struct siw_touch_chip *chip = to_touch_chip(dev);
-	struct siw_ts *ts = chip->ts;
-	struct touch_xfer_data_t *tx = NULL;
-	struct touch_xfer_data_t *rx = NULL;
-	int bus_tx_hdr_size = touch_tx_hdr_size(ts);
-	int bus_rx_hdr_size = touch_rx_hdr_size(ts);
-//	int bus_tx_dummy_size = touch_tx_dummy_size(ts);
-	int bus_rx_dummy_size = (touch_rx_dummy_size(ts) & 0xFFFF);
-	int bus_rx_dummy_flag = (touch_rx_dummy_size(ts) >> 16);
-	int bus_dummy;
-	int buf_size = touch_get_act_buf_size(ts);
-	int tx_size;
-	int i = 0;
-	int ret = 0;
-
-	if (!touch_xfer_allowed(ts)) {
-		return __siw_hal_do_xfer_to_single(dev, xfer);
-	}
-
-	t_dev_dbg_base(dev, "xfer: start\n");
-
-#if defined(__SIW_SPI_TYPE_1)
-	/*
-	 * 0x10 : 128-bit dummy
-	 * size > 4 : burst
-	 */
-	if (bus_rx_dummy_flag & SPI_BUS_RX_DUMMY_FLAG_128BIT) {
-		bus_rx_hdr_size = SPI_BUS_RX_HDR_SZ_32BIT;
-		bus_rx_dummy_size = SPI_BUS_RX_DUMMY_SZ_32BIT;
-	}
-#else
-	bus_rx_dummy_flag = 0;
-#endif
-
-	for (i = 0; i < xfer->msg_count; i++) {
-		tx = &xfer->data[i].tx;
-		rx = &xfer->data[i].rx;
-
-		if (rx->size) {
-			t_dev_dbg_base(dev, "xfer: rd set(%d)\n", i);
-
-			ret = __siw_hal_reg_addr_check(chip, rx->addr, rx->size, (1<<1) | 0);
-			if (ret < 0) {
-				return -EINVAL;
-			}
-
-		#if 0
-			if (!rx->addr) {
-				t_dev_err(dev, "NULL xfer rx->addr(%i)\n", i);
-				__siw_hal_do_xfer_dbg(dev, xfer);
-				return -EFAULT;
-			}
-		#endif
-			tx_size = bus_tx_hdr_size;
-			bus_dummy = bus_rx_dummy_size;
-
-			tx->data[0] = (rx->size > 4) ? 0x20 : 0x00;
-			tx->data[0] |= ((rx->addr >> 8) & 0x0f);
-			tx->data[1] = (rx->addr & 0xff);
-			while (bus_dummy--) {
-				tx->data[tx_size++] = 0;
-			}
-			tx->size = tx_size;
-			rx->size += bus_rx_hdr_size;
-			continue;
-		}
-
-		t_dev_dbg_base(dev, "xfer: wr set(%d)\n", i);
-
-		ret = __siw_hal_reg_addr_check(chip, tx->addr, tx->size, (1<<1) | 1);
-		if (ret < 0) {
-			return -EINVAL;
-		}
-
-	#if 0
-		if (!tx->addr) {
-			t_dev_err(dev, "NULL xfer tx->addr(%i)\n", i);
-			__siw_hal_do_xfer_dbg(dev, xfer);
-			return -EFAULT;
-		}
-	#endif
-
-		if (tx->size > (buf_size - bus_tx_hdr_size)) {
-			t_dev_err(dev, "buffer overflow\n");
-			return -EOVERFLOW;
-		}
-
-	//	tx->data[0] = ((tx->size == 1) ? 0x60 : 0x40);
-		tx->data[0] = 0x60;
-		tx->data[0] |= ((tx->addr >> 8) & 0x0f);
-		tx->data[1] = (tx->addr  & 0xff);
-		memcpy(&tx->data[bus_tx_hdr_size], tx->buf, tx->size);
-		tx->size += bus_tx_hdr_size;
-	}
-
-	t_dev_dbg_base(dev, "xfer: call bus xfer\n");
-
-	ret = siw_touch_bus_xfer(dev, xfer);
-	if (ret < 0) {
-		t_dev_err(dev, "touch bus xfer error, %d\n", ret);
-		__siw_hal_do_xfer_dbg(dev, xfer);
-		return ret;
-	}
-
-	ret = 0;
-	for (i = 0; i < xfer->msg_count; i++) {
-		tx = &xfer->data[i].tx;
-		rx = &xfer->data[i].rx;
-
-		if (rx->size) {
-			if (!rx->buf) {
-				t_dev_err(dev, "NULL xfer->data[%d].rx.buf\n", i);
-				return -EFAULT;
-			}
-			memcpy(rx->buf, rx->data + bus_rx_hdr_size,
-				(rx->size - bus_rx_hdr_size));
-		}
-		ret += rx->size;
-
-		{
-			struct touch_xfer_data_t *dbg = (rx->size) ? rx : tx;
-			int dbg_hdr_size = (rx->size) ? bus_rx_hdr_size : bus_tx_hdr_size;
-
-			__siw_hal_bus_dbg(dev,
-				dbg->addr, dbg->buf, dbg->size - dbg_hdr_size, !(rx->size), 1);
-		}
-	}
-
-	return ret;
-}
-
 int siw_hal_read_value(struct device *dev, u32 addr, u32 *value)
 {
 	int ret = __siw_hal_reg_read(dev, addr, value, sizeof(u32));
@@ -993,71 +812,34 @@ int siw_hal_reg_write_chk(struct device *dev, u32 addr, void *data, int size)
 	return siw_hal_reg_write(dev, addr, data, size);
 }
 
-void siw_hal_xfer_init(struct device *dev, void *xfer_data)
+int siw_hal_reg_rw_multi(struct device *dev,
+		struct siw_hal_rw_multi *multi, char *title)
 {
-	struct touch_xfer_msg *xfer = xfer_data;
-	struct siw_touch_chip *chip = to_touch_chip(dev);
-
-	mutex_lock(&chip->bus_lock);
-	xfer->bits_per_word = 8;
-	xfer->msg_count = 0;
-//	mutex_unlock(&chip->bus_lock);
-}
-
-int siw_hal_xfer_msg(struct device *dev, struct touch_xfer_msg *xfer)
-{
-	struct siw_touch_chip *chip = to_touch_chip(dev);
+	int (*func)(struct device *dev, u32 addr, void *data, int size);
 	int ret = 0;
 
-//	mutex_lock(&chip->bus_lock);
-	ret = __siw_hal_do_xfer_msg(dev, xfer);
-	mutex_unlock(&chip->bus_lock);
+	while (1) {
+		if ((multi->wr == -1) ||
+			(multi->addr == -1) ||
+			(multi->data == NULL)) {
+			break;
+		}
+
+		func = (multi->wr) ? siw_hal_reg_write_chk : siw_hal_reg_read_chk;
+
+		ret = func(dev, multi->addr, multi->data, multi->size);
+		if (ret < 0) {
+			t_dev_err(dev, "%s: %s %s failed, %d\n",
+				title, (multi->name) ? multi->name : "",
+				(multi->wr) ? "write" : "read",
+				ret);
+			break;
+		}
+
+		multi++;
+	}
 
 	return ret;
-}
-
-void siw_hal_xfer_add_rx(void *xfer_data, u32 reg, void *buf, u32 size)
-{
-	struct touch_xfer_msg *xfer = xfer_data;
-	struct touch_xfer_data_t *rx = &xfer->data[xfer->msg_count].rx;
-	struct touch_xfer_data_t *tx = &xfer->data[xfer->msg_count].tx;
-
-	if (xfer->msg_count >= SIW_TOUCH_MAX_XFER_COUNT) {
-		t_pr_err("touch xfer msg_count overflow (rx)\n");
-		return;
-	}
-
-	rx->addr = reg;
-	rx->buf = buf;
-	rx->size = size;
-
-	tx->addr = 0;
-	tx->buf = NULL;
-	tx->size = 0;
-
-	xfer->msg_count++;
-}
-
-void siw_hal_xfer_add_tx(void *xfer_data, u32 reg, void *buf, u32 size)
-{
-	struct touch_xfer_msg *xfer = xfer_data;
-	struct touch_xfer_data_t *rx = &xfer->data[xfer->msg_count].rx;
-	struct touch_xfer_data_t *tx = &xfer->data[xfer->msg_count].tx;
-
-	if (xfer->msg_count >= SIW_TOUCH_MAX_XFER_COUNT) {
-		t_pr_err("touch xfer msg_count overflow (tx)\n");
-		return;
-	}
-
-	rx->addr = 0;
-	rx->buf = NULL;
-	rx->size = 0;
-
-	tx->addr = reg;
-	tx->buf = buf;
-	tx->size = size;
-
-	xfer->msg_count++;
 }
 
 static int siw_hal_cmd_write(struct device *dev, u8 cmd)
@@ -1955,13 +1737,37 @@ static int siw_hal_ic_info_ver_check(struct device *dev)
 	return -EINVAL;
 }
 
+static int siw_hal_do_ic_info_more(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_hal_reg *reg = chip->reg;
+	struct siw_hal_fw_info *fw = &chip->fw;
+	int ret = 0;
+
+	if (chip->opt.f_info_more) {
+		struct siw_hal_rw_multi multi[] = {
+			{ 0, reg->info_fpc_type, &fw->fpc, sizeof(fw->fpc), "fpc" },
+			{ 0, reg->info_wfr_type, &fw->wfr, sizeof(fw->wfr), "wft" },
+			{ 0, reg->info_cg_type, &fw->cg, sizeof(fw->cg), "cg" },
+			{ 0, reg->info_lot_num, &fw->lot, sizeof(fw->lot), "lot" },
+			{ 0, reg->info_serial_num, &fw->sn, sizeof(fw->sn), "sn" },
+			{ 0, reg->info_date, &fw->date, sizeof(fw->date), "date" },
+			{ 0, reg->info_time, &fw->time, sizeof(fw->time), "time" },
+			{ -1, -1, NULL, }
+		};
+
+		ret = siw_hal_reg_rw_multi(dev, multi, "ic_info(2)");
+	}
+
+	return ret;
+}
+
 static int siw_hal_do_ic_info(struct device *dev, int prt_on)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
 	struct siw_hal_reg *reg = chip->reg;
 	struct siw_hal_fw_info *fw = &chip->fw;
-	struct touch_xfer_msg *xfer = ts->xfer;
 	u32 product[2] = {0};
 	u32 chip_id = 0;
 	u32 version = 0;
@@ -1969,32 +1775,26 @@ static int siw_hal_do_ic_info(struct device *dev, int prt_on)
 	u32 revision = 0;
 	u32 bootmode = 0;
 	u32 boot_chk_offset = 0;
+	struct siw_hal_rw_multi multi[] = {
+		{ 0, reg->spr_chip_id, &chip_id, sizeof(chip_id), "chip_id" },
+		{ 0, reg->tc_version, &version, sizeof(version), "version" },
+		{ 0, reg->info_chip_version, &revision, sizeof(revision), "revision" },
+		{ 0, reg->tc_product_id1, product, sizeof(product), "product_id" },
+		{ -1, -1, NULL, },
+	};
 	int ret = 0;
 
-	siw_hal_xfer_init(dev, xfer);
-
-	siw_hal_xfer_add_rx(xfer,
-			reg->spr_chip_id,
-			(void *)&chip_id, sizeof(chip_id));
-	siw_hal_xfer_add_rx(xfer,
-			reg->tc_version,
-			(void *)&version, sizeof(version));
-	siw_hal_xfer_add_rx(xfer,
-			reg->info_chip_version,
-			(void *)&revision, sizeof(revision));
-	siw_hal_xfer_add_rx(xfer,
-			reg->tc_product_id1,
-			(void *)&product[0], sizeof(product));
-	if (chip->opt.f_ver_ext) {
-		siw_hal_xfer_add_rx(xfer,
-				reg->tc_version_ext,
-				(void *)&version_ext, sizeof(version_ext));
+	ret = siw_hal_reg_rw_multi(dev, multi, "ic_info(1)");
+	if (ret < 0) {
+		return ret;
 	}
 
-	ret = siw_hal_xfer_msg(dev, ts->xfer);
-	if (ret < 0) {
-		t_dev_err(dev, "ic_info(1): xfer failed, %d\n", ret);
-		return ret;
+	if (chip->opt.f_ver_ext) {
+		ret = siw_hal_read_value_chk(dev, reg->tc_version_ext, &version_ext);
+		if (ret < 0) {
+			t_dev_err(dev, "ic_info(1): version_ext failed, %d\n", ret);
+			return ret;
+		}
 	}
 
 	ret = siw_hal_get_boot_status(dev, &bootmode);
@@ -2003,36 +1803,9 @@ static int siw_hal_do_ic_info(struct device *dev, int prt_on)
 		return ret;
 	}
 
-	if (chip->opt.f_info_more) {
-		siw_hal_xfer_init(dev, xfer);
-
-		siw_hal_xfer_add_rx(xfer,
-				reg->info_fpc_type,
-				(void *)&fw->fpc, sizeof(fw->fpc));
-		siw_hal_xfer_add_rx(xfer,
-				reg->info_wfr_type,
-				(void *)&fw->wfr, sizeof(fw->wfr));
-		siw_hal_xfer_add_rx(xfer,
-				reg->info_cg_type,
-				(void *)&fw->cg, sizeof(fw->cg));
-		siw_hal_xfer_add_rx(xfer,
-				reg->info_lot_num,
-				(void *)&fw->lot, sizeof(fw->lot));
-		siw_hal_xfer_add_rx(xfer,
-				reg->info_serial_num,
-				(void *)&fw->sn, sizeof(fw->sn));
-		siw_hal_xfer_add_rx(xfer,
-				reg->info_date,
-				(void *)&fw->date, sizeof(fw->date));
-		siw_hal_xfer_add_rx(xfer,
-				reg->info_time,
-				(void *)&fw->time, sizeof(fw->time));
-
-		ret = siw_hal_xfer_msg(dev, ts->xfer);
-		if (ret < 0) {
-			t_dev_err(dev, "ic_info(2): xfer failed, %d\n", ret);
-			return ret;
-		}
+	ret = siw_hal_do_ic_info_more(dev);
+	if (ret < 0) {
+		return ret;
 	}
 
 	siw_hal_fw_set_chip_id(fw, chip_id);
@@ -2419,30 +2192,20 @@ static int siw_hal_check_mode(struct device *dev)
 static void siw_hal_lcd_event_read_reg(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
-	struct siw_ts *ts = chip->ts;
+//	struct siw_ts *ts = chip->ts;
 	struct siw_hal_reg *reg = chip->reg;
-	struct touch_xfer_msg *xfer = ts->xfer;
 	u32 rdata[5] = {0, 0};
+	struct siw_hal_rw_multi multi[] = {
+		{ 0, reg->tc_ic_status, &rdata[0], sizeof(rdata[0]), "ic_status" },
+		{ 0, reg->tc_status, &rdata[1], sizeof(rdata[1]), "tc_status" },
+		{ 0, reg->tc_version, &rdata[3], sizeof(rdata[3]), "version" },
+		{ 0, reg->spr_chip_id, &rdata[4], sizeof(rdata[4]), "chip_id" },
+		{ -1, -1, NULL, },
+	};
 	int ret = 0;
 
-	siw_hal_xfer_init(dev, xfer);
-
-	siw_hal_xfer_add_rx(xfer,
-			reg->tc_ic_status,
-			(void *)&rdata[0], sizeof(rdata[0]));
-	siw_hal_xfer_add_rx(xfer,
-			reg->tc_status,
-			(void *)&rdata[1], sizeof(rdata[1]));
-	siw_hal_xfer_add_rx(xfer,
-			reg->tc_version,
-			(void *)&rdata[3], sizeof(rdata[3]));
-	siw_hal_xfer_add_rx(xfer,
-			reg->spr_chip_id,
-			(void *)&rdata[4], sizeof(rdata[4]));
-
-	ret = siw_hal_xfer_msg(dev, xfer);
+	ret = siw_hal_reg_rw_multi(dev, multi, "read_reg");
 	if (ret < 0) {
-		t_dev_err(dev, "xfer failed, %d\n", ret);
 		return;
 	}
 
