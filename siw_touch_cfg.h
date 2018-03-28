@@ -43,8 +43,6 @@
 #endif
 #endif
 
-#define __SIW_SUPPORT_XFER
-
 //#define __SIW_SUPPORT_DEBUG_OPTION
 
 #if defined(CONFIG_ANDROID)
