@@ -325,7 +325,6 @@ out:
 int siw_touch_bus_alloc_buffer(struct siw_ts *ts)
 {
 	struct device *dev = ts->dev;
-	struct touch_xfer_msg *xfer = NULL;
 	int buf_size = touch_buf_size(ts);
 	int ret = 0;
 
@@ -349,18 +348,7 @@ int siw_touch_bus_alloc_buffer(struct siw_ts *ts)
 		goto out_rx_buf;
 	}
 
-	xfer = __buffer_alloc(dev, sizeof(struct touch_xfer_msg),
-					NULL, GFP_KERNEL, "xfer");
-	if (!xfer) {
-		ret = -ENOMEM;
-		goto out_xfer;
-	}
-	ts->xfer = xfer;
-
 	return 0;
-
-out_xfer:
-	siw_touch_buf_alloc(ts, 0);
 
 out_rx_buf:
 	siw_touch_buf_alloc(ts, 1);
@@ -375,12 +363,6 @@ int siw_touch_bus_free_buffer(struct siw_ts *ts)
 	struct device *dev = ts->dev;
 
 	t_dev_dbg_base(dev, "release touch bus buffer\n");
-
-	if (ts->xfer) {
-		__buffer_free(dev, sizeof(struct touch_xfer_msg),
-				ts->xfer, 0, "xfer");
-		ts->xfer = NULL;
-	}
 
 	siw_touch_buf_free(ts, 0);
 	siw_touch_buf_free(ts, 1);
@@ -426,19 +408,6 @@ int siw_touch_bus_write(struct device *dev, struct touch_bus_msg *msg)
 	}
 
 	return ts->bus_write(dev, msg);
-}
-
-int siw_touch_bus_xfer(struct device *dev, struct touch_xfer_msg *xfer)
-{
-	struct siw_ts *ts = to_touch_core(dev);
-
-	if (!ts->bus_xfer) {
-		t_dev_err(dev, "No bus_xfer for %s(%d)\n",
-			dev_name(dev), touch_bus_type(ts));
-		return -EINVAL;
-	}
-
-	return ts->bus_xfer(dev, xfer);
 }
 
 enum {

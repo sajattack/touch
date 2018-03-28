@@ -50,9 +50,6 @@
 #define siwmon_submit_bus_spi_write(_spi, _data, _ret)	\
 		siwmon_submit_bus(&_spi->dev, "SPI_W", _data, _ret)
 
-#define siwmon_submit_bus_spi_xfer(_spi, _data, _ret)	\
-		siwmon_submit_bus(&_spi->dev, "SPI_X", _data, _ret)
-
 static void siw_touch_spi_message_init(struct spi_device *spi,
 						struct spi_message *m)
 {
@@ -210,119 +207,6 @@ static int siw_touch_spi_write(struct device *dev, void *msg)
 	return siw_touch_spi_do_write(to_spi_device(dev), (struct touch_bus_msg *)msg);
 }
 
-#if defined(CONFIG_TOUCHSCREEN_SIWMON) || defined(CONFIG_TOUCHSCREEN_SIWMON_MODULE)
-static void __siw_touch_spi_xfer_mon(struct spi_device *spi,
-				struct touch_xfer_msg *xfer,
-				int ret)
-{
-	struct touch_xfer_data_t *tx = NULL;
-	struct touch_xfer_data_t *rx = NULL;
-	struct touch_bus_msg *msg;
-	struct touch_bus_msg msg_buf[SIW_TOUCH_MAX_XFER_COUNT];
-	int idx = 0;
-	int cnt = xfer->msg_count;
-	int i;
-
-	for (i = 0; i < cnt; i++) {
-		tx = &xfer->data[i].tx;
-		rx = &xfer->data[i].rx;
-
-		msg = &msg_buf[idx++];
-		msg->tx_buf = tx->data;
-		msg->tx_size = tx->size;
-		msg->rx_buf = rx->data;
-		msg->rx_size = rx->size;
-		msg->bits_per_word = spi->bits_per_word;
-		msg->priv = (i<<8) | cnt;
-
-		//For xfer mon,
-		//the last character of dir string shall be 'X'
-		siwmon_submit_bus_spi_xfer(spi, msg, ret);
-	}
-}
-#else	/* CONFIG_TOUCHSCREEN_SIWMON */
-static inline void __siw_touch_spi_xfer_mon(struct spi_device *spi,
-				struct touch_xfer_msg *xfer,
-				int ret){ }
-#endif	/* CONFIG_TOUCHSCREEN_SIWMON */
-
-static int siw_touch_spi_do_xfer(struct spi_device *spi, struct touch_xfer_msg *xfer)
-{
-//	struct siw_ts *ts = spi_get_drvdata(spi);
-	struct device *dev = &spi->dev;
-	struct touch_xfer_data_t *tx = NULL;
-	struct touch_xfer_data_t *rx = NULL;
-	struct spi_transfer _x[SIW_TOUCH_MAX_XFER_COUNT];
-	struct spi_transfer *x;
-	struct spi_message m;
-	int cnt = xfer->msg_count;
-	int i = 0;
-	int ret = 0;
-
-	if (!xfer) {
-		t_dev_err(dev, "NULL xfer\n");
-		return -EINVAL;
-	}
-
-	/*
-	 * Bus control can need to be modifyed up to main chipset sepc.
-	 */
-
-	if (cnt > SIW_TOUCH_MAX_XFER_COUNT) {
-		t_dev_err(dev, "cout exceed, %d\n", cnt);
-		return -EINVAL;
-	}
-
-	siw_touch_spi_message_init(spi, &m);
-
-	memset(_x, 0, sizeof(_x));
-
-	x = _x;
-	for (i = 0; i < cnt; i++) {
-		tx = &xfer->data[i].tx;
-		rx = &xfer->data[i].rx;
-
-		x->cs_change = !!(i < (xfer->msg_count - 1));
-	//	x->cs_change = 1;
-		x->bits_per_word = spi->bits_per_word;
-		x->delay_usecs = 0;
-		x->speed_hz = spi->max_speed_hz;
-
-		if (rx->size) {
-			x->tx_buf = tx->data;
-			x->rx_buf = rx->data;
-			x->len = rx->size;
-		} else {
-			x->tx_buf = tx->data;
-			x->rx_buf = NULL;
-			x->len = tx->size;
-		}
-
-		if (x->len > SIW_TOUCH_MAX_BUF_SIZE) {
-			t_dev_err(&spi->dev, "spi xfer[%d, %d]: buffer overflow - %s %Xh\n",
-				i, cnt,
-				(rx->size) ? "rd" : "wr", x->len);
-			break;
-		}
-
-		siw_touch_spi_message_add_tail(spi, x, &m);
-
-		x++;
-	}
-
-	ret = siw_touch_spi_sync(spi, &m);
-	__siw_touch_spi_xfer_mon(spi, xfer, ret);
-	if (ret < 0)
-		siw_touch_spi_err_dump(spi, _x, cnt, 0);
-
-	return ret;
-}
-
-static int siw_touch_spi_xfer(struct device *dev, void *xfer)
-{
-	return siw_touch_spi_do_xfer(to_spi_device(dev), (struct touch_xfer_msg *)xfer);
-}
-
 static int siw_touch_spi_cfg(struct spi_device *spi,
 					struct siw_touch_pdata *pdata)
 {
@@ -398,7 +282,6 @@ static struct siw_ts *siw_touch_spi_alloc(
 	ts->bus_init = siw_touch_spi_init;
 	ts->bus_read = siw_touch_spi_read;
 	ts->bus_write = siw_touch_spi_write;
-	ts->bus_xfer = siw_touch_spi_xfer;
 
 	ret = siw_touch_bus_tr_data_init(ts);
 	if (ret < 0) {

@@ -154,19 +154,6 @@ static int siw_touch_i2c_write(struct device *dev, void *msg)
 	return siw_touch_do_i2c_write(to_i2c_client(dev), (struct touch_bus_msg *)msg);
 }
 
-static int siw_touch_i2c_do_xfer(struct i2c_client *client, struct touch_xfer_msg *xfer)
-{
-//	struct siw_ts *ts = (struct siw_ts *)i2c_get_clientdata(client);
-
-	t_dev_info(&client->dev, "I2C xfer : not supported\n");
-	return -EINVAL;
-}
-
-static int siw_touch_i2c_xfer(struct device *dev, void *xfer)
-{
-	return siw_touch_i2c_do_xfer(to_i2c_client(dev), (struct touch_xfer_msg *)xfer);
-}
-
 static struct siw_ts *siw_touch_i2c_alloc(
 			struct i2c_client *i2c,
 			struct siw_touch_bus_drv *bus_drv)
@@ -205,7 +192,6 @@ static struct siw_ts *siw_touch_i2c_alloc(
 	ts->bus_init = siw_touch_i2c_init;
 	ts->bus_read = siw_touch_i2c_read;
 	ts->bus_write = siw_touch_i2c_write;
-	ts->bus_xfer = siw_touch_i2c_xfer;
 
 	ret = siw_touch_bus_tr_data_init(ts);
 	if (ret < 0) {

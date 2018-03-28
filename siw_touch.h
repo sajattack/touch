@@ -888,21 +888,6 @@ static inline void *pdata_watch_win(struct siw_touch_pdata *pdata)
 	return pdata->watch_win;
 }
 
-#if defined(__SIW_SUPPORT_XFER)
-static inline int pdata_xfer_allowed(struct siw_touch_pdata *pdata)
-{
-	if (pdata_bus_type(pdata) != BUS_IF_SPI)
-		return 0;
-
-	if (pdata_test_quirks(pdata, CHIP_QUIRK_NOT_SUPPORT_XFER))
-		return 0;
-
-	return 1;	//allowed
-}
-#else	/* __SIW_SUPPORT_XFER */
-static inline int pdata_xfer_allowed(struct siw_touch_pdata *pdata){ return 0; }
-#endif	/* __SIW_SUPPORT_XFER */
-
 static inline struct siw_touch_fquirks *pdata_fquirks(
 							struct siw_touch_pdata *pdata)
 {
@@ -1030,7 +1015,6 @@ struct siw_ts {
 	/* */
 
 	int buf_size;
-	struct touch_xfer_msg *xfer;
 	struct siw_touch_buf tx_buf[SIW_TOUCH_MAX_BUF_IDX];
 	struct siw_touch_buf rx_buf[SIW_TOUCH_MAX_BUF_IDX];
 	int tx_buf_idx;
@@ -1106,7 +1090,6 @@ struct siw_ts {
 	int (*bus_init)(struct device *dev);
 	int (*bus_read)(struct device *dev, void *msg);
 	int (*bus_write)(struct device *dev, void *msg);
-	int (*bus_xfer)(struct device *dev, void *xfer);
 	int	bus_tx_hdr_size;
 	int	bus_rx_hdr_size;
 	int bus_tx_dummy_size;
@@ -1403,11 +1386,6 @@ static inline int touch_tx_dummy_size(struct siw_ts *ts)
 static inline int touch_rx_dummy_size(struct siw_ts *ts)
 {
 	return ts->bus_rx_dummy_size;
-}
-
-static inline int touch_xfer_allowed(struct siw_ts *ts)
-{
-	return pdata_xfer_allowed(ts->pdata);
 }
 
 static inline struct siw_touch_fquirks *touch_fquirks(struct siw_ts *ts)

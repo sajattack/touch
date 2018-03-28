@@ -88,24 +88,6 @@ struct touch_bus_msg {
 	int priv;
 };
 
-struct touch_xfer_data_t {
-	u16 addr;
-	u16 size;
-	u8 *buf;
-	u8 data[SIW_TOUCH_MAX_BUF_SIZE];
-};
-
-struct touch_xfer_data {
-	struct touch_xfer_data_t tx;
-	struct touch_xfer_data_t rx;
-};
-
-struct touch_xfer_msg {
-	struct touch_xfer_data data[SIW_TOUCH_MAX_XFER_COUNT];
-	u8 bits_per_word;
-	u8 msg_count;
-};
-
 struct siw_touch_bus_drv {
 	union {
 		struct i2c_driver i2c_drv;
@@ -142,7 +124,6 @@ extern int siw_touch_bus_free_buffer(struct siw_ts *ts);
 extern int siw_touch_bus_init(struct device *dev);
 extern int siw_touch_bus_read(struct device *dev, struct touch_bus_msg *msg);
 extern int siw_touch_bus_write(struct device *dev, struct touch_bus_msg *msg);
-extern int siw_touch_bus_xfer(struct device *dev, struct touch_xfer_msg *xfer);
 
 extern void siw_touch_bus_err_dump_data(struct device *dev,
 							u8 *buf, int len,
