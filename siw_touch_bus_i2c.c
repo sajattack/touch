@@ -262,6 +262,7 @@ static int siw_touch_i2c_probe(struct i2c_client *i2c,
 	return 0;
 
 out_plat:
+	siw_touch_i2c_free(i2c);
 
 out:
 	return ret;

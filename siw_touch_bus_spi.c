@@ -358,6 +358,7 @@ static int siw_touch_spi_probe(struct spi_device *spi)
 	return 0;
 
 out_plat:
+	siw_touch_spi_free(spi);
 
 out:
 	return ret;
