@@ -491,7 +491,6 @@ int siw_touch_init_input(void *ts_data)
 	return 0;
 
 out_reg:
-	input_mt_destroy_slots(input);
 
 out_slot:
 	input_free_device(input);
@@ -519,8 +518,6 @@ void siw_touch_free_input(void *ts_data)
 					input->phys);
 
 		input_unregister_device(input);
-		input_mt_destroy_slots(input);
-		input_free_device(input);
 
 		touch_kfree(dev, phys_name);
 	}
