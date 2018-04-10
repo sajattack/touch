@@ -92,13 +92,64 @@ static void siw_touch_spi_err_dump(struct spi_device *spi,
 	}
 }
 
+static int siw_touch_spi_check(struct spi_device *spi,
+					u32 bits, u32 mode, u32 freq)
+{
+	struct device *dev = &spi->dev;
+
+	if (bits == ~0) {
+		t_dev_err(dev, "spi check: wrong spi setup: bits_per_word %d\n",
+			bits);
+		return -EFAULT;
+	}
+
+	if (mode == ~0) {
+		t_dev_err(dev, "spi check: wrong spi setup: spi_mode %d\n",
+			mode);
+		return -EFAULT;
+	}
+
+	if (spi_freq_out_of_range(freq)) {
+		t_dev_err(dev, "spi check: wrong spi setup: max_freq %d.%d Mhz(%d)\n",
+			freq_to_mhz_unit(freq),
+			freq_to_khz_top(freq),
+			freq);
+		return -EFAULT;
+	}
+
+	return 0;
+}
+
 static int siw_touch_spi_init(struct device *dev)
 {
 	struct spi_device *spi = to_spi_device(dev);
+	struct siw_ts *ts = to_touch_core(dev);
+	u32 new_bits = touch_bits_per_word(ts);
+	u32 new_mode = touch_spi_mode(ts);
+	u32 new_freq = touch_max_freq(ts);
+	u32 old_bits = spi->bits_per_word;
+	u32 old_mode = spi->mode;
+	u32 old_freq = spi->max_speed_hz;
 	int ret;
+
+	ret = siw_touch_spi_check(spi, new_bits, new_mode, new_freq);
+	if (ret < 0) {
+		return ret;
+	}
+
+#if !defined(__SIW_CONFIG_OF)
+	spi->chip_select = touch_chip_select(ts);
+#endif
+	spi->bits_per_word = new_bits;
+	spi->mode = new_mode;
+	spi->max_speed_hz = new_freq;
 
 	ret = spi_setup(spi);
 	if (ret < 0) {
+		spi->bits_per_word = old_bits;
+		spi->mode = old_mode;
+		spi->max_speed_hz = old_freq;
+
 		t_dev_err(dev, "failed to perform SPI setup\n");
 		return ret;
 	}
@@ -207,43 +258,6 @@ static int siw_touch_spi_write(struct device *dev, void *msg)
 	return siw_touch_spi_do_write(to_spi_device(dev), (struct touch_bus_msg *)msg);
 }
 
-static int siw_touch_spi_cfg(struct spi_device *spi,
-					struct siw_touch_pdata *pdata)
-{
-	struct device *dev = &spi->dev;
-	u32 tmp;
-
-	spi->chip_select = 0;
-
-	tmp = pdata_bits_per_word(pdata);
-	if (tmp == ~0) {
-		t_dev_err(dev, "spi alloc: wrong spi setup: bits_per_word, %d\n", tmp);
-		return -EFAULT;
-	}
-	spi->bits_per_word = (u8)tmp;
-
-	tmp = pdata_spi_mode(pdata);
-	if (tmp == ~0) {
-		t_dev_err(dev, "spi alloc: wrong spi setup: spi_mode, %d\n", tmp);
-		return -EFAULT;
-	}
-	spi->mode = tmp;
-
-	tmp = pdata_max_freq(pdata);
-	if (spi_freq_out_of_range(tmp)) {
-		t_dev_err(dev, "spi alloc: wrong spi setup: max_freq, %d\n", tmp);
-		return -EFAULT;
-	}
-	spi->max_speed_hz = tmp;
-
-	t_dev_info(dev, "spi alloc: %d.%d Mhz, mode %d, bpw %d\n",
-			freq_to_mhz_unit(tmp),
-			freq_to_khz_top(tmp),
-			spi->mode, spi->bits_per_word);
-
-	return 0;
-}
-
 static struct siw_ts *siw_touch_spi_alloc(
 			struct spi_device *spi,
 			struct siw_touch_bus_drv *bus_drv)
@@ -288,17 +302,9 @@ static struct siw_ts *siw_touch_spi_alloc(
 		goto out_tr;
 	}
 
-	ret = siw_touch_spi_cfg(spi, pdata);
-	if (ret < 0) {
-		goto out_spi;
-	}
-
 	spi_set_drvdata(spi, ts);
 
 	return ts;
-
-out_spi:
-	siw_touch_bus_tr_data_free(ts);
 
 out_tr:
 

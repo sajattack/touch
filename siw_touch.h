@@ -521,6 +521,7 @@ struct siw_touch_bus_info {
 	u32 bus_type;
 	u32 buf_size;
 	/* */
+	u32 chip_select;
 	u32 spi_mode;
 	u32 bits_per_word;
 	u32 max_freq;
@@ -826,6 +827,11 @@ static inline u32 pdata_bus_type(struct siw_touch_pdata *pdata)
 static inline u32 pdata_buf_size(struct siw_touch_pdata *pdata)
 {
 	return pdata->bus_info.buf_size;
+}
+
+static inline u32 pdata_chip_select(struct siw_touch_pdata *pdata)
+{
+	return pdata->bus_info.chip_select;
 }
 
 static inline u32 pdata_spi_mode(struct siw_touch_pdata *pdata)
@@ -1351,6 +1357,11 @@ static inline u32 touch_bus_type(struct siw_ts *ts)
 static inline u32 touch_buf_size(struct siw_ts *ts)
 {
 	return pdata_buf_size(ts->pdata);
+}
+
+static inline u32 touch_chip_select(struct siw_ts *ts)
+{
+	return pdata_chip_select(ts->pdata);
 }
 
 static inline u32 touch_spi_mode(struct siw_ts *ts)
