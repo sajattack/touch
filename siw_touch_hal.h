@@ -695,7 +695,7 @@ static inline u32 siw_hal_boot_sts_mask_empty(struct siw_touch_chip *chip)
 	return mask;
 }
 
-extern u32 siw_hal_get_boot_status(struct device *dev, u32 *boot_st);
+extern int siw_hal_get_boot_status(struct device *dev, u32 *boot_st);
 
 extern int siw_hal_read_value(struct device *dev, u32 addr, u32 *value);
 extern int siw_hal_write_value(struct device *dev, u32 addr, u32 value);

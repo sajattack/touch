@@ -966,7 +966,7 @@ out:
 	return rdata;
 }
 
-u32 siw_hal_get_boot_status(struct device *dev, u32 *boot_st)
+int siw_hal_get_boot_status(struct device *dev, u32 *boot_st)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 //	struct siw_ts *ts = chip->ts;
