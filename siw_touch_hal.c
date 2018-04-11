@@ -3976,9 +3976,11 @@ static int siw_hal_upgrade_pre(struct device * dev)
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
 	struct siw_hal_reg *reg = chip->reg;
+	int ctrl = chip->tc_cmd_table[LCD_MODE_STOP];
+	u32 rdata;
 	int ret = 0;
 
-	if (!touch_mode_allowed(ts, LCD_MODE_STOP)) {
+	if ((ctrl < 0) || !touch_mode_allowed(ts, LCD_MODE_STOP)) {
 		goto out;
 	}
 
@@ -3987,8 +3989,13 @@ static int siw_hal_upgrade_pre(struct device * dev)
 	 * to avoid unexpected IRQ drop by internal watchdog
 	 */
 	ret = siw_hal_write_value(dev,
-			reg->tc_drive_ctl,
-			TC_DRIVE_CTL_STOP);
+				reg->tc_drive_ctl,
+				ctrl);
+	t_dev_info(dev, "FW upgrade: TC stop(%04Xh, 0x%08X)\n",
+			reg->tc_drive_ctl, ctrl);
+
+	rdata = chip->drv_delay + hal_dbg_delay(chip, HAL_DBG_DLY_TC_DRIVING_1);
+	touch_msleep(rdata);
 
 out:
 	return ret;
