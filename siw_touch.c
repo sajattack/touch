@@ -807,13 +807,14 @@ static void siw_touch_init_work_func(struct work_struct *work)
 			container_of(to_delayed_work(work),
 						struct siw_ts, init_work);
 	struct device *dev = ts->dev;
-	int do_fw_upgarde = 0;
+	int do_fw_upgrade = 0;
 	int ret = 0;
 
-	t_dev_dbg_base(dev, "init work start\n");
+	t_dev_info(dev, "%s init work start(%s)\n",
+		touch_chip_name(ts), SIW_DRV_VERSION);
 
 	if (atomic_read(&ts->state.core) == CORE_PROBE) {
-		do_fw_upgarde |= !!(ts->role.use_fw_upgrade);
+		do_fw_upgrade |= !!(ts->role.use_fw_upgrade);
 	}
 
 	mutex_lock(&ts->lock);
@@ -828,7 +829,7 @@ static void siw_touch_init_work_func(struct work_struct *work)
 		return;
 	} else if (ret == -ETDBOOTFAIL) {
 		/* boot fail detected, do fw_upgrade */
-		do_fw_upgarde |= 0x2;
+		do_fw_upgrade |= 0x2;
 	} else if (ret < 0) {
 		if (atomic_read(&ts->state.core) == CORE_PROBE) {
 			t_dev_err(dev, "%s init work failed(%d), try again\n",
@@ -843,8 +844,8 @@ static void siw_touch_init_work_func(struct work_struct *work)
 		return;
 	}
 
-	if (do_fw_upgarde) {
-		t_dev_info(dev, "Touch F/W upgrade triggered(%Xh)\n", do_fw_upgarde);
+	if (do_fw_upgrade) {
+		t_dev_info(dev, "Touch F/W upgrade triggered(%Xh)\n", do_fw_upgrade);
 		siw_touch_qd_upgrade_work_now(ts);
 		return;
 	}
@@ -1878,8 +1879,9 @@ int siw_touch_probe(struct siw_ts *ts)
 		LCD_EVENT_TOUCH_DRIVER_REGISTERED,
 		NULL);
 
-	t_dev_info(dev, "probe(%s) done\n",
-		(ts->is_charger) ? "charger" : "normal");
+	t_dev_info(dev, "probe(%s) done%s\n",
+		(ts->is_charger) ? "charger" : "normal",
+		(touch_flags(ts) & TOUCH_USE_PROBE_INIT_LATE) ? " (init_late on)": "");
 
 	return 0;
 
