@@ -917,10 +917,17 @@ static void siw_touch_upgrade_work_func(struct work_struct *work)
 	struct siw_ts *ts =
 			container_of(to_delayed_work(work),
 						struct siw_ts, upgrade_work);
+	struct device *dev = ts->dev;
+	int ret = 0;
 
-	if (siw_touch_upgrade_work(ts)) {
+	siw_touch_mon_pause(dev);
+
+	ret = siw_touch_upgrade_work(ts);
+	if (ret) {
 		siw_ops_reset(ts, HW_RESET_ASYNC);
 	}
+
+	siw_touch_mon_resume(dev);
 }
 
 static void siw_touch_fb_work_func(struct work_struct *work)
