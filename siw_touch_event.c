@@ -88,7 +88,8 @@ static void siw_touch_report_cancel_event(struct siw_ts *ts)
 			siw_input_report_key(input, BTN_TOUCH, 1);
 			siw_input_report_key(input, BTN_TOOL_FINGER, 1);
 			siw_input_report_abs(input, ABS_MT_PRESSURE, 255);
-			t_dev_info(&input->dev, "finger canceled <%d> (%4d, %4d, %4d)\n",
+			t_dev_info(ts->dev, "%s: finger canceled <%d> (%4d, %4d, %4d)\n",
+						dev_name(&input->dev),
 						i,
 						ts->tdata[i].x,
 						ts->tdata[i].y,
@@ -103,6 +104,7 @@ void siw_touch_report_event(void *ts_data)
 {
 	struct siw_ts *ts = ts_data;
 	struct input_dev *input = ts->input;
+	struct device *dev = ts->dev;
 	struct device *idev = NULL;
 	struct touch_data *tdata = NULL;
 	u16 old_mask = ts->old_mask;
@@ -154,12 +156,13 @@ void siw_touch_report_event(void *ts_data)
 			siw_input_report_abs(input, ABS_MT_ORIENTATION, tdata->orientation);
 
 			if (press_mask & (1 << i)) {
-				t_dev_dbg_button(idev, "%d finger press <%d> (%4d, %4d, %4d)\n",
+				t_dev_dbg_button(dev, "%s: %d finger press <%d> (%4d, %4d, %4d)\n",
+						dev_name(idev),
 						ts->tcount,
 						i,
-						ts->tdata[i].x,
-						ts->tdata[i].y,
-						ts->tdata[i].pressure);
+						tdata->x,
+						tdata->y,
+						tdata->pressure);
 			}
 
 			continue;
@@ -169,11 +172,12 @@ void siw_touch_report_event(void *ts_data)
 			input_mt_slot(input, i);
 			input_mt_report_slot_state(input, MT_TOOL_FINGER, false);
 		//	siw_input_report_abs(ts->input, ABS_MT_TRACKING_ID, -1);
-			t_dev_dbg_button(idev, "finger release <%d> (%4d, %4d, %4d)\n",
+			t_dev_dbg_button(dev, "%s: finger release <%d> (%4d, %4d, %4d)\n",
+					dev_name(idev),
 					i,
-					ts->tdata[i].x,
-					ts->tdata[i].y,
-					ts->tdata[i].pressure);
+					tdata->x,
+					tdata->y,
+					tdata->pressure);
 		}
 	}
 
@@ -477,8 +481,9 @@ int siw_touch_init_input(void *ts_data)
 	input_set_drvdata(input, ts);
 	ts->input = input;
 
-	t_dev_info(&input->dev, "input device[%s] registered\n", input->phys);
-	t_dev_info(&input->dev, "input caps : %d, %d, %d, %d, %d, %d, %d, 0x%X\n",
+	t_dev_info(dev, "input device[%s, %s] registered\n",
+			dev_name(&input->dev), input->phys);
+	t_dev_info(dev, "input caps : %d, %d, %d, %d, %d, %d, %d, 0x%X\n",
 			caps->max_x,
 			caps->max_y,
 			caps->max_pressure,
@@ -514,8 +519,7 @@ void siw_touch_free_input(void *ts_data)
 
 		ts->input = NULL;
 
-		t_dev_info(&input->dev, "input device[%s] released\n",
-					input->phys);
+		t_dev_info(dev, "input device[%s] released\n", phys_name);
 
 		input_unregister_device(input);
 
