@@ -7516,6 +7516,8 @@ static void siw_hal_mon_handler_self_reset(struct device *dev, char *title)
 
 	mutex_lock(&ts->lock);
 
+	mutex_lock(&ts->reset_lock);
+
 	snprintf(name, sizeof(name), "%s self-reset", title);
 
 	for (step = 0 ; step<ops_num ; step++, ops++) {
@@ -7530,6 +7532,8 @@ static void siw_hal_mon_handler_self_reset(struct device *dev, char *title)
 			break;
 		}
 	}
+
+	mutex_unlock(&ts->reset_lock);
 
 	if (ret < 0) {
 		t_mon_err(dev,
