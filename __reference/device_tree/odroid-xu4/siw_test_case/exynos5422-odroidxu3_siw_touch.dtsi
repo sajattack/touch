@@ -61,13 +61,15 @@
 
 /* I2C group */
 //#include "exynos5422-odroidxu3_siw_touch_lg4894.dtsi"
-//#include "exynos5422-odroidxu3_siw_touch_sw1828.dtsi"
 //#include "exynos5422-odroidxu3_siw_touch_sw46104.dtsi"
 //#include "exynos5422-odroidxu3_siw_touch_sw49105.dtsi
 #include "exynos5422-odroidxu3_siw_touch_sw49106.dtsi"
-//#include "exynos5422-odroidxu3_siw_touch_sw42101.dtsi"
 //#include "exynos5422-odroidxu3_siw_touch_lg4951_i2c.dtsi"
 //#include "exynos5422-odroidxu3_siw_touch_sw49501.dtsi"
+//#include "exynos5422-odroidxu3_siw_touch_sw1828.dtsi"
+//#include "exynos5422-odroidxu3_siw_touch_sw42101.dtsi"
+//#include "exynos5422-odroidxu3_siw_touch_sw42103.dtsi"
+//#include "exynos5422-odroidxu3_siw_touch_sw17700.dtsi"
 
 /* SPI group */
 //#include "exynos5422-odroidxu3_siw_touch_lg4895.dtsi"
