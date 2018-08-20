@@ -1,17 +1,28 @@
-[Last updated : 2016.12.12]
+[Last updated : 2018.08.21]
 
 ###################################################################################################
-# Preview                                                                                         #
+# Sysfs access                                                                                    #
 ###################################################################################################
 
-The SiW Touch Driver supports a kind of manual FW upgrade via sysfs atttr
+The SiW Touch Driver supports manual FW upgrade via sysfs atttr
 and there are two types of path setup.
-- Relative Path : via request_firmware API
 - Absolute Path : via filp_open API
+- Relative Path : via request_firmware API
 
 The basic command format for FW upgrade is like this
 # echo [Path type]/target_image.img > /sys/devices/virtual/input/lge_touch/fw_upgrade
 
+###################################################################################################
+# Absolute Path                                                                                   #
+###################################################################################################
+* This type uses general filp_open API and you are free to use any folders you want.
+  But, you have to type keyword and the accurate middle path.
+
+  # echo {root}/sdcard/firmware/target_image.img > /sys/devices/virtual/input/lge_touch/fw_upgrade
+  # echo {root}/data/target_image.img > /sys/devices/virtual/input/lge_touch/fw_upgrade
+
+* {root}
+  This is the keyword signal that let the driver know it is absolute path parameter.
 
 ###################################################################################################
 # Relative Path                                                                                   #
@@ -60,17 +71,72 @@ The basic command format for FW upgrade is like this
       > The request_firmware API will find the final target path '/lib/firmware/sdcard/firmware/'
         combining the base '/lib/firmare' and the symbloic link 'sdcard_firmware'
 
-###################################################################################################
-# Absolute Path                                                                                   #
-###################################################################################################
-* This type uses general filp_open API and you are free to use any folders you want.
-  But, you have to type keyword and the accurate middle path.
+---------------------------------------------------------------------------------------------------
 
-  # echo {root}/sdcard/firmware/target_image.img > /sys/devices/virtual/input/lge_touch/fw_upgrade
-  # echo {root}/data/target_image.img > /sys/devices/virtual/input/lge_touch/fw_upgrade
+###################################################################################################
+# Built-in with header file                                                                       #
+###################################################################################################
+* The Touch Driver also supports builtin configuration with binary image data
 
-* {root}
-  This is the keyword signal that let the driver know it's absolute path parameter.
+  (1) How to generate header file with fw image data
+    - General linux desktop(e.g. Ubuntu) supports 'xxd' command
+      $ xxd -i {input binary file} > {output header file}
+      ex)
+      $ xxd -i LA103WF5_0_01.img > LA103WF5_0_01.h
+
+    - Output header file format
+      <See LA103WF5_0_01.h>
+      unsigned char LA103WF5_0_01_img[] = {
+          0x38, 0x23, 0x00, 0x20, 0x61, 0x03, 0x00, 0x00, 0x69, 0x03, 0x00, 0x00,
+          ...
+      };
+      unsigned int LA103WF5_0_01_img_len = 66560;
+
+  (2) How to setup driver
+    - Entry configuration supports binary built-in setup
+      <See touch_xxxxx.c>
+
+      //Flag setup
+      #define CHIP_FLAGS    (0 |   \
+                            ...
+                            TOUCH_USE_FW_BINARY |  \
+                            ...
+                            0)
+      //FW header setup
+      #include "LA103WF5_0_01_img.h"
+
+      //Data configuration
+      struct siw_touch_fw_bin chip_fw_bin = {
+          .fw_data = LA103WF5_0_01_img,
+          .fw_size = sizeof(LA103WF5_0_01_img),
+      }
+
+      static struct siw_touch_pdata chip_pdata = {
+          ...
+          .fw_bin             = (void *)&chip_fw_bin,
+      },
+
+  (3) Manual access via sysfs
+      $ echo {bin} > /sys/devices/virtual/input/lge_touch/fw_upgrade
+
+* {bin}
+  This is the keyword signal that let the driver know it has to use built-in image data.
+
+---------------------------------------------------------------------------------------------------
+
+###################################################################################################
+# Automatic upgrade in probe stage                                                                #
+###################################################################################################
+* You can set automatic upgrade operation with DTS setup.
+
+  (1) Change this property in device tree,
+  
+      use_fw_upgrade = <1>,
+
+  (2) This enables automatic upgrade process when probe stage.
+
+  (3) But, this automatic scheme doesn't always upgrade fw actually.
+      It has version comparison scheme and skips upgrade unless the image is new.
 
 ---------------------------------------------------------------------------------------------------
 
