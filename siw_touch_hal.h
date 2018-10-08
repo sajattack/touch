@@ -473,9 +473,7 @@ struct siw_touch_chip_opt {
 	u32 f_flex_report:1;
 	u32 f_rsvd01:7;
 	/* */
-	u32 f_no_disp_sts:1;
-	u32 f_no_sram_ctl:1;
-	u32 f_rsvd02:6;
+	u32 f_rsvd02:8;
 	/* */
 	u32 f_rsvd03:8;
 	/* */

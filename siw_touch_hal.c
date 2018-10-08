@@ -970,13 +970,8 @@ static u32 siw_hal_get_subdisp_sts(struct device *dev)
 	struct siw_hal_reg *reg = chip->reg;
 	u32 rdata = LCD_MODE_U3;	//dummy value
 
-	if (chip->opt.f_no_disp_sts) {
-		goto out;
-	}
-
 	siw_hal_read_value_chk(dev, reg->spr_subdisp_status, &rdata);
 
-out:
 	return rdata;
 }
 
@@ -2841,10 +2836,6 @@ static int siw_hal_fw_sram_wr_enable(struct device *dev, int onoff)
 	struct siw_hal_reg *reg = chip->reg;
 	u32 data;
 	int ret = 0;
-
-	if (chip->opt.f_no_sram_ctl) {
-		return 0;
-	}
 
 #if 0
 	ret = siw_hal_read_value_chk(dev, reg->spr_sram_ctl, &data);
@@ -8013,9 +8004,6 @@ static void siw_hal_chipset_option(struct siw_touch_chip *chip)
 			opt->f_flex_report = 1;
 		}
 
-		opt->f_no_disp_sts = 1;
-		opt->f_no_sram_ctl = 1;
-
 		opt->t_boot_mode = 1;
 		opt->t_sts_mask = 3;
 		opt->t_sw_rst = 3;
@@ -8045,8 +8033,6 @@ static void siw_hal_chipset_option(struct siw_touch_chip *chip)
 	t_dev_info(dev, " f_dbg_report    : %d\n", opt->f_dbg_report);
 	t_dev_info(dev, " f_u2_blank_chg  : %d\n", opt->f_u2_blank_chg);
 	t_dev_info(dev, " f_flex_report   : %d\n", opt->f_flex_report);
-	t_dev_info(dev, " f_no_disp_sts   : %d\n", opt->f_no_disp_sts);
-	t_dev_info(dev, " f_no_sram_ctl   : %d\n", opt->f_no_sram_ctl);
 
 	t_dev_info(dev, " t_boot_mode     : %d\n", opt->t_boot_mode);
 	t_dev_info(dev, " t_sts_mask      : %d\n", opt->t_sts_mask);
