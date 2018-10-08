@@ -427,35 +427,57 @@ module_param_named(bus_dbg_mask, t_bus_dbg_mask, uint, S_IRUGO|S_IWUSR|S_IWGRP);
 #define t_hal_bus_dbg_trace(_dev, fmt, args...)	\
 		t_hal_bus_dbg(DBG_TRACE, _dev, fmt, ##args)
 
-static inline void __siw_hal_bus_dbg(struct device *dev, u32 addr, u8 *buf, int size,
-		int wr, int xfer)
+#define DBG_BUS_ERR_TRACE	DBG_GET_DATA
+
+static void __siw_hal_bus_err(struct device *dev,
+		u32 addr, u8 *buf, int size, int wr)
 {
-	if (!wr && !xfer &&
-		(size == sizeof(struct siw_hal_touch_info))) {
-		t_hal_bus_dbg_trace(dev, "%s(%s) 0x%04X, 0x%04X: %02X %02X %02X %02X %02X %02X %02X %02X%s\n",
-			(wr) ? "wr" : "rd",
-			(xfer) ? "x" : "s",
-			(u32)addr, (u32)size,
-			buf[0], buf[1],buf[2], buf[3],
-			buf[4], buf[5],buf[6], buf[7],
-			(size > 8) ? " ..." : "");
+	int prt_len = 0;
+	int prt_idx = 0;
+	int prd_sz = size;
+
+	if (!unlikely(t_bus_dbg_mask & DBG_BUS_ERR_TRACE)) {
 		return;
 	}
 
-	if (size > 4) {
-		t_hal_bus_dbg_base(dev, "%s(%s) 0x%04X, 0x%04X: %02X %02X %02X %02X %02X %02X %02X %02X%s\n",
-			(wr) ? "wr" : "rd",
-			(xfer) ? "x" : "s",
-			(u32)addr, (u32)size,
-			buf[0], buf[1],buf[2], buf[3],
-			buf[4], buf[5],buf[6], buf[7],
-			(size > 8) ? " ..." : "");
-	} else {
-		t_hal_bus_dbg_base(dev, "%s(%s) 0x%04X, 0x%04X: %02X %02X %02X %02X\n",
-			(wr) ? "wr" : "rd",
-			(xfer) ? "x" : "s",
-			(u32)addr, (u32)size,
-			buf[0], buf[1],buf[2], buf[3]);
+	while (size) {
+		prt_len = min(size, 16);
+
+		t_hal_bus_err(dev,
+				"%s 0x%04X, 0x%04X buf[%3d~%3d] %*ph\n",
+				(wr) ? "wr" : "rd",
+				(u32)addr, (u32)prd_sz,
+				prt_idx, prt_idx + prt_len - 1,
+				prt_len, &buf[prt_idx]);
+
+		size -= prt_len;
+		prt_idx += prt_len;
+	}
+}
+
+static void __siw_hal_bus_dbg(struct device *dev,
+		u32 addr, u8 *buf, int size, int wr)
+{
+	int prt_len = 0;
+	int prt_idx = 0;
+	int prd_sz = size;
+
+	if (!unlikely(t_bus_dbg_mask & DBG_TRACE)) {
+		return;
+	}
+
+	while (size) {
+		prt_len = min(size, 16);
+
+		t_hal_bus_dbg_trace(dev,
+				"%s 0x%04X, 0x%04X buf[%3d~%3d] %*ph\n",
+				(wr) ? "wr" : "rd",
+				(u32)addr, (u32)prd_sz,
+				prt_idx, prt_idx + prt_len - 1,
+				prt_len, &buf[prt_idx]);
+
+		size -= prt_len;
+		prt_idx += prt_len;
 	}
 }
 
@@ -641,14 +663,17 @@ static int __used __siw_hal_do_reg_read(struct device *dev, u32 addr, void *data
 
 	ret = siw_touch_bus_read(dev, msg);
 	if (ret < 0) {
-		t_dev_err(dev, "touch bus read error(0x%04X, 0x%04X), %d\n",
-				(u32)addr, (u32)size, ret);
+		t_hal_bus_err(dev, "read reg error(0x%04X, 0x%04X, %*ph), %d\n",
+				(u32)addr, (u32)size,
+				tx_size, tx_buf,
+				ret);
+		__siw_hal_bus_err(dev, addr, (u8 *)msg->rx_buf, msg->rx_size, 0);
 		return ret;
 	}
 
 	memcpy(data, &rx_buf[bus_rx_hdr_size], size);
 
-	__siw_hal_bus_dbg(dev, addr, (u8 *)data, size, 0, 0);
+	__siw_hal_bus_dbg(dev, addr, (u8 *)data, size, 0);
 
 	return size;
 }
@@ -718,12 +743,17 @@ static int __used __siw_hal_do_reg_write(struct device *dev, u32 addr, void *dat
 
 	ret = siw_touch_bus_write(dev, msg);
 	if (ret < 0) {
-		t_dev_err(dev, "touch bus write error(0x%04X, 0x%04X), %d\n",
-				(u32)addr, (u32)size, ret);
+		t_hal_bus_err(dev, "write reg error(0x%04X, 0x%04X, %*ph - %*ph%s), %d\n",
+				(u32)addr, (u32)size,
+				bus_tx_hdr_size, tx_buf,
+				min(size, 8), data,
+				(size > 8) ? " ..." : "",
+				ret);
+		__siw_hal_bus_err(dev, addr, (u8 *)data, size, 1);
 		return ret;
 	}
 
-	__siw_hal_bus_dbg(dev, addr, (u8 *)data, size, 1, 0);
+	__siw_hal_bus_dbg(dev, addr, (u8 *)data, size, 1);
 
 	return size;
 }
@@ -742,38 +772,22 @@ static int __used __siw_hal_reg_write(struct device *dev, u32 addr, void *data, 
 
 int siw_hal_read_value(struct device *dev, u32 addr, u32 *value)
 {
-	int ret = __siw_hal_reg_read(dev, addr, value, sizeof(u32));
-	if (ret < 0)
-		t_hal_bus_err(dev, "read val err[%03Xh, 0x%X], %d",
-				addr, *value, ret);
-	return ret;
+	return __siw_hal_reg_read(dev, addr, value, sizeof(u32));
 }
 
 int siw_hal_write_value(struct device *dev, u32 addr, u32 value)
 {
-	int ret = __siw_hal_reg_write(dev, addr, &value, sizeof(u32));
-	if (ret < 0)
-		t_hal_bus_err(dev, "write val err[%03Xh, 0x%X], %d",
-				addr, value, ret);
-	return ret;
+	return __siw_hal_reg_write(dev, addr, &value, sizeof(u32));
 }
 
 int siw_hal_reg_read(struct device *dev, u32 addr, void *data, int size)
 {
-	int ret = __siw_hal_reg_read(dev, addr, data, size);
-	if (ret < 0)
-		t_hal_bus_err(dev, "read reg err[%03Xh, 0x%X], %d",
-				addr, ((u32 *)data)[0], ret);
-	return ret;
+	return __siw_hal_reg_read(dev, addr, data, size);
 }
 
 int siw_hal_reg_write(struct device *dev, u32 addr, void *data, int size)
 {
-	int ret = __siw_hal_reg_write(dev, addr, data, size);
-	if (ret < 0)
-		t_hal_bus_err(dev, "write reg err[%03Xh, 0x%X], %d",
-				addr, ((u32 *)data)[0], ret);
-	return ret;
+	return __siw_hal_reg_write(dev, addr, data, size);
 }
 
 int siw_hal_read_value_chk(struct device *dev, u32 addr, u32 *value)
