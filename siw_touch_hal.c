@@ -2456,7 +2456,7 @@ static int siw_hal_init(struct device *dev)
 	}
 
 out:
-	if (ret) {
+	if (ret < 0) {
 		t_dev_err(dev, "%s init failed, %d\n",
 			touch_chip_name(ts), ret);
 	} else {
