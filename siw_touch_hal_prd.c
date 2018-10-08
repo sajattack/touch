@@ -4459,9 +4459,10 @@ static int prd_show_prd_get_data_raw_core(struct device *dev,
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
 	struct siw_hal_prd_data *prd = (struct siw_hal_prd_data *)ts->prd;
+	int do_fw_ctrl = !!(cmd != IT_DONT_USE_CMD);
 	int ret = 0;
 
-	if (cmd != IT_DONT_USE_CMD) {
+	if (do_fw_ctrl) {
 		ret = prd_stop_firmware(prd, cmd, flag);
 		if (ret < 0) {
 			goto out;
@@ -4474,6 +4475,13 @@ static int prd_show_prd_get_data_raw_core(struct device *dev,
 	ret = prd_read_raw_memory(prd, offset, buf, size);
 	if (ret < 0) {
 		goto out;
+	}
+
+	if (do_fw_ctrl) {
+		ret = prd_start_firmware(prd);
+		if (ret < 0) {
+			goto out;
+		}
 	}
 
 out:
@@ -4641,11 +4649,6 @@ static int prd_show_prd_get_data_raw_ait(struct device *dev)
 
 	prd_print_rawdata(prd, prd->buf_write, M2_EVEN_DATA, log_size, 0);
 
-	ret = prd_start_firmware(prd);
-	if (ret < 0) {
-		goto out;
-	}
-
 out:
 	return ret;
 }
@@ -4707,11 +4710,6 @@ static int prd_show_prd_get_data_ait_basedata(struct device *dev)
 	#if !defined(__PRD_LOG_VIA_SHELL)
 		log_size = 0;
 	#endif
-
-		ret = prd_start_firmware(prd);
-		if (ret < 0) {
-			goto out;
-		}
 	}
 
 out:
@@ -4780,11 +4778,6 @@ static int prd_show_prd_get_data_filtered_deltadata(struct device *dev)
 
 	prd_print_rawdata(prd, prd->buf_write, M2_EVEN_DATA, log_size, 0);
 
-	ret = prd_start_firmware(prd);
-	if (ret < 0) {
-		goto out;
-	}
-
 out:
 	return ret;
 };
@@ -4850,11 +4843,6 @@ static int prd_show_prd_get_data_deltadata(struct device *dev)
 	}
 
 	prd_print_rawdata(prd, prd->buf_write, M2_EVEN_DATA, log_size, 0);
-
-	ret = prd_start_firmware(prd);
-	if (ret < 0) {
-		goto out;
-	}
 
 out:
 	return ret;
@@ -4923,11 +4911,6 @@ static int prd_show_prd_get_data_labeldata(struct device *dev)
 	}
 
 	prd_print_rawdata(prd, prd->buf_write, LABEL_DATA, log_size, 0);
-
-	ret = prd_start_firmware(prd);
-	if (ret < 0) {
-		goto out;
-	}
 
 out:
 	return ret;
