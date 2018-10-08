@@ -76,7 +76,7 @@ static int siw_touch_i2c_init(struct device *dev)
 static int siw_touch_do_i2c_read(struct i2c_client *client,
 							struct touch_bus_msg *msg)
 {
-//	struct siw_ts *ts = (struct siw_ts *)i2c_get_clientdata(client);
+	struct siw_ts *ts = (struct siw_ts *)i2c_get_clientdata(client);
 	struct i2c_msg msgs[] = {
 		{
 			.addr = client->addr,
@@ -91,10 +91,11 @@ static int siw_touch_do_i2c_read(struct i2c_client *client,
 			.buf = msg->rx_buf,
 		},
 	};
+	int max_buf_size = touch_get_act_buf_size(ts);
 	int ret = 0;
 
-	if ((msg->rx_size > SIW_TOUCH_MAX_BUF_SIZE) ||
-		(msg->tx_size > SIW_TOUCH_MAX_BUF_SIZE)) {
+	if ((msg->rx_size > max_buf_size) ||
+		(msg->tx_size > max_buf_size)) {
 		t_dev_err(&client->dev, "i2c rd: buffer overflow - rx %Xh, tx %Xh\n",
 			msg->rx_size, msg->tx_size);
 		return -EOVERFLOW;
@@ -120,7 +121,7 @@ static int siw_touch_i2c_read(struct device *dev, void *msg)
 int siw_touch_do_i2c_write(struct i2c_client *client,
 						struct touch_bus_msg *msg)
 {
-//	struct siw_ts *ts = (struct siw_ts *)i2c_get_clientdata(client);
+	struct siw_ts *ts = (struct siw_ts *)i2c_get_clientdata(client);
 	struct i2c_msg msgs[] = {
 		{
 			.addr = client->addr,
@@ -129,9 +130,10 @@ int siw_touch_do_i2c_write(struct i2c_client *client,
 			.buf = msg->tx_buf,
 		},
 	};
+	int max_buf_size = touch_get_act_buf_size(ts);
 	int ret = 0;
 
-	if (msg->tx_size > SIW_TOUCH_MAX_BUF_SIZE) {
+	if (msg->tx_size > max_buf_size) {
 		t_dev_err(&client->dev, "i2c wr: buffer overflow - tx %Xh\n",
 			msg->tx_size);
 		return -EOVERFLOW;

@@ -331,7 +331,8 @@ int siw_touch_bus_alloc_buffer(struct siw_ts *ts)
 	if (!buf_size) {
 		buf_size = SIW_TOUCH_MAX_BUF_SIZE;
 	}
-	touch_set_act_buf_size(ts, buf_size);
+	/* add margin for bus header */
+	touch_set_act_buf_size(ts, buf_size + 32);
 
 	t_dev_dbg_base(dev, "allocate touch bus buffer\n");
 

@@ -168,7 +168,7 @@ static int siw_touch_spi_init(struct device *dev)
 static int siw_touch_spi_do_read(struct spi_device *spi,
 							struct touch_bus_msg *msg)
 {
-//	struct siw_ts *ts = spi_get_drvdata(spi);
+	struct siw_ts *ts = spi_get_drvdata(spi);
 	struct spi_transfer x = {
 		.cs_change = 0,
 		.bits_per_word = spi->bits_per_word,
@@ -176,14 +176,15 @@ static int siw_touch_spi_do_read(struct spi_device *spi,
 		.speed_hz = spi->max_speed_hz,
 	};
 	struct spi_message m;
+	int max_buf_size = touch_get_act_buf_size(ts);
 	int ret = 0;
 
 	/*
 	 * Bus control can need to be modifyed up to main chipset sepc.
 	 */
 
-	if ((msg->rx_size > SIW_TOUCH_MAX_BUF_SIZE) ||
-		(msg->tx_size > SIW_TOUCH_MAX_BUF_SIZE)) {
+	if ((msg->rx_size > max_buf_size) ||
+		(msg->tx_size > max_buf_size)) {
 		t_dev_err(&spi->dev, "spi rd: buffer overflow - rx %Xh, tx %Xh\n",
 			msg->rx_size, msg->tx_size);
 		return -EOVERFLOW;
@@ -215,7 +216,7 @@ static int siw_touch_spi_read(struct device *dev, void *msg)
 int siw_touch_spi_do_write(struct spi_device *spi,
 						struct touch_bus_msg *msg)
 {
-//	struct siw_ts *ts = spi_get_drvdata(spi);
+	struct siw_ts *ts = spi_get_drvdata(spi);
 	struct spi_transfer x = {
 		.cs_change = 0,
 		.bits_per_word = spi->bits_per_word,
@@ -223,13 +224,14 @@ int siw_touch_spi_do_write(struct spi_device *spi,
 		.speed_hz = spi->max_speed_hz,
 	};
 	struct spi_message m;
+	int max_buf_size = touch_get_act_buf_size(ts);
 	int ret = 0;
 
 	/*
 	 * Bus control can need to be modifyed up to main chipset sepc.
 	 */
 
-	if (msg->tx_size > SIW_TOUCH_MAX_BUF_SIZE) {
+	if (msg->tx_size > max_buf_size) {
 		t_dev_err(&spi->dev, "spi wr: buffer overflow - tx %Xh\n",
 			msg->tx_size);
 		return -EOVERFLOW;
