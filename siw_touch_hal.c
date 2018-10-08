@@ -7848,20 +7848,24 @@ static void siw_hal_tc_cmd_set_default(struct siw_touch_chip *chip)
 
 static void siw_hal_tc_cmd_set(struct siw_touch_chip *chip)
 {
-	struct siw_ts *ts = chip->ts;
-	struct device *dev = chip->dev;
-	int *tc_cmd_table = chip->tc_cmd_table;
-	char *mode_str = NULL;
-	char *ext_str = NULL;
-	int ctrl = 0;
 	int t_tc_cmd = chip->opt.t_tc_cmd;
-	int i = 0;
 
 	switch (t_tc_cmd) {
 	default:
 		siw_hal_tc_cmd_set_default(chip);
 		break;
 	}
+}
+
+static void siw_hal_show_tc_cmd_set(struct siw_touch_chip *chip)
+{
+	struct siw_ts *ts = chip->ts;
+	struct device *dev = chip->dev;
+	int *tc_cmd_table = chip->tc_cmd_table;
+	char *mode_str = NULL;
+	char *ext_str = NULL;
+	int ctrl = 0;
+	int i = 0;
 
 	t_dev_info(dev, "[tc cmd set] (mode bit %04Xh)\n",
 		ts->mode_allowed);
@@ -7885,7 +7889,7 @@ static void siw_hal_tc_cmd_set(struct siw_touch_chip *chip)
 
 static void siw_hal_chipset_option(struct siw_touch_chip *chip)
 {
-	struct device *dev = chip->dev;
+//	struct device *dev = chip->dev;
 	struct siw_touch_chip_opt *opt = &chip->opt;
 	struct siw_ts *ts = chip->ts;
 
@@ -8024,6 +8028,14 @@ static void siw_hal_chipset_option(struct siw_touch_chip *chip)
 		break;
 	}
 
+	siw_hal_tc_cmd_set(chip);
+}
+
+static void siw_hal_show_chipset_option(struct siw_touch_chip *chip)
+{
+	struct device *dev = chip->dev;
+	struct siw_touch_chip_opt *opt = &chip->opt;
+
 	t_dev_info(dev, "[opt summary]\n");
 	t_dev_info(dev, " f_info_more     : %d\n", opt->f_info_more);
 	t_dev_info(dev, " f_ver_ext       : %d\n", opt->f_ver_ext);
@@ -8057,7 +8069,7 @@ static void siw_hal_chipset_option(struct siw_touch_chip *chip)
 	t_dev_info(dev, " mode_qcover     : %s\n",
 		(chip->mode_allowed_qcover) ? "enabled" : "disabled");
 
-	siw_hal_tc_cmd_set(chip);
+	siw_hal_show_tc_cmd_set(chip);
 }
 
 static void siw_hal_chipset_quirks(struct siw_touch_chip *chip)
@@ -8136,6 +8148,8 @@ static int siw_hal_probe(struct device *dev)
 	if (ret < 0) {
 		goto out;
 	}
+
+	siw_hal_show_chipset_option(chip);
 
 	if (ts->is_charger) {
 		ret = siw_hal_init_charger(dev);
