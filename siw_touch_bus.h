@@ -125,10 +125,6 @@ extern int siw_touch_bus_init(struct device *dev);
 extern int siw_touch_bus_read(struct device *dev, struct touch_bus_msg *msg);
 extern int siw_touch_bus_write(struct device *dev, struct touch_bus_msg *msg);
 
-extern void siw_touch_bus_err_dump_data(struct device *dev,
-							u8 *buf, int len,
-							int idx, char *name);
-
 extern int siw_touch_bus_add_driver(struct siw_touch_chip_data *chip_data);
 extern int siw_touch_bus_del_driver(struct siw_touch_chip_data *chip_data);
 

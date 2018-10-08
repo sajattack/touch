@@ -69,29 +69,6 @@ static int siw_touch_spi_sync(struct spi_device *spi,
 	return spi_sync(spi, m);
 }
 
-static void siw_touch_spi_err_dump(struct spi_device *spi,
-							struct spi_transfer *xs, int num,
-							int _read)
-{
-	struct spi_transfer *x = xs;
-	int i;
-
-	t_dev_err(&spi->dev, "spi transfer err :\n");
-	for (i = 0; i < num; i++) {
-		t_dev_err(&spi->dev,
-				" x[%d] - len %d, cs %d, bpw %d\n",
-				i,
-				x->len, x->cs_change, spi->bits_per_word);
-		siw_touch_bus_err_dump_data(&spi->dev,
-					(char *)x->tx_buf, x->len, i, "t");
-		if (_read) {
-			siw_touch_bus_err_dump_data(&spi->dev,
-						(char *)x->rx_buf, x->len, i, "r");
-		}
-		x++;
-	}
-}
-
 static int siw_touch_spi_check(struct spi_device *spi,
 					u32 bits, u32 mode, u32 freq)
 {
@@ -179,10 +156,6 @@ static int siw_touch_spi_do_read(struct spi_device *spi,
 	int max_buf_size = touch_get_act_buf_size(ts);
 	int ret = 0;
 
-	/*
-	 * Bus control can need to be modifyed up to main chipset sepc.
-	 */
-
 	if ((msg->rx_size > max_buf_size) ||
 		(msg->tx_size > max_buf_size)) {
 		t_dev_err(&spi->dev, "spi rd: buffer overflow - rx %Xh, tx %Xh\n",
@@ -201,9 +174,8 @@ static int siw_touch_spi_do_read(struct spi_device *spi,
 	siw_touch_spi_message_add_tail(spi, &x, &m);
 
 	ret = siw_touch_spi_sync(spi, &m);
+
 	siwmon_submit_bus_spi_read(spi, msg, ret);
-	if (ret < 0)
-		siw_touch_spi_err_dump(spi, &x, 1, 1);
 
 	return ret;
 }
@@ -227,10 +199,6 @@ int siw_touch_spi_do_write(struct spi_device *spi,
 	int max_buf_size = touch_get_act_buf_size(ts);
 	int ret = 0;
 
-	/*
-	 * Bus control can need to be modifyed up to main chipset sepc.
-	 */
-
 	if (msg->tx_size > max_buf_size) {
 		t_dev_err(&spi->dev, "spi wr: buffer overflow - tx %Xh\n",
 			msg->tx_size);
@@ -248,9 +216,8 @@ int siw_touch_spi_do_write(struct spi_device *spi,
 	siw_touch_spi_message_add_tail(spi, &x, &m);
 
 	ret = siw_touch_spi_sync(spi, &m);
+
 	siwmon_submit_bus_spi_write(spi, msg, ret);
-	if (ret < 0)
-		siw_touch_spi_err_dump(spi, &x, 1, 0);
 
 	return ret;
 }

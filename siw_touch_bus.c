@@ -411,55 +411,6 @@ int siw_touch_bus_write(struct device *dev, struct touch_bus_msg *msg)
 	return ts->bus_write(dev, msg);
 }
 
-enum {
-	SIW_BUS_ERR_PRT_BOUNDARY	= 16,
-	SIW_BUS_ERR_PRT_BUF_SZ		= 128,
-};
-void siw_touch_bus_err_dump_data(struct device *dev,
-							u8 *buf, int len,
-							int idx, char *name)
-{
-	char __prt_buf[SIW_BUS_ERR_PRT_BUF_SZ + 1] = {0, };
-	char *prt_buf;
-	int prt_len;
-	int prt_pos = 0;
-	int prt_idx;
-	int cnt, total;
-	int i, k;
-
-	if (!buf || !len)
-		return;
-
-	cnt = (len + SIW_BUS_ERR_PRT_BOUNDARY - 1)/SIW_BUS_ERR_PRT_BOUNDARY;
-	total = cnt;
-
-	prt_idx = 0;
-	for (i = 0; i < cnt; i++) {
-		prt_len = min(len, SIW_BUS_ERR_PRT_BOUNDARY);
-		prt_buf = __prt_buf;
-		prt_pos = 0;
-		for (k = 0; k < prt_len; k++) {
-			prt_pos += snprintf(prt_buf + prt_pos,
-							SIW_BUS_ERR_PRT_BUF_SZ - prt_pos,
-							"%02X ",
-							buf[prt_idx+k]);
-			if (prt_pos >= SIW_BUS_ERR_PRT_BUF_SZ) {
-				cnt = 0;
-				break;
-			}
-		}
-		t_dev_err(dev,
-				" - %s[%d] buf[%3d~%3d] %s\n",
-				name, idx,
-				prt_idx,
-				prt_idx + prt_len - 1,
-				__prt_buf);
-
-		len -= prt_len;
-		prt_idx += prt_len;
-	}
-}
-
 
 static const struct siw_op_dbg siw_bus_init_ops[2][2] = {
 	[BUS_IF_I2C] = {

@@ -51,23 +51,6 @@
 		siwmon_submit_bus(&_client->dev, "I2C_W", _data, _ret)
 
 
-static void siw_touch_i2c_err_dump(struct i2c_client *client,
-							struct i2c_msg *msgs, int num)
-{
-	struct i2c_msg *msg = msgs;
-	int i;
-
-	t_dev_err(&client->dev, "i2c transfer err : ");
-	for (i = 0; i < num; i++) {
-		t_dev_err(&client->dev,
-				" - msgs[%d] : client 0x%04X, flags 0x%04X, len %d\n",
-				i, msg->addr, msg->flags, msg->len);
-		siw_touch_bus_err_dump_data(&client->dev,
-					msg->buf, msg->len, i, "msgs");
-		msg++;
-	}
-}
-
 static int siw_touch_i2c_init(struct device *dev)
 {
 	return 0;
@@ -101,14 +84,9 @@ static int siw_touch_do_i2c_read(struct i2c_client *client,
 		return -EOVERFLOW;
 	}
 
-	/*
-	 * Bus control can need to be modifyed up to main chipset sepc.
-	 */
-
 	ret = i2c_transfer(client->adapter, msgs, 2);
+
 	siwmon_submit_bus_i2c_read(client, msg, ret);
-	if (ret < 0)
-		siw_touch_i2c_err_dump(client, msgs, 2);
 
 	return ret;
 }
@@ -139,14 +117,9 @@ int siw_touch_do_i2c_write(struct i2c_client *client,
 		return -EOVERFLOW;
 	}
 
-	/*
-	 * Bus control can need to be modifyed up to main chipset sepc.
-	 */
-
 	ret = i2c_transfer(client->adapter, msgs, 1);
+
 	siwmon_submit_bus_i2c_write(client, msg, ret);
-	if (ret < 0)
-		siw_touch_i2c_err_dump(client, msgs, 1);
 
 	return ret;
 }
