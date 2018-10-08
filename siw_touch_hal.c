@@ -4188,20 +4188,29 @@ static int siw_hal_upgrade(struct device *dev)
 	ret_val = siw_hal_fw_compare(dev, fw_buf);
 	if (ret_val < 0) {
 		ret = ret_val;
-	} else if (ret_val) {
-		siw_hal_upgrade_pre(dev);
+		goto out_fw;
+	}
 
-		touch_msleep(200);
-		for (i = 0; i < 2 && ret; i++) {
-			ret = siw_hal_fw_upgrade(dev, fw_buf, fw_size, i);
-		}
+	if (!ret_val) {
+		goto out_fw;
+	}
+
+	ret_val = siw_hal_upgrade_pre(dev);
+	if (ret_val < 0) {
+		ret = ret_val;
+		goto out_fw;
+	}
+
+	touch_msleep(100);
+	for (i = 0; (i < 2) && (ret < 0); i++) {
+		ret = siw_hal_fw_upgrade(dev, fw_buf, fw_size, i);
 	}
 
 out_fw:
 	siw_hal_fw_release_firm(dev, fw);
 
 out:
-	if (ret) {
+	if (ret < 0) {
 		siwmon_submit_ops_step_chip_wh_name(dev, "%s - FW upgrade halted",
 				touch_chip_name(ts), ret);
 	} else {
