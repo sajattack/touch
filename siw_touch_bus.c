@@ -182,33 +182,26 @@ int siw_touch_bus_pin_put(struct siw_ts *ts)
 void *siw_touch_bus_create_bus_drv(int bus_type)
 {
 	struct siw_touch_bus_drv *bus_drv;
+	struct siw_touch_pdata *pdata;
 
-	bus_drv = kzalloc(sizeof(*bus_drv), GFP_KERNEL);
+	bus_drv = kzalloc(sizeof(*bus_drv) + sizeof(*pdata), GFP_KERNEL);
 	if (!bus_drv) {
 		t_pr_err("faied to allocate bus_drv(%d)\n", bus_type);
+		return NULL;
 	}
+
+	pdata = (struct siw_touch_pdata *)(((u8 *)bus_drv) + sizeof(*bus_drv));
+
+	bus_drv->pdata = pdata;
+
 	return bus_drv;
 }
 
 void siw_touch_bus_free_bus_drv(void *bus_drv)
 {
-	kfree(bus_drv);
-}
-
-void *siw_touch_bus_create_bus_pdata(int bus_type)
-{
-	struct siw_touch_pdata *pdata;
-
-	pdata = kzalloc(sizeof(*pdata), GFP_KERNEL);
-	if (!pdata) {
-		t_pr_err("faied to allocate pdata(%d)\n", bus_type);
+	if (bus_drv) {
+		kfree(bus_drv);
 	}
-	return pdata;
-}
-
-void siw_touch_bus_free_bus_pdata(void *pdata)
-{
-	kfree(pdata);
 }
 
 static void *__buffer_alloc(struct device *dev, size_t size,

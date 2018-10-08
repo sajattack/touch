@@ -336,22 +336,15 @@ int siw_touch_i2c_add_driver(void *data)
 	bus_type = pdata_bus_type((struct siw_touch_pdata *)chip_data->pdata);
 
 	bus_drv = siw_touch_bus_create_bus_drv(bus_type);
-	if (!bus_drv) {
-		ret = -ENOMEM;
-		goto out_drv;
+	if (bus_drv == NULL) {
+		return -ENOMEM;
 	}
 
-	pdata = siw_touch_bus_create_bus_pdata(bus_type);
-	if (!pdata) {
-		ret = -ENOMEM;
-		goto out_pdata;
-	}
+	pdata = bus_drv->pdata;
 
 	memcpy(pdata, chip_data->pdata, sizeof(*pdata));
 
 	drv_name = pdata_drv_name(pdata);
-
-	bus_drv->pdata = pdata;
 
 	i2c_drv = &bus_drv->bus.i2c_drv;
 	i2c_drv->driver.name = drv_name;
@@ -364,7 +357,7 @@ int siw_touch_i2c_add_driver(void *data)
 	i2c_drv->probe = siw_touch_i2c_probe;
 	i2c_drv->remove = siw_touch_i2c_remove;
 	i2c_drv->id_table = siw_touch_i2c_id;
-	if (drv_name) {
+	if (drv_name != NULL) {
 		memset((void *)siw_touch_i2c_id[0].name, 0, I2C_NAME_SIZE);
 		snprintf((char *)siw_touch_i2c_id[0].name,
 				I2C_NAME_SIZE,
@@ -376,20 +369,15 @@ int siw_touch_i2c_add_driver(void *data)
 	if (ret) {
 		t_pr_err("i2c_register_driver[%s] failed, %d\n",
 				drv_name, ret);
-		goto out_client;
+		goto out;
 	}
 
 	chip_data->bus_drv = bus_drv;
 
 	return 0;
 
-out_client:
-	siw_touch_bus_free_bus_pdata(pdata);
-
-out_pdata:
+out:
 	siw_touch_bus_free_bus_drv(bus_drv);
-
-out_drv:
 
 	return ret;
 }
@@ -406,16 +394,15 @@ int siw_touch_i2c_del_driver(void *data)
 	}
 
 	bus_drv = (void *)chip_data->bus_drv;
-	if (bus_drv) {
-		i2c_del_driver(&((struct siw_touch_bus_drv *)bus_drv)->bus.i2c_drv);
-
-		if (bus_drv->pdata) {
-			siw_touch_bus_free_bus_pdata(bus_drv->pdata);
-		}
-
-		siw_touch_bus_free_bus_drv(bus_drv);
-		chip_data->bus_drv = NULL;
+	if (bus_drv == NULL) {
+		return 0;
 	}
+
+	i2c_del_driver(&bus_drv->bus.i2c_drv);
+
+	siw_touch_bus_free_bus_drv(bus_drv);
+
+	chip_data->bus_drv = NULL;
 
 	return 0;
 }
