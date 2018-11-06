@@ -3887,7 +3887,7 @@ static int siw_hal_fw_do_get_fw_abs(const struct firmware **fw_p,
 		*fw_p = fw;
 	}
 
-	filp_close(filp, 0);
+	filp_close(filp, NULL);
 
 	return 0;
 
@@ -3898,7 +3898,7 @@ out:
 	if (fw)
 		kfree(fw);
 
-	filp_close(filp, 0);
+	filp_close(filp, NULL);
 
 	return ret;
 }
