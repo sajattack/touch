@@ -63,7 +63,7 @@ u32 t_pr_dbg_mask = DBG_NONE | DBG_INFO;
 u32 t_dev_dbg_mask = DBG_NONE | DBG_BASE | DBG_INFO | DBG_GPIO | DBG_OF;
 #else
 u32 t_pr_dbg_mask = DBG_NONE;
-u32 t_dev_dbg_mask = DBG_NONE;
+u32 t_dev_dbg_mask = DBG_NONE | DBG_BUTTON;
 /*
  * DBG_NONE | DBG_BASE | DBG_IRQ | DBG_NOTI | DBG_EVENT = 201326721(0xC000081)
  */
