@@ -7612,13 +7612,15 @@ static void siw_hal_mon_handler_self_reset(struct device *dev, char *title)
 	int step;
 	int ret = 0;
 
-	if (siw_hal_mon_handler_skip(dev)) {
-		return;
-	}
-
 	mutex_lock(&ts->lock);
 
 	mutex_lock(&ts->reset_lock);
+
+	if (siw_hal_mon_handler_skip(dev)) {
+		mutex_unlock(&ts->reset_lock);
+		mutex_unlock(&ts->lock);
+		return;
+	}
 
 	snprintf(name, sizeof(name), "%s self-reset", title);
 
