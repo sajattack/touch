@@ -1399,6 +1399,11 @@ static struct file __used *prd_vfs_file_open(struct siw_hal_prd_data *prd,
 	return filp;
 }
 
+static int __used prd_vfs_file_close(struct file *filp, fl_owner_t id)
+{
+	return filp_close(filp, id);
+}
+
 static int __used prd_vfs_file_chk(struct siw_hal_prd_data *prd,
 				char *fname,
 				int flags,
@@ -1424,15 +1429,10 @@ static int __used prd_vfs_file_chk(struct siw_hal_prd_data *prd,
 	}
 
 out_close:
-	filp_close(filp, 0);
+	prd_vfs_file_close(filp, NULL);
 
 out:
 	return ret;
-}
-
-static void __used prd_vfs_file_close(struct file *filp, fl_owner_t id)
-{
-	filp_close(filp, id);
 }
 
 
@@ -1537,11 +1537,7 @@ static int prd_vfs_remove(struct siw_hal_prd_data *prd,
 		goto out;
 	}
 
-	prd_vfs_file_close(filp, 0);
-
-	if (ret < 0) {
-		goto out;
-	}
+	prd_vfs_file_close(filp, NULL);
 
 	/*
 	 * Step 2. Remove target file
@@ -1591,11 +1587,7 @@ static int prd_vfs_rename(struct siw_hal_prd_data *prd,
 		goto out;
 	}
 
-	prd_vfs_file_close(filp, 0);
-
-	if (ret < 0) {
-		goto out;
-	}
+	prd_vfs_file_close(filp, NULL);
 
 	/*
 	 * Step 2. pathname_new
@@ -1703,7 +1695,7 @@ static int prd_vfs_remove(struct siw_hal_prd_data *prd,
 
 	fentry = filp->f_path.dentry;
 
-	prd_vfs_file_close(filp, 0);
+	prd_vfs_file_close(filp, NULL);
 
 	/*
 	 * Step 2. Remove target file
@@ -1731,7 +1723,7 @@ static int prd_vfs_rename(struct siw_hal_prd_data *prd,
 
 	fentry = filp->f_path.dentry;
 
-	prd_vfs_file_close(filp, 0);
+	prd_vfs_file_close(filp, NULL);
 
 	/*
 	 * Step 2. Change name
@@ -1965,7 +1957,7 @@ static int prd_do_write_file(struct siw_hal_prd_data *prd,
 	nwlen += ret;
 
 out_close:
-	filp_close(filp, 0);
+	prd_vfs_file_close(filp, NULL);
 	if (ret >= 0) {
 		t_prd_info(prd, "file write done : %s(%d, %d)\n",
 				fname, twlen, nwlen);
@@ -2172,7 +2164,7 @@ static int prd_spec_file_read_ext(struct siw_hal_prd_data *prd)
 
 	kernel_read(filp, offset, (char *)prd->line, sizeof(prd->line));
 
-	filp_close(filp, 0);
+	prd_vfs_file_close(filp, NULL);
 
 	t_prd_info(prd, "file detected : %s\n", fname);
 
