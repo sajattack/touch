@@ -10,7 +10,7 @@ and there are two types of path setup.
 - Relative Path : via request_firmware API
 
 The basic command format for FW upgrade is like this
-# echo [Path type]/target_image.img > /sys/devices/virtual/input/siw_touch/fw_upgrade
+# echo [Path type]/target_image.img > /sys/devices/virtual/input/siw_touch_input/fw_upgrade
 
 ###################################################################################################
 # Absolute Path                                                                                   #
@@ -18,8 +18,8 @@ The basic command format for FW upgrade is like this
 * This type uses general filp_open API and you are free to use any folders you want.
   But, you have to type keyword and the accurate middle path.
 
-  # echo {root}/sdcard/firmware/target_image.img > /sys/devices/virtual/input/siw_touch/fw_upgrade
-  # echo {root}/data/target_image.img > /sys/devices/virtual/input/siw_touch/fw_upgrade
+  # echo {root}/sdcard/firmware/target_image.img > /sys/devices/virtual/input/siw_touch_input/fw_upgrade
+  # echo {root}/data/target_image.img > /sys/devices/virtual/input/siw_touch_input/fw_upgrade
 
 * {root}
   This is the keyword signal that let the driver know it is absolute path parameter.
@@ -43,7 +43,7 @@ The basic command format for FW upgrade is like this
 * If your FW file is stored in one of the upper folder list,
   you have only to type like this without the middle path.
   
-  # echo target_image.imag > /sys/devices/virtual/input/siw_touch/fw_upgrade
+  # echo target_image.imag > /sys/devices/virtual/input/siw_touch_input/fw_upgrade
 
   In this case, the FW upgarde function uses reqiest_firmware API
   which searches the target file through the registered fw_path folders.
@@ -66,7 +66,7 @@ The basic command format for FW upgrade is like this
   (3) Copy the FW file into the /sdcard/firmware/
 
   (4) Use the command like this
-      # echo /sdcard_firmware/target_image.imag > /sys/devices/virtual/input/siw_touch/fw_upgrade
+      # echo /sdcard_firmware/target_image.imag > /sys/devices/virtual/input/siw_touch_input/fw_upgrade
 
       > The request_firmware API will find the final target path '/lib/firmware/sdcard/firmware/'
         combining the base '/lib/firmare' and the symbloic link 'sdcard_firmware'
@@ -117,7 +117,7 @@ The basic command format for FW upgrade is like this
       },
 
   (3) Manual access via sysfs
-      $ echo {bin} > /sys/devices/virtual/input/siw_touch/fw_upgrade
+      $ echo {bin} > /sys/devices/virtual/input/siw_touch_input/fw_upgrade
 
 * {bin}
   This is the keyword signal that let the driver know it has to use built-in image data.
