@@ -149,6 +149,11 @@ void siw_touch_irq_control(struct device *dev, int on_off)
 {
 	struct siw_ts *ts = to_touch_core(dev);
 
+	if (!ts->irqflags_curr) {
+		t_dev_warn(dev, "irq not initialized\n");
+		return;
+	}
+
 	t_dev_dbg_irq(dev, "touch_irq_control(%d)\n", on_off);
 
 	if (on_off == INTERRUPT_ENABLE) {
