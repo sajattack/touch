@@ -257,6 +257,51 @@ out:
 #endif
 }
 
+#define __SIW_SUPPORT_IRQ_INDEX_CHECK
+
+/*
+ * Verify irq handler index(ts->irq) using gpio_to_irq
+ */
+#if defined(__SIW_SUPPORT_IRQ_INDEX_CHECK)
+static int siw_touch_irq_index_check(struct siw_ts *ts)
+{
+	struct device *dev = ts->dev;
+	int irq_pin = touch_irq_pin(ts);
+	int irq = 0;
+
+	if (!gpio_is_valid(irq_pin)) {
+		return 0;
+	}
+
+	irq = gpio_to_irq(irq_pin);
+	if (irq <= 0) {
+		t_dev_warn(dev, "check irq pin: gpio_to_irq(%d) = %d\n",
+			irq_pin, irq);
+		goto out;
+	}
+
+	if (ts->irq) {
+		if (ts->irq != irq) {
+			t_dev_warn(dev,
+				"check irq index: ts->irq = %d vs. gpio_to_irq(%d) = %d\n",
+				ts->irq, irq_pin, irq);
+		}
+		goto out;
+	}
+
+	t_dev_info(dev,
+		"irq index(%d) is obtained via gpio_to_irq(%d)\n",
+		irq, irq_pin);
+
+	ts->irq = irq;
+
+out:
+	return irq;
+}
+#else	/* __SIW_SUPPORT_IRQ_INDEX_CHECK */
+#define siw_touch_irq_index_check(_ts)	do {	} while (0)
+#endif	/* __SIW_SUPPORT_IRQ_INDEX_CHECK */
+
 int siw_touch_request_irq(struct siw_ts *ts,
 								irq_handler_t handler,
 							    irq_handler_t thread_fn,
@@ -266,6 +311,8 @@ int siw_touch_request_irq(struct siw_ts *ts,
 	struct device *dev = ts->dev;
 	u32 irq_use_scheule_work = touch_flags(ts) & IRQ_USE_SCHEDULE_WORK;
 	int ret = 0;
+
+	siw_touch_irq_index_check(ts);
 
 	if (!ts->irq) {
 		t_dev_err(dev, "failed to request irq : zero irq\n");
