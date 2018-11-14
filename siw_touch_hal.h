@@ -75,6 +75,13 @@ struct siw_hal_touch_info {
 	struct siw_hal_touch_data data[MAX_FINGER];
 } __packed;
 
+enum {
+	TC_STS_IRQ_TYPE_INIT_DONE	= 2,
+	TC_STS_IRQ_TYPE_ABNORMAL	= 3,
+	TC_STS_IRQ_TYPE_DEBUG		= 4,
+	TC_STS_IRQ_TYPE_REPORT		= 5,
+};
+
 #define PALM_ID					15
 
 enum {

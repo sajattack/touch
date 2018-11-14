@@ -4931,8 +4931,8 @@ static void siw_hal_chk_dbg_report(struct device *dev, u32 status, int irq)
 	 * 0x04 : Debug report
 	 */
 	switch (debug_mask) {
-	case 0x03:
-	case 0x04:
+	case TC_STS_IRQ_TYPE_ABNORMAL:
+	case TC_STS_IRQ_TYPE_DEBUG:
 		break;
 	default:
 		return;
@@ -6292,19 +6292,22 @@ static int siw_hal_check_status_type_x(struct device *dev,
 		return ret;
 	}
 
+	/*
+	 * Check interrupt_type[19:16] in TC_STATUS
+	 */
 	dbg_mask = ((status>>16) & 0xF);
 	switch (dbg_mask) {
-		case 0x2 :
-			t_dev_info(dev, "[%d] TC Driving OK\n", irq);
-			ret = -ERANGE;
-			break;
-		case 0x3 :
-			/* fall through */
-		case 0x4 :
-			t_dev_dbg_trace(dev, "[%d] dbg_mask %Xh\n",
-				irq, dbg_mask);
-			ret = -ERANGE;
-			break;
+	case TC_STS_IRQ_TYPE_INIT_DONE:
+		t_dev_info(dev, "[%d] TC Driving OK\n", irq);
+		ret = -ERANGE;
+		break;
+	case TC_STS_IRQ_TYPE_REPORT:	/* Touch report */
+		break;
+	default:
+		t_dev_dbg_trace(dev, "[%d] dbg_mask %Xh\n",
+			irq, dbg_mask);
+		ret = -ERANGE;
+		break;
 	}
 
 	return ret;
