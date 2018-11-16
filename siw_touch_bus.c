@@ -50,7 +50,7 @@
 #include "siw_touch_sys.h"
 
 
-int siw_touch_bus_tr_data_init(struct siw_ts *ts)
+static int siw_touch_bus_tr_data_init(struct siw_ts *ts)
 {
 	struct device *dev = ts->dev;
 	struct siw_touch_pdata *pdata = ts->pdata;
@@ -76,11 +76,73 @@ int siw_touch_bus_tr_data_init(struct siw_ts *ts)
 	return 0;
 }
 
-void siw_touch_bus_tr_data_free(struct siw_ts *ts)
+static void siw_touch_bus_tr_data_free(struct siw_ts *ts)
 {
 
 }
 
+struct siw_ts *siw_touch_bus_ts_alloc(struct device *dev,
+				struct siw_touch_bus_drv *bus_drv, void *bus_dev,
+				size_t addr, int irq, const char *name)
+{
+	struct siw_ts *ts = NULL;
+	struct siw_touch_pdata *pdata = NULL;
+	int ret;
+
+	pdata = bus_drv->pdata;
+	if (pdata == NULL) {
+		t_dev_err(dev, "%s alloc: NULL pdata\n", name);
+		goto out;
+	}
+
+	ts = touch_kzalloc(dev, sizeof(*ts), GFP_KERNEL);
+	if (ts == NULL) {
+		t_dev_err(dev,
+				"%s alloc: failed to allocate memory for touch data\n", name);
+		goto out;
+	}
+
+	ts->bus_dev = bus_dev;
+	ts->addr = addr;
+	ts->dev = dev;
+	ts->irq = irq;
+
+	ts->pdata = pdata;
+
+	ret = siw_setup_params(ts, pdata);
+	if (ret < 0) {
+		goto out_params;
+	}
+
+	siw_setup_operations(ts, pdata->ops);
+
+	siw_touch_bus_tr_data_init(ts);
+
+	dev_set_drvdata(dev, ts);
+
+	return ts;
+
+out_params:
+	touch_kfree(dev, ts);
+
+out:
+	return NULL;
+}
+
+void siw_touch_bus_ts_free(struct device *dev)
+{
+	struct siw_ts *ts = dev_get_drvdata(dev);
+
+	if (ts == NULL) {
+		return;
+	}
+
+	dev_set_drvdata(dev, NULL);
+
+	siw_touch_bus_tr_data_free(ts);
+
+	touch_kfree(dev, ts);
+}
 
 #define TOUCH_PINCTRL_ACTIVE	"touch_pin_active"
 #define TOUCH_PINCTRL_SLEEP		"touch_pin_sleep"

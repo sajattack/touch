@@ -135,69 +135,26 @@ static struct siw_ts *siw_touch_i2c_alloc(
 {
 	struct device *dev = &i2c->dev;
 	struct siw_ts *ts = NULL;
-	struct siw_touch_pdata *pdata = NULL;
-	int ret;
 
-	ts = touch_kzalloc(dev, sizeof(*ts), GFP_KERNEL);
+	ts = siw_touch_bus_ts_alloc(dev, bus_drv,
+			i2c, (size_t)i2c->addr, i2c->irq, "i2c");
 	if (ts == NULL) {
-		t_dev_err(dev,
-				"i2c alloc: failed to allocate memory for touch data\n");
 		goto out;
 	}
-
-	ts->bus_dev = i2c;
-	ts->addr = (size_t)i2c->addr;
-	ts->dev = dev;
-	ts->irq = i2c->irq;
-	pdata = bus_drv->pdata;
-	if (!pdata) {
-		t_dev_err(dev, "i2c alloc: NULL pdata\n");
-		goto out_pdata;
-	}
-
-	ret = siw_setup_params(ts, pdata);
-	if (ret < 0) {
-		goto out_name;
-	}
-
-	ts->pdata = pdata;
-
-	siw_setup_operations(ts, bus_drv->pdata->ops);
 
 	ts->bus_init = siw_touch_i2c_init;
 	ts->bus_read = siw_touch_i2c_read;
 	ts->bus_write = siw_touch_i2c_write;
 
-	ret = siw_touch_bus_tr_data_init(ts);
-	if (ret < 0) {
-		goto out_tr;
-	}
-
-	i2c_set_clientdata(i2c, ts);
-
-	return ts;
-
-out_tr:
-
-out_name:
-
-out_pdata:
-	touch_kfree(dev, ts);
-
 out:
-	return NULL;
+	return ts;
 }
 
 static void siw_touch_i2c_free(struct i2c_client *i2c)
 {
 	struct device *dev = &i2c->dev;
-	struct siw_ts *ts = to_touch_core(dev);
 
-	i2c_set_clientdata(i2c, NULL);
-
-	siw_touch_bus_tr_data_free(ts);
-
-	touch_kfree(dev, ts);
+	siw_touch_bus_ts_free(dev);
 }
 
 static int siw_touch_i2c_probe(struct i2c_client *i2c,

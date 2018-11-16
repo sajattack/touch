@@ -52,8 +52,11 @@ enum {
 #define __CLOCK_100KHZ		(100 * __CLOCK_1KHZ)
 #define __CLOCK_1MHZ		(__CLOCK_1KHZ * __CLOCK_1KHZ)
 
-#define SPI_MAX_FREQ		(20 * __CLOCK_1MHZ)
-#define SPI_MIN_FREQ		(1 * __CLOCK_1MHZ)
+#define __CLOCK_KHZ(x)		((x) * __CLOCK_1KHZ)
+#define __CLOCK_MHZ(x)		((x) * __CLOCK_1MHZ)
+
+#define SPI_MAX_FREQ		__CLOCK_MHZ(20)
+#define SPI_MIN_FREQ		__CLOCK_MHZ(1)
 
 static inline int spi_freq_out_of_range(u32 freq)
 {
@@ -106,8 +109,10 @@ struct siw_touch_bus_drv {
 	} while (0)
 
 
-extern int siw_touch_bus_tr_data_init(struct siw_ts *ts);
-extern void siw_touch_bus_tr_data_free(struct siw_ts *ts);
+extern struct siw_ts *siw_touch_bus_ts_alloc(struct device *dev,
+				struct siw_touch_bus_drv *bus_drv, void *bus_dev,
+				size_t addr, int irq, const char *name);
+extern void siw_touch_bus_ts_free(struct device *dev);
 
 extern int siw_touch_bus_pin_get(struct siw_ts *ts);
 extern int siw_touch_bus_pin_put(struct siw_ts *ts);

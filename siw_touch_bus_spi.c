@@ -233,69 +233,26 @@ static struct siw_ts *siw_touch_spi_alloc(
 {
 	struct device *dev = &spi->dev;
 	struct siw_ts *ts = NULL;
-	struct siw_touch_pdata *pdata = NULL;
-	int ret = 0;
 
-	ts = touch_kzalloc(dev, sizeof(*ts), GFP_KERNEL);
+	ts = siw_touch_bus_ts_alloc(dev, bus_drv,
+			spi, (size_t)spi, spi->irq, "spi");
 	if (ts == NULL) {
-		t_dev_err(dev,
-				"spi alloc: failed to allocate memory for touch data\n");
 		goto out;
 	}
-
-	ts->bus_dev = spi;
-	ts->addr = (size_t)spi;
-	ts->dev = dev;
-	ts->irq = spi->irq;
-	pdata = bus_drv->pdata;
-	if (!pdata) {
-		t_dev_err(dev, "spi alloc: NULL pdata\n");
-		goto out_pdata;
-	}
-
-	ts->pdata = pdata;
-
-	ret = siw_setup_params(ts, pdata);
-	if (ret < 0) {
-		goto out_name;
-	}
-
-	siw_setup_operations(ts, bus_drv->pdata->ops);
 
 	ts->bus_init = siw_touch_spi_init;
 	ts->bus_read = siw_touch_spi_read;
 	ts->bus_write = siw_touch_spi_write;
 
-	ret = siw_touch_bus_tr_data_init(ts);
-	if (ret < 0) {
-		goto out_tr;
-	}
-
-	spi_set_drvdata(spi, ts);
-
-	return ts;
-
-out_tr:
-
-out_name:
-
-out_pdata:
-	touch_kfree(dev, ts);
-
 out:
-	return NULL;
+	return ts;
 }
 
 static void siw_touch_spi_free(struct spi_device *spi)
 {
 	struct device *dev = &spi->dev;
-	struct siw_ts *ts = to_touch_core(dev);
 
-	spi_set_drvdata(spi, NULL);
-
-	siw_touch_bus_tr_data_free(ts);
-
-	touch_kfree(dev, ts);
+	siw_touch_bus_ts_free(dev);
 }
 
 static int siw_touch_spi_probe(struct spi_device *spi)
