@@ -1404,10 +1404,6 @@ static struct attribute *siw_touch_attribute_list[] = {
 	NULL,
 };
 
-static const struct attribute_group siw_touch_attribute_group = {
-	.attrs = siw_touch_attribute_list,
-};
-
 static struct attribute *siw_touch_attribute_list_normal[] = {
 	&_SIW_TOUCH_ATTR_T(fw_upgrade).attr,
 #if defined(__SIW_CONFIG_KNOCK)
@@ -1500,8 +1496,11 @@ static const struct sysfs_ops siw_touch_sysfs_ops = {
 	.store	= siw_touch_attr_store,
 };
 
+#define siw_touch_attr_default	siw_touch_attribute_list
+
 static struct kobj_type siw_touch_kobj_type = {
-	.sysfs_ops = &siw_touch_sysfs_ops,
+	.sysfs_ops		= &siw_touch_sysfs_ops,
+	.default_attrs	= siw_touch_attr_default,
 };
 
 
@@ -1526,16 +1525,7 @@ int siw_touch_init_sysfs(struct siw_ts *ts)
 		goto out;
 	}
 
-	ret = sysfs_create_group(kobj, &siw_touch_attribute_group);
-	if (ret < 0) {
-		t_dev_err(dev, "failed to add sysfs(initial)\n");
-		goto out_sys;
-	}
-
 	return 0;
-
-out_sys:
-	kobject_del(kobj);
 
 out:
 	return ret;
@@ -1551,9 +1541,8 @@ void siw_touch_free_sysfs(struct siw_ts *ts)
 		return;
 	}
 
-	sysfs_remove_group(&ts->kobj, &siw_touch_attribute_group);
-
 	kobject_del(&ts->kobj);
+	kobject_put(&ts->kobj);
 }
 
 int __weak siw_touch_misc_init(struct device *dev)
