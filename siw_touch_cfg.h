@@ -62,13 +62,6 @@
 #define __SIW_SUPPORT_UEVENT
 #endif
 
-#if defined(CONFIG_TOUCHSCREEN_SIW_SW49105) ||	\
-	defined(CONFIG_TOUCHSCREEN_SIW_SW49407) ||	\
-	defined(CONFIG_TOUCHSCREEN_SIW_SW49408)
-#define __SIW_I2C_TYPE_1
-#define __SIW_SPI_TYPE_1
-#endif
-
 #if defined(CONFIG_TOUCHSCREEN_SIW_SW46104) ||	\
 	defined(CONFIG_TOUCHSCREEN_SIW_SW49407) ||	\
 	defined(CONFIG_TOUCHSCREEN_SIW_SW49408) ||	\
@@ -78,10 +71,6 @@
 #define __SIW_FW_TYPE_1
 #endif
 
-#if defined(CONFIG_TOUCHSCREEN_SIW_SW42103)
-#define __SIW_SPI_TYPE_1
-#define __SIW_RW_OPT_1
-#endif
 
 //#define __SIW_SUPPORT_PM_QOS
 
@@ -112,8 +101,6 @@
 
 #define __SIW_CONFIG_SYSTEM_PM
 #elif defined(CONFIG_TOUCHSCREEN_SIW_SW42101)
-#define __SIW_BUS_ADDR_16BIT
-
 #ifdef __SIW_SUPPORT_ABT
 #undef __SIW_SUPPORT_ABT
 #endif

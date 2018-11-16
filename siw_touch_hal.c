@@ -500,24 +500,20 @@ static void *__siw_hal_get_curr_buf(struct siw_ts *ts, dma_addr_t *dma, int tx)
 	return buf;
 }
 
-#if defined(__SIW_RW_OPT_1)
-static int __siw_hal_reg_addr_check(struct siw_touch_chip *chip,
-			u32 addr, u32 size, int wr)
+static int __siw_hal_reg_quirk_addr(struct device *dev,
+			u32 addr, int size, int wr)
 {
+	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
-	struct device *dev = ts->dev;
-	int chip_type = touch_chip_type(ts);
+	int t_rw_opt = chip->opt.t_rw_opt;
 	int bus_type = touch_bus_type(ts);
 	int last = addr + size - 1;
 	int invalid_s = 0;
 	int invalid_e = 0;
 	int detected = 0;
-	int xfer = (wr>>1) & 0x1;
 
-	wr &= 0x1;
-
-	switch (chip_type) {
-	case CHIP_SW42103:
+	switch (t_rw_opt) {
+	case 1:
 		invalid_s = (bus_type == BUS_IF_I2C) ? 0x400 : 0x200;
 		invalid_e = invalid_s + 0x200;
 
@@ -530,8 +526,7 @@ static int __siw_hal_reg_addr_check(struct siw_touch_chip *chip,
 
 		if (detected) {
 			t_dev_info(dev,
-				"invalid access(%s%s) : %04Xh, %04Xh (%X, %04Xh, %04Xh)\n",
-				(xfer) ? "xfer " : "",
+				"invalid access(%s) : %04Xh, %04Xh (%X, %04Xh, %04Xh)\n",
 				(wr) ? "wr" : "rd",
 				addr, last,
 				detected, invalid_s, invalid_e);
@@ -542,9 +537,132 @@ static int __siw_hal_reg_addr_check(struct siw_touch_chip *chip,
 
 	return 0;
 }
-#else	/* __SIW_RW_OPT_1 */
-#define __siw_hal_reg_addr_check(_c, _a, _s, _w)	({ int _r = 0; _r; })
-#endif	/* __SIW_RW_OPT_1 */
+
+static void __siw_hal_reg_quirk_rd_i2c(struct device *dev,
+			u32 *addr, int *size,
+			int *hdr_sz, int *dummy_sz, int *hdr_flag)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	struct siw_hal_reg *reg = chip->reg;
+	int t_i2c_opt = chip->opt.t_i2c_opt;
+	u32 __addr = 0;
+	int __size = 0;
+	int __hdr_sz = 0;
+	int __dummy_sz = 0;
+	int __hdr_flag = 0;
+
+	if ((touch_bus_type(ts) != BUS_IF_I2C) || !t_i2c_opt) {
+		return;
+	}
+
+	__addr = (*addr);
+	__size = (*size);
+	__hdr_sz = (*hdr_sz);
+	__dummy_sz = (*dummy_sz);
+	__hdr_flag = (*hdr_flag);
+
+	switch (t_i2c_opt) {
+	case 1:
+		/*
+		 * If 0x200 and burst, change to 0x201
+		 * If 0x201, change to 0x202
+		 */
+		if (__addr == reg->tc_ic_status) {
+			__addr += !!(__size > 4);
+		} else {
+			__addr += !!(__addr == reg->tc_status);
+		}
+		break;
+	}
+
+	(*addr) = __addr;
+	(*size) = __size;
+	(*hdr_sz) = __hdr_sz;
+	(*dummy_sz) = __dummy_sz;
+	(*hdr_flag) = __hdr_flag;
+}
+
+static void __siw_hal_reg_quirk_rd_spi(struct device *dev,
+			u32 *addr, int *size,
+			int *hdr_sz, int *dummy_sz, int *hdr_flag)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	int t_spi_opt = chip->opt.t_spi_opt;
+	u32 __addr = 0;
+	int __size = 0;
+	int __hdr_sz = 0;
+	int __dummy_sz = 0;
+	int __hdr_flag = 0;
+	int dummy_idx = 0;
+
+	if ((touch_bus_type(ts) != BUS_IF_SPI) || !t_spi_opt) {
+		return;
+	}
+
+	__addr = (*addr);
+	__size = (*size);
+	__hdr_sz = (*hdr_sz);
+	__dummy_sz = (*dummy_sz);
+	__hdr_flag = (*hdr_flag);
+
+	switch (t_spi_opt) {
+	case 1:
+		if (touch_max_freq(ts) > __CLOCK_MHZ(10)) {
+			dummy_idx = !!((__addr >= 0xC00) && (__addr < 0xF00));
+		}
+
+		switch (dummy_idx) {
+		case 1:
+			__hdr_sz = SPI_BUS_RX_HDR_SZ_128BIT;
+			__dummy_sz = SPI_BUS_RX_DUMMY_SZ_128BIT;
+			__hdr_flag = SPI_BUS_RX_DUMMY_FLAG_128BIT;
+			break;
+		default:
+			__hdr_sz = SPI_BUS_RX_HDR_SZ_32BIT;
+			__dummy_sz = SPI_BUS_RX_DUMMY_SZ_32BIT;
+			break;
+		}
+		break;
+	}
+
+	(*addr) = __addr;
+	(*size) = __size;
+	(*hdr_sz) = __hdr_sz;
+	(*dummy_sz) = __dummy_sz;
+	(*hdr_flag) = __hdr_flag;
+}
+
+static int __siw_hal_reg_quirk_rd(struct device *dev,
+			u32 *addr, int *size,
+			int *hdr_sz, int *dummy_sz, int *hdr_flag)
+{
+	int ret;
+
+	ret = __siw_hal_reg_quirk_addr(dev, (*addr), (*size), 0);
+	if (ret < 0) {
+		return -EINVAL;
+	}
+
+	__siw_hal_reg_quirk_rd_i2c(dev, addr, size, hdr_sz, dummy_sz, hdr_flag);
+	__siw_hal_reg_quirk_rd_spi(dev, addr, size, hdr_sz, dummy_sz, hdr_flag);
+
+	return 0;
+}
+
+static int __siw_hal_reg_quirk_wr(struct device *dev,
+			u32 *addr, int *size, int *hdr_sz)
+{
+	int ret = 0;
+
+	ret = __siw_hal_reg_quirk_addr(dev, (*addr), (*size), 1);
+	if (ret < 0) {
+		return -EINVAL;
+	}
+
+	return 0;
+}
 
 //#define __SIW_CONFIG_CLR_RX_BUFFER
 
@@ -555,8 +673,7 @@ static int __used __siw_hal_do_reg_read(struct device *dev, u32 addr, void *data
 	int bus_tx_hdr_size = touch_tx_hdr_size(ts);
 	int bus_rx_hdr_size = touch_rx_hdr_size(ts);
 //	int bus_tx_dummy_size = touch_tx_dummy_size(ts);
-	int bus_rx_dummy_size = (touch_rx_dummy_size(ts) & 0xFFFF);
-	int bus_rx_dummy_flag = (touch_rx_dummy_size(ts) >> 16);
+	int bus_rx_dummy_size = touch_rx_dummy_size(ts);
 	int bus_rd_hdr_flag = 0;
 	struct touch_bus_msg _msg = {0, };
 	struct touch_bus_msg *msg = &_msg;
@@ -578,54 +695,11 @@ static int __used __siw_hal_do_reg_read(struct device *dev, u32 addr, void *data
 		return -EFAULT;
 	}
 
-	ret = __siw_hal_reg_addr_check(chip, addr, size, 0);
+	ret = __siw_hal_reg_quirk_rd(dev, &addr, &size,
+		&bus_rx_hdr_size, &bus_rx_dummy_size, &bus_rd_hdr_flag);
 	if (ret < 0) {
 		return -EINVAL;
 	}
-
-#if defined(__SIW_I2C_TYPE_1)
-	if (touch_bus_type(ts) == BUS_IF_I2C) {
-		struct siw_hal_reg *reg = chip->reg;
-
-		/*
-		 * If 0x200 and burst, change to 0x201
-		 * If 0x201, change to 0x202
-		 */
-		if (addr == reg->tc_ic_status) {
-			addr += !!(size > 4);
-		} else {
-			addr += !!(addr == reg->tc_status);
-		}
-	}
-#endif
-
-#if defined(__SIW_SPI_TYPE_1)
-	/*
-	 * 0x10 : 128-bit dummy
-	 * size > 4 : burst
-	 */
-	if (bus_rx_dummy_flag & SPI_BUS_RX_DUMMY_FLAG_128BIT) {
-		/* Burst restriction under 128-bit dummy */
-		if (size > 4) {
-			switch (addr & 0xF00) {
-			case 0xC00:
-			case 0xD00:
-			case 0xE00:
-				break;
-			default:
-				bus_rx_dummy_flag &= ~SPI_BUS_RX_DUMMY_FLAG_128BIT;
-				bus_rx_hdr_size = SPI_BUS_RX_HDR_SZ_32BIT;
-				bus_rx_dummy_size = SPI_BUS_RX_DUMMY_SZ_32BIT;
-				break;
-			}
-		}
-	}
-	if (bus_rx_dummy_flag & SPI_BUS_RX_DUMMY_FLAG_128BIT) {
-		bus_rd_hdr_flag |= SPI_BUS_RX_DUMMY_FLAG_128BIT;
-	}
-#else
-	bus_rx_dummy_flag = 0;
-#endif
 
 //	t_dev_info(dev, "addr %04Xh, size %d\n", addr, size);
 
@@ -638,15 +712,18 @@ static int __used __siw_hal_do_reg_read(struct device *dev, u32 addr, void *data
 	}
 #endif
 
-#if defined(__SIW_BUS_ADDR_16BIT)
-	tx_buf[0] = ((addr >> 8) & 0xff);
-	tx_buf[1] = (addr & 0xff);
-	tx_buf[2] = bus_rd_hdr_flag;	/* just prevent 'build warning' */
-#else
-	tx_buf[0] = bus_rd_hdr_flag | ((size > 4) ? 0x20 : 0x00);
-	tx_buf[0] |= ((addr >> 8) & 0x0f);
-	tx_buf[1] = (addr & 0xff);
-#endif
+	switch (chip->opt.t_bus_opt) {
+	case 1:
+		tx_buf[0] = ((addr >> 8) & 0xff);
+		tx_buf[1] = (addr & 0xff);
+		break;
+	default:
+		tx_buf[0] = bus_rd_hdr_flag | ((size > 4) ? 0x20 : 0x00);
+		tx_buf[0] |= ((addr >> 8) & 0x0f);
+		tx_buf[1] = (addr & 0xff);
+		break;
+	}
+
 //	while (bus_tx_dummy_size--) {
 	while (bus_rx_dummy_size--) {
 		tx_buf[tx_size++] = 0;
@@ -700,6 +777,7 @@ static int __used __siw_hal_do_reg_write(struct device *dev, u32 addr, void *dat
 	struct touch_bus_msg *msg = &_msg;
 	u8 *tx_buf;
 	dma_addr_t tx_dma;
+	int is_spi = !!(touch_bus_type(ts) == BUS_IF_SPI);
 	int ret = 0;
 
 #if 0
@@ -713,22 +791,24 @@ static int __used __siw_hal_do_reg_write(struct device *dev, u32 addr, void *dat
 		return -EFAULT;
 	}
 
-	ret = __siw_hal_reg_addr_check(chip, addr, size, 1);
+	ret = __siw_hal_reg_quirk_wr(dev, &addr, &size, &bus_tx_hdr_size);
 	if (ret < 0) {
 		return -EINVAL;
 	}
 
 	tx_buf = __siw_hal_get_curr_buf(ts, &tx_dma, 1);
 
-#if defined(__SIW_BUS_ADDR_16BIT)
-	tx_buf[0] = ((addr >> 8) & 0xff);
-	tx_buf[1] = (addr & 0xff);
-#else
-	tx_buf[0] = (touch_bus_type(ts) == BUS_IF_SPI) ? 0x60 :	\
-					((size > 4) ? 0x60 : 0x40);
-	tx_buf[0] |= ((addr >> 8) & 0x0f);
-	tx_buf[1] = (addr & 0xff);
-#endif
+	switch (chip->opt.t_bus_opt) {
+	case 1:
+		tx_buf[0] = ((addr >> 8) & 0xff);
+		tx_buf[1] = (addr & 0xff);
+		break;
+	default:
+		tx_buf[0] = (is_spi || (size > 4)) ? 0x60 : 0x40;
+		tx_buf[0] |= ((addr >> 8) & 0x0f);
+		tx_buf[1] = (addr & 0xff);
+		break;
+	}
 
 	msg->tx_buf = tx_buf;
 	msg->tx_size = bus_tx_hdr_size + size;
@@ -7949,6 +8029,8 @@ static void siw_hal_chipset_option(struct siw_touch_chip *chip)
 		opt->t_sw_rst = 2;
 		opt->t_chk_sys_error = 1;
 		opt->t_chk_sys_fault = 1;
+		opt->t_i2c_opt = 1;
+		opt->t_spi_opt = 1;
 		break;
 
 	case CHIP_SW49106:
@@ -7977,6 +8059,8 @@ static void siw_hal_chipset_option(struct siw_touch_chip *chip)
 		opt->t_chk_sys_error = 1;
 		opt->t_chk_sys_fault = 1;
 		opt->t_chk_fault = 1;
+		opt->t_i2c_opt = 1;
+		opt->t_spi_opt = 1;
 		break;
 
 	case CHIP_SW49408:
@@ -7986,6 +8070,8 @@ static void siw_hal_chipset_option(struct siw_touch_chip *chip)
 		opt->t_clock = 2;
 		opt->t_chk_sys_error = 2;
 		opt->t_chk_sys_fault = 1;
+		opt->t_i2c_opt = 1;
+		opt->t_spi_opt = 1;
 		break;
 
 	case CHIP_SW49409:
@@ -7993,6 +8079,8 @@ static void siw_hal_chipset_option(struct siw_touch_chip *chip)
 		opt->t_clock = 2;
 		opt->t_chk_sys_error = 3;
 		opt->t_chk_sys_fault = 1;
+		opt->t_i2c_opt = 1;
+		opt->t_spi_opt = 1;
 		break;
 
 	case CHIP_SW49501:
@@ -8006,6 +8094,10 @@ static void siw_hal_chipset_option(struct siw_touch_chip *chip)
 		opt->t_chk_tci_debug = 1;
 		break;
 
+	case CHIP_SW42101:
+		opt->t_bus_opt = 1;
+		break;
+
 	case CHIP_SW42103:
 		chip->drv_reset_low = 10;	//following LGD CAS recommendation
 
@@ -8017,6 +8109,7 @@ static void siw_hal_chipset_option(struct siw_touch_chip *chip)
 		opt->t_sts_mask = 3;
 		opt->t_sw_rst = 3;
 		opt->t_chk_frame = 2;
+		opt->t_rw_opt = 1;
 		break;
 
 	case CHIP_SW17700:
@@ -8064,6 +8157,11 @@ static void siw_hal_show_chipset_option(struct siw_touch_chip *chip)
 	t_dev_info(dev, " t_chk_fault     : %d\n", opt->t_chk_fault);
 
 	t_dev_info(dev, " t_tc_cmd        : %d\n", opt->t_tc_cmd);
+
+	t_dev_info(dev, " t_bus_opt       : %d\n", opt->t_bus_opt);
+	t_dev_info(dev, " t_rw_opt        : %d\n", opt->t_rw_opt);
+	t_dev_info(dev, " t_i2c_opt       : %d\n", opt->t_i2c_opt);
+	t_dev_info(dev, " t_spi_opt       : %d\n", opt->t_spi_opt);
 
 	t_dev_info(dev, " drv_reset_low   : %d ms\n", chip->drv_reset_low);
 	t_dev_info(dev, " drv_delay       : %d ms\n", chip->drv_delay);

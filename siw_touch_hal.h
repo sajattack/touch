@@ -505,7 +505,14 @@ struct siw_touch_chip_opt {
 	u32 rsvd31:8;
 	u32 rsvd32:8;
 	u32 rsvd33:8;
-};
+	/* */
+	u32 t_bus_opt:4;
+	u32 t_rw_opt:4;
+	u32 t_i2c_opt:4;
+	u32 t_spi_opt:4;
+	u32 rsvd42:8;
+	u32 rsvd43:8;
+} __packed;
 
 enum {
 	HAL_DBG_GRP_0 = 0,
