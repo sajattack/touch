@@ -75,6 +75,11 @@ struct siw_hal_touch_info {
 	struct siw_hal_touch_data data[MAX_FINGER];
 } __packed;
 
+static inline u32 siw_tc_sts_irq_type(int status)
+{
+	return ((status >> 16) & 0x0F);
+}
+
 enum {
 	TC_STS_IRQ_TYPE_INIT_DONE	= 2,
 	TC_STS_IRQ_TYPE_ABNORMAL	= 3,

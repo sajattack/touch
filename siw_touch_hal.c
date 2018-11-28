@@ -4995,7 +4995,7 @@ static void siw_hal_chk_dbg_report(struct device *dev, u32 status, int irq)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 //	struct siw_ts *ts = chip->ts;
-	u32 debug_mask = (status >> 16) & 0x0F;
+	u32 irq_type = siw_tc_sts_irq_type(status);
 	u32 ic_debug[4];
 	u32 debug_info = 0;
 	u32 debug_len = 0;
@@ -5006,11 +5006,7 @@ static void siw_hal_chk_dbg_report(struct device *dev, u32 status, int irq)
 		return;
 	}
 
-	/*
-	 * 0x03 : Error report
-	 * 0x04 : Debug report
-	 */
-	switch (debug_mask) {
+	switch (irq_type) {
 	case TC_STS_IRQ_TYPE_ABNORMAL:
 	case TC_STS_IRQ_TYPE_DEBUG:
 		break;
@@ -5029,7 +5025,7 @@ static void siw_hal_chk_dbg_report(struct device *dev, u32 status, int irq)
 
 	t_dev_info(dev,
 			"[%d] ic debug: s %08Xh / m %Xh, l %Xh, t %Xh (%08Xh)\n",
-			irq, status, debug_mask, debug_len, debug_type, debug_info);
+			irq, status, irq_type, debug_len, debug_type, debug_info);
 
 	t_dev_info(dev,
 		"[%d] ic debug: log %08Xh %08Xh %08Xh\n",
@@ -6226,7 +6222,7 @@ static int siw_hal_check_status_type_x(struct device *dev,
 	struct siw_hal_status_filter *filter = chip->status_filter;
 	u32 check_mask, detected;
 	int type_error, type_esd, type_fault;
-	u32 dbg_mask = 0;
+	u32 irq_type = siw_tc_sts_irq_type(status);
 	u32 log_flag = 0;
 	u32 esd_send = 0;
 	u32 tc_disp_err = 0;
@@ -6375,8 +6371,7 @@ static int siw_hal_check_status_type_x(struct device *dev,
 	/*
 	 * Check interrupt_type[19:16] in TC_STATUS
 	 */
-	dbg_mask = ((status>>16) & 0xF);
-	switch (dbg_mask) {
+	switch (irq_type) {
 	case TC_STS_IRQ_TYPE_INIT_DONE:
 		t_dev_info(dev, "[%d] TC Driving OK\n", irq);
 		ret = -ERANGE;
@@ -6384,8 +6379,8 @@ static int siw_hal_check_status_type_x(struct device *dev,
 	case TC_STS_IRQ_TYPE_REPORT:	/* Touch report */
 		break;
 	default:
-		t_dev_dbg_trace(dev, "[%d] dbg_mask %Xh\n",
-			irq, dbg_mask);
+		t_dev_dbg_trace(dev, "[%d] irq_type %Xh\n",
+			irq, irq_type);
 		ret = -ERANGE;
 		break;
 	}
