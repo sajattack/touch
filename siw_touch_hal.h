@@ -582,6 +582,7 @@ struct siw_touch_chip {
 	int drv_reset_low;
 	int drv_delay;
 	int drv_opt_delay;
+	int driving_ctrl;
 	u8 prev_lcd_mode;
 	u8 lcd_mode;
 	u8 driving_mode;

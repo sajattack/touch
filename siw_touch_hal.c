@@ -5078,6 +5078,29 @@ out:
 	return 0;
 }
 
+static int siw_hal_tc_driving_cmd(struct device *dev, int mode)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+//	struct siw_ts *ts = chip->ts;
+	int ctrl = 0;
+
+	if ((mode < LCD_MODE_U0) || (mode >= LCD_MODE_MAX)) {
+		t_dev_err(dev, "invalid mode, %d\n", mode);
+		return -EINVAL;
+	}
+
+	ctrl = chip->tc_cmd_table[mode];
+	if (ctrl < 0) {
+		t_dev_err(dev, "%s(%d) not granted\n",
+			siw_lcd_driving_mode_str(mode), mode);
+		return -ESRCH;
+	}
+
+	chip->driving_ctrl = ctrl;
+
+	return ctrl;
+}
+
 static int siw_hal_tc_driving(struct device *dev, int mode)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
@@ -5085,8 +5108,8 @@ static int siw_hal_tc_driving(struct device *dev, int mode)
 	struct siw_hal_reg *reg = chip->reg;
 	u32 tc_status = 0;
 	u32 running_status = 0;
-	int ctrl = 0;
 	u32 rdata;
+	int ctrl = 0;
 	int re_init = 0;
 	int ret = 0;
 
@@ -5105,16 +5128,9 @@ static int siw_hal_tc_driving(struct device *dev, int mode)
 		t_dev_info(dev, "keep the last mode(%d) for retry\n", mode);
 	}
 
-	if ((mode >= LCD_MODE_U0) && (mode < LCD_MODE_MAX)) {
-		ctrl = chip->tc_cmd_table[mode];
-	} else {
-		t_dev_err(dev, "mode(%d) not supported\n", mode);
-		return -ESRCH;
-	}
-
+	ctrl = siw_hal_tc_driving_cmd(dev, mode);
 	if (ctrl < 0) {
-		t_dev_err(dev, "mode(%d) not granted\n", mode);
-		return -ESRCH;
+		return ctrl;
 	}
 
 	chip->driving_mode = mode;
@@ -5139,11 +5155,16 @@ static int siw_hal_tc_driving(struct device *dev, int mode)
 	t_dev_info(dev, "DDI Display Mode[%04Xh] = 0x%08X\n",
 			reg->spr_subdisp_status, rdata);
 
-	ret = siw_hal_write_value(dev,
-				reg->tc_drive_ctl,
-				ctrl);
+	rdata = reg->tc_drive_ctl;
+
+	ret = siw_hal_write_value(dev, rdata, ctrl);
+	if (ret < 0) {
+		t_dev_err(dev, "TC Driving[%04Xh](0x%08X) failed, %d\n",
+				rdata, ctrl, ret);
+		return ret;
+	}
 	t_dev_info(dev, "TC Driving[%04Xh] wr 0x%08X\n",
-			reg->tc_drive_ctl, ctrl);
+			rdata, ctrl);
 
 	rdata = chip->drv_delay + hal_dbg_delay(chip, HAL_DBG_DLY_TC_DRIVING_1);
 	touch_msleep(rdata);
