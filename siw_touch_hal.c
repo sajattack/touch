@@ -1006,6 +1006,61 @@ static int siw_hal_condition_wait(struct device *dev,
 	return -EPERM;
 }
 
+int siw_hal_access_not_allowed(struct device *dev, char *title, int skip_flag)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	char *sub = "";
+
+	if (!(skip_flag & HAL_ACCESS_CHK_SKIP_SLEEP)) {
+		if (atomic_read(&ts->state.sleep) != IC_NORMAL) {
+			sub = "not IC_NORMAL";
+			goto out;
+		}
+	}
+
+	if (!(skip_flag & HAL_ACCESS_CHK_SKIP_FB)) {
+		if (atomic_read(&ts->state.fb) != FB_RESUME) {
+			sub = "not FB_RESUME";
+			goto out;
+		}
+	}
+
+	if (!(skip_flag & HAL_ACCESS_CHK_SKIP_PM)) {
+		if (atomic_read(&ts->state.pm) != DEV_PM_RESUME) {
+			sub = "not DEV_PM_RESUME";
+			goto out;
+		}
+	}
+
+	if (!(skip_flag & HAL_ACCESS_CHK_SKIP_INIT)) {
+		if (atomic_read(&chip->init) != IC_INIT_DONE) {
+			sub = "not IC_INIT_DONE";
+			goto out;
+		}
+	}
+
+	return 0;
+
+out:
+	if (title) {
+		t_dev_warn(dev, "%s: %s\n", title, sub);
+	}
+
+	return 1;
+}
+
+static int siw_hal_tc_not_allowed(struct device *dev, char *title)
+{
+#if defined(__SIW_CONFIG_SYSTEM_PM)
+	int skip_flag = 0;
+#else	/* __SIW_CONFIG_SYSTEM_PM */
+	int skip_flag = HAL_ACCESS_CHK_SKIP_PM | HAL_ACCESS_CHK_SKIP_FB;
+#endif	/* __SIW_CONFIG_SYSTEM_PM */
+
+	return siw_hal_access_not_allowed(dev, title, skip_flag);
+}
+
 static void siw_hal_fb_notify_work_func(struct work_struct *fb_notify_work)
 {
 	struct siw_touch_chip *chip =
@@ -4105,20 +4160,10 @@ static void siw_hal_fw_release_firm(struct device *dev,
 static int siw_hal_upgrade_not_allowed(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
-	struct siw_ts *ts = chip->ts;
-	int fb_state = atomic_read(&ts->state.fb);
-	int pm_state = atomic_read(&ts->state.pm);
 
 	if (atomic_read(&chip->boot) == IC_BOOT_FAIL) {
 		return 0;
 	}
-
-#if 0	/* requires more consideration */
-	if (atomic_read(&chip->init) == IC_INIT_NEED) {
-		t_dev_warn(dev, "FW upgrade: not ready, need IC init\n");
-		return 1;
-	}
-#endif
 
 	if (chip->lcd_mode != LCD_MODE_U3) {
 		t_dev_warn(dev, "FW upgrade: not U3 mode, %s(%d)\n",
@@ -4127,14 +4172,7 @@ static int siw_hal_upgrade_not_allowed(struct device *dev)
 		return 1;
 	}
 
-	if ((fb_state != FB_RESUME) || (pm_state != DEV_PM_RESUME)) {
-		t_dev_warn(dev, "FW upgrade: not resume state(%d, %d)\n",
-			fb_state, pm_state);
-		return 1;
-	}
-
-	if (atomic_read(&ts->state.sleep) != IC_NORMAL) {
-		t_dev_warn(dev, "FW upgrade: not IC normal\n");
+	if (siw_hal_access_not_allowed(dev, "FW_Upgrade", HAL_ACCESS_CHK_SKIP_INIT)) {
 		return 1;
 	}
 
@@ -4979,6 +5017,10 @@ static int siw_hal_tc_con(struct device *dev, u32 code, void *param)
 //	struct siw_ts *ts = chip->ts;
 	int ret = 0;
 
+	if (siw_hal_tc_not_allowed(dev, "tc con not allowed")) {
+		return 0;
+	}
+
 	switch (code) {
 	case TCON_GLOVE:
 		ret = siw_hal_tc_con_glove(dev);
@@ -5113,8 +5155,7 @@ static int siw_hal_tc_driving(struct device *dev, int mode)
 	int re_init = 0;
 	int ret = 0;
 
-	if (atomic_read(&ts->state.sleep) == IC_DEEP_SLEEP) {
-		t_dev_warn(dev, "can not control tc driving - deep sleep state\n");
+	if (siw_hal_tc_not_allowed(dev, "tc driving not allowed")) {
 		return 0;
 	}
 
@@ -7668,25 +7709,9 @@ static int siw_hal_mon_hanlder_do_op(struct device *dev,
 static int siw_hal_mon_handler_skip(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
-	struct siw_ts *ts = chip->ts;
+//	struct siw_ts *ts = chip->ts;
 
-	if (atomic_read(&ts->state.sleep) != IC_NORMAL) {
-		return 1;
-	}
-
-	if (atomic_read(&ts->state.fb) != FB_RESUME) {
-		return 1;
-	}
-
-	if (atomic_read(&ts->state.pm) != DEV_PM_RESUME) {
-		return 1;
-	}
-
-	if (atomic_read(&ts->state.core) != CORE_NORMAL) {
-		return 1;
-	}
-
-	if (atomic_read(&chip->init) != IC_INIT_DONE) {
+	if (siw_hal_access_not_allowed(dev, NULL, 0)) {
 		return 1;
 	}
 

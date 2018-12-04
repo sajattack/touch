@@ -713,6 +713,11 @@ static inline u32 siw_hal_boot_sts_mask_empty(struct siw_touch_chip *chip)
 	return mask;
 }
 
+#define HAL_ACCESS_CHK_SKIP_SLEEP	BIT(3)
+#define HAL_ACCESS_CHK_SKIP_FB		BIT(2)
+#define HAL_ACCESS_CHK_SKIP_PM		BIT(1)
+#define HAL_ACCESS_CHK_SKIP_INIT	BIT(0)
+
 extern int siw_hal_get_boot_status(struct device *dev, u32 *boot_st);
 
 extern int siw_hal_read_value(struct device *dev, u32 addr, u32 *value);
@@ -727,6 +732,8 @@ extern int siw_hal_reg_write_chk(struct device *dev, u32 addr, void *data, int s
 
 extern int siw_hal_reg_rw_multi(struct device *dev,
 			struct siw_hal_rw_multi *multi, char *title);
+
+extern int siw_hal_access_not_allowed(struct device *dev, char *title, int skip_flag);
 
 extern int siw_hal_ic_test_unit(struct device *dev, u32 data);
 
