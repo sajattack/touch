@@ -521,22 +521,44 @@ static int __used siw_touch_free_pm(struct siw_ts *ts)
  * touch pm control using FB notifier
  *
  */
-#if defined(__SIW_CONFIG_SYSTEM_PM)
+#define FB_RET_NOOP		(-EPERM)
+
 static int siw_touch_fb_notifier_work(
 			struct siw_ts *ts,
 			unsigned long event, int blank)
 {
 	struct device *dev = ts->dev;
-	int ret = -EPERM;
+	char *fb_msg_unblank = ts->fb_msg_unblank;
+	char *fb_msg_blank = ts->fb_msg_blank;
+	int ret = FB_RET_NOOP;
+
+	/*
+	 * See fb_blank (fbmem.c)
+	 * revert effects of the ealry blank effect
+	 */
+	if (event == FB_R_EARLY_EVENT_BLANK) {
+		switch (blank) {
+		case FB_BLANK_UNBLANK:
+			t_dev_info(dev, "%s(r_early)\n", fb_msg_unblank);
+			ret = ts->fb_ret_revert_suspend;
+			break;
+		case FB_BLANK_POWERDOWN:
+			t_dev_info(dev, "%s(r_early)\n", fb_msg_blank);
+			ret = ts->fb_ret_revert_resume;
+			break;
+		}
+		goto out;
+	}
 
 	if (event == FB_EARLY_EVENT_BLANK) {
 		switch (blank) {
 		case FB_BLANK_UNBLANK:
-			t_dev_info(dev, "fb_unblank(early)\n");
+			t_dev_info(dev, "%s(early)\n", fb_msg_unblank);
+			ret = ts->fb_ret_early_resume;
 			break;
 		case FB_BLANK_POWERDOWN:
-			t_dev_info(dev, "fb_blank(early)\n");
-			ret = FB_SUSPEND;
+			t_dev_info(dev, "%s(early)\n", fb_msg_blank);
+			ret = ts->fb_ret_early_suspend;
 			break;
 		}
 		goto out;
@@ -545,53 +567,20 @@ static int siw_touch_fb_notifier_work(
 	if (event == FB_EVENT_BLANK) {
 		switch (blank) {
 		case FB_BLANK_UNBLANK:
-			t_dev_info(dev, "fb_unblank\n");
-			ret = FB_RESUME;
+			t_dev_info(dev, "%s\n", fb_msg_unblank);
+			ret = ts->fb_ret_resume;
 			break;
 		case FB_BLANK_POWERDOWN:
-			t_dev_info(dev, "fb_blank\n");
-			break;
-		}
-	}
-
-out:
-	return ret;
-}
-#else
-static int siw_touch_fb_notifier_work(
-			struct siw_ts *ts,
-			unsigned long event, int blank)
-{
-	struct device *dev = ts->dev;
-	int ret = -EPERM;
-
-	if (event == FB_EARLY_EVENT_BLANK) {
-		switch (blank) {
-		case FB_BLANK_UNBLANK:
-			t_dev_info(dev, "FB_UNBLANK(early)\n");
-			break;
-		case FB_BLANK_POWERDOWN:
-			t_dev_info(dev, "FB_BLANK(early)\n");
+			t_dev_info(dev, "%s\n", fb_msg_blank);
+			ret = ts->fb_ret_suspend;
 			break;
 		}
 		goto out;
 	}
 
-	if (event == FB_EVENT_BLANK) {
-		switch (blank) {
-		case FB_BLANK_UNBLANK:
-			t_dev_info(dev, "FB_UNBLANK\n");
-			break;
-		case FB_BLANK_POWERDOWN:
-			t_dev_info(dev, "FB_BLANK\n");
-			break;
-		}
-	}
-
 out:
 	return ret;
 }
-#endif
 
 static int siw_touch_fb_notifier_callback(
 			struct notifier_block *self,
@@ -627,6 +616,28 @@ static int __used siw_touch_init_pm(struct siw_ts *ts)
 {
 	t_dev_dbg_pm(ts->dev, "fb_register_client - fb_notif\n");
 
+#if defined(__SIW_CONFIG_SYSTEM_PM)
+	snprintf(ts->fb_msg_unblank, sizeof(ts->fb_msg_unblank), "fb_unblank");
+	snprintf(ts->fb_msg_blank, sizeof(ts->fb_msg_blank), "fb_blank");
+
+	ts->fb_ret_revert_resume = FB_RESUME;	/* revert to resume */
+	ts->fb_ret_revert_suspend = FB_RET_NOOP;
+	ts->fb_ret_early_resume = FB_RET_NOOP;
+	ts->fb_ret_early_suspend = FB_SUSPEND;	/* suspend early */
+	ts->fb_ret_resume = FB_RESUME;			/* resume later */
+	ts->fb_ret_suspend = FB_RET_NOOP;
+#else	/* __SIW_CONFIG_SYSTEM_PM */
+	snprintf(ts->fb_msg_unblank, sizeof(ts->fb_msg_unblank), "FB_UNBLANK");
+	snprintf(ts->fb_msg_blank, sizeof(ts->fb_msg_blank), "FB_BLANK");
+
+	ts->fb_ret_revert_resume = FB_RET_NOOP;
+	ts->fb_ret_revert_suspend = FB_RET_NOOP;
+	ts->fb_ret_early_resume = FB_RET_NOOP;
+	ts->fb_ret_early_suspend = FB_RET_NOOP;
+	ts->fb_ret_resume = FB_RET_NOOP;
+	ts->fb_ret_suspend = FB_RET_NOOP;
+#endif	/* __SIW_CONFIG_SYSTEM_PM */
+
 	ts->fb_notif.notifier_call = siw_touch_fb_notifier_callback;
 	return fb_register_client(&ts->fb_notif);
 }
@@ -641,13 +652,13 @@ static int __used siw_touch_free_pm(struct siw_ts *ts)
 }
 #else
 //#pragma message("[SiW - Warning] No core pm operation")
-static int __used __siw_touch_init_pm_none(struct siw_ts *ts, int init)
+static int __used __siw_touch_init_pm_none(struct siw_ts *ts, char *title)
 {
-	t_dev_dbg_pm(ts->dev, "pm %s none\n", (init) ? "free" : "init");
+	t_dev_dbg_pm(ts->dev, "pm %s none\n", title);
 	return 0;
 }
-#define siw_touch_init_pm(_ts)		__siw_touch_init_pm_none(_ts, 0)
-#define siw_touch_free_pm(_ts)		__siw_touch_init_pm_none(_ts, 1)
+#define siw_touch_init_pm(_ts)		__siw_touch_init_pm_none(_ts, "init")
+#define siw_touch_free_pm(_ts)		__siw_touch_init_pm_none(_ts, "free")
 #endif
 
 #if defined(__SIW_SUPPORT_ASC)
