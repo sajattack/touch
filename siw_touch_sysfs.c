@@ -1053,22 +1053,19 @@ static ssize_t _store_init_late(struct device *dev,
 				const char *buf, size_t count)
 {
 //	struct siw_ts *ts = to_touch_core(dev);
-	int value = 0;
+	int sig = 0;
+	int time = 0;
+	int retry = 0;
 
-	if (sscanf(buf, "%X", &value) <= 0) {
+	if (sscanf(buf, "%X %d %d", &sig, &time, &retry) <= 0) {
 		siw_sysfs_err_invalid_param(dev);
 		return count;
 	}
 
-	if (value != 0x55AA) {
-		goto out;
+	if (sig == 0x55AA) {
+		siw_touch_init_late_queue(dev, sig, time, retry);
 	}
 
-	siw_touch_atomic_notifier_call(
-		LCD_EVENT_TOUCH_INIT_LATE,
-		&value);
-
-out:
 	return count;
 }
 

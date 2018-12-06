@@ -1118,11 +1118,9 @@ struct siw_ts {
 	/* */
 	int (*init_late)(void *data);
 	int init_late_done;
-	/*
-	 * Auto-execution for ts->init_late_work
-	 * 0: disabled, non-zero: auto execution time delay(msec)
-	 * From pdata->init_late_time
-	 */
+	int init_late_run;
+	int init_late_sig;
+	int init_late_retry;
 	int init_late_time;
 	struct delayed_work init_late_work;
 };
@@ -1704,6 +1702,8 @@ extern int siw_touch_probe(struct siw_ts *ts);
 extern int siw_touch_remove(struct siw_ts *ts);
 
 extern int siw_touch_init_late(struct siw_ts *ts, int value);
+extern int siw_touch_init_late_queue(struct device *dev,
+		int sig, int time, int retry);
 
 extern int siw_touch_notify(struct siw_ts *ts, unsigned long event, void *data);
 

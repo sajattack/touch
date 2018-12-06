@@ -1764,9 +1764,48 @@ static void siw_touch_probe_free(void *data)
 	mutex_unlock(&ts->probe_lock);
 }
 
+/*
+ * [Summary of init_late control]
+ *
+ * [Activation]
+ * <touch_xxxxxxx.c>
+ * #define CHIP_FLAGS     (0 |	\
+ *                        ...
+ *                        TOUCH_USE_PROBE_INIT_LATE |	\
+ *                        ...
+ *                        0)
+ *
+ * [Basic - sysfs or notifier]
+ * Send echo command to sysfs after probe done
+ * $ echo 0x55AA > /sys/device/virtual/input/siw_touch_input/init_late
+ * or
+ * Use notifier in other driver
+ * {
+ *     int value = 0x1234;
+ *     siw_touch_atomic_notifier_call(LCD_EVENT_TOUCH_INIT_LATE, (void *)&value);
+ * }
+ *
+ * [Ext - auto-execution via work queue, triggered by entry configuration]
+ * <touch_xxxxxxx.c>
+ * static const struct siw_touch_pdata chip_pdata = {
+ *        ...
+ *        //init_late_try = 2
+ *        //init_late_time = 1000 msec
+ *        .init_late_time = (2<<24) | 1000,
+ * };
+ *
+ * [Ext - sysfs & work queue combination]
+ * This case doesn't yet support notifier control.
+ * For 'init_late_try = 2' & 'init_late_time = 1000 msec'
+ * $ echo 0x55AA 1000 2 > /sys/device/virtual/input/siw_touch_input/init_late
+ *
+ */
 enum {
-	INIT_LATE_SIG_WQ	= 0x5A5A,
-	INIT_LATE_SIG_DONE	= 0xAA55,
+	INIT_LATE_RETRY_POS		= 24,
+	INIT_LATE_DELAY_MASK	= 0x00FFFFFF,
+	/* */
+	INIT_LATE_SIG_WQ		= 0x5A5A,
+	INIT_LATE_SIG_DONE		= 0xAA55,
 };
 
 static void siw_touch_init_late_work_func(struct work_struct *work)
@@ -1774,6 +1813,9 @@ static void siw_touch_init_late_work_func(struct work_struct *work)
 	struct siw_ts *ts =
 			container_of(to_delayed_work(work),
 						struct siw_ts, init_late_work);
+	struct device *dev = ts->dev;
+	int sig = 0;
+	int retry = 0;
 	int ret = 0;
 
 	mutex_lock(&ts->lock);
@@ -1782,46 +1824,97 @@ static void siw_touch_init_late_work_func(struct work_struct *work)
 		goto out;
 	}
 
-	ret = siw_touch_init_late(ts, INIT_LATE_SIG_WQ);
-	t_dev_info(ts->dev, "init_late_work done, %d\n", ret);
+	sig = ts->init_late_sig;
+	retry = ts->init_late_retry;
+
+	ret = siw_touch_init_late(ts, sig);
+	if (ret < 0) {
+		goto out;
+	}
+
+	t_dev_info(ts->dev, "init_late_work done\n");
+
+	retry = 0;
 
 out:
+	if (retry) {
+		t_dev_info(dev, "retry init_late queue(%d)\n", retry);
+
+		ts->init_late_retry--;
+
+		queue_delayed_work(ts->wq,
+			&ts->init_late_work,
+			msecs_to_jiffies(ts->init_late_time));
+	}
+
+	ts->init_late_run = !!retry;
+
 	mutex_unlock(&ts->lock);
 }
 
-static int siw_touch_init_late_work_trigger(struct siw_ts *ts)
+static void siw_touch_init_late_work_run(struct siw_ts *ts, int delay)
 {
-	int init_late_time = 0;
+	unsigned long queue_delay = 0;
+
+	ts->init_late_run = 1;
+
+	queue_delay = msecs_to_jiffies((delay) ? delay : ts->init_late_time);
+
+	queue_delayed_work(ts->wq, &ts->init_late_work, queue_delay);
+
+	t_dev_info(ts->dev,
+		"init_late_work triggered, %d msec(%d, %Xh)\n",
+		ts->init_late_time, ts->init_late_retry, ts->init_late_sig);
+}
+
+static int siw_touch_init_late_work_set(struct siw_ts *ts)
+{
+	mutex_lock(&ts->lock);
 
 	if (t_dbg_flag & DBG_FLAG_SKIP_INIT_LATE_WORK) {
+		ts->init_late_sig = 0;
+		ts->init_late_retry = 0;
 		ts->init_late_time = 0;
 	}
 	if (t_dbg_flag & DBG_FLAG_TEST_INIT_LATE_WORK) {
+		ts->init_late_retry = 0;
 		ts->init_late_time = 5000;
-	}
-
-	init_late_time = ts->init_late_time;
-
-	if (!init_late_time) {
-		return 0;
 	}
 
 	INIT_DELAYED_WORK(&ts->init_late_work, siw_touch_init_late_work_func);
 
-	queue_delayed_work(ts->wq,
-		&ts->init_late_work,
-		msecs_to_jiffies(init_late_time));
+	if (!ts->init_late_time) {
+		goto out;
+	}
 
-	t_dev_info(ts->dev,
-		"init_late_work triggered, %d msec\n",
-		init_late_time);
+	ts->init_late_sig = INIT_LATE_SIG_WQ;
+
+	siw_touch_init_late_work_run(ts, 0);
+
+out:
+	mutex_unlock(&ts->lock);
 
 	return 0;
 }
 
+static void siw_touch_init_late_work_clr(struct siw_ts *ts)
+{
+	if (!(touch_flags(ts) & TOUCH_USE_PROBE_INIT_LATE)) {
+		return;
+	}
+
+	if (!ts->init_late_time) {
+		return;
+	}
+
+	t_dev_info(ts->dev, "init_late_work canceled\n");
+	cancel_delayed_work_sync(&ts->init_late_work);
+}
+
 static int siw_touch_probe_post(struct siw_ts *ts)
 {
-	ts->init_late_time = ts->pdata->init_late_time;
+	ts->init_late_retry = ts->pdata->init_late_time>>INIT_LATE_RETRY_POS;
+	ts->init_late_time = ts->pdata->init_late_time & INIT_LATE_DELAY_MASK;
 
 	if (t_dbg_flag & DBG_FLAG_SKIP_INIT_LATE) {
 		ts->flags &= ~TOUCH_USE_PROBE_INIT_LATE;
@@ -1838,7 +1931,7 @@ static int siw_touch_probe_post(struct siw_ts *ts)
 		 */
 		ts->init_late = siw_touch_probe_init;
 
-		siw_touch_init_late_work_trigger(ts);
+		siw_touch_init_late_work_set(ts);
 		return 0;
 	}
 
@@ -1851,12 +1944,7 @@ static int siw_touch_probe_post(struct siw_ts *ts)
 
 static void siw_touch_remove_post(struct siw_ts *ts)
 {
-	if (ts->init_late) {
-		if (ts->init_late_time) {
-			t_dev_info(ts->dev, "init_late_work canceled\n");
-			cancel_delayed_work_sync(&ts->init_late_work);
-		}
-	}
+	siw_touch_init_late_work_clr(ts);
 
 	siw_touch_probe_free(ts);
 }
@@ -1967,6 +2055,57 @@ int siw_touch_init_late(struct siw_ts *ts, int value)
 		&value);
 
 out:
+	return ret;
+}
+
+int siw_touch_init_late_queue(struct device *dev,
+		int sig, int time, int retry)
+{
+	struct siw_ts *ts = to_touch_core(dev);
+	int ret = 0;
+
+	if (!(touch_flags(ts) & TOUCH_USE_PROBE_INIT_LATE)) {
+		t_dev_info(dev, "init_late not enabled\n");
+		return 0;
+	}
+
+	if (!time) {
+		siw_touch_atomic_notifier_call(LCD_EVENT_TOUCH_INIT_LATE, &sig);
+		return 0;
+	}
+
+	mutex_lock(&ts->lock);
+
+	if (ts->init_late == NULL) {
+		t_dev_err(dev, "queue init_late: no init_late\n");
+		ret = -EFAULT;
+		goto out;
+	}
+
+	if (ts->init_late_run) {
+		t_dev_warn(dev, "queue init_late: already activated\n");
+		ret = -EPERM;
+		goto out;
+	}
+
+	if (!sig) {
+		t_dev_err(dev, "queue init_late: zero sig\n");
+		ret = -EINVAL;
+		goto out;
+	}
+
+	t_dev_info(dev, "queue init_late: sig %Xh, time %d, retry %d\n",
+		sig, time, retry);
+
+	ts->init_late_sig = sig;
+	ts->init_late_retry = retry;
+	ts->init_late_time = time;
+
+	siw_touch_init_late_work_run(ts, 0);
+
+out:
+	mutex_unlock(&ts->lock);
+
 	return ret;
 }
 
