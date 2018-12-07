@@ -1099,7 +1099,7 @@ out:
 static ssize_t _show_dbg_mon(struct device *dev, char *buf)
 {
 	struct siw_ts *ts = to_touch_core(dev);
-	struct siw_ts_thread *ts_thread = &ts->mon_thread;
+	struct siw_mon_thread *mon_thread = &ts->mon_thread;
 	const char *name = NULL;
 	int size = 0;
 
@@ -1108,7 +1108,7 @@ static ssize_t _show_dbg_mon(struct device *dev, char *buf)
 		return (ssize_t)size;
 	}
 
-	name = (atomic_read(&ts_thread->state) == TS_THREAD_ON) ? "resume" : "pause";
+	name = (atomic_read(&mon_thread->state) == TS_THREAD_ON) ? "resume" : "pause";
 
 	size += siw_snprintf(buf, size, "mon thread is %s state\n", name);
 

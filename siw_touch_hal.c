@@ -8592,7 +8592,7 @@ static const struct siw_hal_reg siw_touch_default_reg = {
 };
 
 enum {
-	HAL_MON_INTERVAL_DEFAULT = 5,
+	HAL_MON_INTERVAL_DEFAULT = MON_INTERVAL_DEFAULT,
 };
 
 static const struct siw_touch_operations siw_touch_default_ops = {

@@ -1083,14 +1083,14 @@ static void siw_touch_finger_input_check_work_func(
 
 static int siw_touch_mon_chk_pause(struct siw_ts *ts)
 {
-	struct siw_ts_thread *ts_thread = &ts->mon_thread;
+	struct siw_mon_thread *mon_thread = &ts->mon_thread;
 	int curr_state;
 
-	mutex_lock(&ts_thread->lock);
+	mutex_lock(&mon_thread->lock);
 	curr_state = (atomic_read(&ts->state.mon_ignore)) ?	\
 				TS_THREAD_PAUSE : TS_THREAD_ON;
-	atomic_set(&ts_thread->state, curr_state);
-	mutex_unlock(&ts_thread->lock);
+	atomic_set(&mon_thread->state, curr_state);
+	mutex_unlock(&mon_thread->lock);
 
 	return (curr_state == TS_THREAD_PAUSE);
 }
@@ -1108,61 +1108,89 @@ static int siw_touch_mon_can_handler(struct siw_ts *ts)
 	return 1;
 }
 
-static int siw_touch_mon_thread(void *d)
+static void siw_touch_mon_work_run_queue(struct siw_ts *ts, int delay)
 {
-	struct siw_ts *ts = d;
-	struct siw_ts_thread *ts_thread = &ts->mon_thread;
-	struct device *dev = ts->dev;
-	siw_mon_handler_t handler;
+	struct siw_mon_thread *mon_thread = &ts->mon_thread;
+	int interval = mon_thread->interval;
 	unsigned long timeout;
-	int ret = 0;
 
-	handler = ts_thread->handler;
-	timeout = ts_thread->interval * HZ;
+#if 0
+	if (!(touch_flags(ts) & TOUCH_USE_MON_THREAD)) {
+		return;
+	}
+#endif
 
-	atomic_set(&ts_thread->state, TS_THREAD_ON);
-
-	while (1) {
-		set_current_state(TASK_INTERRUPTIBLE);
-		schedule_timeout_interruptible(timeout);
-
-		if (kthread_should_stop()) {
-			t_dev_info(dev, "stopping mon thread[%s]\n",
-					ts_thread->thread->comm);
-			set_current_state(TASK_RUNNING);
-			break;
-		}
-
-		set_current_state(TASK_RUNNING);
-
-		if (siw_touch_mon_chk_pause(ts)) {
-			continue;
-		}
-
-		if (siw_touch_mon_can_handler(ts)) {
-			ret = handler(dev, 0);
-		}
-
-		siw_touch_mon_chk_pause(ts);
+	if (mon_thread->work == NULL) {
+		return;
 	}
 
-	atomic_set(&ts_thread->state, TS_THREAD_OFF);
+	timeout = msecs_to_jiffies((delay) ? delay : interval);
 
-	return 0;
+	queue_delayed_work(ts->wq, mon_thread->work, timeout);
+}
+
+static void siw_touch_mon_work_stop_queue(struct siw_ts *ts)
+{
+	struct siw_mon_thread *mon_thread = &ts->mon_thread;
+
+#if 0
+	if (!(touch_flags(ts) & TOUCH_USE_MON_THREAD)) {
+		return;
+	}
+#endif
+
+	if (mon_thread->work == NULL) {
+		return;
+	}
+
+	cancel_delayed_work_sync(mon_thread->work);
+}
+
+static void siw_touch_mon_work_func(struct work_struct *work)
+{
+	struct siw_mon_thread *mon_thread =
+			container_of(to_delayed_work(work),
+						struct siw_mon_thread, __work);
+	struct siw_ts *ts =
+			container_of(mon_thread,
+						struct siw_ts, mon_thread);
+	struct device *dev = ts->dev;
+	siw_mon_handler_t handler;
+	int ret = 0;
+
+	if (!(touch_flags(ts) & TOUCH_USE_MON_THREAD)) {
+		return;
+	}
+
+	handler = mon_thread->handler;
+
+	if (atomic_read(&ts->state.mon_ignore)) {
+		return;
+	}
+
+	if (siw_touch_mon_can_handler(ts)) {
+		ret = handler(dev, 0);
+	}
+
+	if (atomic_read(&ts->state.mon_ignore)) {
+		return;
+	}
+
+	siw_touch_mon_work_run_queue(ts, 0);
 }
 
 static int siw_touch_mon_hold_set(struct device *dev, int pause)
 {
 	struct siw_ts *ts = to_touch_core(dev);
-	struct siw_ts_thread *ts_thread = &ts->mon_thread;
+	struct siw_mon_thread *mon_thread = &ts->mon_thread;
 	char *name = (pause) ? "pause" : "resume";
 	int prev_state = (pause) ? TS_THREAD_ON : TS_THREAD_PAUSE;
 
-	if (ts_thread->thread == NULL) {
+	if (mon_thread->work == NULL) {
 		return -EINVAL;
 	}
 
-	if (atomic_read(&ts_thread->state) != prev_state) {
+	if (atomic_read(&mon_thread->state) != prev_state) {
 		return -EINVAL;
 	}
 
@@ -1170,39 +1198,40 @@ static int siw_touch_mon_hold_set(struct device *dev, int pause)
 
 	atomic_set(&ts->state.mon_ignore, !!pause);
 
+	if (pause) {
+		siw_touch_mon_work_stop_queue(ts);
+	} else {
+		siw_touch_mon_work_run_queue(ts, 100);
+	}
+
 	return 0;
+}
+
+static void siw_touch_mon_hold_post(struct device *dev, int pause)
+{
+	struct siw_ts *ts = to_touch_core(dev);
+
+	siw_touch_mon_chk_pause(ts);
 }
 
 static void siw_touch_mon_hold(struct device *dev, int pause)
 {
 	struct siw_ts *ts = to_touch_core(dev);
-	struct siw_ts_thread *ts_thread = &ts->mon_thread;
-	char *name = (pause) ? "pause" : "resume";
-	int new_state = (pause) ? TS_THREAD_PAUSE : TS_THREAD_ON;
+	struct siw_mon_thread *mon_thread = &ts->mon_thread;
 	int ret = 0;
 
 	if (!(touch_flags(ts) & TOUCH_USE_MON_THREAD)) {
 		return;
 	}
 
-	mutex_lock(&ts_thread->lock);
+	mutex_lock(&mon_thread->lock);
 	ret = siw_touch_mon_hold_set(dev, pause);
-	mutex_unlock(&ts_thread->lock);
+	mutex_unlock(&mon_thread->lock);
 	if (ret < 0) {
 		return;
 	}
 
-	while (1) {
-		wake_up_process(ts_thread->thread);
-
-		touch_msleep(1);
-
-		if (atomic_read(&ts_thread->state) == new_state)
-			break;
-
-		t_dev_info(dev,
-			"waiting for mon thread %s\n", name);
-	}
+	siw_touch_mon_hold_post(dev, pause);
 }
 
 void siw_touch_mon_pause(struct device *dev)
@@ -1215,26 +1244,55 @@ void siw_touch_mon_resume(struct device *dev)
 	siw_touch_mon_hold(dev, 0);
 }
 
-#define siw_touch_kthread_run(__dev, __threadfn, __data, __name) \
-({	\
-	struct task_struct *__k;	\
-	__k = kthread_run(__threadfn, __data, "%s", __name);	\
-	if (IS_ERR(__k))	\
-		t_dev_err(__dev, "kthread_run failed : %s\n", __name);	\
-	else	\
-		t_dev_dbg_base(__dev, "kthread[%s] is running\n", __k->comm);	\
-	__k;	\
-})
+static int siw_touch_mon_chk_thread(struct siw_ts *ts)
+{
+	return (ts->mon_thread.work != NULL);
+}
 
-static int __used siw_touch_init_thread(struct siw_ts *ts)
+static int siw_touch_mon_set_thread(struct siw_ts *ts)
+{
+	struct siw_mon_thread *mon_thread = NULL;
+
+	mon_thread = &ts->mon_thread;
+
+	mon_thread->work = &mon_thread->__work;
+
+	INIT_DELAYED_WORK(mon_thread->work, siw_touch_mon_work_func);
+
+	siw_touch_mon_work_run_queue(ts, 0);
+
+	atomic_set(&mon_thread->state, TS_THREAD_ON);
+
+	return 0;
+}
+
+static void siw_touch_mon_clr_thread(struct siw_ts *ts)
+{
+	struct siw_mon_thread *mon_thread = NULL;
+	struct device *dev = ts->dev;
+
+	mon_thread = &ts->mon_thread;
+
+	t_dev_info(dev, "stopping mon thread\n");
+
+	siw_touch_mon_work_stop_queue(ts);
+
+	atomic_set(&mon_thread->state, TS_THREAD_OFF);
+
+	mon_thread->work = NULL;
+
+	mutex_destroy(&mon_thread->lock);
+}
+
+#define MON_INTERVAL_MIN	500
+
+static int __used siw_touch_mon_init_thread(struct siw_ts *ts)
 {
 	struct siw_touch_fquirks *fquirks = touch_fquirks(ts);
 	struct device *dev = ts->dev;
-	struct siw_ts_thread *ts_thread = NULL;
-	struct task_struct *thread;
-	siw_mon_handler_t handler;
-	char *thread_name;
-	int interval;
+	struct siw_mon_thread *mon_thread = NULL;
+	siw_mon_handler_t handler = NULL;
+	int interval = 0;
 	int ret = 0;
 
 	if (t_dbg_flag & DBG_FLAG_SKIP_MON_THREAD) {
@@ -1248,13 +1306,13 @@ static int __used siw_touch_init_thread(struct siw_ts *ts)
 		goto out;
 	}
 
-	ts_thread = &ts->mon_thread;
-
-	if (ts_thread->thread != NULL) {
+	if (siw_touch_mon_chk_thread(ts)) {
 		goto out;
 	}
 
-	mutex_init(&ts_thread->lock);
+	mon_thread = &ts->mon_thread;
+
+	mutex_init(&mon_thread->lock);
 
 	if (fquirks->mon_handler) {
 		handler = fquirks->mon_handler;
@@ -1274,55 +1332,37 @@ static int __used siw_touch_init_thread(struct siw_ts *ts)
 		goto out;
 	}
 
-/*
-	do {
-		touch_msleep(10);
-	} while (atomic_read(&ts->state.core) != CORE_NORMAL);
-*/
-
-	atomic_set(&ts_thread->state, TS_THREAD_OFF);
-	ts_thread->interval = interval;
-	ts_thread->handler = handler;
-
-	thread_name = touch_drv_name(ts);
-	thread_name = (thread_name) ? thread_name : SIW_TOUCH_NAME;
-	thread = siw_touch_kthread_run(dev,
-					siw_touch_mon_thread, ts,
-					thread_name);
-	if (IS_ERR(thread)) {
-		ret = PTR_ERR(thread);
+	if (interval < MON_INTERVAL_MIN) {
+		t_dev_warn(dev, "mon_interval is too short, %d msec\n", interval);
 		goto out;
 	}
-	ts_thread->thread = thread;
-	t_dev_info(dev, "mon thread[%s, %d] begins\n",
-			thread->comm, ts->ops->mon_interval);
+
+	atomic_set(&mon_thread->state, TS_THREAD_OFF);
+	mon_thread->interval = interval;
+	mon_thread->handler = handler;
+
+	ret = siw_touch_mon_set_thread(ts);
+	if (ret < 0) {
+		goto out;
+	}
+
+	t_dev_info(dev, "mon thread[%d msec] begins\n", interval);
 
 out:
 	return ret;
 }
 
-static void __used siw_touch_free_thread(struct siw_ts *ts)
+static void __used siw_touch_mon_free_thread(struct siw_ts *ts)
 {
-//	struct device *dev = ts->dev;
-	struct siw_ts_thread *ts_thread = NULL;
-//	char comm[TASK_COMM_LEN] = { 0, };
-
 	if (!(touch_flags(ts) & TOUCH_USE_MON_THREAD)) {
 		return;
 	}
 
-	ts_thread = &ts->mon_thread;
-
-	if (ts_thread->thread == NULL) {
+	if (!siw_touch_mon_chk_thread(ts)) {
 		return;
 	}
 
-//	memcpy(comm, ts_thread->thread->comm, TASK_COMM_LEN);
-	kthread_stop(ts_thread->thread);
-
-	ts_thread->thread = NULL;
-
-	mutex_destroy(&ts_thread->lock);
+	siw_touch_mon_clr_thread(ts);
 }
 
 static int __used siw_touch_init_works(struct siw_ts *ts)
@@ -1687,7 +1727,7 @@ static int __siw_touch_probe_init(void *data)
 	siw_touch_disable_irq(dev, ts->irq);
 //	t_dev_dbg_irq(dev, "disable irq until init completed\n");
 
-	ret = siw_touch_init_thread(ts);
+	ret = siw_touch_mon_init_thread(ts);
 	if (ret) {
 		t_dev_err(dev, "failed to create thread\n");
 		goto out_init_thread;
@@ -1731,7 +1771,7 @@ static void __siw_touch_probe_free(void *data)
 	cancel_delayed_work_sync(&ts->upgrade_work);
 	cancel_delayed_work_sync(&ts->init_work);
 
-	siw_touch_free_thread(ts);
+	siw_touch_mon_free_thread(ts);
 
 	siw_touch_free_irq(ts);
 

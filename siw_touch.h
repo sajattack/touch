@@ -930,10 +930,13 @@ enum {
 	TS_THREAD_OFF = 0,
 	TS_THREAD_ON,
 	TS_THREAD_PAUSE,
+	/* */
+	MON_INTERVAL_DEFAULT = 5000,	//msec
 };
 
-struct siw_ts_thread {
-	struct task_struct *thread;
+struct siw_mon_thread {
+	struct delayed_work __work;
+	struct delayed_work *work;
 	atomic_t state;
 	int interval;
 	siw_mon_handler_t handler;
@@ -1060,7 +1063,7 @@ struct siw_ts {
 	int fb_ret_suspend;
 #endif	/* __SIW_CONFIG_FB */
 
-	struct siw_ts_thread mon_thread;
+	struct siw_mon_thread mon_thread;
 
 	int vdd_id;
 	int vdd_vol;
