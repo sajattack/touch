@@ -704,6 +704,9 @@ struct siw_touch_pdata {
 	 * Auto-execution for ts->init_late_work
 	 * 0: disabled, non-zero: auto execution time delay(msec)
 	 * To ts->init_late_time
+	 *
+	 * [31:24] - init_late retry count for failure case (0 means no retry)
+	 * [23:00] - init_late delay time (msec)
 	 */
 	int init_late_time;
 };
