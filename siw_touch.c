@@ -140,6 +140,14 @@ static void siw_config_status(struct device *dev)
 #if defined(__SIW_CONFIG_FASTBOOT)
 	t_dev_info(dev, "cfg status : __SIW_CONFIG_FASTBOOT\n");
 #endif
+
+#if defined(__SIW_SUPPORT_PROBE_POST_RETRY)
+	t_dev_info(dev, "cfg status : __SIW_SUPPORT_PROBE_POST_RETRY\n");
+#endif
+
+#if defined(__SIW_SUPPORT_INIT_RETRY)
+	t_dev_info(dev, "cfg status : __SIW_SUPPORT_INIT_RETRY\n");
+#endif
 }
 
 static int siw_setup_names(struct siw_ts *ts, struct siw_touch_pdata *pdata)
@@ -850,8 +858,16 @@ static void siw_touch_init_work_func(struct work_struct *work)
 			return;
 		}
 
+	#if defined(__SIW_SUPPORT_INIT_RETRY)
+#define INIT_RETRY_DELAY	500
+
+		t_dev_err(dev, "%s init work failed(%d), retry after %d msec.\n",
+				touch_chip_name(ts), ret, INIT_RETRY_DELAY);
+		siw_touch_qd_init_work_jiffies(ts, INIT_RETRY_DELAY);
+	#else	/* __SIW_SUPPORT_INIT_RETRY */
 		t_dev_err(dev, "%s init work failed, %d\n",
 				touch_chip_name(ts), ret);
+	#endif	/* __SIW_SUPPORT_INIT_RETRY */
 		return;
 	}
 
@@ -1907,6 +1923,12 @@ static void siw_touch_init_late_work_run(struct siw_ts *ts, int delay)
 		ts->init_late_time, ts->init_late_retry, ts->init_late_sig);
 }
 
+#if defined(__SIW_SUPPORT_PROBE_POST_RETRY)
+#define LATE_WORK_SET_DELAY		200
+#else	/* __SIW_SUPPORT_PROBE_POST_RETRY */
+#define LATE_WORK_SET_DELAY		0
+#endif	/* __SIW_SUPPORT_PROBE_POST_RETRY */
+
 static int siw_touch_init_late_work_set(struct siw_ts *ts)
 {
 	mutex_lock(&ts->lock);
@@ -1929,7 +1951,7 @@ static int siw_touch_init_late_work_set(struct siw_ts *ts)
 
 	ts->init_late_sig = INIT_LATE_SIG_WQ;
 
-	siw_touch_init_late_work_run(ts, 0);
+	siw_touch_init_late_work_run(ts, LATE_WORK_SET_DELAY);
 
 out:
 	mutex_unlock(&ts->lock);
@@ -1953,8 +1975,18 @@ static void siw_touch_init_late_work_clr(struct siw_ts *ts)
 
 static int siw_touch_probe_post(struct siw_ts *ts)
 {
+#if defined(__SIW_SUPPORT_PROBE_POST_RETRY)
+#define PROBE_POST_RETRY_DELAY	500
+
+	ts->flags |= TOUCH_USE_PROBE_INIT_LATE;
+	ts->init_late_retry = ~0;
+	if (!ts->init_late_time) {
+		ts->init_late_time = PROBE_POST_RETRY_DELAY;
+	}
+#else	/* __SIW_SUPPORT_PROBE_POST_RETRY */
 	ts->init_late_retry = ts->pdata->init_late_time>>INIT_LATE_RETRY_POS;
 	ts->init_late_time = ts->pdata->init_late_time & INIT_LATE_DELAY_MASK;
+#endif	/* __SIW_SUPPORT_PROBE_POST_RETRY */
 
 	if (t_dbg_flag & DBG_FLAG_SKIP_INIT_LATE) {
 		ts->flags &= ~TOUCH_USE_PROBE_INIT_LATE;

@@ -1049,6 +1049,15 @@ static ssize_t _store_irq_flag(struct device *dev,
 	return count;
 }
 
+#if defined(__SIW_SUPPORT_PROBE_POST_RETRY)
+static ssize_t _store_init_late(struct device *dev,
+				const char *buf, size_t count)
+{
+	t_dev_info(dev, "probe_post retry is working\n");
+
+	return count;
+}
+#else	/* __SIW_SUPPORT_PROBE_POST_RETRY */
 static ssize_t _store_init_late(struct device *dev,
 				const char *buf, size_t count)
 {
@@ -1068,6 +1077,7 @@ static ssize_t _store_init_late(struct device *dev,
 
 	return count;
 }
+#endif	/* __SIW_SUPPORT_PROBE_POST_RETRY */
 
 extern int siw_touch_notify(struct siw_ts *ts, unsigned long event, void *data);
 
