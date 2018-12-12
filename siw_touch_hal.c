@@ -4226,11 +4226,17 @@ static int siw_hal_upgrade_pre(struct device * dev)
 	 * TC_STOP before fw upgrade
 	 * to avoid unexpected IRQ drop by internal watchdog
 	 */
-	ret = siw_hal_write_value(dev,
-				reg->tc_drive_ctl,
-				ctrl);
+	rdata = reg->tc_drive_ctl;
+
+	ret = siw_hal_write_value(dev, rdata, ctrl);
+	if (ret < 0) {
+		t_dev_err(dev, "FW upgrade: TC stop(%04Xh, 0x%08X) failed\n",
+				rdata, ctrl);
+		goto out;
+	}
+
 	t_dev_info(dev, "FW upgrade: TC stop(%04Xh, 0x%08X)\n",
-			reg->tc_drive_ctl, ctrl);
+			rdata, ctrl);
 
 	rdata = chip->drv_delay + hal_dbg_delay(chip, HAL_DBG_DLY_TC_DRIVING_1);
 	touch_msleep(rdata);
