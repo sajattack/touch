@@ -2140,38 +2140,51 @@ static int siw_hal_init_reg_set_pre(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
+	int is_spi = !!(touch_bus_type(ts) == BUS_IF_SPI);
+	u32 addr_spi = 0xFE4;
+	u32 addr_i2c = 0xFE5;
+	u32 addr_set = 0xFF3;
+	u32 value_spi = is_spi;
+	u32 value_i2c = !is_spi;
+	u32 wdata = ABNORMAL_IC_DETECTION;
 	int ret = 0;
 
-	if (chip->opt.f_attn_opt) {
-		u32 addr = 0;
-		if (touch_bus_type(ts) == BUS_IF_I2C) {
-			addr = 0xFE4;
-		} else {
-			addr = 0xFE5;
-		}
-		if (addr) {
-			ret = siw_hal_write_value(dev, addr, 0);
-			if (ret < 0) {
-				goto out;
-			}
-		}
+	if (!chip->opt.f_attn_opt) {
+		goto out;
+	}
 
-		switch (touch_chip_type(ts)) {
-		case CHIP_SW46104:
-			goto out;
-		default:
-			break;
-		}
+	switch (touch_chip_type(ts)) {
+	case CHIP_SW46104:
+		addr_set = ADDR_SKIP_MASK;
+		break;
+	default:
+		break;
+	}
 
-		ret = siw_hal_init_reg_verify(dev,
-				0xFF3, ABNORMAL_IC_DETECTION, 3,
-				"spi_tattn_opt");
-		if (ret < 0) {
-			t_dev_err(dev,
-				"failed to set spi_tattn_opt, %d\n",
-				ret);
-			goto out;
-		}
+	/* for spi : 1, for i2c : 0 */
+	ret = siw_hal_write_value_chk(dev, addr_spi, value_spi);
+	if (ret < 0) {
+		goto out;
+	}
+
+	/* for spi : 0, for i2c : 1 */
+	ret = siw_hal_write_value_chk(dev, addr_i2c, value_i2c);
+	if (ret < 0) {
+		goto out;
+	}
+
+	if (addr_set == ADDR_SKIP_MASK) {
+		goto out;
+	}
+
+	ret = siw_hal_init_reg_verify(dev,
+			addr_set, wdata, 3,
+			"spi_tattn_opt");
+	if (ret < 0) {
+		t_dev_err(dev,
+			"failed to set spi_tattn_opt, %d\n",
+			ret);
+		goto out;
 	}
 
 out:
