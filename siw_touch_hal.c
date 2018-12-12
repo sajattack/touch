@@ -6517,15 +6517,18 @@ static int siw_hal_do_check_status(struct device *dev,
 	u32 logging_clr_bit = 0;
 	u32 int_norm_mask = 0;
 	u32 status_mask = 0;
+	int skip_trace = (irq & 0x80);
 	int ret_pre = 0;
 	int ret = 0;
 
+	irq &= 0x01;
+
 	if (!status && !ic_status) {
-		t_dev_err(dev, "all low detected\n");
+		t_dev_err(dev, "[%d] all low detected\n", irq);
 		return -STS_RET_ERR;
 	}
 	if ((status == ~0) && (ic_status == ~0)) {
-		t_dev_err(dev, "all high detected\n");
+		t_dev_err(dev, "[%d] all high detected\n", irq);
 		return -STS_RET_ERR;
 	}
 
@@ -6540,11 +6543,10 @@ static int siw_hal_do_check_status(struct device *dev,
 
 	status_mask = status ^ int_norm_mask;
 
-	if (!(irq & 0x80)) {
+	if (!skip_trace) {
 		t_dev_dbg_trace(dev, "[%d] h/w:%Xh, f/w:%Xh(%Xh)\n",
 				irq, ic_status, status, status_mask);
 	}
-	irq &= 0x01;
 
 	if (status_mask & reset_clr_bit) {
 		t_dev_err(dev,
