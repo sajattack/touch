@@ -1883,6 +1883,40 @@ static int siw_hal_ic_info_ver_check(struct device *dev)
 	return -EINVAL;
 }
 
+static int siw_hal_ic_info_boot(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	int boot_fail_cnt = chip->boot_fail_cnt;
+	int ret = 0;
+
+	ret = siw_hal_chk_boot(dev);
+	if (ret < 0) {
+		return ret;
+	}
+
+	if (ret) {
+		atomic_set(&chip->boot, IC_BOOT_FAIL);
+
+		/* Limit to avoid infinite repetition */
+		if (boot_fail_cnt >= BOOT_FAIL_RECOVERY_MAX) {
+			t_dev_err(dev, "Boot fail can't be recovered(%d) - %02Xh\n",
+				boot_fail_cnt, ret);
+			return -EFAULT;
+		}
+
+		t_dev_err(dev, "Boot fail detected(%d) - %02Xh\n",
+			boot_fail_cnt, ret);
+
+		chip->boot_fail_cnt++;
+
+		/* return special flag to let the core layer know */
+		return -ETDBOOTFAIL;
+	}
+	chip->boot_fail_cnt = 0;
+
+	return 0;
+}
+
 static int siw_hal_hw_reset_quirk(struct device *dev, int delay);
 
 static int siw_hal_ic_info_quirk(struct device *dev)
@@ -2029,30 +2063,10 @@ static int siw_hal_do_ic_info(struct device *dev, int prt_on)
 			((bootmode >> (boot_chk_offset + 2)) & 0x1) ? "ERROR" : "ok",
 			bootmode);
 
-	ret = siw_hal_chk_boot(dev);
-	if (ret < 0) {
+	ret = siw_hal_ic_info_boot(dev);
+	if (ret) {
 		return ret;
 	}
-	if (ret) {
-		int boot_fail_cnt = chip->boot_fail_cnt;
-		atomic_set(&chip->boot, IC_BOOT_FAIL);
-
-		/* Limit to avoid infinite repetition */
-		if (boot_fail_cnt >= BOOT_FAIL_RECOVERY_MAX) {
-			t_dev_err(dev, "Boot fail can't be recovered(%d) - %02Xh\n",
-				boot_fail_cnt, ret);
-			return -EFAULT;
-		}
-
-		t_dev_err(dev, "Boot fail detected(%d) - %02Xh\n",
-			boot_fail_cnt, ret);
-
-		chip->boot_fail_cnt++;
-
-		/* return special flag to let the core layer know */
-		return -ETDBOOTFAIL;
-	}
-	chip->boot_fail_cnt = 0;
 
 	if (chip->opt.f_info_more) {
 		t_dev_info_sel(dev, prt_on,
