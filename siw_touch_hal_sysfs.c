@@ -886,6 +886,22 @@ static ssize_t _store_debug_hal(struct device *dev,
 	return count;
 }
 
+static ssize_t _show_fwup_status(struct device *dev, char *buf)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	int fwup_status = siw_hal_get_fwup_status(chip);
+	const char *str = siw_fwup_status_str(fwup_status);
+	int size = 0;
+
+	if (fwup_status != FWUP_STATUS_BUSY) {
+		t_dev_info(dev, "fwup_status: %d(%s)\n", fwup_status, str);
+	}
+
+	size += siw_snprintf(buf, size, "%d\n", fwup_status);
+
+	return (ssize_t)size;
+}
+
 
 #define SIW_TOUCH_HAL_ATTR(_name, _show, _store)	\
 		TOUCH_ATTR(_name, _show, _store)
@@ -911,6 +927,7 @@ static SIW_TOUCH_HAL_ATTR(reset_hw, _show_reset_hw, NULL);
 static SIW_TOUCH_HAL_ATTR(debug_bus, _show_debug_bus, NULL);
 #endif
 static SIW_TOUCH_HAL_ATTR(debug_hal, _show_debug_hal, _store_debug_hal);
+static SIW_TOUCH_HAL_ATTR(fwup_status, _show_fwup_status, NULL);
 
 static struct attribute *siw_hal_attribute_list[] = {
 	&_SIW_TOUCH_HAL_ATTR_T(reg_list).attr,
@@ -931,6 +948,7 @@ static struct attribute *siw_hal_attribute_list[] = {
 	&_SIW_TOUCH_HAL_ATTR_T(debug_bus).attr,
 #endif
 	&_SIW_TOUCH_HAL_ATTR_T(debug_hal).attr,
+	&_SIW_TOUCH_HAL_ATTR_T(fwup_status).attr,
 	NULL,
 };
 

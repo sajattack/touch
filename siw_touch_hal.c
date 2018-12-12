@@ -3931,6 +3931,7 @@ static int siw_hal_fw_upgrade(struct device *dev,
 
 	ret = siw_hal_fw_size_check(dev, fw_size);
 	if (ret < 0) {
+		siw_hal_set_fwup_status(chip, FWUP_STATUS_NG_F_CHK);
 		goto out;
 	}
 
@@ -3943,12 +3944,14 @@ static int siw_hal_fw_upgrade(struct device *dev,
 
 	ret = siw_hal_fw_upgrade_fw(dev, fw_buf, fw_size);
 	if (ret < 0) {
+		siw_hal_set_fwup_status(chip, FWUP_STATUS_NG_CODE);
 		goto out;
 	}
 
 	if (include_conf) {
 		ret = siw_hal_fw_upgrade_conf(dev, fw_buf, fw_size);
 		if (ret < 0) {
+			siw_hal_set_fwup_status(chip, FWUP_STATUS_NG_CFG);
 			goto out;
 		}
 	}
@@ -4224,10 +4227,13 @@ static int siw_hal_upgrade(struct device *dev)
 	int ret_val = 0;
 	int ret = 0;
 
+	siw_hal_set_fwup_status(chip, FWUP_STATUS_BUSY);
+
 	chip->fw_abs_path = 0;
 
 	if (siw_hal_upgrade_not_allowed(dev)) {
 		t_dev_warn(dev, "FW upgrade: not granted\n");
+		siw_hal_set_fwup_status(chip, FWUP_STATUS_NG_OP);
 		return EACCES;
 	}
 
@@ -4236,6 +4242,7 @@ static int siw_hal_upgrade(struct device *dev)
 	fwpath = touch_getname();
 	if (fwpath == NULL) {
 		t_dev_err(dev, "failed to allocate name buffer - fwpath\n");
+		siw_hal_set_fwup_status(chip, FWUP_STATUS_NG_OP);
 		return -ENOMEM;
 	}
 
@@ -4272,6 +4279,7 @@ static int siw_hal_upgrade(struct device *dev)
 		t_dev_info(dev, "getting fw from file\n");
 		ret = siw_hal_fw_get_file(&fw, fwpath, dev);
 		if (ret < 0) {
+			siw_hal_set_fwup_status(chip, FWUP_STATUS_NG_F_OPEN);
 			goto out;
 		}
 		fw_buf = (u8 *)fw->data;
@@ -4283,12 +4291,14 @@ static int siw_hal_upgrade(struct device *dev)
 
 	if ((fw_buf == NULL) || !fw_size) {
 		t_dev_err(dev, "invalid fw info\n");
+		siw_hal_set_fwup_status(chip, FWUP_STATUS_NG_F_CHK);
 		goto out_fw;
 	}
 
 	if (fw_size < fw_max_size) {
 		t_dev_err(dev, "invalid fw size: %Xh < %Xh\n",
 			fw_size, fw_max_size);
+		siw_hal_set_fwup_status(chip, FWUP_STATUS_NG_F_CHK);
 		goto out_fw;
 	}
 
@@ -4296,6 +4306,7 @@ static int siw_hal_upgrade(struct device *dev)
 
 	ret_val = siw_hal_fw_compare(dev, fw_buf);
 	if (ret_val < 0) {
+		siw_hal_set_fwup_status(chip, FWUP_STATUS_NG_F_CHK);
 		ret = ret_val;
 		goto out_fw;
 	}
@@ -4306,6 +4317,7 @@ static int siw_hal_upgrade(struct device *dev)
 
 	ret_val = siw_hal_upgrade_pre(dev);
 	if (ret_val < 0) {
+		siw_hal_set_fwup_status(chip, FWUP_STATUS_NG_IO);
 		ret = ret_val;
 		goto out_fw;
 	}
@@ -4322,9 +4334,13 @@ out:
 	if (ret < 0) {
 		siwmon_submit_ops_step_chip_wh_name(dev, "%s - FW upgrade halted",
 				touch_chip_name(ts), ret);
+		if (siw_hal_get_fwup_status(chip) == FWUP_STATUS_BUSY) {
+			siw_hal_set_fwup_status(chip, FWUP_STATUS_NG_IO);
+		}
 	} else {
 		siwmon_submit_ops_step_chip_wh_name(dev, "%s - FW upgrade done",
 				touch_chip_name(ts), ret);
+		siw_hal_set_fwup_status(chip, FWUP_STATUS_OK);
 	}
 
 	touch_putname(fwpath);

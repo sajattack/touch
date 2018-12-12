@@ -606,9 +606,58 @@ struct siw_touch_chip {
 	struct siw_hal_reg_log reg_log[REG_LOG_MAX];
 	struct siw_hal_debug dbg;
 	int fw_abs_path;
+	int fwup_status;
 	/* */
 	struct siw_hal_fquirks fquirks;
 };
+
+enum {
+	FWUP_STATUS_OK			= 0,
+	FWUP_STATUS_BUSY		= 1,
+	FWUP_STATUS_NG_OP	 	= 2,
+	FWUP_STATUS_NG_F_OPEN	= 3,
+	FWUP_STATUS_NG_F_CHK	= 4,
+	FWUP_STATUS_NG_CODE 	= 5,
+	FWUP_STATUS_NG_CFG		= 6,
+	FWUP_STATUS_NG_IO		= 9,
+	FWUP_STATUS_MAX,
+};
+
+#define SIW_FWUP_STATUS_STR(_sts)	\
+		[FWUP_STATUS_##_sts] = #_sts
+
+static const char *__siw_fwup_status_strs[] = {
+	SIW_FWUP_STATUS_STR(OK),
+	SIW_FWUP_STATUS_STR(BUSY),
+	SIW_FWUP_STATUS_STR(NG_OP),
+	SIW_FWUP_STATUS_STR(NG_F_OPEN),
+	SIW_FWUP_STATUS_STR(NG_F_CHK),
+	SIW_FWUP_STATUS_STR(NG_CODE),
+	SIW_FWUP_STATUS_STR(NG_CFG),
+	SIW_FWUP_STATUS_STR(NG_IO),
+};
+
+static inline const char *siw_fwup_status_str(int status)
+{
+	const char *str = (status < FWUP_STATUS_MAX) ?
+						__siw_fwup_status_strs[status] : NULL;
+
+	return (str) ? str : "(invalid)";
+}
+
+static inline int siw_hal_get_fwup_status(struct siw_touch_chip *chip)
+{
+	return chip->fwup_status;
+}
+
+static inline void siw_hal_set_fwup_status(struct siw_touch_chip *chip, int status)
+{
+	const char *str = siw_fwup_status_str(status);
+
+	t_dev_info(chip->dev, "FW upgrade: status %d(%s)\n", status, str);
+
+	chip->fwup_status = status;
+}
 
 static inline int hal_dbg_delay(struct siw_touch_chip *chip, int index)
 {
