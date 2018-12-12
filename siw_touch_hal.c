@@ -6771,13 +6771,15 @@ static int siw_hal_irq_abs(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
+	struct siw_hal_touch_info *info = &chip->info;
 
 	/* check if touch cnt is valid */
-	if (chip->info.touch_cnt == 0 || chip->info.touch_cnt > ts->caps.max_id) {
-		struct siw_hal_touch_data *data = chip->info.data;
+	if (!info->touch_cnt ||
+		(info->touch_cnt > ts->caps.max_id)) {
+		struct siw_hal_touch_data *data = info->data;
 
 		t_dev_dbg_abs(dev, "Invalid touch count, %d(%d)\n",
-				chip->info.touch_cnt, ts->caps.max_id);
+				info->touch_cnt, ts->caps.max_id);
 
 		/* debugging */
 		t_dev_dbg_abs(dev, "t %d, ev %d, id %d, x %d, y %d, p %d, a %d, w %d %d\n",
