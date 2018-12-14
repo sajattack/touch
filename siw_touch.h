@@ -1035,6 +1035,7 @@ struct siw_ts {
 	struct mutex lock;
 	struct mutex reset_lock;
 	struct mutex probe_lock;
+	struct mutex power_lock;
 	struct workqueue_struct *wq;
 	struct delayed_work init_work;
 	struct delayed_work upgrade_work;
@@ -1686,6 +1687,9 @@ extern void *siw_setup_operations(struct siw_ts *ts, struct siw_touch_operations
 
 extern int siw_touch_set(struct device *dev, u32 cmd, void *buf);
 extern int siw_touch_get(struct device *dev, u32 cmd, void *buf);
+
+extern int siw_touch_power_state(struct device *dev);
+extern int siw_touch_power_lock(struct device *dev, int set);
 
 extern void siw_touch_suspend_call(struct device *dev);
 extern void siw_touch_resume_call(struct device *dev);

@@ -27,5 +27,8 @@ extern int siw_touch_sys_set_panel_bl(struct device *dev, int level);
 
 extern int siw_touch_sys_osc(struct device *dev, int onoff);
 
+extern int siw_touch_sys_power_state(struct device *dev);
+extern int siw_touch_sys_power_lock(struct device *dev, int set);
+
 #endif	/* __SIW_TOUCH_SYS_H */
 

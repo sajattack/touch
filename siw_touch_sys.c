@@ -194,4 +194,27 @@ int siw_touch_sys_osc(struct device *dev, int onoff)
 	return 0;
 }
 
+int siw_touch_sys_power_state(struct device *dev)
+{
+	/*
+	if (invalid_power_state) {
+		t_dev_warn(dev, "power status not invalid\n");
+		return -EPERM;
+	}
+	*/
+
+	return 0;
+}
+
+int siw_touch_sys_power_lock(struct device *dev, int set)
+{
+	if (set) {
+		/* keep touch power on */
+	} else {
+		/* allow touch power off */
+	}
+
+	return 0;
+}
+
 

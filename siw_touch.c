@@ -386,6 +386,32 @@ int siw_touch_get(struct device *dev, u32 cmd, void *buf)
 	return ret;
 }
 
+int siw_touch_power_state(struct device *dev)
+{
+	struct siw_ts *ts = to_touch_core(dev);
+	int ret = 0;
+
+	mutex_lock(&ts->power_lock);
+	ret = siw_touch_sys_power_state(dev);
+	mutex_unlock(&ts->power_lock);
+
+	return ret;
+}
+
+int siw_touch_power_lock(struct device *dev, int set)
+{
+	struct siw_ts *ts = to_touch_core(dev);
+	int ret = 0;
+
+	mutex_lock(&ts->power_lock);
+
+	ret = siw_touch_sys_power_lock(dev, set);
+
+	mutex_unlock(&ts->power_lock);
+
+	return ret;
+}
+
 /**
  * siw_touch_suspend() - touch suspend
  * @dev: device to use
@@ -796,6 +822,7 @@ static void __used siw_touch_init_locks(struct siw_ts *ts)
 	mutex_init(&ts->lock);
 	mutex_init(&ts->reset_lock);
 	mutex_init(&ts->probe_lock);
+	mutex_init(&ts->power_lock);
 #if defined(__SIW_SUPPORT_WAKE_LOCK)
 	wake_lock_init(&ts->lpwg_wake_lock,
 		WAKE_LOCK_SUSPEND, SIW_TOUCH_LPWG_LOCK_NAME);
@@ -809,6 +836,7 @@ static void __used siw_touch_free_locks(struct siw_ts *ts)
 	mutex_destroy(&ts->lock);
 	mutex_destroy(&ts->reset_lock);
 	mutex_destroy(&ts->probe_lock);
+	mutex_destroy(&ts->power_lock);
 #if defined(__SIW_SUPPORT_WAKE_LOCK)
 	wake_lock_destroy(&ts->lpwg_wake_lock);
 #endif
@@ -949,11 +977,21 @@ static void siw_touch_upgrade_work_func(struct work_struct *work)
 
 	siw_touch_mon_pause(dev);
 
+	ret = siw_touch_power_state(dev);
+	if (ret < 0) {
+		t_dev_err(dev, "FW upgrade work canceled by power state\n");
+		goto out;
+	}
+
+	siw_touch_power_lock(dev, 1);
 	ret = siw_touch_upgrade_work(ts);
+	siw_touch_power_lock(dev, 0);
+
 	if (ret) {
 		siw_ops_reset(ts, HW_RESET_ASYNC);
 	}
 
+out:
 	siw_touch_mon_resume(dev);
 }
 
@@ -2110,7 +2148,15 @@ int siw_touch_init_late(struct siw_ts *ts, int value)
 
 	t_dev_info(dev, "trigger init_late(%Xh)\n", value);
 
+	ret = siw_touch_power_state(dev);
+	if (ret < 0) {
+		t_dev_err(dev, "init_late canceled by power state\n");
+		goto out;
+	}
+
+	siw_touch_power_lock(dev, 1);
 	ret = ts->init_late(ts);
+	siw_touch_power_lock(dev, 0);
 	if (ret < 0) {
 		atomic_set(&ts->state.core, CORE_PROBE);
 		t_dev_err(dev, "init_late failed, %d\n", ret);
