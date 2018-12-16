@@ -562,6 +562,17 @@ struct siw_touch_fquirks {	//function quirks
 	/* */
 	int (*mon_handler)(struct device *dev, u32 opt);
 	int mon_interval;
+	/* */
+	int (*boot_status)(struct device *dev, u32 *boot_st);
+	/* */
+	int (*flash_wp)(struct device *dev, int wp);
+	/* */
+	int (*gpio_init_reset)(struct device *dev);
+	int (*gpio_free_reset)(struct device *dev);
+	int (*gpio_set_reset)(struct device *dev, int val);
+	/* */
+	int (*gpio_init_irq)(struct device *dev);
+	int (*gpio_free_irq)(struct device *dev);
 };
 
 enum {

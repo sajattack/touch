@@ -210,23 +210,7 @@ static int __siw_hal_gpio_skip_reset(struct siw_ts *ts)
 	return 0;
 }
 
-static void siw_hal_set_gpio_reset(struct device *dev, int val)
-{
-	struct siw_ts *ts = to_touch_core(dev);
-	int reset_pin = touch_reset_pin(ts);
-
-	if (__siw_hal_gpio_skip_reset(ts)) {
-		return;
-	}
-
-	siw_touch_gpio_direction_output(dev,
-			reset_pin, !!(val));
-	t_dev_dbg_gpio(dev, "set %s(%d) : %d\n",
-			SIW_HAL_GPIO_RST,
-			reset_pin, !!(val));
-}
-
-static void siw_hal_init_gpio_reset(struct device *dev)
+static void __siw_hal_init_gpio_reset(struct device *dev)
 {
 	struct siw_ts *ts = to_touch_core(dev);
 	int reset_pin = touch_reset_pin(ts);
@@ -254,6 +238,82 @@ static void siw_hal_init_gpio_reset(struct device *dev)
 			reset_pin, GPIO_NO_PULL);
 }
 
+static void __siw_hal_free_gpio_reset(struct device *dev)
+{
+	struct siw_ts *ts = to_touch_core(dev);
+	int reset_pin = touch_reset_pin(ts);
+
+	if (__siw_hal_gpio_skip_reset(ts)) {
+		return;
+	}
+
+	siw_touch_gpio_free(dev, reset_pin);
+}
+
+static void __siw_hal_set_gpio_reset(struct device *dev, int val)
+{
+	struct siw_ts *ts = to_touch_core(dev);
+	int reset_pin = touch_reset_pin(ts);
+
+	if (__siw_hal_gpio_skip_reset(ts)) {
+		return;
+	}
+
+	siw_touch_gpio_direction_output(dev,
+			reset_pin, !!(val));
+	t_dev_dbg_gpio(dev, "set %s(%d) : %d\n",
+			SIW_HAL_GPIO_RST,
+			reset_pin, !!(val));
+}
+
+static void siw_hal_init_gpio_reset(struct device *dev)
+{
+	struct siw_ts *ts = to_touch_core(dev);
+	struct siw_touch_fquirks *fquirks = touch_fquirks(ts);
+	int ret = 0;
+
+	if (fquirks->gpio_init_reset) {
+		ret = fquirks->gpio_init_reset(dev);
+		if (ret != -EAGAIN) {
+			return;
+		}
+	}
+
+	__siw_hal_init_gpio_reset(dev);
+}
+
+static void siw_hal_free_gpio_reset(struct device *dev)
+{
+	struct siw_ts *ts = to_touch_core(dev);
+	struct siw_touch_fquirks *fquirks = touch_fquirks(ts);
+	int ret = 0;
+
+	if (fquirks->gpio_free_reset) {
+		ret = fquirks->gpio_free_reset(dev);
+		if (ret != -EAGAIN) {
+			return;
+		}
+	}
+
+	__siw_hal_free_gpio_reset(dev);
+}
+
+static void siw_hal_set_gpio_reset(struct device *dev, int val)
+{
+	struct siw_ts *ts = to_touch_core(dev);
+	struct siw_touch_fquirks *fquirks = touch_fquirks(ts);
+	int ret = 0;
+
+	if (fquirks->gpio_set_reset) {
+		ret = fquirks->gpio_set_reset(dev, val);
+		if (ret != -EAGAIN) {
+			return;
+		}
+	}
+
+	__siw_hal_set_gpio_reset(dev, val);
+}
+
 static void siw_hal_trigger_gpio_reset(struct device *dev, int delay)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
@@ -266,18 +326,6 @@ static void siw_hal_trigger_gpio_reset(struct device *dev, int delay)
 	t_dev_info(dev, "trigger gpio reset\n");
 
 	touch_msleep((delay) ? delay : ts->caps.hw_reset_delay);
-}
-
-static void siw_hal_free_gpio_reset(struct device *dev)
-{
-	struct siw_ts *ts = to_touch_core(dev);
-	int reset_pin = touch_reset_pin(ts);
-
-	if (__siw_hal_gpio_skip_reset(ts)) {
-		return;
-	}
-
-	siw_touch_gpio_free(dev, reset_pin);
 }
 
 static int __siw_hal_gpio_skip_irq(struct siw_ts *ts)
@@ -293,7 +341,7 @@ static int __siw_hal_gpio_skip_irq(struct siw_ts *ts)
 	return 0;
 }
 
-static void siw_hal_init_gpio_irq(struct device *dev)
+static void __siw_hal_init_gpio_irq(struct device *dev)
 {
 	struct siw_ts *ts = to_touch_core(dev);
 	int irq_pin = touch_irq_pin(ts);
@@ -322,7 +370,7 @@ static void siw_hal_init_gpio_irq(struct device *dev)
 			irq_pin, GPIO_PULL_UP);
 }
 
-static void siw_hal_free_gpio_irq(struct device *dev)
+static void __siw_hal_free_gpio_irq(struct device *dev)
 {
 	struct siw_ts *ts = to_touch_core(dev);
 	int irq_pin = touch_irq_pin(ts);
@@ -332,6 +380,38 @@ static void siw_hal_free_gpio_irq(struct device *dev)
 	}
 
 	siw_touch_gpio_free(dev, irq_pin);
+}
+
+static void siw_hal_init_gpio_irq(struct device *dev)
+{
+	struct siw_ts *ts = to_touch_core(dev);
+	struct siw_touch_fquirks *fquirks = touch_fquirks(ts);
+	int ret = 0;
+
+	if (fquirks->gpio_init_irq) {
+		ret = fquirks->gpio_init_irq(dev);
+		if (ret != -EAGAIN) {
+			return;
+		}
+	}
+
+	__siw_hal_init_gpio_irq(dev);
+}
+
+static void siw_hal_free_gpio_irq(struct device *dev)
+{
+	struct siw_ts *ts = to_touch_core(dev);
+	struct siw_touch_fquirks *fquirks = touch_fquirks(ts);
+	int ret = 0;
+
+	if (fquirks->gpio_free_irq) {
+		ret = fquirks->gpio_free_irq(dev);
+		if (ret != -EAGAIN) {
+			return;
+		}
+	}
+
+	__siw_hal_free_gpio_irq(dev);
 }
 
 static void siw_hal_init_gpio_maker_id(struct device *dev)
@@ -347,7 +427,7 @@ static void siw_hal_init_gpio_maker_id(struct device *dev)
 
 	ret = siw_touch_gpio_init(dev,
 			maker_id_pin,
-			SIW_HAL_GPIO_MAKER, ts->addr);
+			SIW_HAL_GPIO_MAKER);
 	if (ret)
 		return;
 
@@ -1006,6 +1086,32 @@ static int siw_hal_condition_wait(struct device *dev,
 	return -EPERM;
 }
 
+static int siw_hal_flash_wp(struct device *dev, int wp)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	struct siw_touch_fquirks *fquirks = touch_fquirks(ts);
+	int ret = 0;
+
+	if (fquirks->flash_wp) {
+		ret = fquirks->flash_wp(dev, wp);
+		t_dev_info(dev, "flash_wp(%s) %s\n",
+			touch_chip_name(ts), (wp) ? "enabled" : "disabled");
+	}
+
+	return ret;
+}
+
+int siw_hal_enable_flash_wp(struct device *dev)
+{
+	return siw_hal_flash_wp(dev, 1);
+}
+
+int siw_hal_disable_flash_wp(struct device *dev)
+{
+	return siw_hal_flash_wp(dev, 0);
+}
+
 int siw_hal_access_not_allowed(struct device *dev, char *title, int skip_flag)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
@@ -1113,10 +1219,18 @@ static u32 siw_hal_get_subdisp_sts(struct device *dev)
 int siw_hal_get_boot_status(struct device *dev, u32 *boot_st)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
-//	struct siw_ts *ts = chip->ts;
+	struct siw_ts *ts = chip->ts;
+	struct siw_touch_fquirks *fquirks = touch_fquirks(ts);
 	struct siw_hal_reg *reg = chip->reg;
 	u32 bootmode = 0;
 	int ret = 0;
+
+	if (fquirks->boot_status) {
+		ret = fquirks->boot_status(dev, boot_st);
+		if (ret != -EAGAIN) {
+			return ret;
+		}
+	}
 
 	ret = siw_hal_read_value(dev, reg->spr_boot_status, &bootmode);
 	if (ret < 0) {
@@ -4356,9 +4470,12 @@ static int siw_hal_upgrade(struct device *dev)
 	}
 
 	touch_msleep(100);
+
+	siw_hal_disable_flash_wp(dev);
 	for (i = 0; (i < 2) && (ret < 0); i++) {
 		ret = siw_hal_fw_upgrade(dev, fw_buf, fw_size, i);
 	}
+	siw_hal_enable_flash_wp(dev);
 
 out_fw:
 	siw_hal_fw_release_firm(dev, fw);
