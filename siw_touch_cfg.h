@@ -78,7 +78,11 @@
 #define __SIW_CONFIG_OF
 #endif
 
-#if defined(CONFIG_HAS_EARLYSUSPEND)
+//#define __SIW_CONFIG_SYS_FB		//Custom option for special scenario
+
+#if defined(__SIW_CONFIG_SYS_FB)
+/* for highest priority */
+#elif defined(CONFIG_HAS_EARLYSUSPEND)
 //#define __SIW_CONFIG_EARLYSUSPEND
 #elif defined(CONFIG_FB)
 #define __SIW_CONFIG_FB

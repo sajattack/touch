@@ -129,6 +129,10 @@ module_param_named(lpwg_qcover, t_lpwg_qcover, uint, S_IRUGO|S_IWUSR|S_IWGRP);
 
 static void siw_config_status(struct device *dev)
 {
+#if defined(__SIW_CONFIG_SYS_FB)
+	t_dev_info(dev, "cfg status : __SIW_CONFIG_SYS_FB\n");
+#endif
+
 #if defined(__SIW_CONFIG_FB)
 	t_dev_info(dev, "cfg status : __SIW_CONFIG_FB\n");
 #endif
@@ -477,7 +481,8 @@ void siw_touch_resume_call(struct device *dev)
 	siw_touch_resume(dev);
 }
 
-#if !defined(__SIW_CONFIG_EARLYSUSPEND) &&	\
+#if !defined(__SIW_CONFIG_SYS_FB) &&	\
+	!defined(__SIW_CONFIG_EARLYSUSPEND) &&	\
 	!defined(__SIW_CONFIG_FB)
 #define __SIW_CONFIG_PM_BUS
 #endif
@@ -500,7 +505,27 @@ void siw_touch_resume_bus(struct device *dev)
 #endif
 }
 
-#if defined(__SIW_CONFIG_EARLYSUSPEND)
+#if defined(__SIW_CONFIG_SYS_FB)
+static int __used siw_touch_init_pm(struct siw_ts *ts)
+{
+	struct device *dev = ts->dev;
+
+	t_dev_info(dev, "init pm - sys_fb\n");
+
+	return siw_touch_sys_fb_register_client(dev);
+}
+
+static int __used siw_touch_free_pm(struct siw_ts *ts)
+{
+	struct device *dev = ts->dev;
+
+	t_dev_info(dev, "free pm - sys_fb\n");
+
+	siw_touch_sys_fb_unregister_client(dev);
+
+	return 0;
+}
+#elif defined(__SIW_CONFIG_EARLYSUSPEND)
 /**
  * touch pm control using early pm
  *
@@ -531,7 +556,7 @@ static int __used siw_touch_init_pm(struct siw_ts *ts)
 {
 	struct device *dev = ts->dev;
 
-	t_dev_dbg_pm(dev, "init pm\n");
+	t_dev_info(dev, "init pm - early_suspend\n");
 
 	ts->early_suspend.level = EARLY_SUSPEND_LEVEL_DISABLE_FB + 1;
 	ts->early_suspend.suspend = siw_touch_early_suspend;
@@ -544,7 +569,7 @@ static int __used siw_touch_free_pm(struct siw_ts *ts)
 {
 	struct device *dev = ts->dev;
 
-	t_dev_dbg_pm(dev, "free pm\n");
+	t_dev_info(dev, "free pm - early_suspend\n");
 
 	unregister_early_suspend(&ts->early_suspend);
 
@@ -648,7 +673,7 @@ static int siw_touch_fb_notifier_callback(
 
 static int __used siw_touch_init_pm(struct siw_ts *ts)
 {
-	t_dev_dbg_pm(ts->dev, "fb_register_client - fb_notif\n");
+	t_dev_info(ts->dev, "init pm - fb_notif\n");
 
 #if defined(__SIW_CONFIG_SYSTEM_PM)
 	snprintf(ts->fb_msg_unblank, sizeof(ts->fb_msg_unblank), "fb_unblank");
@@ -678,7 +703,7 @@ static int __used siw_touch_init_pm(struct siw_ts *ts)
 
 static int __used siw_touch_free_pm(struct siw_ts *ts)
 {
-	t_dev_dbg_pm(ts->dev, "fb_unregister_client - fb_notif\n");
+	t_dev_info(ts->dev, "free pm - fb_notif\n");
 
 	fb_unregister_client(&ts->fb_notif);
 
@@ -688,7 +713,7 @@ static int __used siw_touch_free_pm(struct siw_ts *ts)
 //#pragma message("[SiW - Warning] No core pm operation")
 static int __used __siw_touch_init_pm_none(struct siw_ts *ts, char *title)
 {
-	t_dev_dbg_pm(ts->dev, "pm %s none\n", title);
+	t_dev_info(ts->dev, "%s pm - none\n", title);
 	return 0;
 }
 #define siw_touch_init_pm(_ts)		__siw_touch_init_pm_none(_ts, "init")

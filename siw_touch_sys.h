@@ -30,5 +30,8 @@ extern int siw_touch_sys_osc(struct device *dev, int onoff);
 extern int siw_touch_sys_power_state(struct device *dev);
 extern int siw_touch_sys_power_lock(struct device *dev, int set);
 
+extern int siw_touch_sys_fb_register_client(struct device *dev);
+extern int siw_touch_sys_fb_unregister_client(struct device *dev);
+
 #endif	/* __SIW_TOUCH_SYS_H */
 

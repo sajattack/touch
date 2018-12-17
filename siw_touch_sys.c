@@ -217,4 +217,76 @@ int siw_touch_sys_power_lock(struct device *dev, int set)
 	return 0;
 }
 
+#if defined(__SIW_CONFIG_SYS_FB)
+/*
+ * Example about DRM(Direct Rendering Manager) interface
+ * Detail implementation needs more discussion
+ * because this highly depends on system architecture.
+ */
+#if defined(__SIW_SUPPORT_DRM_EXAMPLE)
+static int drm_notifier_callback(
+			struct notifier_block *self,
+			unsigned long event, void *data)
+{
+	struct siw_ts *ts =
+		container_of(self, struct siw_ts, sys_fb_notif);
+	struct device *dev = ts->dev;
+	struct msm_drm_notifier *ev = (struct msm_drm_notifier *)data;
+	int *blank;
+
+	if (!ev || !ev->data) {
+		return 0;
+	}
+
+	blank = (int *)ev->data;
+
+	if (event == MSM_DRM_EARLY_EVENT_BLANK) {
+		if (*blank == MSM_DRM_BLANK_UNBLANK) {
+			t_dev_info(dev, "drm_unblank(early)\n");
+		} else if (*blank == MSM_DRM_BLANK_POWERDOWN) {
+			t_dev_info(dev, "drm_blank(early)\n");
+		}
+	}
+
+	if (event == MSM_DRM_EVENT_BLANK) {
+		if (*blank == MSM_DRM_BLANK_UNBLANK) {
+			t_dev_info(dev, "drm_unblank\n");
+		} else if (*blank == MSM_DRM_BLANK_POWERDOWN) {
+			t_dev_info(dev, "drm_blank\n");
+		}
+	}
+
+	return 0;
+}
+#endif
+#endif	/* __SIW_CONFIG_SYS_FB */
+
+int siw_touch_sys_fb_register_client(struct device *dev)
+{
+#if defined(__SIW_SUPPORT_DRM_EXAMPLE)
+	struct siw_ts *ts = to_touch_core(dev);
+
+	t_dev_info(dev, "drm_register_client - sys_fb_notif\n");
+
+	ts->sys_fb_notif.notifier_call = drm_notifier_callback;
+
+	return msm_drm_register_client(&ts->sys_fb_notif);
+#else
+	return 0;
+#endif
+}
+
+int siw_touch_sys_fb_unregister_client(struct device *dev)
+{
+#if defined(__SIW_SUPPORT_DRM_EXAMPLE)
+	struct siw_ts *ts = to_touch_core(dev);
+
+	t_dev_info(dev, "drm_unregister_client - sys_fb_notif\n");
+
+	return msm_drm_unregister_client(&ts->sys_fb_notif);
+#else
+	return 0;
+#endif
+}
+
 
