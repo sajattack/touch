@@ -6731,10 +6731,10 @@ static int siw_hal_irq_abs_data_type_1(struct device *dev)
 	/* check if palm detected */
 	if (data->track_id == PALM_ID) {
 		if (data->event == TOUCHSTS_DOWN) {
-			ts->is_palm = 1;
+			ts->is_cancel = 1;
 			t_dev_info(dev, "Palm Detected\n");
 		} else if (data->event == TOUCHSTS_UP) {
-			ts->is_palm = 0;
+			ts->is_cancel = 0;
 			t_dev_info(dev, "Palm Released\n");
 		}
 		ts->tcount = 0;
@@ -6807,10 +6807,10 @@ static int siw_hal_irq_abs_data_type_0(struct device *dev)
 	/* check if palm detected */
 	if (data->track_id == PALM_ID) {
 		if (data->event == TOUCHSTS_DOWN) {
-			ts->is_palm = 1;
+			ts->is_cancel = 1;
 			t_dev_info(dev, "Palm Detected\n");
 		} else if (data->event == TOUCHSTS_UP) {
-			ts->is_palm = 0;
+			ts->is_cancel = 0;
 			t_dev_info(dev, "Palm Released\n");
 		}
 		ts->tcount = 0;

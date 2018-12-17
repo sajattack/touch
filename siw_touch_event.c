@@ -141,9 +141,9 @@ void siw_touch_report_event(void *ts_data)
 			change_mask, press_mask, release_mask);
 
 	/* Palm state - Report Pressure value 255 */
-	if (ts->is_palm) {
+	if (ts->is_cancel) {
 		siw_touch_report_cancel_event(ts);
-		ts->is_palm = 0;
+		ts->is_cancel = 0;
 	}
 
 	tdata = ts->tdata;
@@ -207,14 +207,14 @@ void siw_touch_report_event(void *ts_data)
 void siw_touch_report_all_event(void *ts_data)
 {
 	struct siw_ts *ts = ts_data;
-	ts->is_palm = 1;
+	ts->is_cancel = 1;
 	if (ts->old_mask) {
 		ts->new_mask = 0;
 		siw_touch_report_event(ts);
 		ts->tcount = 0;
 		memset(ts->tdata, 0, sizeof(struct touch_data) * touch_max_finger(ts));
 	}
-	ts->is_palm = 0;
+	ts->is_cancel = 0;
 }
 
 #if defined(__SIW_SUPPORT_UEVENT)

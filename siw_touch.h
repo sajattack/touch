@@ -1007,7 +1007,7 @@ struct siw_ts {
 	u16 old_mask;
 	int tcount;
 	struct touch_data tdata[MAX_FINGER];
-	int is_palm;
+	int is_cancel;
 	struct lpwg_info lpwg;
 	struct tci_ctrl tci;
 	struct asc_info asc;
