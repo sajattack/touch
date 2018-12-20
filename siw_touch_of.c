@@ -343,16 +343,14 @@ static int siw_touch_do_parse_dts(struct siw_ts *ts)
 		role->use_fw_upgrade = siw_touch_of_bool(dev, np, "use_fw_upgrade");
 
 		siw_touch_of_array(dev, np, "fw_image", ts->def_fwpath, &ts->def_fwcnt);
-
-		siw_touch_of_string(dev, np, "panel_spec", &ts->panel_spec);
-		siw_touch_of_string(dev, np, "panel_spec_mfts", &ts->panel_spec_mfts);
 	} else {
 		role->use_fw_upgrade = 0;
 		ts->def_fwcnt = 0;
 		memset(ts->def_fwpath, 0, sizeof(ts->def_fwpath));
-		ts->panel_spec = NULL;
-		ts->panel_spec_mfts = NULL;
 	}
+
+	siw_touch_of_string(dev, np, "panel_spec", &ts->panel_spec);
+	siw_touch_of_string(dev, np, "panel_spec_mfts", &ts->panel_spec_mfts);
 
 	siw_touch_parse_dts_watch(ts);
 
