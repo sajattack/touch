@@ -1076,17 +1076,15 @@ out:
 	return ret;
 }
 
-static void abt_ksocket_exit_disconn(struct siw_hal_abt_data *abt)
+static void __abt_ksocket_exit_disconn(struct siw_hal_abt_data *abt)
 {
 	struct siw_hal_abt_comm *abt_comm = &abt->abt_comm;
 	struct socket *sock;
 	struct sockaddr_in *addr_in;
 //	int ret = 0;
 
-	mutex_lock(&abt->abt_comm_lock);
-
 	if (atomic_read(&abt_comm->running) == ABT_RUNNING_OFF) {
-		goto out;
+		return;
 	}
 
 	atomic_set(&abt_comm->running, ABT_RUNNING_EXIT);
@@ -1097,7 +1095,7 @@ static void abt_ksocket_exit_disconn(struct siw_hal_abt_data *abt)
 			&abt_comm->addr : &abt_comm->ts_addr;
 
 	if (!sock) {
-		goto out;
+		return;
 	}
 
 	switch (abt->abt_conn_tool) {
@@ -1121,17 +1119,22 @@ static void abt_ksocket_exit_disconn(struct siw_hal_abt_data *abt)
 	default:
 		break;
 	}
+}
 
-out:
+static void abt_ksocket_exit_disconn(struct siw_hal_abt_data *abt)
+{
+	mutex_lock(&abt->abt_comm_lock);
+
+	__abt_ksocket_exit_disconn(abt);
+
 	mutex_unlock(&abt->abt_comm_lock);
 }
 
-static void abt_ksocket_exit_kill(struct siw_hal_abt_data *abt)
+static void __abt_ksocket_exit_kill(struct siw_hal_abt_data *abt)
 {
 	struct siw_hal_abt_comm *abt_comm = &abt->abt_comm;
 	int ret = 0;
 
-	mutex_lock(&abt->abt_comm_lock);
 	if (abt_comm->thread != NULL) {
 		ret = kthread_stop(abt_comm->thread);
 		if (ret < 0) {
@@ -1178,6 +1181,14 @@ static void abt_ksocket_exit_kill(struct siw_hal_abt_data *abt)
 	abt->abt_socket_report_mode = 0;
 
 	abt->abt_conn_tool = ABT_CONN_NOTHING;
+}
+
+static void abt_ksocket_exit_kill(struct siw_hal_abt_data *abt)
+{
+	mutex_lock(&abt->abt_comm_lock);
+
+	__abt_ksocket_exit_kill(abt);
+
 	mutex_unlock(&abt->abt_comm_lock);
 }
 
@@ -1573,15 +1584,13 @@ static void abt_ksocket_thread_body(struct siw_hal_abt_data *abt,
 	}
 }
 
-static void abt_ksocket_thread_exit(struct siw_hal_abt_data *abt,
+static void __abt_ksocket_thread_exit(struct siw_hal_abt_data *abt,
 				struct socket **res,
 				struct sockaddr_in *addr)
 {
 	struct siw_hal_abt_comm *abt_comm = &abt->abt_comm;
 	struct socket *sock = *res;
 	int tool = abt->abt_conn_tool;
-
-	mutex_lock(&abt->abt_comm_lock);
 
 	if (*res != NULL) {
 		if (atomic_read(&abt_comm->running) != ABT_RUNNING_EXIT) {
@@ -1597,6 +1606,15 @@ static void abt_ksocket_thread_exit(struct siw_hal_abt_data *abt,
 	abt->abt_conn_tool = ABT_CONN_NOTHING;
 
 	t_abt_dbg_base(abt, "thread terminated[%d]\n", tool);
+}
+
+static void abt_ksocket_thread_exit(struct siw_hal_abt_data *abt,
+				struct socket **res,
+				struct sockaddr_in *addr)
+{
+	mutex_lock(&abt->abt_comm_lock);
+
+	__abt_ksocket_thread_exit(abt, res, addr);
 
 	mutex_unlock(&abt->abt_comm_lock);
 }
@@ -1860,13 +1878,14 @@ static int abt_store_tool_exit_chk(struct siw_hal_abt_data *abt)
 static int abt_store_tool_exit(struct siw_hal_abt_data *abt, char *ip)
 {
 //	struct device *dev = abt->dev;
+	int ret = 0;
 
 	mutex_lock(&abt->abt_comm_lock);
-	if (!abt_store_tool_exit_chk(abt)) {
-		mutex_unlock(&abt->abt_comm_lock);
+	ret = abt_store_tool_exit_chk(abt);
+	mutex_unlock(&abt->abt_comm_lock);
+	if (!ret) {
 		return 0;
 	}
-	mutex_unlock(&abt->abt_comm_lock);
 
 	abt_ksocket_exit(abt);
 	abt_set_data_func(abt, 0);
