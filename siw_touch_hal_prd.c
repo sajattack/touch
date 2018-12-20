@@ -2191,28 +2191,25 @@ static int prd_spec_file_read(struct siw_hal_prd_data *prd)
 
 	if (ts->panel_spec == NULL || ts->panel_spec_mfts == NULL) {
 		t_prd_err(prd, "panel spec file name is null\n");
-		siw_prd_buf_snprintf(prd->buf_write,
-					0,
-					"[E] panel spec file name is null\n");
+		siw_prd_buf_snprintf(prd->buf_write, 0,
+			"[E] panel spec file not defined\n");
 		ret = -EINVAL;
 		goto out;
 	}
 
 	ret = request_firmware(&fwlimit, fname, dev);
 	if (ret < 0) {
-		t_prd_err(prd, "request file is failed in normal mode\n");
-		siw_prd_buf_snprintf(prd->buf_write,
-					0,
-					"[E] request file is failed in normal mode\n");
+		t_prd_err(prd, "request file(%s) is failed in normal mode\n", fname);
+		siw_prd_buf_snprintf(prd->buf_write, 0,
+			"[E] request file(%s) is failed in normal mode\n", fname);
 		goto out;
 	}
 
 	if (fwlimit->data == NULL) {
 		ret = -EFAULT;
 		t_prd_err(prd, "fwlimit->data is NULL\n");
-		siw_prd_buf_snprintf(prd->buf_write,
-					0,
-					"[E] fwlimit->data is NULL\n");
+		siw_prd_buf_snprintf(prd->buf_write, 0,
+			"[E] fwlimit->data is NULL\n");
 		goto out;
 	}
 
