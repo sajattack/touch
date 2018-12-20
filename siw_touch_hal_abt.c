@@ -333,6 +333,8 @@ struct siw_hal_abt_data {
 	int client_connect_trying;
 
 	u32 connect_error_count;
+
+	int sysfs_done;
 };
 
 enum {
@@ -2339,6 +2341,8 @@ static int siw_hal_abt_create_sysfs(struct device *dev)
 	t_dev_dbg_base(dev, "%s abt sysfs registered\n",
 			touch_chip_name(ts));
 
+	abt->sysfs_done = 1;
+
 	return 0;
 
 out_sysfs:
@@ -2352,6 +2356,7 @@ static void siw_hal_abt_remove_sysfs(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
+	struct siw_hal_abt_data *abt = (struct siw_hal_abt_data *)ts->abt;
 	struct device *idev = &ts->input->dev;
 	struct kobject *kobj = &ts->kobj;
 
@@ -2360,12 +2365,19 @@ static void siw_hal_abt_remove_sysfs(struct device *dev)
 		return;
 	}
 
-	if (ts->abt == NULL) {
+	if (abt == NULL) {
+		t_dev_dbg_base(dev, "abt sysfs not initialized\n");
 		return;
+	}
+
+	if (!abt->sysfs_done) {
+		t_dev_dbg_base(dev, "abt sysfs group not initialized\n");
+		goto skip_abt_normal_remove;
 	}
 
 	sysfs_remove_group(kobj, &siw_hal_abt_attribute_group);
 
+skip_abt_normal_remove:
 	siw_hal_abt_free(dev);
 
 	t_dev_dbg_base(dev, "abt sysfs unregistered\n");
