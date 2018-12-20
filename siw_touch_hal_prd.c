@@ -6145,7 +6145,7 @@ static int siw_hal_prd_create_group(struct device *dev)
 			break;
 		}
 
-		t_dev_dbg_base(dev, SIW_PRD_TAG "sysfs %02d(%20s) %s\n",
+		t_prd_dbg_base(prd, "sysfs(-) %02d(%20s) %s\n",
 			i, prd_attr->attr->name,
 			(added) ? "added" : "not supported");
 
@@ -6153,10 +6153,12 @@ static int siw_hal_prd_create_group(struct device *dev)
 	}
 
 	ret = sysfs_create_group(kobj, &siw_hal_prd_attribute_group);
-	if (ret >= 0) {
-		prd->sysfs_done = 1;
+	if (ret < 0) {
+		t_prd_err(prd, "sysfs_create_group failed, %d\n", ret);
+		goto out;
 	}
 
+out:
 	return ret;
 }
 
@@ -6164,13 +6166,10 @@ static void siw_hal_prd_remove_group(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
-	struct siw_hal_prd_data *prd = (struct siw_hal_prd_data *)ts->prd;
+//	struct siw_hal_prd_data *prd = (struct siw_hal_prd_data *)ts->prd;
 	struct kobject *kobj = &ts->kobj;
 
-	if (prd->sysfs_done) {
-		prd->sysfs_done = 0;
-		sysfs_remove_group(kobj, &siw_hal_prd_attribute_group);
-	}
+	sysfs_remove_group(kobj, &siw_hal_prd_attribute_group);
 }
 
 static void siw_hal_prd_free_buffer(struct device *dev)
@@ -6886,6 +6885,8 @@ static int siw_hal_prd_create_sysfs(struct device *dev)
 	t_dev_dbg_base(dev, "%s prd sysfs registered\n",
 			touch_chip_name(ts));
 
+	prd->sysfs_done = 1;
+
 out_skip:
 	return 0;
 
@@ -6902,6 +6903,7 @@ static void siw_hal_prd_remove_sysfs(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
+	struct siw_hal_prd_data *prd = (struct siw_hal_prd_data *)ts->prd;
 	struct device *idev = &ts->input->dev;
 	struct kobject *kobj = &ts->kobj;
 
@@ -6910,14 +6912,21 @@ static void siw_hal_prd_remove_sysfs(struct device *dev)
 		return;
 	}
 
-	if (ts->prd == NULL) {
+	if (prd == NULL) {
+		t_dev_dbg_base(dev, "prd sysfs not initialized\n");
 		return;
+	}
+
+	if (!prd->sysfs_done) {
+		t_dev_dbg_base(dev, "prd sysfs group not initialized\n");
+		goto skip_prd_normal_remove;
 	}
 
 	siw_hal_prd_remove_group(dev);
 
 	siw_hal_prd_free_param(dev);
 
+skip_prd_normal_remove:
 	siw_hal_prd_free(dev);
 
 	t_dev_dbg_base(dev, "%s prd sysfs unregistered\n",
