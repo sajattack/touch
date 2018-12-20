@@ -403,7 +403,10 @@ static inline const char *abt_conn_name(int idx)
 	return (idx < ABT_CONN_MAX) ? abt_conn_name_str[idx] : "(invalid)";
 }
 
-#define SIW_ABT_TAG 	"abt"
+#define SIW_ABT_TAG		 	"abt: "
+#define SIW_ABT_TAG_ERR 	"abt(E): "
+#define SIW_ABT_TAG_WARN	"abt(W): "
+#define SIW_ABT_TAG_DBG		"abt(D): "
 
 #define t_abt_info(_abt, fmt, args...)	\
 		__t_dev_info(_abt->dev, SIW_ABT_TAG "[%d(%s)]: " fmt,	\
@@ -411,19 +414,21 @@ static inline const char *abt_conn_name(int idx)
 					##args)
 
 #define t_abt_err(_abt, fmt, args...)	\
-		__t_dev_err(_abt->dev, SIW_ABT_TAG "[%d(%s)] : " fmt,	\
+		__t_dev_err(_abt->dev, SIW_ABT_TAG_ERR "[%d(%s)] : " fmt,	\
 					_abt->abt_conn_tool, abt_conn_name(_abt->abt_conn_tool),	\
 					##args)
 
 #define t_abt_warn(_abt, fmt, args...)	\
-		__t_dev_warn(_abt->dev, SIW_ABT_TAG "[%d(%s)] : " fmt,	\
+		__t_dev_warn(_abt->dev, SIW_ABT_TAG_WARN "[%d(%s)] : " fmt,	\
 					_abt->abt_conn_tool, abt_conn_name(_abt->abt_conn_tool),	\
 					##args)
 
 #define t_abt_dbg(condition, _abt, fmt, args...)	\
 		do {	\
 			if (unlikely(t_abt_dbg_mask & (condition)))	\
-				t_abt_info(_abt, fmt, ##args);	\
+				__t_dev_info(_abt->dev, SIW_ABT_TAG_DBG "[%d(%s)]: " fmt,	\
+					_abt->abt_conn_tool, abt_conn_name(_abt->abt_conn_tool),	\
+					##args);	\
 		} while (0)
 
 #define t_abt_dbg_base(_dev, fmt, args...)	\
