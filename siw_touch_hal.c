@@ -840,6 +840,11 @@ static int __used __siw_hal_reg_read(struct device *dev, u32 addr, void *data, i
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	int ret = 0;
 
+	if (addr == ADDR_SKIP_MASK) {
+		t_hal_bus_dbg_base(dev, "rd: skip by ADDR_SKIP_MASK\n");
+		return 0;
+	}
+
 	mutex_lock(&chip->bus_lock);
 	ret = __siw_hal_do_reg_read(dev, addr, data, size);
 	mutex_unlock(&chip->bus_lock);
@@ -923,6 +928,11 @@ static int __used __siw_hal_reg_write(struct device *dev, u32 addr, void *data, 
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	int ret = 0;
 
+	if (addr == ADDR_SKIP_MASK) {
+		t_hal_bus_dbg_base(dev, "wr: skip by ADDR_SKIP_MASK\n");
+		return 0;
+	}
+
 	mutex_lock(&chip->bus_lock);
 	ret = __siw_hal_do_reg_write(dev, addr, data, size);
 	mutex_unlock(&chip->bus_lock);
@@ -950,42 +960,6 @@ int siw_hal_reg_write(struct device *dev, u32 addr, void *data, int size)
 	return __siw_hal_reg_write(dev, addr, data, size);
 }
 
-int siw_hal_read_value_chk(struct device *dev, u32 addr, u32 *value)
-{
-	if (addr == ADDR_SKIP_MASK) {
-		return 0;
-	}
-
-	return siw_hal_read_value(dev, addr, value);
-}
-
-int siw_hal_write_value_chk(struct device *dev, u32 addr, u32 value)
-{
-	if (addr == ADDR_SKIP_MASK) {
-		return 0;
-	}
-
-	return siw_hal_write_value(dev, addr, value);
-}
-
-int siw_hal_reg_read_chk(struct device *dev, u32 addr, void *data, int size)
-{
-	if (addr == ADDR_SKIP_MASK) {
-		return 0;
-	}
-
-	return siw_hal_reg_read(dev, addr, data, size);
-}
-
-int siw_hal_reg_write_chk(struct device *dev, u32 addr, void *data, int size)
-{
-	if (addr == ADDR_SKIP_MASK) {
-		return 0;
-	}
-
-	return siw_hal_reg_write(dev, addr, data, size);
-}
-
 int siw_hal_reg_rw_multi(struct device *dev,
 		struct siw_hal_rw_multi *multi, char *title)
 {
@@ -999,7 +973,7 @@ int siw_hal_reg_rw_multi(struct device *dev,
 			break;
 		}
 
-		func = (multi->wr) ? siw_hal_reg_write_chk : siw_hal_reg_read_chk;
+		func = (multi->wr) ? siw_hal_reg_write : siw_hal_reg_read;
 
 		ret = func(dev, multi->addr, multi->data, multi->size);
 		if (ret < 0) {
@@ -1211,7 +1185,7 @@ static u32 siw_hal_get_subdisp_sts(struct device *dev)
 	struct siw_hal_reg *reg = chip->reg;
 	u32 rdata = LCD_MODE_U3;	//dummy value
 
-	siw_hal_read_value_chk(dev, reg->spr_subdisp_status, &rdata);
+	siw_hal_read_value(dev, reg->spr_subdisp_status, &rdata);
 
 	return rdata;
 }
@@ -2121,7 +2095,7 @@ static int siw_hal_do_ic_info(struct device *dev, int prt_on)
 	}
 
 	if (chip->opt.f_ver_ext) {
-		ret = siw_hal_read_value_chk(dev, reg->tc_version_ext, &version_ext);
+		ret = siw_hal_read_value(dev, reg->tc_version_ext, &version_ext);
 		if (ret < 0) {
 			t_dev_err(dev, "ic_info(1): version_ext failed, %d\n", ret);
 			return ret;
@@ -2276,13 +2250,13 @@ static int siw_hal_init_reg_set_pre(struct device *dev)
 	}
 
 	/* for spi : 1, for i2c : 0 */
-	ret = siw_hal_write_value_chk(dev, addr_spi, value_spi);
+	ret = siw_hal_write_value(dev, addr_spi, value_spi);
 	if (ret < 0) {
 		goto out;
 	}
 
 	/* for spi : 0, for i2c : 1 */
-	ret = siw_hal_write_value_chk(dev, addr_i2c, value_i2c);
+	ret = siw_hal_write_value(dev, addr_i2c, value_i2c);
 	if (ret < 0) {
 		goto out;
 	}
@@ -2347,7 +2321,7 @@ static int siw_hal_init_reg_set(struct device *dev)
 
 	data = atomic_read(&ts->state.ime);
 
-	ret = siw_hal_write_value_chk(dev,
+	ret = siw_hal_write_value(dev,
 				reg->ime_state,
 				data);
 	if (ret < 0) {
@@ -3114,7 +3088,7 @@ static int siw_hal_fw_sram_wr_enable(struct device *dev, int onoff)
 	int ret = 0;
 
 #if 0
-	ret = siw_hal_read_value_chk(dev, reg->spr_sram_ctl, &data);
+	ret = siw_hal_read_value(dev, reg->spr_sram_ctl, &data);
 	if (ret < 0) {
 		goto out;
 	}
@@ -3124,14 +3098,14 @@ static int siw_hal_fw_sram_wr_enable(struct device *dev, int onoff)
 	else
 		data &= ~0x01;
 
-	ret = siw_hal_write_value_chk(dev, reg->spr_sram_ctl, data);
+	ret = siw_hal_write_value(dev, reg->spr_sram_ctl, data);
 	if (ret < 0) {
 		goto out;
 	}
 #else
 //	data = !!onoff;
 	data = (onoff) ? 0x03 : 0x00;
-	ret = siw_hal_write_value_chk(dev, reg->spr_sram_ctl, data);
+	ret = siw_hal_write_value(dev, reg->spr_sram_ctl, data);
 	if (ret < 0) {
 		goto out;
 	}

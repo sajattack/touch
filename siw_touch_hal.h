@@ -774,11 +774,6 @@ extern int siw_hal_write_value(struct device *dev, u32 addr, u32 value);
 extern int siw_hal_reg_read(struct device *dev, u32 addr, void *data, int size);
 extern int siw_hal_reg_write(struct device *dev, u32 addr, void *data, int size);
 
-extern int siw_hal_read_value_chk(struct device *dev, u32 addr, u32 *value);
-extern int siw_hal_write_value_chk(struct device *dev, u32 addr, u32 value);
-extern int siw_hal_reg_read_chk(struct device *dev, u32 addr, void *data, int size);
-extern int siw_hal_reg_write_chk(struct device *dev, u32 addr, void *data, int size);
-
 extern int siw_hal_reg_rw_multi(struct device *dev,
 			struct siw_hal_rw_multi *multi, char *title);
 
