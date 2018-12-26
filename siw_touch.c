@@ -903,6 +903,13 @@ static void siw_touch_init_work_func(struct work_struct *work)
 		/* boot fail detected, do fw_upgrade */
 		do_fw_upgrade |= 0x2;
 	} else if (ret < 0) {
+	#if defined(__SIW_SUPPORT_INIT_RETRY)
+#define INIT_RETRY_DELAY	500
+
+		t_dev_err(dev, "%s init work failed(%d), retry after %d msec.\n",
+				touch_chip_name(ts), ret, INIT_RETRY_DELAY);
+		siw_touch_qd_init_work_jiffies(ts, INIT_RETRY_DELAY);
+	#else	/* __SIW_SUPPORT_INIT_RETRY */
 		if (atomic_read(&ts->state.core) == CORE_PROBE) {
 			t_dev_err(dev, "%s init work failed(%d), try again\n",
 				touch_chip_name(ts), ret);
@@ -911,13 +918,6 @@ static void siw_touch_init_work_func(struct work_struct *work)
 			return;
 		}
 
-	#if defined(__SIW_SUPPORT_INIT_RETRY)
-#define INIT_RETRY_DELAY	500
-
-		t_dev_err(dev, "%s init work failed(%d), retry after %d msec.\n",
-				touch_chip_name(ts), ret, INIT_RETRY_DELAY);
-		siw_touch_qd_init_work_jiffies(ts, INIT_RETRY_DELAY);
-	#else	/* __SIW_SUPPORT_INIT_RETRY */
 		t_dev_err(dev, "%s init work failed, %d\n",
 				touch_chip_name(ts), ret);
 	#endif	/* __SIW_SUPPORT_INIT_RETRY */
