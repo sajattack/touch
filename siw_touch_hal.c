@@ -960,6 +960,47 @@ int siw_hal_reg_write(struct device *dev, u32 addr, void *data, int size)
 	return __siw_hal_reg_write(dev, addr, data, size);
 }
 
+int siw_hal_reg_read_single(struct device *dev, u32 addr, void *data, int size)
+{
+	u32 *__data = (u32 *)data;
+	int __size;
+	int ret = 0;
+
+	while (size) {
+		__size = min(4, size);
+		ret = siw_hal_reg_read(dev, addr, __data, __size);
+		if (ret < 0) {
+			break;
+		}
+
+		addr++;
+		__data++;
+		size -= 4;
+	}
+	return ret;
+}
+
+int siw_hal_reg_write_single(struct device *dev, u32 addr, void *data, int size)
+{
+	u32 *__data = (u32 *)data;
+	int __size;
+	int ret = 0;
+
+	while (size) {
+		__size = min(4, size);
+		ret = siw_hal_reg_write(dev, addr, __data, __size);
+		if (ret < 0) {
+			break;
+		}
+
+		addr++;
+		__data++;
+		size -= 4;
+	}
+
+	return ret;
+}
+
 int siw_hal_reg_rw_multi(struct device *dev,
 		struct siw_hal_rw_multi *multi, char *title)
 {
