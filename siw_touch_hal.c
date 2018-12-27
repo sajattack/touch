@@ -151,20 +151,6 @@ static int siw_hal_reset_ctrl(struct device *dev, int ctrl);
 
 static int siw_hal_tc_driving(struct device *dev, int mode);
 
-
-#if defined(__SIW_CONFIG_SWIPE)
-#define SWIPE_FAIL_NUM 7
-static const char const *siw_hal_swipe_debug_str[SWIPE_FAIL_NUM] = {
-	"ERROR",
-	"1FINGER_FAST_RELEASE",
-	"MULTI_FINGER",
-	"FAST_SWIPE",
-	"SLOW_SWIPE",
-	"OUT_OF_AREA",
-	"RATIO_FAIL",
-};
-#endif	/* __SIW_CONFIG_SWIPE */
-
 static void siw_hal_deep_sleep(struct device *dev);
 
 static int siw_hal_lpwg_mode(struct device *dev);
@@ -1259,41 +1245,46 @@ int siw_hal_get_boot_status(struct device *dev, u32 *boot_st)
 	return 0;
 }
 
+#if defined(__SIW_CONFIG_KNOCK)
+#define __TCI_INFO_SET(_idx, _t, _mit, _mat, _ts, _td, _id)	\
+		[_idx] = {	\
+			.tap_count = _t,	\
+			.min_intertap = _mit, .max_intertap = _mat,	\
+			.touch_slop = _ts, .tap_distance = _td,	\
+			.intr_delay = _id,	\
+		}
+
 const struct tci_info siw_hal_tci_info_default[2] = {
-	[TCI_1] = {
-		.tap_count		= 2,
-		.min_intertap	= 6,
-		.max_intertap	= 70,
-		.touch_slop		= 100,
-		.tap_distance	= 10,
-		.intr_delay		= 0,
-	},
-	[TCI_2] = {
-		.tap_count		= 0,
-		.min_intertap	= 6,
-		.max_intertap	= 70,
-		.touch_slop		= 100,
-		.tap_distance	= 255,
-		.intr_delay		= 20,
-	},
+	__TCI_INFO_SET(TCI_1, 2, 6, 70, 100, 10, 0),
+	__TCI_INFO_SET(TCI_2, 0, 6, 70, 100, 255, 20),
 };
 
-#if defined(__SIW_CONFIG_KNOCK)
-#define siw_prt_tci_info(_dev, _idx, _info)	\
-	do {	\
-		t_dev_info(_dev,	\
-			"tci info[%s] tap_count %d, min_intertap %d, max_intertap %d\n",	\
-			_idx, _info->tap_count, _info->min_intertap, _info->max_intertap);	\
-		t_dev_info(_dev,	\
-			"tci info[%s] touch_slop %d, tap_distance %d, intr_delay %d\n",	\
-			_idx, _info->touch_slop, _info->tap_distance, _info->intr_delay);	\
-	} while(0)
+static void siw_prt_tci_info(struct device *dev, char *name, struct tci_info *info)
+{
+	t_dev_info(dev,
+		"tci info[%s] tap_count %d, min_intertap %d, max_intertap %d\n",
+		name, info->tap_count, info->min_intertap, info->max_intertap);
 
-#define siw_prt_area_info(_dev, _name, _area)	\
-	do {	\
-		t_dev_info(_dev, "%s %4d %4d %4d %4d\n",	\
-			_name, _area->x1, _area->y1, _area->x2, _area->y2);	\
-	} while(0)
+	t_dev_info(dev,	\
+		"tci info[%s] touch_slop %d, tap_distance %d, intr_delay %d\n",
+		name, info->touch_slop, info->tap_distance, info->intr_delay);
+}
+
+static void siw_prt_active_area_info(struct device *dev, char *name, struct active_area *area)
+{
+	t_dev_info(dev, "tci active_area %s %4d %4d %4d %4d\n",
+		name, area->x1, area->y1, area->x2, area->y2);
+}
+
+static void siw_prt_reset_area_info(struct device *dev, char *name, struct reset_area *area, int shift)
+{
+	t_dev_info(dev, "tci reset_area %s %4d %4d %4d %4d\n",
+		name,
+		(area->x1 >> shift) & 0xFFFF,
+		(area->y1 >> shift) & 0xFFFF,
+		(area->x2 >> shift) & 0xFFFF,
+		(area->y2 >> shift) & 0xFFFF);
+}
 
 static void siw_hal_prt_tci_info(struct device *dev)
 {
@@ -1314,17 +1305,14 @@ static void siw_hal_prt_tci_info(struct device *dev)
 	siw_prt_tci_info(dev, "TCI_2", info);
 
 	area = &tci->area;
-	siw_prt_area_info(dev, "tci active area ", area);
+	siw_prt_active_area_info(dev, "tci active area ", area);
 
 	tci_qcover = &tci->qcover_open;
-	siw_prt_area_info(dev, "tci qcover_open ", tci_qcover);
+	siw_prt_reset_area_info(dev, "tci qcover_open ", tci_qcover, 0);
 
 	tci_qcover = &tci->qcover_close;
-	siw_prt_area_info(dev, "tci qcover_close", tci_qcover);
+	siw_prt_reset_area_info(dev, "tci qcover_close", tci_qcover, 0);
 }
-#else	/* __SIW_CONFIG_KNOCK */
-#define siw_hal_prt_tci_info(_d)	do {	} while (0)
-#endif	/* __SIW_CONFIG_KNOCK */
 
 static void siw_hal_get_tci_info(struct device *dev)
 {
@@ -1333,11 +1321,16 @@ static void siw_hal_get_tci_info(struct device *dev)
 	void *tci_src;
 	struct reset_area *tci_qcover;
 
+	if (chip->opt.t_knock) {
+		ts->tci.info[TCI_1].tap_count = 2;
+		return;
+	}
+
 	tci_src = pdata_tci_info(ts->pdata);
 	if (tci_src == NULL) {
 		tci_src = (void *)siw_hal_tci_info_default;
 	}
-	memcpy(ts->tci.info, tci_src, sizeof(siw_hal_tci_info_default));
+	memcpy(ts->tci.info, tci_src, sizeof(ts->tci.info));
 
 	//Set default
 	ts->tci.area.x1 = 0;
@@ -1358,49 +1351,624 @@ static void siw_hal_get_tci_info(struct device *dev)
 	siw_hal_prt_tci_info(dev);
 }
 
+static void siw_hal_set_tci_debug_type_1(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+//	struct siw_ts *ts = chip->ts;
+	struct siw_hal_reg *reg = chip->reg;
+	u32 wdata = chip->tci_debug_type;
+	int ret = 0;
+
+	t_dev_info(dev, "TCI-Debug: %s\n", (wdata) ? "Enable" : "Disable");
+
+	ret = siw_hal_write_value(dev, reg->tci_debug_fail_ctrl, wdata);
+	if (ret < 0) {
+		t_dev_err(dev, "TCI-Debug: ctrl failed, %d\n", ret);
+	}
+}
+
+static void siw_hal_set_tci_debug(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+
+	switch (chip->opt.t_chk_tci_debug) {
+	case 1:
+		siw_hal_set_tci_debug_type_1(dev);
+		break;
+	default:
+		break;
+	}
+}
+
+static int siw_hal_tci_knock(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	struct siw_hal_reg *reg = chip->reg;
+	struct tci_info *info1 = &ts->tci.info[TCI_1];
+	struct tci_info *info2 = &ts->tci.info[TCI_2];
+	u32 lpwg_data[7];
+	int ret = 0;
+
+	siw_hal_set_tci_debug(dev);
+
+	lpwg_data[0] = ts->tci.mode;
+	lpwg_data[1] = info1->tap_count | (info2->tap_count << 16);
+	lpwg_data[2] = info1->min_intertap | (info2->min_intertap << 16);
+	lpwg_data[3] = info1->max_intertap | (info2->max_intertap << 16);
+	lpwg_data[4] = info1->touch_slop | (info2->touch_slop << 16);
+	lpwg_data[5] = info1->tap_distance | (info2->tap_distance << 16);
+	lpwg_data[6] = info1->intr_delay | (info2->intr_delay << 16);
+
+	t_dev_dbg_base(dev, "lpwg_data[0] : %08Xh\n", lpwg_data[0]);
+	t_dev_dbg_base(dev, "lpwg_data[1] : %08Xh\n", lpwg_data[1]);
+	t_dev_dbg_base(dev, "lpwg_data[2] : %08Xh\n", lpwg_data[2]);
+	t_dev_dbg_base(dev, "lpwg_data[3] : %08Xh\n", lpwg_data[3]);
+	t_dev_dbg_base(dev, "lpwg_data[4] : %08Xh\n", lpwg_data[4]);
+	t_dev_dbg_base(dev, "lpwg_data[5] : %08Xh\n", lpwg_data[5]);
+	t_dev_dbg_base(dev, "lpwg_data[6] : %08Xh\n", lpwg_data[6]);
+
+	ret = siw_hal_reg_write_single(dev,
+				reg->tci_enable_w,
+				(void *)lpwg_data, sizeof(lpwg_data));
+
+	return ret;
+}
+
+static int siw_hal_tci_password(struct device *dev)
+{
+//	struct siw_touch_chip *chip = to_touch_chip(dev);
+
+	siw_hal_set_tci_debug(dev);
+
+	return siw_hal_tci_knock(dev);
+}
+
+static int siw_hal_tci_active_area(struct device *dev,
+		u32 x1, u32 y1, u32 x2, u32 y2, int type)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	struct siw_hal_reg *reg = chip->reg;
+	int margin = touch_senseless_margin(ts);
+	u32 area[4] = { 0, };
+	int i;
+	int ret = 0;
+
+	t_dev_info(dev, "tci_active_area[%d]: x1[%Xh], y1[%Xh], x2[%Xh], y2[%Xh]\n",
+		type, x1, y1, x2, y2);
+
+	area[0] = (x1 + margin) & 0xFFFF;
+	area[1] = (y1 + margin) & 0xFFFF;
+	area[2] = (x2 - margin) & 0xFFFF;
+	area[3] = (y2 - margin) & 0xFFFF;
+
+	for (i = 0; i < ARRAY_SIZE(area); i++) {
+		area[i] = (area[i]) | (area[i]<<16);
+	}
+
+	ret = siw_hal_reg_write_single(dev,
+				reg->act_area_x1_w,
+				(void *)area, sizeof(area));
+
+	return ret;
+}
+
+static int siw_hal_tci_area_set(struct device *dev, int cover_status)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	struct reset_area *qcover;
+	const char *msg;
+	int qcover_invalid = 0;
+
+	if (chip->opt.t_knock)
+		return 0;
+
+	if (!chip->mode_allowed_qcover) {
+		return 0;
+	}
+
+	qcover = (cover_status == QUICKCOVER_CLOSE) ?
+			&ts->tci.qcover_close : &ts->tci.qcover_open;
+	msg = (cover_status == QUICKCOVER_CLOSE) ?
+			"close" : "open";
+
+	if (!qcover->x2 || !qcover->y2) {
+		/* deactivated */
+		return 0;
+	}
+
+	qcover_invalid |= (qcover->x1 >= qcover->x2);
+	qcover_invalid |= (qcover->y1 >= qcover->y2);
+
+	if (!qcover_invalid) {
+		siw_hal_tci_active_area(dev,
+				qcover->x1, qcover->y1,
+				qcover->x2, qcover->y2,
+				0);
+	}
+
+	t_dev_info(dev,
+		"lpwg active area - qcover %s %4d %4d %4d %4d%s\n",
+		msg, qcover->x1, qcover->y1, qcover->x2, qcover->y2,
+		(qcover_invalid) ? " (invalid)": "");
+
+	return 0;
+}
+
+static int siw_hal_tci_control(struct device *dev, int type)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	struct siw_hal_reg *reg = chip->reg;
+	struct tci_ctrl *tci = &ts->tci;
+	struct active_area *area = &tci->area;
+	struct tci_info *info1 = &tci->info[TCI_1];
+	struct tci_info *info2 = &tci->info[TCI_2];
+	u32 reg_w = ~0;
+	u32 data;
+	int ret = 0;
+
+	switch (type) {
+	case ENABLE_CTRL:
+		reg_w = reg->tci_enable_w;
+		data = tci->mode;
+		break;
+
+	case TAP_COUNT_CTRL:
+		reg_w = reg->tap_count_w;
+		data = info1->tap_count | (info2->tap_count << 16);
+		break;
+
+	case MIN_INTERTAP_CTRL:
+		reg_w = reg->min_intertap_w;
+		data = info1->min_intertap | (info2->min_intertap << 16);
+		break;
+
+	case MAX_INTERTAP_CTRL:
+		reg_w = reg->max_intertap_w;
+		data = info1->max_intertap | (info2->max_intertap << 16);
+		break;
+
+	case TOUCH_SLOP_CTRL:
+		reg_w = reg->touch_slop_w;
+		data = info1->touch_slop | (info2->touch_slop << 16);
+		break;
+
+	case TAP_DISTANCE_CTRL:
+		reg_w = reg->tap_distance_w;
+		data = info1->tap_distance | (info2->tap_distance << 16);
+		break;
+
+	case INTERRUPT_DELAY_CTRL:
+		reg_w = reg->int_delay_w;
+		data = info1->intr_delay | (info2->intr_delay << 16);
+		break;
+
+	case ACTIVE_AREA_CTRL:
+		ret = siw_hal_tci_active_area(dev,
+					area->x1, area->y1,
+					area->x2, area->y2,
+					type);
+		break;
+
+	default:
+		break;
+	}
+
+	if (reg_w != ~0) {
+		ret = siw_hal_write_value(dev,
+					reg_w,
+					data);
+	}
+
+	return ret;
+}
+
+static int siw_hal_lpwg_control(struct device *dev, int mode)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	struct tci_info *info1 = &ts->tci.info[TCI_1];
+	int ret = 0;
+
+	if (chip->opt.t_knock)
+		return 0;
+
+	switch (mode) {
+	case LPWG_DOUBLE_TAP:
+		ts->tci.mode = 0x01;
+		info1->intr_delay = 0;
+		info1->tap_distance = 10;
+
+		if (touch_senseless_margin(ts)) {
+			ret = siw_hal_tci_control(dev, ACTIVE_AREA_CTRL);
+			if (ret < 0) {
+				break;
+			}
+		}
+
+		ret = siw_hal_tci_knock(dev);
+		break;
+
+	case LPWG_PASSWORD:
+		ts->tci.mode = 0x01 | (0x01 << 16);
+		info1->intr_delay = ts->tci.double_tap_check ? 68 : 0;
+		info1->tap_distance = 7;
+
+		if (touch_senseless_margin(ts)) {
+			ret = siw_hal_tci_control(dev, ACTIVE_AREA_CTRL);
+			if (ret < 0) {
+				break;
+			}
+		}
+
+		ret = siw_hal_tci_password(dev);
+		break;
+
+	default:
+		ts->tci.mode = 0;
+		ret = siw_hal_tci_control(dev, ENABLE_CTRL);
+		break;
+	}
+
+	t_dev_info(dev, "lpwg_control mode = %d\n", mode);
+
+	return ret;
+}
+
+static const char *siw_hal_tci_debug_type_1_str[] = {
+	"SUCCESS",
+	"DISTANCE_INTER_TAP",
+	"DISTANCE_TOUCH_SLOP",
+	"MIN_TIMEOUT_INTER_TAP",
+	"MAX_TIMEOUT_INTER_TAP",
+	"LONG_PRESS_TIME_OUT",
+	"MULTI_FINGER",
+	"DELAY_TIME",
+	"PALM_STATE",
+	"OUT_OF_AREA",
+};
+
+#define TCI_FAIL_TYPE_1_NUM		ARRAY_SIZE(siw_hal_tci_debug_type_1_str)
+
+static void siw_hal_debug_tci_type_1(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+//	struct siw_ts *ts = chip->ts;
+	struct siw_hal_reg *reg = chip->reg;
+	char **str = (char **)siw_hal_tci_debug_type_1_str;
+	u32 rdata = 0;
+	u32 buffer = 0;
+	u32 index = 0;
+	int ret = 0;
+
+	ret = siw_hal_read_value(dev,
+			reg->tci_debug_fail_status,
+			&rdata);
+	if (ret < 0) {
+		t_dev_err(dev, "failed to read tci debug fail status, %d\n", ret);
+		return;
+	}
+
+	ret = siw_hal_read_value(dev,
+			reg->tci_debug_fail_buffer,
+			&buffer);
+	if (ret < 0) {
+		t_dev_err(dev, "failed to read tci debug fail buffer, %d\n", ret);
+		return;
+	}
+
+	t_dev_info(dev,
+		"Status[%04Xh] = %08Xh, Buffer[%04Xh] = %08Xh\n",
+		reg->tci_debug_fail_status, rdata,
+		reg->tci_debug_fail_buffer, buffer);
+
+	/* Knock On fail */
+	if (rdata & 0x01) {
+		index = (buffer & 0xFFFF);
+		t_dev_info(dev, "TCI-Debug: on fail reason: %s(%08Xh)\n",
+			(index < TCI_FAIL_TYPE_1_NUM) ? str[index] : "(unknown)",
+			buffer);
+	}
+
+	/* Knock Code fail */
+	if (rdata & 0x02) {
+		index = ((buffer>>16) & 0xFFFF);
+		t_dev_info(dev, "TCI-Debug: code fail reason: %s(%08Xh)\n",
+			(index < TCI_FAIL_TYPE_1_NUM) ? str[index] : "(unknown)",
+			buffer);
+	}
+}
+
+static void siw_hal_debug_tci(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+
+	if (chip->opt.t_knock)
+		return;
+
+	switch (chip->opt.t_chk_tci_debug) {
+	case 1:
+		siw_hal_debug_tci_type_1(dev);
+		break;
+	default:
+		break;
+	}
+}
+
+#define TCI_INFO_CNT (sizeof(struct tci_info) / 2)
+
+static int siw_hal_show_ic_tci_info(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_hal_reg *reg = chip->reg;
+	struct tci_info *info;
+	u16 lpwg_data[TCI_INFO_CNT + 1][2];
+	u16 lpwg_data_tci_1[TCI_INFO_CNT];
+	u16 lpwg_data_tci_2[TCI_INFO_CNT];
+	int i = 0;
+	int ret = 0;
+
+	if (chip->opt.t_knock)
+		return 0;
+
+	if (atomic_read(&chip->init) == IC_INIT_NEED) {
+		t_dev_warn(dev, "Not Ready, Need IC init (show_ic_tci_info)\n");
+		return 0;
+	}
+
+	t_dev_info(dev, "[ IC tci info ]\n");
+
+	ret = siw_hal_reg_read_single(dev,
+				reg->tci_enable_w,
+				(void *)lpwg_data, sizeof(lpwg_data));
+	if (ret < 0) {
+		t_dev_err(dev, "tci info read fail\n");
+		goto out;
+	}
+
+	for (i = 0; i < TCI_INFO_CNT; i++) {
+		lpwg_data_tci_1[i] = lpwg_data[i + 1][0];
+		lpwg_data_tci_2[i] = lpwg_data[i + 1][1];
+	}
+
+	info = (struct tci_info *)lpwg_data_tci_1;
+	siw_prt_tci_info(dev, "TCI_1", info);
+
+	info = (struct tci_info *)lpwg_data_tci_2;
+	siw_prt_tci_info(dev, "TCI_2", info);
+
+out:
+	return ret;
+}
+
+static void siw_hal_show_driver_tci_info(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	struct tci_ctrl *tci = &ts->tci;
+	struct tci_info *info;
+
+	if (chip->opt.t_knock)
+		return;
+
+	t_dev_info(dev, "[ driver tci info ]\n");
+
+	info = &tci->info[TCI_1];
+	siw_prt_tci_info(dev, "TCI_1", info);
+
+	info = &tci->info[TCI_2];
+	siw_prt_tci_info(dev, "TCI_2", info);
+}
+
+static int siw_hal_lpwg_ext_tci_info(struct device *dev, void *param)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	struct siw_hal_reg *reg = chip->reg;
+	u16 *info_addr;
+	int *data = (int *)param;
+	int tci_type = 0;
+	int index = 0;
+	u16 value = 0;
+	u16 write_en = 0;
+	u16 value_2 = 0;
+	u32 send_buf = 0;
+	int ret = 0;
+
+	if (chip->opt.t_knock)
+		return 0;
+
+	if (atomic_read(&chip->init) == IC_INIT_NEED) {
+		t_dev_warn(dev, "Not Ready, Need IC init (lpwg_ext_tci_info)\n");
+		return 0;
+	}
+
+	tci_type = data[0];
+	index = data[1];
+	value = data[2];
+	write_en = data[3];
+
+	if ((tci_type > TCI_2) || (0 > tci_type)) {
+		t_dev_err(dev, "invaild tci_type value [%d]\n", tci_type);
+		goto out_invaild;
+	}
+
+	if ((index > (TCI_INFO_CNT - 1)) || (0 > index)) {
+		t_dev_err(dev, "invaild index value [%d]\n", index);
+		goto out_invaild;
+	}
+
+	info_addr = (u16 *)&ts->tci.info[!tci_type];
+	value_2 = info_addr[index];
+
+	send_buf = (value << (tci_type ? 16 : 0)) | (value_2 << (tci_type ? 0 : 16));
+
+	if (write_en == 1) {
+		t_dev_info(dev, "tci info write addr[%Xh] value[%Xh]\n",
+			reg->tap_count_w + index, send_buf);
+
+		ret = siw_hal_write_value(dev,
+			reg->tap_count_w + index, send_buf);
+		if (ret < 0) {
+			t_dev_err(dev, "tci info write fail, so don't setting driver tci info\n");
+			goto out_write_fail;
+		}
+	}
+
+	info_addr = (u16 *)&ts->tci.info[tci_type];
+	info_addr[index] = value;
+
+	siw_hal_show_ic_tci_info(dev);
+
+out_write_fail:
+	siw_hal_show_driver_tci_info(dev);
+
+out_invaild:
+	return ret;
+}
+
+static void siw_hal_show_driver_tci_area(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	struct active_area *area;
+	struct reset_area *tci_qcover;
+
+	if (chip->opt.t_knock)
+		return;
+
+	t_dev_info(dev, "[ driver tci area ]\n");
+
+	area = &ts->tci.area;
+	siw_prt_active_area_info(dev, "[active      ]", area);
+
+	tci_qcover = &ts->tci.qcover_open;
+	siw_prt_reset_area_info(dev, "[qcover open ]", tci_qcover, 0);
+
+	tci_qcover = &ts->tci.qcover_close;
+	siw_prt_reset_area_info(dev, "[qcover close]", tci_qcover, 0);
+}
+
+#define TCI_AREA_CNT (sizeof(struct active_area) / 2)
+
+static int siw_hal_show_ic_tci_area(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_hal_reg *reg = chip->reg;
+	struct reset_area *area;
+	u32 area_data_buf[TCI_AREA_CNT] = {0, };
+	int ret = 0;
+
+	if (chip->opt.t_knock)
+		return 0;
+
+	if (atomic_read(&chip->init) == IC_INIT_NEED) {
+		t_dev_warn(dev, "Not Ready, Need IC init (show_ic_tci_area)\n");
+		return 0;
+	}
+
+	t_dev_info(dev, "[ IC tci area ]\n");
+
+	ret = siw_hal_reg_read_single(dev,
+				reg->act_area_x1_w,
+				(void *)area_data_buf, sizeof(area_data_buf));
+	if (ret < 0) {
+		t_dev_err(dev, "tci area read fail\n");
+
+		goto out;
+	}
+
+	area = (struct reset_area *)area_data_buf;
+	siw_prt_reset_area_info(dev, "[TCI_1]", area, 0);
+	siw_prt_reset_area_info(dev, "[TCI_2]", area, 16);
+
+out:
+	return ret;
+}
+
+#else	/* __SIW_CONFIG_KNOCK */
+static inline void siw_hal_get_tci_info(struct device *dev)
+{
+
+}
+
+static inline int siw_hal_tci_area_set(struct device *dev, int cover_status)
+{
+	return 0;
+}
+static inline int siw_hal_lpwg_control(struct device *dev, int mode)
+{
+	return 0;
+}
+
+static inline void siw_hal_debug_tci(struct device *dev)
+{
+
+}
+
+static inline int siw_hal_show_ic_tci_info(struct device *dev)
+{
+	return 0;
+}
+
+static inline int siw_hal_show_driver_tci_info(struct device *dev)
+{
+	return 0;
+}
+
+static inline int siw_hal_lpwg_ext_tci_info(struct device *dev, void *param)
+{
+	return 0;
+}
+
+static inline void siw_hal_show_driver_tci_area(struct device *dev)
+{
+
+}
+
+static inline int siw_hal_show_ic_tci_area(struct device *dev)
+{
+	return 0;
+}
+#endif	/* __SIW_CONFIG_KNOCK */
+
 #if defined(__SIW_CONFIG_SWIPE)
+#define __SWIPE_INFO_SET(_idx, _d, _r, _rd, _rp, _mt, _mxt,	\
+			_ax1, _ay1, _ax2, _ay2)	\
+		[_idx] = {	\
+			.distance = _d,	.ratio_thres = _r,	\
+			.ratio_distance = _rd, .ratio_period = _rp,	\
+			.min_time = _mt, .max_time = _mxt,	\
+			.area.x1 = _ax1, .area.y1 = _ay1,	\
+			.area.x2 = _ax2, .area.y2 = _ay2,	\
+		}
+
 const struct siw_hal_swipe_ctrl siw_hal_swipe_info_default = {
 	.mode	= SWIPE_LEFT_BIT | SWIPE_RIGHT_BIT,
 	.info = {
-		[SWIPE_R] = {
-			.distance		= 5,
-			.ratio_thres	= 100,
-			.ratio_distance	= 2,
-			.ratio_period	= 5,
-			.min_time		= 0,
-			.max_time		= 150,
-			.area.x1		= 401,
-			.area.y1		= 0,
-			.area.x2		= 1439,
-			.area.y2		= 159,
-		},
-		[SWIPE_L] = {
-			.distance		= 5,
-			.ratio_thres	= 100,
-			.ratio_distance	= 2,
-			.ratio_period	= 5,
-			.min_time		= 0,
-			.max_time		= 150,
-			.area.x1		= 401,	/* 0 */
-			.area.y1		= 0,	/* 2060 */
-			.area.x2		= 1439,
-			.area.y2		= 159,	/* 2559 */
-		},
+		__SWIPE_INFO_SET(SWIPE_R, 5, 100, 2, 5, 0, 150,	401, 0, 1439, 159),
+		__SWIPE_INFO_SET(SWIPE_L, 5, 100, 2, 5, 0, 150, 401, 0, 1439, 159),
 	},
 };
 
-#define siw_prt_swipe_info(_dev, _idx, _info)	\
-	do {	\
-		t_dev_info(_dev,	\
-			"swipe info[%s] distance %d, ratio_thres %d, ratio_distance %d\n",	\
-			_idx, _info->distance, _info->ratio_thres, _info->ratio_distance);	\
-		t_dev_info(_dev,	\
-			"swipe info[%s] ratio_period %d, min_time %d, max_time %d\n",	\
-			_idx, _info->ratio_period, _info->min_time, _info->max_time);	\
-		t_dev_info(_dev,	\
-			"swipe info[%s] area_x1 %d, area_y1 %d, area_x2 %d, area_y2 %d\n",	\
-			_idx, _info->area.x1, _info->area.y1, _info->area.x2, _info->area.y2);	\
-	} while(0)
+static void siw_prt_swipe_info(struct device *dev,
+			char *name, struct siw_hal_swipe_info *info)
+{
+	t_dev_info(dev,
+		"swipe info[%s] distance %d, ratio_thres %d, ratio_distance %d\n",
+		name, info->distance, info->ratio_thres, info->ratio_distance);
+
+	t_dev_info(dev,
+		"swipe info[%s] ratio_period %d, min_time %d, max_time %d\n",
+		name, info->ratio_period, info->min_time, info->max_time);
+
+	t_dev_info(dev,
+		"swipe info[%s] area.x1 %d, area.y1 %d, area.x2 %d, area.y2 %d\n",
+		name, info->area.x1, info->area.y1, info->area.x2, info->area.y2);
+}
 
 static void siw_hal_prt_swipe_info(struct device *dev)
 {
@@ -1422,6 +1990,9 @@ static void siw_hal_get_swipe_info(struct device *dev)
 	struct siw_ts *ts = chip->ts;
 	void *swipe_src;
 
+	if (chip->opt.t_swipe)
+		return;
+
 	swipe_src = pdata_swipe_ctrl(ts->pdata);
 	if (!swipe_src)
 		swipe_src = (void *)&siw_hal_swipe_info_default;
@@ -1430,14 +2001,237 @@ static void siw_hal_get_swipe_info(struct device *dev)
 
 	siw_hal_prt_swipe_info(dev);
 }
-#else	/* __SIW_CONFIG_SWIPE */
-static void siw_hal_get_swipe_info(struct device *dev)
+
+static int siw_hal_swipe_active_area(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
+//	struct siw_ts *ts = chip->ts;
+	struct siw_hal_reg *reg = chip->reg;
+	struct siw_hal_swipe_info *left = &chip->swipe.info[SWIPE_L];
+	struct siw_hal_swipe_info *right = &chip->swipe.info[SWIPE_R];
+	u32 active_area[4] = {
+		(right->area.x1) | (left->area.x1 << 16),
+		(right->area.y1) | (left->area.y1 << 16),
+		(right->area.x2) | (left->area.x2 << 16),
+		(right->area.y2) | (left->area.y2 << 16),
+	};
+	int ret = 0;
 
-	memset(&chip->swipe, 0, sizeof(struct siw_hal_swipe_ctrl));
+	ret = siw_hal_reg_write_single(dev,
+				reg->swipe_act_area_x1_w,
+				(void *)active_area, sizeof(active_area));
+	if (ret < 0) {
+		t_dev_err(dev, "swipe failed: active area, %d\n", ret);
+		return ret;
+	}
 
-	t_dev_info(dev, "swipe mode disabled\n");
+	t_dev_dbg_base(dev, "swipe done: active area\n");
+
+	return 0;
+}
+
+static int siw_hal_swipe_control(struct device *dev, int type)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+//	struct siw_ts *ts = chip->ts;
+	struct siw_hal_reg *reg = chip->reg;
+	struct siw_hal_swipe_info *left = &chip->swipe.info[SWIPE_L];
+	struct siw_hal_swipe_info *right = &chip->swipe.info[SWIPE_R];
+	u32 addr = ~0;
+	u32 data = 0;
+	char *name = NULL;
+	int ret = 0;
+
+	switch (type) {
+	case SWIPE_ENABLE_CTRL:
+	case SWIPE_DISABLE_CTRL:
+		addr = reg->swipe_enable_w;
+		data = (type == SWIPE_ENABLE_CTRL) ? chip->swipe.mode : 0;
+		name = "mode";
+		break;
+	case SWIPE_DIST_CTRL:
+		addr = reg->swipe_dist_w;
+		data = (right->distance) | (left->distance << 16);
+		name = "distance";
+		break;
+	case SWIPE_RATIO_THR_CTRL:
+		addr = reg->swipe_ratio_thr_w;
+		data = (right->ratio_thres) | (left->ratio_thres << 16);
+		name = "ratio_threshold";
+		break;
+	case SWIPE_RATIO_PERIOD_CTRL:
+		addr = reg->swipe_ratio_period_w;
+		data = (right->ratio_period) | (left->ratio_period << 16);
+		name = "ratio_period";
+		break;
+	case SWIPE_RATIO_DIST_CTRL:
+		addr = reg->swipe_ratio_dist_w;
+		data = (right->ratio_distance) | (left->ratio_distance << 16);
+		name = "ratio_distance";
+		break;
+	case SWIPE_TIME_MIN_CTRL:
+		addr = reg->swipe_time_min_w;
+		data = (right->min_time) | (left->min_time << 16);
+		name = "min_time";
+		break;
+	case SWIPE_TIME_MAX_CTRL:
+		addr = reg->swipe_time_max_w;
+		data = (right->max_time) | (left->max_time << 16);
+		name = "max_time";
+		break;
+	case SWIPE_AREA_CTRL:
+		ret = siw_hal_swipe_active_area(dev);
+		break;
+	default:
+		break;
+	}
+
+	if (addr >= ADDR_SKIP_MASK) {
+		goto out;
+	}
+
+	ret = siw_hal_write_value(dev, addr, data);
+	if (ret < 0) {
+		t_dev_err(dev, "swipe failed: %s(%04Xh, %08Xh), %d\n",
+			name, addr, data, ret);
+		goto out;
+	}
+
+	t_dev_dbg_base(dev, "swipe done: %s(%04Xh, %08Xh)\n",
+			name, addr, data);
+
+out:
+	return ret;
+}
+
+static int siw_hal_swipe_mode(struct device *dev, int mode)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+//	struct siw_ts *ts = chip->ts;
+	int swipe_ctrls[12] = { 0, };
+	int i = 0;
+	int ret = 0;
+
+	if (chip->opt.t_swipe)
+		return 0;
+
+	if (!chip->swipe.mode || (mode != LCD_MODE_U2)) {
+		ret = siw_hal_swipe_control(dev, SWIPE_DISABLE_CTRL);
+		if (ret < 0) {
+			t_dev_err(dev, "swipe failed to disable\n");
+		} else {
+			t_dev_info(dev, "swipe disabled\n");
+		}
+		return ret;
+	}
+
+	swipe_ctrls[i++] = SWIPE_ENABLE_CTRL;
+	swipe_ctrls[i++] = SWIPE_DIST_CTRL;
+	swipe_ctrls[i++] = SWIPE_RATIO_THR_CTRL;
+	swipe_ctrls[i++] = SWIPE_RATIO_DIST_CTRL;
+	swipe_ctrls[i++] = SWIPE_RATIO_PERIOD_CTRL;
+	swipe_ctrls[i++] = SWIPE_TIME_MIN_CTRL;
+	swipe_ctrls[i++] = SWIPE_TIME_MAX_CTRL;
+	swipe_ctrls[i++] = SWIPE_AREA_CTRL;
+	swipe_ctrls[i++] = -1;
+
+	i = 0;
+	while (swipe_ctrls[i] != -1) {
+		ret = siw_hal_swipe_control(dev, swipe_ctrls[i]);
+		if (ret < 0) {
+			goto out;
+		}
+
+		i++;
+	}
+
+	t_dev_info(dev, "swipe enabled\n");
+
+out:
+	return ret;
+}
+
+#define SWIPE_FAIL_NUM 7
+static const char const *siw_hal_swipe_debug_str[SWIPE_FAIL_NUM] = {
+	"ERROR",
+	"1FINGER_FAST_RELEASE",
+	"MULTI_FINGER",
+	"FAST_SWIPE",
+	"SLOW_SWIPE",
+	"OUT_OF_AREA",
+	"RATIO_FAIL",
+};
+
+static void siw_hal_debug_swipe(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+//	struct siw_ts *ts = chip->ts;
+	struct siw_hal_reg *reg = chip->reg;
+	u8 debug_reason_buf[SWIPE_MAX_NUM][SWIPE_DEBUG_MAX_NUM];
+	u32 rdata[5] = {0 , };
+	u8 count[2] = {0, };
+	u8 count_max = 0;
+	u32 i, j = 0;
+	u8 buf = 0;
+	int ret = 0;
+
+	if (chip->opt.t_swipe)
+		return;
+
+	if (!chip->swipe_debug_type)
+		return;
+
+	ret = siw_hal_reg_read_single(dev,
+				reg->swipe_debug_r,
+				(void *)rdata, sizeof(rdata));
+
+	count[SWIPE_R] = (rdata[0] & 0xFFFF);
+	count[SWIPE_L] = ((rdata[0] >> 16) & 0xFFFF);
+	count_max = (count[SWIPE_R] > count[SWIPE_L]) ?
+			count[SWIPE_R] : count[SWIPE_L];
+
+	if (count_max == 0)
+		return;
+
+	if (count_max > SWIPE_DEBUG_MAX_NUM) {
+		count_max = SWIPE_DEBUG_MAX_NUM;
+		if (count[SWIPE_R] > SWIPE_DEBUG_MAX_NUM)
+			count[SWIPE_R] = SWIPE_DEBUG_MAX_NUM;
+		if (count[SWIPE_L] > SWIPE_DEBUG_MAX_NUM)
+			count[SWIPE_L] = SWIPE_DEBUG_MAX_NUM;
+	}
+
+	for (i = 0; i < ((count_max-1)>>2)+1; i++) {
+		memcpy(&debug_reason_buf[SWIPE_R][i<<2], &rdata[i+1], sizeof(u32));
+		memcpy(&debug_reason_buf[SWIPE_L][i<<2], &rdata[i+3], sizeof(u32));
+	}
+
+	for (i = 0; i < SWIPE_MAX_NUM; i++) {
+		for (j = 0; j < count[i]; j++) {
+			buf = debug_reason_buf[i][j];
+			t_dev_info(dev, "SWIPE_%s - DBG[%d/%d]: %s\n",
+					i == SWIPE_R ? "Right" : "Left",
+					j + 1, count[i],
+					(buf > 0 && buf < SWIPE_FAIL_NUM) ?
+					siw_hal_swipe_debug_str[buf] :
+					siw_hal_swipe_debug_str[0]);
+		}
+	}
+}
+#else	/* __SIW_CONFIG_SWIPE */
+static inline void siw_hal_get_swipe_info(struct device *dev)
+{
+
+}
+
+static inline int siw_hal_swipe_mode(struct device *dev, int mode)
+{
+	return 0;
+}
+
+static inline void siw_hal_debug_swipe(struct device *dev)
+{
+
 }
 #endif	/* __SIW_CONFIG_SWIPE */
 
@@ -4513,310 +5307,6 @@ out:
 	return ret;
 }
 
-#if defined(__SIW_CONFIG_KNOCK)
-static void siw_hal_set_tci_debug_type_1(struct device *dev)
-{
-	struct siw_touch_chip *chip = to_touch_chip(dev);
-//	struct siw_ts *ts = chip->ts;
-	struct siw_hal_reg *reg = chip->reg;
-	u32 wdata = chip->tci_debug_type;
-	int ret = 0;
-
-	t_dev_info(dev, "TCI-Debug: %s\n", (wdata) ? "Enable" : "Disable");
-
-	ret = siw_hal_write_value(dev, reg->tci_debug_fail_ctrl, wdata);
-	if (ret < 0) {
-		t_dev_err(dev, "TCI-Debug: ctrl failed, %d\n", ret);
-	}
-}
-
-static void siw_hal_set_tci_debug(struct device *dev)
-{
-	struct siw_touch_chip *chip = to_touch_chip(dev);
-
-	switch (chip->opt.t_chk_tci_debug) {
-	case 1:
-		siw_hal_set_tci_debug_type_1(dev);
-		break;
-	default:
-		break;
-	}
-}
-
-static int siw_hal_tci_knock(struct device *dev)
-{
-	struct siw_touch_chip *chip = to_touch_chip(dev);
-	struct siw_ts *ts = chip->ts;
-	struct siw_hal_reg *reg = chip->reg;
-	struct tci_info *info1 = &ts->tci.info[TCI_1];
-	struct tci_info *info2 = &ts->tci.info[TCI_2];
-	u32 lpwg_data[7];
-	int ret = 0;
-
-	siw_hal_set_tci_debug(dev);
-
-	lpwg_data[0] = ts->tci.mode;
-	lpwg_data[1] = info1->tap_count | (info2->tap_count << 16);
-	lpwg_data[2] = info1->min_intertap | (info2->min_intertap << 16);
-	lpwg_data[3] = info1->max_intertap | (info2->max_intertap << 16);
-	lpwg_data[4] = info1->touch_slop | (info2->touch_slop << 16);
-	lpwg_data[5] = info1->tap_distance | (info2->tap_distance << 16);
-	lpwg_data[6] = info1->intr_delay | (info2->intr_delay << 16);
-
-	t_dev_dbg_base(dev, "lpwg_data[0] : %08Xh\n", lpwg_data[0]);
-	t_dev_dbg_base(dev, "lpwg_data[1] : %08Xh\n", lpwg_data[1]);
-	t_dev_dbg_base(dev, "lpwg_data[2] : %08Xh\n", lpwg_data[2]);
-	t_dev_dbg_base(dev, "lpwg_data[3] : %08Xh\n", lpwg_data[3]);
-	t_dev_dbg_base(dev, "lpwg_data[4] : %08Xh\n", lpwg_data[4]);
-	t_dev_dbg_base(dev, "lpwg_data[5] : %08Xh\n", lpwg_data[5]);
-	t_dev_dbg_base(dev, "lpwg_data[6] : %08Xh\n", lpwg_data[6]);
-
-	ret = siw_hal_reg_write(dev,
-				reg->tci_enable_w,
-				(void *)lpwg_data, sizeof(lpwg_data));
-
-	return ret;
-}
-
-static int siw_hal_tci_password(struct device *dev)
-{
-//	struct siw_touch_chip *chip = to_touch_chip(dev);
-
-	siw_hal_set_tci_debug(dev);
-
-	return siw_hal_tci_knock(dev);
-}
-
-static int siw_hal_do_tci_active_area(struct device *dev,
-		u32 x1, u32 y1, u32 x2, u32 y2)
-{
-	struct siw_touch_chip *chip = to_touch_chip(dev);
-//	struct siw_ts *ts = chip->ts;
-	struct siw_hal_reg *reg = chip->reg;
-	int ret = 0;
-
-	ret = siw_hal_write_value(dev,
-				reg->act_area_x1_w,
-				x1);
-	if (ret < 0) {
-		goto out;
-	}
-	ret = siw_hal_write_value(dev,
-				reg->act_area_y1_w,
-				y1);
-	if (ret < 0) {
-		goto out;
-	}
-	ret = siw_hal_write_value(dev,
-				reg->act_area_x2_w,
-				x2);
-	if (ret < 0) {
-		goto out;
-	}
-	ret = siw_hal_write_value(dev,
-				reg->act_area_y2_w,
-				y2);
-	if (ret < 0) {
-		goto out;
-	}
-
-out:
-	return ret;
-}
-
-static int siw_hal_tci_active_area(struct device *dev,
-		u32 x1, u32 y1, u32 x2, u32 y2, int type)
-{
-	struct siw_touch_chip *chip = to_touch_chip(dev);
-	struct siw_ts *ts = chip->ts;
-//	struct siw_hal_reg *reg = chip->reg;
-	int margin = touch_senseless_margin(ts);
-	u32 area[4] = { 0, };
-	int i;
-
-	t_dev_info(dev, "tci_active_area[%d]: x1[%Xh], y1[%Xh], x2[%Xh], y2[%Xh]\n",
-		type, x1, y1, x2, y2);
-
-	area[0] = (x1 + margin) & 0xFFFF;
-	area[1] = (y1 + margin) & 0xFFFF;
-	area[2] = (x2 - margin) & 0xFFFF;
-	area[3] = (y2 - margin) & 0xFFFF;
-
-	for (i = 0; i < ARRAY_SIZE(area); i++) {
-		area[i] = (area[i]) | (area[i]<<16);
-	}
-
-	return siw_hal_do_tci_active_area(dev, area[0], area[1], area[2], area[3]);
-}
-
-static int siw_hal_tci_area_set(struct device *dev, int cover_status)
-{
-	struct siw_touch_chip *chip = to_touch_chip(dev);
-	struct siw_ts *ts = chip->ts;
-	struct reset_area *qcover;
-	const char *msg;
-	int qcover_invalid = 0;
-
-	if (!chip->mode_allowed_qcover) {
-		return 0;
-	}
-
-	qcover = (cover_status == QUICKCOVER_CLOSE) ?
-			&ts->tci.qcover_close : &ts->tci.qcover_open;
-	msg = (cover_status == QUICKCOVER_CLOSE) ?
-			"close" : "open";
-
-	if (!qcover->x2 || !qcover->y2) {
-		/* deactivated */
-		return 0;
-	}
-
-	qcover_invalid |= (qcover->x1 >= qcover->x2);
-	qcover_invalid |= (qcover->y1 >= qcover->y2);
-
-	if (!qcover_invalid) {
-		siw_hal_tci_active_area(dev,
-				qcover->x1, qcover->y1,
-				qcover->x2, qcover->y2,
-				0);
-	}
-
-	t_dev_info(dev,
-		"lpwg active area - qcover %s %4d %4d %4d %4d%s\n",
-		msg, qcover->x1, qcover->y1, qcover->x2, qcover->y2,
-		(qcover_invalid) ? " (invalid)": "");
-
-	return 0;
-}
-
-static int siw_hal_tci_control(struct device *dev, int type)
-{
-	struct siw_touch_chip *chip = to_touch_chip(dev);
-	struct siw_ts *ts = chip->ts;
-	struct siw_hal_reg *reg = chip->reg;
-	struct tci_ctrl *tci = &ts->tci;
-	struct active_area *area = &tci->area;
-	struct tci_info *info1 = &tci->info[TCI_1];
-	struct tci_info *info2 = &tci->info[TCI_2];
-	u32 reg_w = ~0;
-	u32 data;
-	int ret = 0;
-
-	switch (type) {
-	case ENABLE_CTRL:
-		reg_w = reg->tci_enable_w;
-		data = tci->mode;
-		break;
-
-	case TAP_COUNT_CTRL:
-		reg_w = reg->tap_count_w;
-		data = info1->tap_count | (info2->tap_count << 16);
-		break;
-
-	case MIN_INTERTAP_CTRL:
-		reg_w = reg->min_intertap_w;
-		data = info1->min_intertap | (info2->min_intertap << 16);
-		break;
-
-	case MAX_INTERTAP_CTRL:
-		reg_w = reg->max_intertap_w;
-		data = info1->max_intertap | (info2->max_intertap << 16);
-		break;
-
-	case TOUCH_SLOP_CTRL:
-		reg_w = reg->touch_slop_w;
-		data = info1->touch_slop | (info2->touch_slop << 16);
-		break;
-
-	case TAP_DISTANCE_CTRL:
-		reg_w = reg->tap_distance_w;
-		data = info1->tap_distance | (info2->tap_distance << 16);
-		break;
-
-	case INTERRUPT_DELAY_CTRL:
-		reg_w = reg->int_delay_w;
-		data = info1->intr_delay | (info2->intr_delay << 16);
-		break;
-
-	case ACTIVE_AREA_CTRL:
-		ret = siw_hal_tci_active_area(dev,
-					area->x1, area->y1,
-					area->x2, area->y2,
-					type);
-		break;
-
-	default:
-		break;
-	}
-
-	if (reg_w != ~0) {
-		ret = siw_hal_write_value(dev,
-					reg_w,
-					data);
-	}
-
-	return ret;
-}
-
-static int siw_hal_lpwg_control(struct device *dev, int mode)
-{
-	struct siw_touch_chip *chip = to_touch_chip(dev);
-	struct siw_ts *ts = chip->ts;
-	struct tci_info *info1 = &ts->tci.info[TCI_1];
-	int ret = 0;
-
-	switch (mode) {
-	case LPWG_DOUBLE_TAP:
-		ts->tci.mode = 0x01;
-		info1->intr_delay = 0;
-		info1->tap_distance = 10;
-
-		if (touch_senseless_margin(ts)) {
-			ret = siw_hal_tci_control(dev, ACTIVE_AREA_CTRL);
-			if (ret < 0) {
-				break;
-			}
-		}
-
-		ret = siw_hal_tci_knock(dev);
-		break;
-
-	case LPWG_PASSWORD:
-		ts->tci.mode = 0x01 | (0x01 << 16);
-		info1->intr_delay = ts->tci.double_tap_check ? 68 : 0;
-		info1->tap_distance = 7;
-
-		if (touch_senseless_margin(ts)) {
-			ret = siw_hal_tci_control(dev, ACTIVE_AREA_CTRL);
-			if (ret < 0) {
-				break;
-			}
-		}
-
-		ret = siw_hal_tci_password(dev);
-		break;
-
-	default:
-		ts->tci.mode = 0;
-		ret = siw_hal_tci_control(dev, ENABLE_CTRL);
-		break;
-	}
-
-	t_dev_info(dev, "lpwg_control mode = %d\n", mode);
-
-	return ret;
-}
-#else	/* __SIW_SUPPORT_KNOCK */
-static int siw_hal_tci_area_set(struct device *dev, int cover_status)
-{
-	return 0;
-}
-static int siw_hal_lpwg_control(struct device *dev, int mode)
-{
-	return 0;
-}
-#endif	/* __SIW_SUPPORT_KNOCK */
-
 #define SIW_OSC_CTL_T2		0xFE1
 #define SIW_CLK_CTL_T2		0xFE2
 
@@ -5014,131 +5504,6 @@ static int siw_hal_clock(struct device *dev, bool onoff)
 
 	return ret;
 }
-
-#if defined(__SIW_CONFIG_SWIPE)
-static int siw_hal_swipe_active_area(struct device *dev)
-{
-	struct siw_touch_chip *chip = to_touch_chip(dev);
-//	struct siw_ts *ts = chip->ts;
-	struct siw_hal_reg *reg = chip->reg;
-	struct siw_hal_swipe_info *left = &chip->swipe.info[SWIPE_L];
-	struct siw_hal_swipe_info *right = &chip->swipe.info[SWIPE_R];
-	u32 active_area[4] = {0x0, };
-	int ret = 0;
-
-	active_area[0] = (right->area.x1) | (left->area.x1 << 16);
-	active_area[1] = (right->area.y1) | (left->area.y1 << 16);
-	active_area[2] = (right->area.x2) | (left->area.x2 << 16);
-	active_area[3] = (right->area.y2) | (left->area.y2 << 16);
-
-	ret = siw_hal_reg_write(dev,
-				reg->swipe_act_area_x1_w,
-				(void *)active_area, sizeof(active_area));
-
-	return ret;
-}
-
-static int siw_hal_swipe_control(struct device *dev, int type)
-{
-	struct siw_touch_chip *chip = to_touch_chip(dev);
-//	struct siw_ts *ts = chip->ts;
-	struct siw_hal_reg *reg = chip->reg;
-	struct siw_hal_swipe_info *left = &chip->swipe.info[SWIPE_L];
-	struct siw_hal_swipe_info *right = &chip->swipe.info[SWIPE_R];
-	u32 reg_w = ~0;
-	u32 data = 0;
-	int ret = 0;
-
-	switch (type) {
-	case SWIPE_ENABLE_CTRL:
-	case SWIPE_DISABLE_CTRL:
-		reg_w = reg->swipe_enable_w;
-		data = (type == SWIPE_ENABLE_CTRL) ?
-					chip->swipe.mode : 0;
-		break;
-	case SWIPE_DIST_CTRL:
-		reg_w = reg->swipe_dist_w;
-		data = (right->distance) | (left->distance << 16);
-		break;
-	case SWIPE_RATIO_THR_CTRL:
-		reg_w = reg->swipe_ratio_thr_w;
-		data = (right->ratio_thres) | (left->ratio_thres << 16);
-		break;
-	case SWIPE_RATIO_PERIOD_CTRL:
-		reg_w = reg->swipe_ratio_period_w;
-		data = (right->ratio_period) | (left->ratio_period << 16);
-		break;
-	case SWIPE_RATIO_DIST_CTRL:
-		reg_w = reg->swipe_ratio_dist_w;
-		data = (right->ratio_distance) |
-				(left->ratio_distance << 16);
-		break;
-	case SWIPE_TIME_MIN_CTRL:
-		reg_w = reg->swipe_time_min_w;
-		data = (right->min_time) | (left->min_time << 16);
-		break;
-	case SWIPE_TIME_MAX_CTRL:
-		reg_w = reg->swipe_time_max_w;
-		data = (right->max_time) | (left->max_time << 16);
-		break;
-	case SWIPE_AREA_CTRL:
-		ret = siw_hal_swipe_active_area(dev);
-		break;
-	default:
-		break;
-	}
-
-	if (reg_w != ~0) {
-		ret = siw_hal_write_value(dev, reg_w, data);
-	}
-
-	return ret;
-}
-
-static int siw_hal_swipe_mode(struct device *dev, int mode)
-{
-	struct siw_touch_chip *chip = to_touch_chip(dev);
-//	struct siw_ts *ts = chip->ts;
-	struct siw_hal_reg *reg = chip->reg;
-	struct siw_hal_swipe_info *left = &chip->swipe.info[SWIPE_L];
-	struct siw_hal_swipe_info *right = &chip->swipe.info[SWIPE_R];
-	u32 swipe_data[11] = {0x0, };
-	int ret = 0;
-
-	if (!chip->swipe.mode || (mode != LCD_MODE_U2)) {
-		ret = siw_hal_swipe_control(dev, SWIPE_DISABLE_CTRL);
-		t_dev_dbg_base(dev, "swipe disabled\n");
-		goto out;
-	}
-
-	swipe_data[0] = chip->swipe.mode;
-	swipe_data[1] = (right->distance) | (left->distance << 16);
-	swipe_data[2] = (right->ratio_thres) | (left->ratio_thres << 16);
-	swipe_data[3] = (right->ratio_distance) | (left->ratio_distance << 16);
-	swipe_data[4] = (right->ratio_period) | (left->ratio_period << 16);
-	swipe_data[5] = (right->min_time) | (left->min_time << 16);
-	swipe_data[6] = (right->max_time) | (left->max_time << 16);
-	swipe_data[7] = (right->area.x1) | (left->area.x1 << 16);
-	swipe_data[8] = (right->area.y1) | (left->area.y1 << 16);
-	swipe_data[9] = (right->area.x2) | (left->area.x2 << 16);
-	swipe_data[10] = (right->area.y2) | (left->area.y2 << 16);
-
-	ret = siw_hal_reg_write(dev,
-				reg->swipe_enable_w,
-				(void *)swipe_data, sizeof(swipe_data));
-	if (ret >= 0) {
-		t_dev_info(dev, "swipe enabled\n");
-	}
-
-out:
-	return ret;
-}
-#else	/* __SIW_CONFIG_SWIPE */
-static int siw_hal_swipe_mode(struct device *dev, int mode)
-{
-	return 0;
-}
-#endif	/* __SIW_CONFIG_SWIPE */
 
 static int siw_hal_tc_con_type_g(struct device *dev, u32 addr, int value, char *name)
 {
@@ -5469,151 +5834,6 @@ static void siw_hal_deep_sleep(struct device *dev)
 	siw_hal_clock(dev, 0);
 }
 
-#if defined(__SIW_CONFIG_KNOCK)
-static const char *siw_hal_tci_debug_type_1_str[] = {
-	"SUCCESS",
-	"DISTANCE_INTER_TAP",
-	"DISTANCE_TOUCH_SLOP",
-	"MIN_TIMEOUT_INTER_TAP",
-	"MAX_TIMEOUT_INTER_TAP",
-	"LONG_PRESS_TIME_OUT",
-	"MULTI_FINGER",
-	"DELAY_TIME",
-	"PALM_STATE",
-	"OUT_OF_AREA",
-};
-
-#define TCI_FAIL_TYPE_1_NUM		ARRAY_SIZE(siw_hal_tci_debug_type_1_str)
-
-static void siw_hal_debug_tci_type_1(struct device *dev)
-{
-	struct siw_touch_chip *chip = to_touch_chip(dev);
-//	struct siw_ts *ts = chip->ts;
-	struct siw_hal_reg *reg = chip->reg;
-	char **str = (char **)siw_hal_tci_debug_type_1_str;
-	u32 rdata = 0;
-	u32 buffer = 0;
-	u32 index = 0;
-	int ret = 0;
-
-	ret = siw_hal_read_value(dev,
-			reg->tci_debug_fail_status,
-			&rdata);
-	if (ret < 0) {
-		t_dev_err(dev, "failed to read tci debug fail status, %d\n", ret);
-		return;
-	}
-
-	ret = siw_hal_read_value(dev,
-			reg->tci_debug_fail_buffer,
-			&buffer);
-	if (ret < 0) {
-		t_dev_err(dev, "failed to read tci debug fail buffer, %d\n", ret);
-		return;
-	}
-
-	t_dev_info(dev,
-		"Status[%04Xh] = %08Xh, Buffer[%04Xh] = %08Xh\n",
-		reg->tci_debug_fail_status, rdata,
-		reg->tci_debug_fail_buffer, buffer);
-
-	/* Knock On fail */
-	if (rdata & 0x01) {
-		index = (buffer & 0xFFFF);
-		t_dev_info(dev, "TCI-Debug: on fail reason: %s(%08Xh)\n",
-			(index < TCI_FAIL_TYPE_1_NUM) ? str[index] : "(unknown)",
-			buffer);
-	}
-
-	/* Knock Code fail */
-	if (rdata & 0x02) {
-		index = ((buffer>>16) & 0xFFFF);
-		t_dev_info(dev, "TCI-Debug: code fail reason: %s(%08Xh)\n",
-			(index < TCI_FAIL_TYPE_1_NUM) ? str[index] : "(unknown)",
-			buffer);
-	}
-}
-
-static void siw_hal_debug_tci(struct device *dev)
-{
-	struct siw_touch_chip *chip = to_touch_chip(dev);
-
-	switch (chip->opt.t_chk_tci_debug) {
-	case 1:
-		siw_hal_debug_tci_type_1(dev);
-		break;
-	default:
-		break;
-	}
-}
-#else	/* __SIW_CONFIG_KNOCK */
-static void siw_hal_debug_tci(struct device *dev)
-{
-
-}
-#endif	/* __SIW_CONFIG_KNOCK */
-
-#if defined(__SIW_CONFIG_SWIPE)
-static void siw_hal_debug_swipe(struct device *dev)
-{
-	struct siw_touch_chip *chip = to_touch_chip(dev);
-//	struct siw_ts *ts = chip->ts;
-	struct siw_hal_reg *reg = chip->reg;
-	u8 debug_reason_buf[SWIPE_MAX_NUM][SWIPE_DEBUG_MAX_NUM];
-	u32 rdata[5] = {0 , };
-	u8 count[2] = {0, };
-	u8 count_max = 0;
-	u32 i, j = 0;
-	u8 buf = 0;
-	int ret = 0;
-
-	if (!chip->swipe_debug_type)
-		return;
-
-	ret = siw_hal_reg_read(dev,
-				reg->swipe_debug_r,
-				(void *)&rdata, sizeof(rdata));
-
-	count[SWIPE_R] = (rdata[0] & 0xFFFF);
-	count[SWIPE_L] = ((rdata[0] >> 16) & 0xFFFF);
-	count_max = (count[SWIPE_R] > count[SWIPE_L]) ?
-			count[SWIPE_R] : count[SWIPE_L];
-
-	if (count_max == 0)
-		return;
-
-	if (count_max > SWIPE_DEBUG_MAX_NUM) {
-		count_max = SWIPE_DEBUG_MAX_NUM;
-		if (count[SWIPE_R] > SWIPE_DEBUG_MAX_NUM)
-			count[SWIPE_R] = SWIPE_DEBUG_MAX_NUM;
-		if (count[SWIPE_L] > SWIPE_DEBUG_MAX_NUM)
-			count[SWIPE_L] = SWIPE_DEBUG_MAX_NUM;
-	}
-
-	for (i = 0; i < ((count_max-1)>>2)+1; i++) {
-		memcpy(&debug_reason_buf[SWIPE_R][i<<2], &rdata[i+1], sizeof(u32));
-		memcpy(&debug_reason_buf[SWIPE_L][i<<2], &rdata[i+3], sizeof(u32));
-	}
-
-	for (i = 0; i < SWIPE_MAX_NUM; i++) {
-		for (j = 0; j < count[i]; j++) {
-			buf = debug_reason_buf[i][j];
-			t_dev_info(dev, "SWIPE_%s - DBG[%d/%d]: %s\n",
-					i == SWIPE_R ? "Right" : "Left",
-					j + 1, count[i],
-					(buf > 0 && buf < SWIPE_FAIL_NUM) ?
-					siw_hal_swipe_debug_str[buf] :
-					siw_hal_swipe_debug_str[0]);
-		}
-	}
-}
-#else	/* __SIW_CONFIG_SWIPE */
-static void siw_hal_debug_swipe(struct device *dev)
-{
-
-}
-#endif	/* __SIW_CONFIG_SWIPE */
-
 enum {
 	LPWG_SET_SKIP	= -1,
 };
@@ -5920,213 +6140,6 @@ static int siw_hal_lpwg_mode(struct device *dev)
 	}
 
 	return siw_hal_lpwg_mode_resume(dev);
-}
-
-#define TCI_INFO_CNT (sizeof(struct tci_info) / 2)
-
-#define siw_prt_tci_control_info(_dev, _idx, _info)	\
-	do {	\
-		t_dev_info(_dev,	\
-			"tci info[%s] tap_count %d, min_intertap %d, max_intertap %d\n",	\
-			_idx, _info->tap_count, _info->min_intertap, _info->max_intertap);	\
-		t_dev_info(_dev,	\
-			"tci info[%s] touch_slop %d, tap_distance %d, intr_delay %d\n",	\
-			_idx, _info->touch_slop, _info->tap_distance, _info->intr_delay);	\
-	} while(0)
-
-static int siw_hal_show_ic_tci_info(struct device *dev)
-{
-	struct siw_touch_chip *chip = to_touch_chip(dev);
-	struct siw_hal_reg *reg = chip->reg;
-	struct tci_info *info;
-	u16 lpwg_data[TCI_INFO_CNT + 1][2];
-	u16 lpwg_data_tci_1[TCI_INFO_CNT];
-	u16 lpwg_data_tci_2[TCI_INFO_CNT];
-	int i = 0;
-	int ret = 0;
-
-	if (atomic_read(&chip->init) == IC_INIT_NEED) {
-		t_dev_warn(dev, "Not Ready, Need IC init (show_ic_tci_info)\n");
-		return 0;
-	}
-
-	t_dev_info(dev, "[ IC tci info ]\n");
-
-	ret = siw_hal_reg_read(dev,
-				reg->tci_enable_w,
-				(void *)lpwg_data, sizeof(lpwg_data));
-	if (ret < 0) {
-		t_dev_err(dev, "tci info read fail\n");
-		goto out;
-	}
-
-	for (i = 0; i < TCI_INFO_CNT; i++) {
-		lpwg_data_tci_1[i] = lpwg_data[i + 1][0];
-		lpwg_data_tci_2[i] = lpwg_data[i + 1][1];
-	}
-
-	info = (struct tci_info *)lpwg_data_tci_1;
-	siw_prt_tci_control_info(dev, "TCI_1", info);
-
-	info = (struct tci_info *)lpwg_data_tci_2;
-	siw_prt_tci_control_info(dev, "TCI_2", info);
-
-out:
-	return ret;
-}
-
-static void siw_hal_show_driver_tci_info(struct device *dev)
-{
-	struct siw_touch_chip *chip = to_touch_chip(dev);
-	struct siw_ts *ts = chip->ts;
-	struct tci_ctrl *tci = &ts->tci;
-	struct tci_info *info;
-
-	t_dev_info(dev, "[ driver tci info ]\n");
-
-	info = &tci->info[TCI_1];
-	siw_prt_tci_control_info(dev, "TCI_1", info);
-
-	info = &tci->info[TCI_2];
-	siw_prt_tci_control_info(dev, "TCI_2", info);
-}
-
-static int siw_hal_lpwg_ext_tci_info(struct device *dev, void *param)
-{
-	struct siw_touch_chip *chip = to_touch_chip(dev);
-	struct siw_ts *ts = chip->ts;
-	struct siw_hal_reg *reg = chip->reg;
-	u16 *info_addr;
-	int *data = (int *)param;
-	int tci_type = 0;
-	int index = 0;
-	u16 value = 0;
-	u16 write_en = 0;
-	u16 value_2 = 0;
-	u32 send_buf = 0;
-	int ret = 0;
-
-	if (atomic_read(&chip->init) == IC_INIT_NEED) {
-		t_dev_warn(dev, "Not Ready, Need IC init (lpwg_ext_tci_info)\n");
-		return 0;
-	}
-
-	tci_type = data[0];
-	index = data[1];
-	value = data[2];
-	write_en = data[3];
-
-	if ((tci_type > TCI_2) || (0 > tci_type)) {
-		t_dev_err(dev, "invaild tci_type value [%d]\n", tci_type);
-		goto out_invaild;
-	}
-
-	if ((index > (TCI_INFO_CNT - 1)) || (0 > index)) {
-		t_dev_err(dev, "invaild index value [%d]\n", index);
-		goto out_invaild;
-	}
-
-	info_addr = (u16 *)&ts->tci.info[!tci_type];
-	value_2 = info_addr[index];
-
-	send_buf = (value << (tci_type ? 16 : 0)) | (value_2 << (tci_type ? 0 : 16));
-
-	if (write_en == 1) {
-		t_dev_info(dev, "tci info write addr[%Xh] value[%Xh]\n",
-			reg->tap_count_w + index, send_buf);
-
-		ret = siw_hal_write_value(dev,
-			reg->tap_count_w + index, send_buf);
-		if (ret < 0) {
-			t_dev_err(dev, "tci info write fail, so don't setting driver tci info\n");
-			goto out_write_fail;
-		}
-	}
-
-	info_addr = (u16 *)&ts->tci.info[tci_type];
-	info_addr[index] = value;
-
-	siw_hal_show_ic_tci_info(dev);
-
-out_write_fail:
-	siw_hal_show_driver_tci_info(dev);
-
-out_invaild:
-	return ret;
-}
-
-#define TCI_AREA_CNT (sizeof(struct active_area) / 2)
-
-#define __siw_prt_tci_area(_dev, _fmt, _name, _area, _shift)	\
-	do {	\
-		t_dev_info(_dev,	\
-			_fmt "x1:%4d, y1:%4d, x2:%4d, y2:%4d\n",	\
-			_name,	\
-			((_area->x1 >> _shift) & 0xFFFF),	\
-			((_area->y1 >> _shift) & 0xFFFF),	\
-			((_area->x2 >> _shift) & 0xFFFF),	\
-			((_area->y2 >> _shift )& 0xFFFF));	\
-	} while(0)
-
-#define siw_prt_tci_area_drv(_dev, _name, _area, _shift)	\
-	do {	\
-		__siw_prt_tci_area(_dev, "tci %s area ", _name, _area, _shift);	\
-	} while(0)
-
-static void siw_hal_show_driver_tci_area(struct device *dev)
-{
-	struct siw_touch_chip *chip = to_touch_chip(dev);
-	struct siw_ts *ts = chip->ts;
-	struct active_area *area;
-	struct reset_area *tci_qcover;
-
-	t_dev_info(dev, "[ driver tci area ]\n");
-
-	area = &ts->tci.area;
-	siw_prt_tci_area_drv(dev, "[active      ]", area, 0);
-
-	tci_qcover = &ts->tci.qcover_open;
-	siw_prt_tci_area_drv(dev, "[qcover open ]", tci_qcover, 0);
-
-	tci_qcover = &ts->tci.qcover_close;
-	siw_prt_tci_area_drv(dev, "[qcover close]", tci_qcover, 0);
-}
-
-#define siw_prt_tci_area_ic(_dev, _name, _area, _shift)	\
-	do {	\
-		__siw_prt_tci_area(_dev, "tci area %s ", _name, _area, _shift);	\
-	} while (0)
-
-static int siw_hal_show_ic_tci_area(struct device *dev)
-{
-	struct siw_touch_chip *chip = to_touch_chip(dev);
-	struct siw_hal_reg *reg = chip->reg;
-	struct reset_area *area;
-	u32 area_data_buf[TCI_AREA_CNT] = {0, };
-	int ret = 0;
-
-	if (atomic_read(&chip->init) == IC_INIT_NEED) {
-		t_dev_warn(dev, "Not Ready, Need IC init (show_ic_tci_area)\n");
-		return 0;
-	}
-
-	t_dev_info(dev, "[ IC tci area ]\n");
-
-	ret = siw_hal_reg_read(dev,
-				reg->act_area_x1_w,
-				(void *)area_data_buf, sizeof(area_data_buf));
-	if (ret < 0) {
-		t_dev_err(dev, "tci area read fail\n");
-
-		goto out;
-	}
-
-	area = (struct reset_area *)area_data_buf;
-	siw_prt_tci_area_ic(dev, "[TCI_1]", area, 0);
-	siw_prt_tci_area_ic(dev, "[TCI_2]", area, 16);
-
-out:
-	return ret;
 }
 
 //#define __SKIP_LPWG_UPDATE_ALL_FOR_SAME_INPUT
@@ -6982,6 +6995,56 @@ static int siw_hal_get_swipe_data(struct device *dev)
 	return 0;
 }
 
+static int siw_hal_irq_lpwg_t1_base(struct siw_ts *ts, int type)
+{
+	struct device *dev = ts->dev;
+	int ret = 0;
+
+	switch (type) {
+	case LPWG_T1_KNOCK_1:
+		if (ts->lpwg.mode == LPWG_NONE) {
+			break;
+		}
+		t_dev_info(dev, "LPWG: TOUCH_IRQ_KNOCK\n");
+		siw_hal_get_tci_data(dev, ts->tci.info[TCI_1].tap_count);
+		ts->intr_status = TOUCH_IRQ_KNOCK;
+		break;
+	case LPWG_T1_KNOCK_2:
+		if (ts->lpwg.mode != LPWG_PASSWORD) {
+			break;
+		}
+		t_dev_info(dev, "LPWG: TOUCH_IRQ_PASSWD\n");
+		siw_hal_get_tci_data(dev, ts->tci.info[TCI_2].tap_count);
+		ts->intr_status = TOUCH_IRQ_PASSWD;
+		break;
+	case LPWG_T1_SWIPE_LEFT:
+		t_dev_info(dev, "LPWG: SWIPE_LEFT\n");
+		siw_hal_get_swipe_data(dev);
+		ts->intr_status = TOUCH_IRQ_SWIPE_LEFT;
+		break;
+	case LPWG_T1_SWIPE_RIGHT:
+		t_dev_info(dev, "LPWG: SWIPE_RIGHT\n");
+		siw_hal_get_swipe_data(dev);
+		ts->intr_status = TOUCH_IRQ_SWIPE_RIGHT;
+		break;
+	case LPWG_T1_SWIPE_UP:
+		t_dev_info(dev, "LPWG: SWIPE_UP\n");
+		siw_hal_get_swipe_data(dev);
+		ts->intr_status = TOUCH_IRQ_SWIPE_UP;
+		break;
+	case LPWG_T1_SWIPE_DOWN:
+		t_dev_info(dev, "LPWG: SWIPE_DOWN\n");
+		siw_hal_get_swipe_data(dev);
+		ts->intr_status = TOUCH_IRQ_SWIPE_DOWN;
+		break;
+	default:
+	//	t_dev_warn(dev, "unkown lpwg: %d\n", type);
+		break;
+	}
+
+	return ret;
+}
+
 static int siw_hal_irq_lpwg_base(struct siw_ts *ts, int type)
 {
 	struct device *dev = ts->dev;
@@ -7075,7 +7138,32 @@ static int siw_hal_irq_lpwg_knock_overtap(struct siw_ts *ts)
 	return 0;
 }
 
-static int siw_hal_irq_lpwg(struct device *dev)
+static int siw_hal_irq_lpwg_type_1(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	u32 type = chip->info.wakeup_type;
+	int ret = 0;
+
+	if (!type) {
+		goto out;
+	}
+
+	if (type <= LPWG_T1_SWIPE_DOWN) {
+		ret = siw_hal_irq_lpwg_t1_base(ts, type);
+	} else {
+		goto out;
+	}
+
+	return ret;
+
+out:
+	t_dev_err(dev, "LPWG: unknown type, %d\n", type);
+
+	return -EINVAL;
+}
+
+static int siw_hal_irq_lpwg_default(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
@@ -7106,6 +7194,23 @@ out:
 	t_dev_err(dev, "LPWG: unknown type, %d\n", type);
 
 	return -EINVAL;
+}
+
+static int siw_hal_irq_lpwg(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	int ret = 0;
+
+	switch (chip->opt.t_lpwg) {
+	case 1:
+		ret = siw_hal_irq_lpwg_type_1(dev);
+		break;
+	default:
+		ret = siw_hal_irq_lpwg_default(dev);
+		break;
+	}
+
+	return ret;
 }
 
 #define GET_REPORT_BASE_PKT		(1)
@@ -8383,6 +8488,9 @@ static void siw_hal_show_chipset_option(struct siw_touch_chip *chip)
 	t_dev_info(dev, " t_chk_fault     : %d\n", opt->t_chk_fault);
 
 	t_dev_info(dev, " t_tc_cmd        : %d\n", opt->t_tc_cmd);
+	t_dev_info(dev, " t_lpwg          : %d\n", opt->t_lpwg);
+	t_dev_info(dev, " t_knock         : %d\n", opt->t_lpwg);
+	t_dev_info(dev, " t_swipe         : %d\n", opt->t_swipe);
 
 	t_dev_info(dev, " t_bus_opt       : %d\n", opt->t_bus_opt);
 	t_dev_info(dev, " t_rw_opt        : %d\n", opt->t_rw_opt);

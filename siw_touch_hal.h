@@ -179,6 +179,14 @@ enum {
 	LCD_MODE_BIT_MAX			= BIT(LCD_MODE_MAX),
 };
 
+enum {
+	LPWG_T1_KNOCK_1 = 1,
+	LPWG_T1_KNOCK_2,
+	LPWG_T1_SWIPE_LEFT = 3,
+	LPWG_T1_SWIPE_RIGHT,
+	LPWG_T1_SWIPE_UP,
+	LPWG_T1_SWIPE_DOWN,
+};
 
 enum {
 	SWIPE_R = 0,
@@ -508,8 +516,10 @@ struct siw_touch_chip_opt {
 	u32 t_tc_cmd:4;
 	u32 rsvd30:4;
 	u32 rsvd31:8;
-	u32 rsvd32:8;
-	u32 rsvd33:8;
+	u32 t_lpwg:4;
+	u32 t_knock:4;
+	u32 t_swipe:4;
+	u32 rsvd33:4;
 	/* */
 	u32 t_bus_opt:4;
 	u32 t_rw_opt:4;
