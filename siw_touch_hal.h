@@ -723,6 +723,11 @@ enum {
 	ADDR_SKIP_MASK	= 0xFFFF,
 };
 
+static inline int siw_addr_is_skip(u32 addr)
+{
+	return (addr >= ADDR_SKIP_MASK);
+}
+
 enum {
 	BOOT_STS_POS_MODE = 0,
 	BOOT_STS_POS_BUSY,

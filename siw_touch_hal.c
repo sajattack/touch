@@ -826,7 +826,7 @@ static int __used __siw_hal_reg_read(struct device *dev, u32 addr, void *data, i
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	int ret = 0;
 
-	if (addr == ADDR_SKIP_MASK) {
+	if (siw_addr_is_skip(addr)) {
 		t_hal_bus_dbg_base(dev, "rd: skip by ADDR_SKIP_MASK\n");
 		return 0;
 	}
@@ -914,7 +914,7 @@ static int __used __siw_hal_reg_write(struct device *dev, u32 addr, void *data, 
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	int ret = 0;
 
-	if (addr == ADDR_SKIP_MASK) {
+	if (siw_addr_is_skip(addr)) {
 		t_hal_bus_dbg_base(dev, "wr: skip by ADDR_SKIP_MASK\n");
 		return 0;
 	}
@@ -2086,7 +2086,7 @@ static int siw_hal_swipe_control(struct device *dev, int type)
 		break;
 	}
 
-	if (addr >= ADDR_SKIP_MASK) {
+	if (siw_addr_is_skip(addr)) {
 		goto out;
 	}
 
@@ -3096,7 +3096,7 @@ static int siw_hal_init_reg_set_pre(struct device *dev)
 		goto out;
 	}
 
-	if (addr_set == ADDR_SKIP_MASK) {
+	if (siw_addr_is_skip(addr_set)) {
 		goto out;
 	}
 
