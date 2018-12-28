@@ -2159,6 +2159,27 @@ int siw_touch_remove(struct siw_ts *ts)
 	return 0;
 }
 
+int siw_touch_shutdown(struct siw_ts *ts)
+{
+	struct device *dev = NULL;
+
+	if (ts == NULL)
+		return 0;
+
+	dev = ts->dev;
+
+	siw_touch_irq_control(dev, INTERRUPT_DISABLE);
+
+	siw_touch_init_late_work_clr(ts);
+
+	cancel_delayed_work_sync(&ts->upgrade_work);
+	cancel_delayed_work_sync(&ts->init_work);
+
+	t_dev_info(dev, "SiW Touch shutdown\n");
+
+	return 0;
+}
+
 int siw_touch_init_late(struct siw_ts *ts, int value)
 {
 	struct device *dev = ts->dev;

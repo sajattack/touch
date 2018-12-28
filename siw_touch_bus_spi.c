@@ -301,6 +301,13 @@ static int siw_touch_spi_remove(struct spi_device *spi)
 	return 0;
 }
 
+void siw_touch_spi_shutdown(struct spi_device *spi)
+{
+	struct siw_ts *ts = to_touch_core(&spi->dev);
+
+	siw_touch_shutdown(ts);
+}
+
 #if defined(CONFIG_PM_SLEEP)
 static int siw_touch_spi_pm_suspend(struct device *dev)
 {
@@ -403,6 +410,7 @@ int siw_touch_spi_add_driver(void *data)
 
 	spi_drv->probe = siw_touch_spi_probe;
 	spi_drv->remove = siw_touch_spi_remove;
+	spi_drv->shutdown = siw_touch_spi_shutdown;
 	spi_drv->id_table = siw_touch_spi_id;
 	if (drv_name != NULL) {
 		memset((void *)siw_touch_spi_id[0].name, 0, SPI_NAME_SIZE);

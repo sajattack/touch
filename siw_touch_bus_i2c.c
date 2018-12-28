@@ -211,6 +211,13 @@ static int siw_touch_i2c_remove(struct i2c_client *i2c)
 	return 0;
 }
 
+void siw_touch_i2c_shutdown(struct i2c_client *i2c)
+{
+	struct siw_ts *ts = to_touch_core(&i2c->dev);
+
+	siw_touch_shutdown(ts);
+}
+
 #if defined(CONFIG_PM_SLEEP)
 static int siw_touch_i2c_pm_suspend(struct device *dev)
 {
@@ -313,6 +320,7 @@ int siw_touch_i2c_add_driver(void *data)
 
 	i2c_drv->probe = siw_touch_i2c_probe;
 	i2c_drv->remove = siw_touch_i2c_remove;
+	i2c_drv->shutdown = siw_touch_i2c_shutdown;
 	i2c_drv->id_table = siw_touch_i2c_id;
 	if (drv_name != NULL) {
 		memset((void *)siw_touch_i2c_id[0].name, 0, I2C_NAME_SIZE);

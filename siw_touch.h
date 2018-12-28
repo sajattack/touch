@@ -1729,6 +1729,7 @@ extern void siw_touch_mon_resume(struct device *dev);
 
 extern int siw_touch_probe(struct siw_ts *ts);
 extern int siw_touch_remove(struct siw_ts *ts);
+extern int siw_touch_shutdown(struct siw_ts *ts);
 
 extern int siw_touch_init_late(struct siw_ts *ts, int value);
 extern int siw_touch_init_late_queue(struct device *dev,
