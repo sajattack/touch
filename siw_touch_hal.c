@@ -2343,10 +2343,8 @@ static int siw_hal_chk_boot_status(struct device *dev)
 	u32 valid_code_crc_mask = 0;
 	int ret = 0;
 
-	valid_cfg_crc_mask = (mask_bit->valid_cfg_crc) ?
-		mask_bit->valid_cfg_crc : (1<<STS_POS_VALID_CFG_CRC);
-	valid_code_crc_mask = (mask_bit->valid_code_crc) ?
-		mask_bit->valid_code_crc : (1<<STS_POS_VALID_CODE_CRC);
+	valid_cfg_crc_mask = mask_bit->valid_cfg_crc;
+	valid_code_crc_mask = mask_bit->valid_code_crc;
 
 	ret = siw_hal_read_value(dev,
 			reg->tc_status,
@@ -2360,10 +2358,10 @@ static int siw_hal_chk_boot_status(struct device *dev)
 		return BOOT_CHK_SKIP;
 	}
 
-	if (!(tc_status & valid_cfg_crc_mask)) {
+	if (valid_cfg_crc_mask && !(tc_status & valid_cfg_crc_mask)) {
 		boot_failed |= (1<<5);
 	}
-	if (!(tc_status & valid_code_crc_mask)) {
+	if (valid_code_crc_mask && !(tc_status & valid_code_crc_mask)) {
 		boot_failed |= (1<<4);
 	}
 	if (boot_failed) {
