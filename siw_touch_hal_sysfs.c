@@ -338,7 +338,7 @@ static inline void __store_reg_ctrl_rd_burst_log(struct device *dev,
 		t_dev_info(dev, "rd: [%3Xh] %*ph\n", row, col, row_buf);
 }
 
-static int __store_reg_ctrl_rd_burst(struct device *dev, u32 addr, int size)
+static int __store_reg_ctrl_rd_burst(struct device *dev, u32 addr, int size, int burst)
 {
 	u8 *rd_buf, *row_buf;
 	int col_power = REG_BURST_COL_PWR;
@@ -354,12 +354,17 @@ static int __store_reg_ctrl_rd_burst(struct device *dev, u32 addr, int size)
 		return -ENOMEM;
 	}
 
-	ret = siw_hal_reg_read(dev, addr, rd_buf, size);
+	if (burst) {
+		ret = siw_hal_reg_read(dev, addr, rd_buf, size);
+	} else {
+		ret = siw_hal_reg_read_single(dev, addr, rd_buf, size);
+	}
 	if (ret < 0) {
 		goto out;
 	}
 
-	t_dev_info(dev, "rd: addr %04Xh, size %Xh\n", addr, size);
+	t_dev_info(dev, "rd: addr %04Xh, size %Xh %s\n", addr, size,
+		(burst) ? "(burst)" : "");
 
 	row_buf = rd_buf;
 	row_curr = 0;
@@ -389,6 +394,7 @@ static ssize_t _store_reg_ctrl(struct device *dev,
 	u32 data = 1;
 	u32 reg_addr;
 	int wr = -1;
+	int rd = -1;
 	int value = 0;
 	int ret = 0;
 
@@ -397,17 +403,16 @@ static ssize_t _store_reg_ctrl(struct device *dev,
 		return count;
 	}
 
-	if (!strcmp(command, "wr") ||
-		!strcmp(command, "write")) {
+	if (!strcmp(command, "wr") || !strcmp(command, "write")) {
 		wr = 1;
-	}
-	if (!strcmp(command, "rd") ||
-		!strcmp(command, "read")) {
-		wr = 0;
+	} else if (!strcmp(command, "rd") || !strcmp(command, "read")) {
+		rd = 1;		/* single */
+	} else if (!strcmp(command, "rdb") || !strcmp(command, "readb")) {
+		rd = 2;		/* burst */
 	}
 
 	reg_addr = reg;
-	if (wr == 1) {
+	if (wr != -1) {
 		data = value;
 		ret = siw_hal_write_value(dev,
 					reg_addr,
@@ -424,7 +429,9 @@ static ssize_t _store_reg_ctrl(struct device *dev,
 		}
 		__store_reg_ctrl_log_add(dev, &reg_log);
 		goto out;
-	} else if (!wr) {
+	}
+
+	if (rd != -1) {
 		reg_log.dir = REG_DIR_RD;
 		reg_log.addr = reg_addr;
 		if (value <= 4) {
@@ -439,7 +446,7 @@ static ssize_t _store_reg_ctrl(struct device *dev,
 			}
 		} else {
 			reg_log.dir |= (REG_DIR_ERR<<1);
-			ret = __store_reg_ctrl_rd_burst(dev, reg_addr, value);
+			ret = __store_reg_ctrl_rd_burst(dev, reg_addr, value, (rd == 2));
 		}
 		if (ret < 0) {
 			reg_log.dir |= REG_DIR_ERR;
