@@ -3511,8 +3511,8 @@ static int prd_ctrl_firm_not_allowed(struct device *dev)
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_hal_reg *reg = chip->reg;
 
-	if ((reg->prd_ic_ait_start_reg == ADDR_SKIP_MASK) ||
-		(reg->prd_ic_ait_data_readystatus == ADDR_SKIP_MASK)) {
+	if (siw_addr_is_skip(reg->prd_ic_ait_start_reg) ||
+		siw_addr_is_skip(reg->prd_ic_ait_data_readystatus)) {
 		return 1;
 	}
 
@@ -3796,6 +3796,11 @@ static int prd_do_read_tune_code(struct siw_hal_prd_data *prd, u8 *buf, int type
 	u32 tune_code_offset;
 	u32 offset;
 	int ret = 0;
+
+	if (siw_addr_is_skip(reg->prd_tune_result_offset)) {
+		t_prd_info(prd, "tune code reading deactivated\n");
+		return 0;
+	}
 
 	ret = siw_hal_read_value(dev,
 				reg->prd_tune_result_offset,
@@ -4134,6 +4139,10 @@ static int prd_write_test_control(struct siw_hal_prd_data *prd, u32 mode)
 	unsigned int delay_ms = 30;
 	int addr = reg->prd_tc_test_mode_ctl;
 	int ret = 0;
+
+	if (siw_addr_is_skip(addr)) {
+		return 0;
+	}
 
 	ret = siw_hal_write_value(dev,
 				addr,
