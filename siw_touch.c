@@ -494,7 +494,7 @@ void siw_touch_suspend_bus(struct device *dev)
 #else
 	t_dev_info(dev, "touch_suspend_bus(noop)\n");
 #endif
-}
+}
 
 void siw_touch_resume_bus(struct device *dev)
 {
@@ -1556,6 +1556,12 @@ static int _siw_touch_do_irq_thread(struct siw_ts *ts)
 
 	if (ts->intr_status & TOUCH_IRQ_SWIPE_LEFT)
 		siw_touch_send_uevent(ts, TOUCH_UEVENT_SWIPE_LEFT);
+
+	if (ts->intr_status & TOUCH_IRQ_SWIPE_UP)
+		siw_touch_send_uevent(ts, TOUCH_UEVENT_SWIPE_UP);
+
+	if (ts->intr_status & TOUCH_IRQ_SWIPE_DOWN)
+		siw_touch_send_uevent(ts, TOUCH_UEVENT_SWIPE_DOWN);
 
 	if (ts->intr_status & TOUCH_IRQ_GESTURE)
 		siw_touch_send_uevent(ts, ts->intr_gesture);
