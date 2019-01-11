@@ -1,4 +1,4 @@
-[Last updated : 2018.08.21]
+[Last updated : 2018.11.07]
 
 ###################################################################################################
 # Sysfs access                                                                                    #
@@ -71,8 +71,6 @@ The basic command format for FW upgrade is like this
       > The request_firmware API will find the final target path '/lib/firmware/sdcard/firmware/'
         combining the base '/lib/firmare' and the symbloic link 'sdcard_firmware'
 
----------------------------------------------------------------------------------------------------
-
 ###################################################################################################
 # Built-in with header file                                                                       #
 ###################################################################################################
@@ -121,8 +119,6 @@ The basic command format for FW upgrade is like this
 
 * {bin}
   This is the keyword signal that let the driver know it has to use built-in image data.
-
----------------------------------------------------------------------------------------------------
 
 ###################################################################################################
 # Automatic upgrade in probe stage                                                                #
