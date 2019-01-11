@@ -893,6 +893,164 @@ static ssize_t _store_debug_hal(struct device *dev,
 	return count;
 }
 
+static ssize_t _show_debug_tc_cmd(struct device *dev, char *buf)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	char *mode_str, *ext_str;
+	int *tc_cmd_table = chip->tc_cmd_table;
+	int size = 0;
+	int ctrl, i;
+
+	size += siw_snprintf(buf, size,
+		"[%s tc cmd set] (mode bit %04Xh)\n",
+		touch_chip_name(ts), ts->mode_allowed);
+
+	for (i = 0; i < LCD_MODE_MAX; i++) {
+		mode_str = (char *)siw_lcd_driving_mode_str(i);
+		ctrl = tc_cmd_table[i];
+
+		if (ctrl < 0) {
+			ext_str = "(not granted)";
+		} else if (!touch_mode_allowed(ts, i)) {
+			ext_str = "(not allowed)";
+		} else {
+			ext_str = "";
+		}
+
+		size += siw_snprintf(buf, size,
+			" %04Xh [%-13s] %s\n",
+			ctrl, mode_str, ext_str);
+	}
+
+	size += siw_snprintf(buf, size, "\n");
+
+	return (ssize_t)size;
+}
+
+static ssize_t _store_debug_tc_cmd(struct device *dev,
+				const char *buf, size_t count)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	int *tc_cmd_table = chip->tc_cmd_table;
+	char *mode_str;
+	int mode, value;
+	int ctrl;
+
+	if (sscanf(buf, "%X %X", &mode, &value) <= 0) {
+		siw_hal_sysfs_err_invalid_param(dev);
+		return count;
+	}
+
+	if (mode >= LCD_MODE_MAX) {
+		t_dev_err(dev, "Invalid mode: %d >= LCD_MODE_MAX(%d)\n",
+			mode, LCD_MODE_MAX);
+		return count;
+	}
+
+	mode_str = (char *)siw_lcd_driving_mode_str(mode);
+	ctrl = tc_cmd_table[mode];
+
+	if (!touch_mode_allowed(ts, mode)) {
+		t_dev_info(dev, "%s(%d) is not allowed\n", mode_str, mode);
+		goto out;
+	}
+
+	if (value >= 0xFFFF) {
+		value = -1;
+	}
+
+	if (value == ctrl) {
+		goto out;
+	}
+
+	tc_cmd_table[mode] = value;
+
+	t_dev_info(dev, "%s(%d) changed: %04Xh -> %04Xh\n",
+		mode_str, mode, ctrl, value);
+
+out:
+	return count;
+}
+
+static ssize_t _show_debug_power(struct device *dev, char *buf)
+{
+	int size = 0;
+
+	size += siw_snprintf(buf, size, "[Usage]\n");
+	size += siw_snprintf(buf, size, " off : echo 0 > debug_power\n");
+	size += siw_snprintf(buf, size, " on  : echo 1 > debug_power\n");
+	size += siw_snprintf(buf, size, "\n");
+
+	return (ssize_t)size;
+}
+
+static ssize_t _store_debug_power(struct device *dev,
+					const char *buf, size_t count)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	int ctrl = 0;
+
+	if (sscanf(buf, "%d", &ctrl) <= 0) {
+		siw_hal_sysfs_err_invalid_param(dev);
+		return count;
+	}
+
+	ctrl = !!ctrl;
+
+	t_dev_info(dev, "debug_power: %s\n",
+		(ctrl) ? "on" : "off");
+
+	siw_ops_power(ts, ctrl);
+
+	return count;
+}
+
+static ssize_t _show_debug_voltage(struct device *dev, char *buf)
+{
+	int size = 0;
+
+	size += siw_snprintf(buf, size, "[Usage]\n");
+	size += siw_snprintf(buf, size, " <vio control>\n");
+	size += siw_snprintf(buf, size, " off : echo 0 0 > debug_voltage\n");
+	size += siw_snprintf(buf, size, " on  : echo 0 1 > debug_voltage\n");
+	size += siw_snprintf(buf, size, " <vdd control>\n");
+	size += siw_snprintf(buf, size, " off : echo 1 0 > debug_voltage\n");
+	size += siw_snprintf(buf, size, " on  : echo 1 1 > debug_voltage\n");
+	size += siw_snprintf(buf, size, "\n");
+
+	return (ssize_t)size;
+}
+
+static ssize_t _store_debug_voltage(struct device *dev,
+					const char *buf, size_t count)
+{
+	int index = 0;
+	int ctrl = 0;
+
+	if (sscanf(buf, "%d %d", &index, &ctrl) <= 0) {
+		siw_hal_sysfs_err_invalid_param(dev);
+		return count;
+	}
+
+	index = !!index;
+	ctrl = !!ctrl;
+
+	t_dev_info(dev, "debug_voltage: %s %s\n",
+		(index) ? "vdd" : "vio",
+		(ctrl) ? "on" : "off");
+
+	if (index) {
+		siw_touch_power_vdd(dev, ctrl);
+	} else {
+		siw_touch_power_vio(dev, ctrl);
+	}
+
+	return count;
+}
+
 static ssize_t _show_fwup_status(struct device *dev, char *buf)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
@@ -934,6 +1092,9 @@ static SIW_TOUCH_HAL_ATTR(reset_hw, _show_reset_hw, NULL);
 static SIW_TOUCH_HAL_ATTR(debug_bus, _show_debug_bus, NULL);
 #endif
 static SIW_TOUCH_HAL_ATTR(debug_hal, _show_debug_hal, _store_debug_hal);
+static SIW_TOUCH_HAL_ATTR(debug_tc_cmd, _show_debug_tc_cmd, _store_debug_tc_cmd);
+static SIW_TOUCH_HAL_ATTR(debug_power, _show_debug_power, _store_debug_power);
+static SIW_TOUCH_HAL_ATTR(debug_voltage, _show_debug_voltage, _store_debug_voltage);
 static SIW_TOUCH_HAL_ATTR(fwup_status, _show_fwup_status, NULL);
 
 static struct attribute *siw_hal_attribute_list[] = {
@@ -955,6 +1116,9 @@ static struct attribute *siw_hal_attribute_list[] = {
 	&_SIW_TOUCH_HAL_ATTR_T(debug_bus).attr,
 #endif
 	&_SIW_TOUCH_HAL_ATTR_T(debug_hal).attr,
+	&_SIW_TOUCH_HAL_ATTR_T(debug_tc_cmd).attr,
+	&_SIW_TOUCH_HAL_ATTR_T(debug_power).attr,
+	&_SIW_TOUCH_HAL_ATTR_T(debug_voltage).attr,
 	&_SIW_TOUCH_HAL_ATTR_T(fwup_status).attr,
 	NULL,
 };
