@@ -91,15 +91,15 @@ touch driver supports notifer chain for this mode control
 	/*
 	 * Step - 2
 	 * Perform LCD recovery procedure for ESD
-	 * including nReset control
+	 * including nReset control.
 	 */
 
 
 	/*
 	 * Step - 3
-	 * Send lcd mode event to touch driver
-	 * In this case, touch reset works automatically
-	 * by the former LCD_EVENT_HW_RESET event
+	 * Send lcd mode event to touch driver.
+	 * In this case, touch reset internally works
+	 * by the nReset control of 'Step - 2'.
 	 */
 	siw_touch_notifier_call_chain(LCD_EVENT_LCD_MODE, (void *)&panel_mode);
 
