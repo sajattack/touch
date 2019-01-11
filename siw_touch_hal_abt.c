@@ -860,11 +860,19 @@ static int abt_force_set_report_mode(struct siw_hal_abt_data *abt,
 {
 	struct device *dev = abt->dev;
 	struct siw_touch_chip *chip = to_touch_chip(dev);
-//	struct siw_ts *ts = chip->ts;
+	struct siw_ts *ts = chip->ts;
 	struct siw_hal_reg *reg = chip->reg;
 	u32 rdata = 0;
 	u32 wdata = mode;
 	int ret = 0;
+
+	switch (touch_chip_type(ts)) {
+	case CHIP_SW42000:
+	case CHIP_SW42000A:
+		abt->abt_report_mode = mode;
+		t_abt_info(abt, "mode(%d) set done\n", mode);
+		return 0;
+	}
 
 	/* send debug mode*/
 	ret = siw_hal_write_value(dev,
