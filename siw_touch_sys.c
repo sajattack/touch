@@ -245,12 +245,14 @@ static int drm_notifier_callback(
 			t_dev_info(dev, "drm_unblank(early)\n");
 		} else if (*blank == MSM_DRM_BLANK_POWERDOWN) {
 			t_dev_info(dev, "drm_blank(early)\n");
+			siw_touch_suspend_call(dev);
 		}
 	}
 
 	if (event == MSM_DRM_EVENT_BLANK) {
 		if (*blank == MSM_DRM_BLANK_UNBLANK) {
 			t_dev_info(dev, "drm_unblank\n");
+			siw_touch_resume_call(dev);
 		} else if (*blank == MSM_DRM_BLANK_POWERDOWN) {
 			t_dev_info(dev, "drm_blank\n");
 		}
