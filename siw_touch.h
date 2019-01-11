@@ -1026,6 +1026,8 @@ struct siw_ts {
 #define _FORCE_FWUP_ON			(1<<0)
 #define _FORCE_FWUP_SYS_SHOW	(1<<2)
 #define _FORCE_FWUP_SYS_STORE	(1<<3)
+/* */
+#define _FORCE_FWUP_SKIP_PID	(1<<7)
 
 	/* __SIW_SUPPORT_WATCH */
 	const char *watch_font_image;
@@ -1156,6 +1158,8 @@ enum {
 	FORCE_FWUP_ON			= _FORCE_FWUP_ON,
 	FORCE_FWUP_SYS_SHOW		= _FORCE_FWUP_SYS_SHOW,
 	FORCE_FWUP_SYS_STORE	= _FORCE_FWUP_SYS_STORE,
+	/* */
+	FORCE_FWUP_SKIP_PID		= _FORCE_FWUP_SKIP_PID,
 };
 
 enum {

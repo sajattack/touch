@@ -188,6 +188,8 @@ enum {
 	LPWG_T1_SWIPE_DOWN,
 };
 
+#define LPWG_T1_SWIPE_LAST	LPWG_T1_SWIPE_DOWN
+
 enum {
 	SWIPE_R = 0,
 	SWIPE_L,
@@ -251,7 +253,7 @@ struct siw_hal_tc_version_bin {
 	u8 minor;
 	u16 rsvd:12;
 	u16 ext:4;
-};
+} __packed;
 
 struct siw_hal_tc_version {
 	u8 minor;
@@ -260,14 +262,14 @@ struct siw_hal_tc_version {
 	u8 chip;
 	u8 protocol:4;
 	u8 ext:4;
-};
+} __packed;
 
 struct siw_hal_tc_version_ext_date {
 	u8 rr;
 	u8 dd;
 	u8 mm;
 	u8 yy;
-};
+} __packed;
 
 struct siw_hal_fw_info {
 	u32 chip_id_raw;
@@ -511,10 +513,11 @@ struct siw_touch_chip_opt {
 	u32 t_chk_fault:4;
 	u32 rsvd21:4;
 	u32 rsvd22:8;
-	u32 rsvd23:8;
+	u32 rsvd23:4;
+	u32 t_oled:4;
 	/* */
 	u32 t_tc_cmd:4;
-	u32 rsvd30:4;
+	u32 t_tc_quirk:4;
 	u32 rsvd31:8;
 	u32 t_lpwg:4;
 	u32 t_knock:4;
@@ -800,6 +803,8 @@ extern int siw_hal_disable_flash_wp(struct device *dev);
 extern int siw_hal_access_not_allowed(struct device *dev, char *title, int skip_flag);
 
 extern int siw_hal_ic_test_unit(struct device *dev, u32 data);
+
+extern struct siw_hal_reg *siw_hal_get_default_reg(int opt);
 
 extern struct siw_touch_operations *siw_hal_get_default_ops(int opt);
 

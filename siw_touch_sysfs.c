@@ -209,8 +209,9 @@ static ssize_t _store_upgrade(struct device *dev,
 				const char *buf, size_t count)
 {
 	struct siw_ts *ts = to_touch_core(dev);
+	int data = 0;
 
-	if (sscanf(buf, "%255s", ts->test_fwpath) <= 0) {
+	if (sscanf(buf, "%255s %X", ts->test_fwpath, &data) <= 0) {
 		siw_sysfs_err_invalid_param(dev);
 		return count;
 	}
@@ -218,6 +219,9 @@ static ssize_t _store_upgrade(struct device *dev,
 	t_dev_info(dev, "Manual F/W upgrade with %s\n", ts->test_fwpath);
 
 	ts->force_fwup |= FORCE_FWUP_SYS_STORE;
+	if (data == 0x5A5A) {
+		ts->force_fwup |= FORCE_FWUP_SKIP_PID;
+	}
 
 	siw_touch_qd_upgrade_work_now(ts);
 
@@ -956,13 +960,15 @@ static ssize_t _store_dbg_mask(struct device *dev,
 			old_value, new_value);
 		break;
 	case 2 :
+		if (!(touch_flags(ts) & TOUCH_USE_MON_THREAD)) {
+			t_dev_info(dev, "mon thread not activated\n");
+			break;
+		}
+
 		old_value = t_mon_dbg_mask;
 		t_mon_dbg_mask = new_value;
 		t_dev_info(dev, "t_mon_dbg_mask changed : %08Xh -> %08xh\n",
 			old_value, new_value);
-		if (!(touch_flags(ts) & TOUCH_USE_MON_THREAD)) {
-			t_dev_info(dev, "(but, mon thread not activated)\n");
-		}
 		break;
 	case 3 :
 		old_value = t_bus_dbg_mask;

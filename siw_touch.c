@@ -129,6 +129,22 @@ module_param_named(lpwg_qcover, t_lpwg_qcover, uint, S_IRUGO|S_IWUSR|S_IWGRP);
 
 static void siw_config_status(struct device *dev)
 {
+#if defined(__SIW_PANEL_CLASS_MOBILE)
+	t_dev_info(dev, "cfg status : __SIW_PANEL_CLASS_MOBILE\n");
+#endif
+
+#if defined(__SIW_PANEL_CLASS_MOBILE_OLED)
+	t_dev_info(dev, "cfg status : __SIW_PANEL_CLASS_MOBILE_OLED\n");
+#endif
+
+#if defined(__SIW_PANEL_CLASS_LARGE)
+	t_dev_info(dev, "cfg status : __SIW_PANEL_CLASS_LARGE\n");
+#endif
+
+#if defined(__SIW_PANEL_CLASS_AUTO)
+	t_dev_info(dev, "cfg status : __SIW_PANEL_CLASS_AUTO\n");
+#endif
+
 #if defined(__SIW_CONFIG_SYS_FB)
 	t_dev_info(dev, "cfg status : __SIW_CONFIG_SYS_FB\n");
 #endif
@@ -254,13 +270,14 @@ int siw_setup_params(struct siw_ts *ts, struct siw_touch_pdata *pdata)
  */
 static void siw_setup_reg_quirks(struct siw_ts *ts)
 {
-	if (ts->pdata->reg_quirks) {
-		struct device *dev = ts->dev;
+	struct device *dev = ts->dev;
+	struct siw_hal_reg_quirk *reg_quirks = ts->pdata->reg_quirks;
+
+	if (reg_quirks) {
 	//	struct siw_hal_reg *reg = siw_ops_reg(ts);
 		u32 *curr_reg;
 		u32 *copy_reg;
 		struct siw_hal_reg *reg_org;
-		struct siw_hal_reg_quirk *reg_quirks = ts->pdata->reg_quirks;
 		int cnt = sizeof(struct siw_hal_reg)>>2;
 		char *name = touch_chip_name(ts);
 		u32 new_addr, old_addr;
@@ -326,6 +343,12 @@ void *siw_setup_operations(struct siw_ts *ts, struct siw_touch_operations *ops_e
 {
 	if (!ops_ext)
 		return NULL;
+
+	if (ops_ext->reg == NULL) {
+		t_dev_warn(ts->dev, "%s reg is NULL : default reg selected\n",
+				touch_chip_name(ts));
+		ops_ext->reg = siw_hal_get_default_reg(0);
+	}
 
 	ts->ops_ext = ops_ext;
 	memcpy(&ts->ops_in, ops_ext, sizeof(struct siw_touch_operations));
@@ -481,7 +504,8 @@ void siw_touch_resume_call(struct device *dev)
 	siw_touch_resume(dev);
 }
 
-#if !defined(__SIW_CONFIG_SYS_FB) &&	\
+#if !defined(__SIW_PANEL_CLASS_MOBILE) &&	\
+	!defined(__SIW_CONFIG_SYS_FB) &&	\
 	!defined(__SIW_CONFIG_EARLYSUSPEND) &&	\
 	!defined(__SIW_CONFIG_FB)
 #define __SIW_CONFIG_PM_BUS
@@ -675,27 +699,30 @@ static int __used siw_touch_init_pm(struct siw_ts *ts)
 {
 	t_dev_info(ts->dev, "init pm - fb_notif\n");
 
-#if defined(__SIW_CONFIG_SYSTEM_PM)
-	snprintf(ts->fb_msg_unblank, sizeof(ts->fb_msg_unblank), "fb_unblank");
-	snprintf(ts->fb_msg_blank, sizeof(ts->fb_msg_blank), "fb_blank");
-
-	ts->fb_ret_revert_resume = FB_RESUME;	/* revert to resume */
-	ts->fb_ret_revert_suspend = FB_RET_NOOP;
-	ts->fb_ret_early_resume = FB_RET_NOOP;
-	ts->fb_ret_early_suspend = FB_SUSPEND;	/* suspend early */
-	ts->fb_ret_resume = FB_RESUME;			/* resume later */
-	ts->fb_ret_suspend = FB_RET_NOOP;
-#else	/* __SIW_CONFIG_SYSTEM_PM */
-	snprintf(ts->fb_msg_unblank, sizeof(ts->fb_msg_unblank), "FB_UNBLANK");
-	snprintf(ts->fb_msg_blank, sizeof(ts->fb_msg_blank), "FB_BLANK");
-
 	ts->fb_ret_revert_resume = FB_RET_NOOP;
 	ts->fb_ret_revert_suspend = FB_RET_NOOP;
 	ts->fb_ret_early_resume = FB_RET_NOOP;
 	ts->fb_ret_early_suspend = FB_RET_NOOP;
 	ts->fb_ret_resume = FB_RET_NOOP;
 	ts->fb_ret_suspend = FB_RET_NOOP;
-#endif	/* __SIW_CONFIG_SYSTEM_PM */
+
+#if defined(__SIW_PANEL_CLASS_MOBILE_OLED)
+	snprintf(ts->fb_msg_unblank, sizeof(ts->fb_msg_unblank), "fb_unblank");
+	snprintf(ts->fb_msg_blank, sizeof(ts->fb_msg_blank), "fb_blank");
+
+	ts->fb_ret_suspend = FB_SUSPEND;		/* suspend later */
+	ts->fb_ret_resume = FB_RESUME;			/* resume later */
+#elif defined(__SIW_CONFIG_SYSTEM_PM)
+	snprintf(ts->fb_msg_unblank, sizeof(ts->fb_msg_unblank), "fb_unblank");
+	snprintf(ts->fb_msg_blank, sizeof(ts->fb_msg_blank), "fb_blank");
+
+	ts->fb_ret_revert_resume = FB_RESUME;	/* revert to resume */
+	ts->fb_ret_early_suspend = FB_SUSPEND;	/* suspend early */
+	ts->fb_ret_resume = FB_RESUME;			/* resume later */
+#else	/* */
+	snprintf(ts->fb_msg_unblank, sizeof(ts->fb_msg_unblank), "FB_UNBLANK");
+	snprintf(ts->fb_msg_blank, sizeof(ts->fb_msg_blank), "FB_BLANK");
+#endif	/* */
 
 	ts->fb_notif.notifier_call = siw_touch_fb_notifier_callback;
 	return fb_register_client(&ts->fb_notif);
@@ -1160,6 +1187,7 @@ static void siw_touch_finger_input_check_work_func(
 }
 #endif	/* __SIW_SUPPORT_ASC */
 
+#if defined(__SIW_SUPPORT_MON_THREAD)
 static int siw_touch_mon_chk_pause(struct siw_ts *ts)
 {
 	struct siw_mon_thread *mon_thread = &ts->mon_thread;
@@ -1443,6 +1471,27 @@ static void __used siw_touch_mon_free_thread(struct siw_ts *ts)
 
 	siw_touch_mon_clr_thread(ts);
 }
+#else	/* __SIW_SUPPORT_MON_THREAD */
+void siw_touch_mon_pause(struct device *dev)
+{
+
+}
+
+void siw_touch_mon_resume(struct device *dev)
+{
+
+}
+
+static inline int __used siw_touch_mon_init_thread(struct siw_ts *ts)
+{
+	return 0;
+}
+
+static inline void __used siw_touch_mon_free_thread(struct siw_ts *ts)
+{
+
+}
+#endif	/* __SIW_SUPPORT_MON_THREAD */
 
 static int __used siw_touch_init_works(struct siw_ts *ts)
 {
@@ -1576,7 +1625,7 @@ static irqreturn_t __used siw_touch_irq_thread(int irq, void *dev_id)
 	struct device *dev = ts->dev;
 	int ret = 0;
 
-	t_dev_dbg_irq(dev, "irq_thread\n");
+	t_dev_dbg_irq(dev, "irq_thread %d\n", irq);
 
 	if (t_dbg_flag & DBG_FLAG_SKIP_IRQ) {
 		goto out;
