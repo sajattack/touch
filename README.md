@@ -24,6 +24,8 @@ List of supported devices
 
 : SW49106, SW49407, SW49408, SW49501
 
+: SW42000A
+
 : SW1828, SW42103, SW17700
 
 : SW42101

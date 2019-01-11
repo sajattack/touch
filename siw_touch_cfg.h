@@ -91,8 +91,12 @@
 #if defined(CONFIG_TOUCHSCREEN_SIW_SW1828) ||	\
 	defined(CONFIG_TOUCHSCREEN_SIW_SW42103) ||	\
 	defined(CONFIG_TOUCHSCREEN_SIW_SW17700)
+#define __SIW_PANEL_CLASS_AUTO
+
 //#define __SIW_SUPPORT_PROBE_POST_RETRY
 //#define __SIW_SUPPORT_INIT_RETRY
+
+#define __SIW_SUPPORT_MON_THREAD
 
 #ifdef __SIW_SUPPORT_WAKE_LOCK
 #undef __SIW_SUPPORT_WAKE_LOCK
@@ -108,6 +112,8 @@
 
 #define __SIW_CONFIG_SYSTEM_PM
 #elif defined(CONFIG_TOUCHSCREEN_SIW_SW42101)
+#define __SIW_PANEL_CLASS_LARGE
+
 #ifdef __SIW_SUPPORT_ABT
 #undef __SIW_SUPPORT_ABT
 #endif
@@ -118,13 +124,23 @@
 
 #define __SIW_CONFIG_SYSTEM_PM
 #else	/* General case for Mobile */
+#define __SIW_PANEL_CLASS_MOBILE
+
+#if defined(CONFIG_TOUCHSCREEN_SIW_SW42000) ||	\
+	defined(CONFIG_TOUCHSCREEN_SIW_SW42000A) ||	\
+	defined(CONFIG_TOUCHSCREEN_SIW_SW42002)
+#define __SIW_PANEL_CLASS_MOBILE_OLED
+
+#define __SIW_CONFIG_SWIPE
+#endif	/* */
+
 #define __SIW_CONFIG_PROX_ON_SUSPEND
 #define __SIW_CONFIG_PROX_ON_RESUME
 
 #define __SIW_CONFIG_KNOCK
 
 //#define __SIW_CONFIG_SYSTEM_PM	//Custom option for special scenario
-#endif
+#endif	/* */
 
 #if defined(__SIW_CONFIG_SYSTEM_PM)
 #if defined(CONFIG_HIBERNATE_CALLBACKS)
@@ -133,7 +149,9 @@
 #endif
 
 #if defined(__SIW_SUPPORT_WATCH)
+#ifndef	__SIW_CONFIG_SWIPE
 #define __SIW_CONFIG_SWIPE
+#endif
 #endif
 
 
@@ -173,6 +191,8 @@ enum _SIW_CHIP_TYPE {
 	//
 	CHIP_SW49501	= 0x0501,
 	//
+	CHIP_SW42000	= 0x0200,
+	CHIP_SW42000A	= 0x0201,
 	CHIP_SW42101	= 0x0211,
 	CHIP_SW42103	= 0x0213,
 	//
