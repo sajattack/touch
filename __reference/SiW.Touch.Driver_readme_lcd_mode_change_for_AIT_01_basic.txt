@@ -53,10 +53,10 @@ Step-2. Initialize touch mode (U3)
 
         <Log example>
         ...
-        [...] siw_touch spi5.0: current driving mode is U3
-        [...] siw_touch spi5.0: DDI Display Mode[0021h] = 0x00000003
-        [...] siw_touch spi5.0: TC Driving[0C03h] wr 0x00000185
-        [...] siw_touch spi5.0: lpwg resume(1, 0): lcd_mode 3, driving_mode 3
+        [...] siw_touch spi1.0: current driving mode is U3
+        [...] siw_touch spi1.0: DDI Display Mode[0021h] = 0x00000003
+        [...] siw_touch spi1.0: TC Driving[0C03h] wr 0x00000185
+        [...] siw_touch spi1.0: lpwg resume(1, 0): lcd_mode 3, driving_mode 3
         ...
 
 * LPWG area set
@@ -70,7 +70,7 @@ Step-2. Initialize touch mode (U3)
 
         <Log example>
         ...
-        [...] siw_touch spi5.0: LPWG_ACTIVE_AREA: x1[0], y1[720], x2[0], y2[1280]
+        [...] siw_touch spi1.0: LPWG_ACTIVE_AREA: x1[0], y1[720], x2[0], y2[1280]
         ...
 
 ###################################################################################################
@@ -88,8 +88,8 @@ Step-1. In android framework, set lpwg mode via lpwg_notify sysfs attr
 
         <Log example>
         ...
-        [...] siw_touch spi5.0: LPWG_UPDATE_ALL: mode[1], screen[OFF], sensor[FAR], qcover[OPEN]
-        [...] siw_touch spi5.0: lpwg resume: mode 1, screen 0
+        [...] siw_touch spi1.0: LPWG_UPDATE_ALL: mode[1], screen[OFF], sensor[FAR], qcover[OPEN]
+        [...] siw_touch spi1.0: lpwg resume: mode 1, screen 0
         [...] siw_touch spi1.0: lpwg resume: partial
         [...] siw_touch spi1.0: TCI1-type:4
         [...] siw_touch spi1.0: lpwg_control mode = 1

@@ -60,10 +60,10 @@ Step-2. Initialize touch mode (U3)
 
         <Log example>
         ...
-        [...] siw_touch spi5.0: current driving mode is U3
-        [...] siw_touch spi5.0: DDI Display Mode[0021h] = 0x00000003
-        [...] siw_touch spi5.0: TC Driving[0C03h] wr 0x00000185
-        [...] siw_touch spi5.0: lpwg resume(1, 0): lcd_mode 3, driving_mode 3
+        [...] siw_touch spi1.0: current driving mode is U3
+        [...] siw_touch spi1.0: DDI Display Mode[0021h] = 0x00000003
+        [...] siw_touch spi1.0: TC Driving[0C03h] wr 0x00000185
+        [...] siw_touch spi1.0: lpwg resume(1, 0): lcd_mode 3, driving_mode 3
         ...
 
 * LPWG area set
@@ -77,7 +77,7 @@ Step-2. Initialize touch mode (U3)
 
         <Log example>
         ...
-        [...] siw_touch spi5.0: LPWG_ACTIVE_AREA: x1[0], y1[720], x2[0], y2[1280]
+        [...] siw_touch spi1.0: LPWG_ACTIVE_AREA: x1[0], y1[720], x2[0], y2[1280]
         ...
 
 ###################################################################################################
@@ -106,8 +106,8 @@ Step-1. In android framework, set lpwg mode via lpwg_notify sysfs attr
 
         <Log example>
         ...
-        [...] siw_touch spi5.0: LPWG_UPDATE_ALL: mode[1], screen[OFF], sensor[FAR], qcover[OPEN]
-        [...] siw_touch spi5.0: lpwg resume: mode 1, screen 0
+        [...] siw_touch spi1.0: LPWG_UPDATE_ALL: mode[1], screen[OFF], sensor[FAR], qcover[OPEN]
+        [...] siw_touch spi1.0: lpwg resume: mode 1, screen 0
         [...] siw_touch spi1.0: lpwg resume: partial
         [...] siw_touch spi1.0: TCI1-type:4
         [...] siw_touch spi1.0: lpwg_control mode = 1
@@ -125,10 +125,10 @@ Step-2. Setup for 2nd screen via watch sysfs(/sys/devices/virtual/input/siw_ext_
         <Log example>
         ...
         /sys/devices/virtual/input/siw_ext_watch/config_timesync
-        [...] siw_touch spi5.0: watch: time sync
-        [...] siw_touch spi5.0: watch: rtc off
-        [...] siw_touch spi5.0: watch: set time : 08:53:43, clk[32764 Hz], cnt 630
-        [...] siw_touch spi5.0: watch: rtc on
+        [...] siw_touch spi1.0: watch: time sync
+        [...] siw_touch spi1.0: watch: rtc off
+        [...] siw_touch spi1.0: watch: set time : 08:53:43, clk[32764 Hz], cnt 630
+        [...] siw_touch spi1.0: watch: rtc on
         [...] siw_touch spi1.0: watch: state[02B2h, 0092h] display 12:00:18, rtc 08:53:43
         [...] siw_touch spi1.0: watch: display[0C17h] : off
 
@@ -307,7 +307,9 @@ Step-1. In android framework, set lpwg mode via lpwg_notify sysfs attr
         [...] siw_touch spi1.0: lpwg suspend(0, 0): lcd_mode 2, driving_mode 2
         ...
 
-Step-2. Change lcd_mode
+Step-2. Set display mode to U3 in LCD driver
+
+Step-3. Change lcd_mode
         [via notifier]
         In LCD driver, Send U0 mode event to touch driver via notifier function
         : int panel_mode = LCD_EVENT_LCD_MODE_U3;
@@ -320,7 +322,6 @@ Step-2. Change lcd_mode
         ...	
         [...] siw_touch spi1.0: notify: lcd_event: lcd mode
         [...] siw_touch spi1.0: lcd_mode: 3 (prev: 2)
-        [...] siw_touch spi1.0: U3 mode change
         ...
         //siw_touch_resume
         [...] siw_touch spi1.0: touch core pm resume start
