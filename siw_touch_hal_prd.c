@@ -57,6 +57,8 @@
 //#define __SIW_SUPPORT_PRD_SET_SD_ONLY
 #endif
 
+#define __SIW_SUPPORT_PRD_RAW_CMP
+
 enum {
 	PRD_LINE_NUM		= (1<<10),
 //	PRD_PATH_SIZE		= (1<<6),		//64
@@ -94,6 +96,11 @@ enum {
 	IMG_OFFSET_IDX_LABEL,
 	IMG_OFFSET_IDX_F_DELTA,
 	IMG_OFFSET_IDX_DEBUG,
+	IMG_OFFSET_IDX_RAW_S,
+	IMG_OFFSET_IDX_BASELINE_S,
+	IMG_OFFSET_IDX_DELTA_S,
+	IMG_OFFSET_IDX_LABEL_S,
+	IMG_OFFSET_IDX_DEBUG_S,
 	IMG_OFFSET_IDX_MAX,
 };
 
@@ -199,6 +206,19 @@ enum {
 	OPEN_SHORT_RESULT_DATA_FLAG		= (1<<OPEN_SHORT_RESULT_DATA_IDX),
 	OPEN_SHORT_RESULT_RAWDATA_FLAG	= (1<<OPEN_SHORT_RESULT_RAWDATA_IDX),
 	OPEN_SHORT_RESULT_ALWAYS_FLAG	= (1<<OPEN_SHORT_RESULT_ALWAYS_IDX),
+	/* */
+	TEST_CLASS_FLAG_SD			= U3_M2_RAWDATA_TEST_FLAG |	\
+								U3_M1_RAWDATA_TEST_FLAG |	\
+								OPEN_SHORT_NODE_TEST_FLAG |	\
+								U3_BLU_JITTER_TEST_FLAG |	\
+								U3_JITTER_TEST_FLAG |		\
+								U3_M1_JITTER_TEST_FLAG |	\
+								SHORT_FULL_TEST_FLAG |		\
+								IRQ_TEST_FLAG,
+	TEST_CLASS_FLAG_LPWG_SD		= U0_M2_RAWDATA_TEST_FLAG |	\
+								U0_M1_RAWDATA_TEST_FLAG |	\
+								U0_JITTER_TEST_FLAG |		\
+								U0_M1_JITTER_TEST_FLAG,
 };
 
 enum {
@@ -300,6 +320,11 @@ struct siw_hal_prd_img_offset {
 	u32 label;
 	u32 f_delta;
 	u32 debug;
+	u32 raw_s;
+	u32 baseline_s;
+	u32 delta_s;
+	u32 label_s;
+	u32 debug_s;
 };
 
 struct siw_hal_prd_param {
@@ -325,6 +350,16 @@ struct siw_hal_prd_param {
 	u32 lpwg_sd_test_flag;
 	//
 	u32 ctrl_flag;
+	//
+	int buf_swap_flag;
+};
+
+enum {
+	PRD_BUF_SWAP_RAW		= (1<<0),
+	PRD_BUF_SWAP_BASE		= (1<<1),
+	PRD_BUF_SWAP_DELTA		= (1<<2),
+	PRD_BUF_SWAP_LABEL		= (1<<3),
+	PRD_BUF_SWAP_DEBUG		= (1<<4),
 };
 
 struct siw_hal_prd_ctrl {
@@ -352,6 +387,8 @@ struct siw_hal_prd_ctrl {
 	u32 short_full_result_col;
 	u32 short_full_rawdata_size;
 	u32 short_full_rawdata_col;
+	//
+	u32 buf_self_size;
 };
 
 struct siw_hal_prd_tune {
@@ -387,7 +424,23 @@ enum _SIW_PRD_DBG_MASK_FLAG {
 };
 
 #if defined(__SIW_SUPPORT_PRD_SET_SD)
+enum {
+	SET_SD_CLASS_NONE = 0,
+	SET_SD_CLASS_SD,
+	SET_SD_CLASS_LPWG_SD,
+};
+
+enum {
+	GET_SD_CLASS_NONE = 0,
+	GET_SD_CLASS_SD,
+	GET_SD_CLASS_LPWG_SD,
+};
+
 struct siw_hal_prd_sd_param {
+	int get_sd_type;
+	int get_sd_class;
+	u32 set_sd_flag;
+	int set_sd_class;
 	int u3_m2[2];	/* [0] = lower, [1] = upper */
 	int u3_m1[2];
 	int u0_m2[2];
@@ -404,6 +457,7 @@ struct siw_hal_prd_sd_param {
 
 struct siw_hal_prd_data {
 	struct device *dev;
+	int panel_type;
 	int result_on;
 	int file_wr_off;
 	int file_rd_off;
@@ -428,6 +482,9 @@ struct siw_hal_prd_data {
 	int16_t	*m2_buf_even_rawdata;
 	int16_t	*m2_buf_odd_rawdata;
 	int16_t	*m2_buf_tmp;
+#if defined(__SIW_SUPPORT_PRD_RAW_CMP)
+	int16_t	*m2_buf_back;
+#endif
 	/* */
 	int16_t	*m1_buf_even_rawdata;
 	int16_t	*m1_buf_odd_rawdata;
@@ -447,6 +504,12 @@ struct siw_hal_prd_data {
 	int16_t	*buf_debug;
 	u8	*buf_label_tmp;
 	u8	*buf_label;
+	/* */
+	int16_t *buf_self;
+#if defined(__SIW_SUPPORT_PRD_RAW_CMP)
+	int16_t *buf_self_back;
+#endif
+
 	/* */
 	int sysfs_flag;
 	int sysfs_done;
@@ -588,11 +651,42 @@ enum {
 	SD_FLAG_SW49501			= __SD_FLAG_SW49XXX,
 };
 
+/* TBD */
+enum {
+	SD_FLAG_SW42000A		=	0,
+	LPWG_SD_FLAG_SW42000A	=	0,
+
+	SYS_OFF_FLAG_SW42000A	=	(0 |	\
+								PRD_SYS_EN_RAWDATA_TCM |	\
+								0),
+	SWAP_FLAG_SW42000A		=	(0 |	\
+								PRD_BUF_SWAP_RAW |	\
+								PRD_BUF_SWAP_BASE |	\
+								PRD_BUF_SWAP_DELTA |	\
+								PRD_BUF_SWAP_LABEL |	\
+								PRD_BUF_SWAP_DEBUG |	\
+								0),
+};
+
 enum {
 	SD_FLAG_SW1828			=	(0	|	\
 								U3_M2_RAWDATA_TEST_FLAG |	\
 								OPEN_SHORT_NODE_TEST_FLAG |	\
 								U3_JITTER_TEST_FLAG |	\
+								0),
+
+	SYS_OFF_FLAG_SW1828		=	(0	|	\
+								PRD_SYS_EN_RAWDATA_PRD	|	\
+								PRD_SYS_EN_RAWDATA_TCM	|	\
+								PRD_SYS_EN_DEBUG_BUF	|	\
+								PRD_SYS_EN_APP_RAW	|	\
+								PRD_SYS_EN_APP_BASE	|	\
+								PRD_SYS_EN_APP_LABEL	|	\
+								PRD_SYS_EN_APP_DELTA	|	\
+								PRD_SYS_EN_APP_DEBUG_BUF	|	\
+								PRD_SYS_EN_APP_END	|	\
+								PRD_SYS_EN_APP_INFO	|	\
+								PRD_SYS_EN_LPWG_SD	|	\
 								0),
 };
 
@@ -978,6 +1072,32 @@ static const struct siw_hal_prd_param prd_params[] = {
 		.lpwg_sd_test_flag = 0,
 	},
 	/*
+	 * SW42000A group
+	 */
+	{	.chip_type = CHIP_SW42000A,
+		.name = NULL,	//NULL meas 'Last & Default'
+		.cmd_type = PRD_CMD_TYPE_1,
+		.addr = {
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_RAW, (0x6C2C>>2)),
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_BASELINE_EVEN, (0x726C>>2)),
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_DELTA, (0x78AC>>2)),
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_LABEL, (0x7FE4>>2)),
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_DEBUG, (0x65EC>>2)),
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_RAW_S, (0x634C>>2)),
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_BASELINE_S, (0x63C4>>2)),
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_DELTA_S, (0x643C>>2)),
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_LABEL_S, (0x64BC>>2)),
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_DEBUG_S, (0x62D4>>2)),
+			0,
+		},
+		__PRD_PARAM_DIMENSION(32, 15, 0, 40, PRD_M1_COL_SIZE, 1, 1),
+		__PRD_2ND_SCR(0, 0),
+		.sysfs_off_flag = SYS_OFF_FLAG_SW42000A,
+		.sd_test_flag = SD_FLAG_SW42000A,
+		.lpwg_sd_test_flag = LPWG_SD_FLAG_SW42000A,
+		.buf_swap_flag = SWAP_FLAG_SW42000A,
+	},
+	/*
 	 * SW1828 group
 	 */
 	{	.chip_type = CHIP_SW1828,
@@ -993,7 +1113,7 @@ static const struct siw_hal_prd_param prd_params[] = {
 		},
 		__PRD_PARAM_DIMENSION(20, 32, 0, 48, PRD_M1_COL_SIZE, 1, 1),
 		__PRD_2ND_SCR(0, 0),
-		.sysfs_off_flag = (PRD_SYS_EN_DEBUG_BUF|PRD_SYS_EN_APP_DEBUG_BUF|PRD_SYS_EN_LPWG_SD),
+		.sysfs_off_flag = SYS_OFF_FLAG_SW1828,
 		.sd_test_flag = SD_FLAG_SW1828,
 		.lpwg_sd_test_flag = 0,
 	},
@@ -1182,6 +1302,20 @@ module_param_string(prd_of_mo_mfl, __prd_out_file_mo_mfl, sizeof(__prd_out_file_
 module_param_string(prd_of_mo_mcv, __prd_out_file_mo_mcv, sizeof(__prd_out_file_mo_mcv), 0);
 #endif
 
+
+static u32 t_prd_dbg_flag = 0;
+
+/* usage
+ * (1) echo <value> > /sys/module/{Siw Touch Module Name}/parameters/s_prd_dbg_flag
+ * (2) insmod {Siw Touch Module Name}.ko s_prd_dbg_flag=<value>
+ */
+module_param_named(s_prd_dbg_flag, t_prd_dbg_flag, int, S_IRUGO|S_IWUSR|S_IWGRP);
+
+enum {
+	PRD_DBG_FLAG_RAW_CMP			= (1<<7),
+	/* */
+	PRD_DBG_FLAG_DISABLE			= (1<<30),
+};
 
 static u32 t_prd_dbg_mask = 0;
 
@@ -1378,12 +1512,14 @@ static struct file __used *prd_vfs_file_open(struct siw_hal_prd_data *prd,
 
 	if (accmode & (O_WRONLY|O_RDWR)) {
 		if (prd->file_wr_off) {
+			t_prd_warn(prd, "file writing not permitted\n");
 			return NULL;
 		}
 	}
 
 	if ((accmode == O_RDONLY) || (accmode & O_RDWR)) {
 		if (prd->file_rd_off) {
+			t_prd_warn(prd, "file reading not permitted\n");
 			return NULL;
 		}
 	}
@@ -2034,6 +2170,7 @@ static int prd_write_test_mode(struct siw_hal_prd_data *prd, int type)
 
 	switch (touch_chip_type(ts)) {
 	case CHIP_SW1828:
+	case CHIP_SW42103:
 		line_filter_option = 0;
 		switch (type) {
 		case U3_JITTER_TEST:
@@ -2046,7 +2183,7 @@ static int prd_write_test_mode(struct siw_hal_prd_data *prd, int type)
 		line_filter_option = 0;
 		break;
 	case CHIP_SW49106:
-		if(type == U0_JITTER_TEST) {
+		if (type == U0_JITTER_TEST) {
 			line_filter_option = 0;
 		}
 		break;
@@ -2105,11 +2242,11 @@ static int prd_write_test_mode(struct siw_hal_prd_data *prd, int type)
 	if (ret < 0) {
 		return ret;
 	}
-	t_prd_info(prd, "write testmode[%04Xh] = %x\n",
+	t_prd_info(prd, "write testmode[%04Xh] = %Xh\n",
 		addr, testmode);
 	touch_msleep(waiting_time);
 
-	if(type == U3_BLU_JITTER_TEST) {
+	if (type == U3_BLU_JITTER_TEST) {
 		prd_set_blu(dev);
 	}
 
@@ -2543,6 +2680,108 @@ out:
 	return ret;
 }
 
+static int prd_read_raw_memory_self_pre(struct siw_hal_prd_data *prd,
+	u32 cmd, u32 *offset, int *size)
+{
+	struct siw_hal_prd_param *param = &prd->param;
+	struct siw_hal_prd_ctrl *ctrl = &prd->ctrl;
+
+	if (cmd == prd->img_cmd.raw) {
+		*offset = prd->img_offset.raw_s;
+		*size = ctrl->buf_self_size;
+		return 0;
+	}
+
+	if (cmd == prd->img_cmd.baseline_even) {
+		*offset = prd->img_offset.baseline_s;
+		*size = ctrl->buf_self_size;
+		return 0;
+	}
+
+	if (cmd == prd->img_cmd.delta) {
+		*offset = prd->img_offset.delta_s;
+		*size = ctrl->buf_self_size;
+		return 0;
+	}
+
+	if (cmd == prd->img_cmd.label) {
+		*offset = prd->img_offset.label_s;
+		*size = param->row + param->col + 2;
+		return 0;
+	}
+
+	if (cmd == prd->img_cmd.debug) {
+		*offset = prd->img_offset.debug_s;
+		*size = ctrl->buf_self_size;
+		return 0;
+	}
+
+	return -EINVAL;
+}
+
+static int prd_read_raw_memory_self(struct siw_hal_prd_data *prd, u32 cmd, void *buf)
+{
+	u32 offset = 0;
+	int size = 0;
+	int ret = 0;
+
+	if (!prd->panel_type) {
+		return 0;
+	}
+
+	ret = prd_read_raw_memory_self_pre(prd, cmd, &offset, &size);
+	if (ret < 0) {
+		return 0;
+	}
+
+	if (!offset) {
+		return 0;
+	}
+
+	ret = prd_read_raw_memory(prd, offset, prd->buf_self, size);
+	if (ret < 0) {
+		return ret;
+	}
+
+	return 0;
+}
+
+static void __buff_swap(void *dst, void *src, int row, int col, int is_8bit)
+{
+	int r, c;
+	int i;
+
+	for (i = 0; i < (row * col); i++){
+		r = i / col;
+		c = i % col;
+		if (is_8bit) {
+			((u8 *)dst)[i] = ((u8 *)src)[r + (row * c)];
+		} else {
+			((u16 *)dst)[i] = ((u16 *)src)[r + (row * c)];
+		}
+	}
+}
+
+static void prd_swap_raw_memory(struct siw_hal_prd_data *prd, int idx,
+		void *buf, int size, int row_size, int col_size, int is_8bit)
+{
+	struct siw_hal_prd_param *param = &prd->param;
+
+	if (!(param->buf_swap_flag & idx)) {
+		return;
+	}
+
+	if (!row_size)
+		row_size = param->row;
+
+	if (!col_size)
+		col_size = param->col;
+
+	memcpy(prd->m2_buf_tmp, buf, size);
+
+	__buff_swap(buf, prd->m2_buf_tmp, row_size, col_size, is_8bit);
+}
+
 static int __prd_os_result_rawdata_get(struct siw_hal_prd_data *prd,
 			u32 offset, int16_t *buf, u32 size, const char *test_str)
 {
@@ -2639,11 +2878,11 @@ static int prd_os_result_rawdata_get_sf_dual(struct siw_hal_prd_data *prd)
 	struct siw_ts *ts = chip->ts;
 	struct siw_hal_reg *reg = chip->reg;
 	struct siw_hal_fw_info *fw = &chip->fw;
-//	u16 open_data_offset = 0;
-	u16 short_data_offset = 0;
-	u32 os_result_offset;
-	u32 data_offset;
-	u32 read_size;
+//	u32 open_data_offset = 0;
+	u32 short_data_offset = 0;
+	u32 os_result_offset = 0;
+	u32 data_offset = 0;
+	u32 read_size = 0;
 	int16_t *buf_result_data = NULL;
 	const char *test_str = NULL;
 	int offset_reg = 0;
@@ -2669,14 +2908,14 @@ static int prd_os_result_rawdata_get_sf_dual(struct siw_hal_prd_data *prd)
 	offset_pos = offset_reg>>16;
 	offset_reg &= 0xFFFF;
 
+	test_str = "SHORT_FULL_TEST (2nd)";
+
 	ret = siw_hal_read_value(dev, offset_reg, &os_result_offset);
 	if (ret < 0) {
 		goto out;
 	}
-//	open_data_offset = os_result_offset & 0xFFFF;
-	short_data_offset = (os_result_offset >> offset_pos) & 0xFFFF;
 
-	test_str = "SHORT_FULL_TEST (2nd)";
+	short_data_offset = (os_result_offset >> offset_pos) & 0xFFFF;
 
 	data_offset = short_data_offset;
 
@@ -2818,6 +3057,25 @@ static int prd_print_os_data(struct siw_hal_prd_data *prd, int type)
 	return size;
 }
 
+//#define __SIW_SUPPORT_PRD_DIGIT_5
+
+#if defined(__SIW_SUPPORT_PRD_DIGIT_5)
+#define __PRD_LOG_FMT_SP			" "
+#define __PRD_LOG_FMT_DIGIT_BASE	"%5d "
+#else	/* __SIW_SUPPORT_PRD_DIGIT_5 */
+#define __PRD_LOG_FMT_SP			""
+#define __PRD_LOG_FMT_DIGIT_BASE	"%4d "
+#endif	/* __SIW_SUPPORT_PRD_DIGIT_5 */
+
+#define __PRD_LOG_FMT_PRE			"   : "
+#define __PRD_LOG_FMT_COL_NO		"[%2d] "
+#define __PRD_LOG_FMT_RAW_NO		"[%2d] "
+
+#define PRD_LOG_FMT_OS_PRE		__PRD_LOG_FMT_PRE __PRD_LOG_FMT_SP
+#define PRD_LOG_FMT_OS_COL_NO	__PRD_LOG_FMT_COL_NO __PRD_LOG_FMT_SP
+#define PRD_LOG_FMT_OS_RAW_NO	__PRD_LOG_FMT_RAW_NO
+#define PRD_LOG_FMT_OS_RAW		__PRD_LOG_FMT_DIGIT_BASE
+
 static int prd_print_os_rawdata(struct siw_hal_prd_data *prd, u8 type)
 {
 	struct siw_hal_prd_param *param = &prd->param;
@@ -2846,14 +3104,14 @@ static int prd_print_os_rawdata(struct siw_hal_prd_data *prd, u8 type)
 		break;
 	}
 
-	size = siw_prd_buf_snprintf(prd->buf_write, size, "\n   : ");
-	log_size = siw_prd_log_buf_snprintf(log_buf, log_size, "   : ");
+	size = siw_prd_buf_snprintf(prd->buf_write, size, "\n" PRD_LOG_FMT_OS_PRE);
+	log_size = siw_prd_log_buf_snprintf(log_buf, log_size, PRD_LOG_FMT_OS_PRE);
 
 	for (i = 0; i < col_size; i++) {
 		size += siw_prd_buf_snprintf(prd->buf_write,
-		size, "[%2d] ", i);
+		size, PRD_LOG_FMT_OS_COL_NO, i);
 		log_size += siw_prd_log_buf_snprintf(log_buf,
-		log_size, "[%2d] ", i);
+		log_size, PRD_LOG_FMT_OS_COL_NO, i);
 	}
 	t_prd_info(prd, "%s\n", log_buf);
 
@@ -2878,16 +3136,17 @@ static int prd_print_os_rawdata(struct siw_hal_prd_data *prd, u8 type)
 		log_size = 0;
 
 		size += siw_prd_buf_snprintf(prd->buf_write,
-			size, "\n[%2d] ", i);
+			size, "\n" PRD_LOG_FMT_OS_RAW_NO, i);
 		log_size += siw_prd_log_buf_snprintf(log_buf,
-				log_size, "[%2d] ", i);
+				log_size, PRD_LOG_FMT_OS_RAW_NO, i);
+
 		for (j = 0; j < col_size; j++) {
 			if (j == param->col)
 				continue;
 			size += siw_prd_buf_snprintf(prd->buf_write,
-				size, "%4d ", os_buf[i * col_size + j]);
+				size, PRD_LOG_FMT_OS_RAW, os_buf[i * col_size + j]);
 			log_size += siw_prd_log_buf_snprintf(log_buf,
-					log_size, "%4d ", os_buf[i * col_size + j]);
+					log_size, PRD_LOG_FMT_OS_RAW, os_buf[i * col_size + j]);
 		}
 		t_prd_info(prd, "%s\n", log_buf);
 	}
@@ -3017,6 +3276,11 @@ static int prd_open_short_test(struct siw_hal_prd_data *prd,
 	return ret;
 }
 
+#define PRD_LOG_FMT_RAW_PRE		__PRD_LOG_FMT_PRE __PRD_LOG_FMT_SP
+#define PRD_LOG_FMT_RAW_COL_NO	__PRD_LOG_FMT_COL_NO __PRD_LOG_FMT_SP
+#define PRD_LOG_FMT_RAW_RAW_NO	__PRD_LOG_FMT_RAW_NO
+#define PRD_LOG_FMT_RAW_RAW		__PRD_LOG_FMT_DIGIT_BASE
+
 static int prd_print_pre(struct siw_hal_prd_data *prd, char *buf,
 				int size, int row_size, int col_size,
 				const char *name)
@@ -3033,14 +3297,14 @@ static int prd_print_pre(struct siw_hal_prd_data *prd, char *buf,
 				name, row_size, col_size);
 
 	/* print a frame data */
-	size += siw_prd_buf_snprintf(buf, size, "   : ");
+	size += siw_prd_buf_snprintf(buf, size, PRD_LOG_FMT_RAW_PRE);
 	log_size += siw_prd_log_buf_snprintf(log_buf,
-						log_size,  "   : ");
+						log_size,  PRD_LOG_FMT_RAW_PRE);
 
 	for (i = 0; i < col_size; i++) {
-		size += siw_prd_buf_snprintf(buf, size, "[%2d] ", i);
+		size += siw_prd_buf_snprintf(buf, size, PRD_LOG_FMT_RAW_COL_NO, i);
 		log_size += siw_prd_log_buf_snprintf(log_buf,
-						log_size,  "[%2d] ", i);
+						log_size,  PRD_LOG_FMT_RAW_COL_NO, i);
 	}
 	t_prd_info(prd, "%s\n", log_buf);
 
@@ -3098,12 +3362,12 @@ static int prd_print_xxx(struct siw_hal_prd_data *prd, char *buf,
 
 	col_i = 0;
 	for (i = 0; i < row_size; i++) {
-		size += siw_prd_buf_snprintf(buf, size, "\n[%2d] ", i);
+		size += siw_prd_buf_snprintf(buf, size, "\n" PRD_LOG_FMT_RAW_RAW_NO, i);
 
 		log_size = 0;
 		memset(log_buf, 0, sizeof(prd->log_buf));
 		log_size += siw_prd_log_buf_snprintf(log_buf,
-						log_size,  "[%2d] ", i);
+						log_size,  PRD_LOG_FMT_RAW_RAW_NO, i);
 
 		if (type == PRD_PRT_TYPE_S16) {
 			rawdata_s16 = &((int16_t *)rawdata_buf)[col_i];
@@ -3118,11 +3382,11 @@ static int prd_print_xxx(struct siw_hal_prd_data *prd, char *buf,
 			}
 
 			size += siw_prd_buf_snprintf(buf, size,
-						"%4d ", curr_raw);
+						PRD_LOG_FMT_RAW_RAW, curr_raw);
 
 			log_size += siw_prd_buf_snprintf(log_buf,
 							log_size,
-							"%4d ", curr_raw);
+							PRD_LOG_FMT_RAW_RAW, curr_raw);
 
 			if (curr_raw < min) {
 				min = curr_raw;
@@ -3212,11 +3476,273 @@ static int prd_print_rawdata(struct siw_hal_prd_data *prd,
 	return size;
 }
 
+#define PRD_LOG_FMT_RAW_PRE_EMPTY	"     "
+#define PRD_LOG_FMT_RAW_PRE_SELF	"[SF] "
+
+static int prd_print_pre_self(struct siw_hal_prd_data *prd, char *buf,
+				int size, int row_size, int col_size,
+				const char *name)
+{
+	char *log_buf = prd->log_buf;
+	int i;
+	int log_size = 0;
+
+	size &= ~BIT(31);
+
+	t_prd_info(prd, "-------- %s(%d %d) --------\n",
+				name, row_size, col_size);
+
+	size += siw_prd_buf_snprintf(buf, size,
+				"-------- %s(%d %d) --------\n",
+				name, row_size, col_size);
+
+	/* print a frame data */
+	size += siw_prd_buf_snprintf(buf, size, PRD_LOG_FMT_RAW_PRE);
+	log_size += siw_prd_log_buf_snprintf(log_buf,
+						log_size,  PRD_LOG_FMT_RAW_PRE);
+
+	size += siw_prd_buf_snprintf(buf, size, PRD_LOG_FMT_RAW_PRE_SELF);
+	log_size += siw_prd_log_buf_snprintf(log_buf, log_size,  PRD_LOG_FMT_RAW_PRE_SELF);
+
+	for (i = 0; i < col_size; i++) {
+		size += siw_prd_buf_snprintf(buf, size, PRD_LOG_FMT_RAW_COL_NO, i);
+		log_size += siw_prd_log_buf_snprintf(log_buf,
+						log_size,  PRD_LOG_FMT_RAW_COL_NO, i);
+	}
+	t_prd_info(prd, "%s\n", log_buf);
+
+	return size;
+}
+
+static int prd_print_xxx_self(struct siw_hal_prd_data *prd,
+				u32 cmd, char *buf,
+				int size, void *rawdata_buf,
+				int row_size, int col_size,
+				const char *name, int opt, int type)
+{
+	struct siw_hal_prd_param *param = &prd->param;
+	char *log_buf = prd->log_buf;
+	u8 *rawdata_u8 = rawdata_buf;
+	int16_t *rawdata_s16 = rawdata_buf;
+	int curr_raw;
+	int i, j;
+	int col_i = 0;
+	int col_add = (opt) ? param->col_add : 0;
+	int log_size = 0;
+	int min = 9999;
+	int max = 0;
+#if 1
+	int offset_horiz = 0;
+	int offset_verti = col_size;
+#else
+	int offset_horiz = row_size;
+	int offset_verti = 0;
+#endif
+
+	if (type >= PRD_PRT_TYPE_MAX) {
+		t_prd_err(prd, "invalid print type, %d\n", type);
+		return -EINVAL;
+	}
+
+	if (rawdata_buf == NULL) {
+		t_prd_err(prd, "print failed: NULL buf\n");
+		return -EFAULT;
+	}
+
+	size = prd_print_pre_self(prd, buf, size, row_size, col_size, name);
+
+	/* self data - horizental line */
+	log_size = 0;
+	memset(log_buf, 0, sizeof(prd->log_buf));
+
+	size += siw_prd_buf_snprintf(buf, size, "\n");
+
+	size += siw_prd_buf_snprintf(buf, size, PRD_LOG_FMT_RAW_PRE_SELF);
+	log_size += siw_prd_log_buf_snprintf(log_buf, log_size, PRD_LOG_FMT_RAW_PRE_SELF);
+
+	size += siw_prd_buf_snprintf(buf, size, PRD_LOG_FMT_RAW_PRE_EMPTY);
+	log_size += siw_prd_log_buf_snprintf(log_buf, log_size, PRD_LOG_FMT_RAW_PRE_EMPTY);
+
+	for (i = 0; i < col_size; i++) {
+		if (type == PRD_PRT_TYPE_S16) {
+			curr_raw = ((int16_t *)prd->buf_self)[offset_horiz];
+		} else {
+			curr_raw = ((u8 *)prd->buf_self)[offset_horiz];
+		}
+		offset_horiz++;
+
+		size += siw_prd_buf_snprintf(buf, size,
+					PRD_LOG_FMT_RAW_RAW, curr_raw);
+
+		log_size += siw_prd_buf_snprintf(log_buf,
+						log_size,
+						PRD_LOG_FMT_RAW_RAW, curr_raw);
+	}
+	t_prd_info(prd, "%s\n", log_buf);
+
+	col_i = 0;
+	for (i = 0; i < row_size; i++) {
+		size += siw_prd_buf_snprintf(buf, size, "\n" PRD_LOG_FMT_RAW_RAW_NO, i);
+
+		log_size = 0;
+		memset(log_buf, 0, sizeof(prd->log_buf));
+		log_size += siw_prd_log_buf_snprintf(log_buf,
+						log_size,  PRD_LOG_FMT_RAW_RAW_NO, i);
+
+		/* self data : vertical line */
+		if (type == PRD_PRT_TYPE_S16) {
+			curr_raw = ((int16_t *)prd->buf_self)[offset_verti];
+		} else {
+			curr_raw = ((u8 *)prd->buf_self)[offset_verti];
+		}
+		offset_verti++;
+		size += siw_prd_buf_snprintf(buf, size,
+					PRD_LOG_FMT_RAW_RAW, curr_raw);
+
+		log_size += siw_prd_buf_snprintf(log_buf,
+						log_size,
+						PRD_LOG_FMT_RAW_RAW, curr_raw);
+
+		if (type == PRD_PRT_TYPE_S16) {
+			rawdata_s16 = &((int16_t *)rawdata_buf)[col_i];
+		} else {
+			rawdata_u8 = &((u8 *)rawdata_buf)[col_i];
+		}
+		for (j = 0; j < col_size; j++) {
+			/* rawdata */
+			if (type == PRD_PRT_TYPE_S16) {
+				curr_raw = *rawdata_s16++;
+			} else {
+				curr_raw = *rawdata_u8++;
+			}
+
+			size += siw_prd_buf_snprintf(buf, size,
+						PRD_LOG_FMT_RAW_RAW, curr_raw);
+
+			log_size += siw_prd_buf_snprintf(log_buf,
+							log_size,
+							PRD_LOG_FMT_RAW_RAW, curr_raw);
+
+			if (curr_raw < min) {
+				min = curr_raw;
+			}
+			if (curr_raw > max) {
+				max = curr_raw;
+			}
+		}
+		t_prd_info(prd, "%s\n", log_buf);
+
+		col_i += (col_size + col_add);
+	}
+
+	size = prd_print_post(prd, buf, size, min, max);
+
+	return size;
+}
+
+static int prd_print_u8_self(struct siw_hal_prd_data *prd,
+				u32 cmd, char *buf,
+				int size, u8 *rawdata_buf_u8,
+				int row_size, int col_size,
+				const char *name, int opt)
+{
+	return prd_print_xxx_self(prd, cmd, buf, size, (void *)rawdata_buf_u8,
+				row_size, col_size, name, opt, PRD_PRT_TYPE_U8);
+}
+
+static int prd_print_s16_self(struct siw_hal_prd_data *prd,
+				u32 cmd, char *buf,
+				int size, int16_t *rawdata_buf_u16,
+				int row_size, int col_size,
+				const char *name, int opt)
+{
+	return prd_print_xxx_self(prd, cmd, buf, size, (void *)rawdata_buf_u16,
+				row_size, col_size, name, opt, PRD_PRT_TYPE_S16);
+}
+
+static int prd_print_rawdata_self_valid(struct siw_hal_prd_data *prd, u32 cmd)
+{
+	if (cmd == prd->img_cmd.raw) {
+		if (prd->img_offset.raw_s) {
+			return 1;
+		}
+	}
+
+	if (cmd == prd->img_cmd.baseline_even) {
+		if (prd->img_offset.baseline_s) {
+			return 1;
+		}
+	}
+
+	if (cmd == prd->img_cmd.delta) {
+		if (prd->img_offset.delta_s) {
+			return 1;
+		}
+	}
+
+	if (cmd == prd->img_cmd.label) {
+		if (prd->img_offset.label_s) {
+			return 1;
+		}
+	}
+
+	if (cmd == prd->img_cmd.debug) {
+		if (prd->img_offset.debug_s) {
+			return 1;
+		}
+	}
+
+	return 0;
+}
+
+static int prd_print_rawdata_self(struct siw_hal_prd_data *prd,
+			u32 cmd, char *buf, int type, int size, int opt)
+{
+	struct siw_hal_prd_param *param = &prd->param;
+	int16_t *rawdata_buf_16 = NULL;
+	u8 *rawdata_buf_u8 = NULL;
+	const char *name = NULL;
+	int row_size = param->row;
+	int col_size = param->col;
+
+	if (!prd_print_rawdata_self_valid(prd, cmd)) {
+		return prd_print_rawdata(prd, buf, type, size, opt);
+	}
+
+	switch (type) {
+	case M2_EVEN_DATA:
+		rawdata_buf_16 = prd->m2_buf_even_rawdata;
+		name = "EVEN Data";
+		break;
+	case LABEL_DATA:
+		rawdata_buf_u8 = prd->buf_label;
+		name = "LABEL Data";
+		break;
+	case DEBUG_DATA:
+		rawdata_buf_16 = prd->buf_debug;
+		name = "DEBUG Data";
+		break;
+	default:
+		t_prd_warn(prd, "prd_print_rawdata_self: invalud type, %d\n", type);
+		break;
+	}
+
+	if (rawdata_buf_16) {
+		size = prd_print_s16_self(prd, cmd, buf, size, rawdata_buf_16,
+				row_size, col_size, name, opt);
+	} else if (rawdata_buf_u8) {
+		size = prd_print_u8_self(prd, cmd, buf, size, rawdata_buf_u8,
+				row_size, col_size, name, opt);
+	}
+
+	return size;
+}
+
 #define STR_SPEC_BY_PARAM	"(p)"
 
 /*
-*	return "result Pass:0 , Fail:1"
-*/
+ *	return "result Pass:0 , Fail:1"
+ */
 static int prd_compare_tool(struct siw_hal_prd_data *prd,
 				int test_cnt, int16_t **buf,
 				int row, int col, int type, int opt)
@@ -3237,6 +3763,11 @@ static int prd_compare_tool(struct siw_hal_prd_data *prd,
 	int result = 0;
 	int spec_by_param = 0;
 	int cnt = 0;
+	int bound_i1 = 0;
+	int bound_i2 = 0;
+	int bound_j1 = 0;
+	int bound_j2 = 0;
+	int second_scr_on = 0;
 
 	spec_by_param = !!(opt & (1<<16));
 	opt &= 0xFFFF;
@@ -3273,6 +3804,13 @@ static int prd_compare_tool(struct siw_hal_prd_data *prd,
 
 	default:
 		second_screen = &param->second_scr;
+
+		bound_i1 = (second_screen->bound_i>>8) & 0xFF;
+		bound_i2 = second_screen->bound_i & 0xFF;
+		bound_j1 = (second_screen->bound_j>>8) & 0xFF;
+		bound_j2 = second_screen->bound_j & 0xFF;
+
+		second_scr_on = !!(bound_i2 && bound_j2);
 		break;
 	}
 
@@ -3311,9 +3849,9 @@ static int prd_compare_tool(struct siw_hal_prd_data *prd,
 				}
 
 				raw_err = 1;
-				if ((second_screen != NULL) &&
-					(i <= second_screen->bound_i) &&
-					(j <= second_screen->bound_j)) {
+				if (second_scr_on &&
+					((i >= bound_i1) && (i <= bound_i2)) &&
+					((j >= bound_j1) && (j <= bound_j2))) {
 					raw_err = !!(curr_raw)<<1;	/* 2 or 0 */
 				}
 
@@ -3649,6 +4187,7 @@ static int prd_read_rawdata(struct siw_hal_prd_data *prd, int type)
 
 	switch (touch_chip_type(ts)) {
 	case CHIP_SW1828:
+	case CHIP_SW42103:
 		raw_data_offset[0] = RAW_OFFSET_ODD(raw_offset_info);
 		raw_data_offset[1] = RAW_OFFSET_EVEN(raw_offset_info);
 		break;
@@ -3785,8 +4324,8 @@ static void prd_tune_display(struct siw_hal_prd_data *prd, char *tc_tune_code,
 }
 
 /*
-*	tune code result check
-*/
+ *	tune code result check
+ */
 static int prd_do_read_tune_code(struct siw_hal_prd_data *prd, u8 *buf, int type, int result_on)
 {
 	struct siw_hal_prd_tune *tune = &prd->tune;
@@ -4206,6 +4745,10 @@ static int prd_show_do_sd(struct siw_hal_prd_data *prd, char *buf)
 {
 //	struct device *dev = prd->dev;
 	struct siw_hal_prd_param *param = &prd->param;
+#if defined(__SIW_SUPPORT_PRD_SET_SD)
+	struct siw_hal_prd_sd_param *sd_param = &prd->sd_param;
+#endif
+	u32 sd_test_flag = param->sd_test_flag;
 	int result_on = prd->result_on;
 	int u3_rawdata_ret = 0;
 	int u3_m1_rawdata_ret = 0;
@@ -4224,11 +4767,19 @@ static int prd_show_do_sd(struct siw_hal_prd_data *prd, char *buf)
 		goto out;
 	}
 
+#if defined(__SIW_SUPPORT_PRD_SET_SD)
+	if ((sd_param->set_sd_class == SET_SD_CLASS_SD) && sd_param->set_sd_flag) {
+		sd_test_flag = sd_param->set_sd_flag;
+		t_prd_info(prd, "sd_test_flag locally changed %Xh(%Xh)\n",
+			sd_test_flag, param->sd_test_flag);
+	}
+#endif	/* __SIW_SUPPORT_PRD_SET_SD */
+
 	/*
 	 * IRQ_TEST
 	 * ret - pass : 0, fail : 1
 	 */
-	if (param->sd_test_flag & IRQ_TEST_FLAG) {
+	if (sd_test_flag & IRQ_TEST_FLAG) {
 		irq_ret = prd_irq_test(prd, result_on);
 		if (irq_ret < 0) {
 			goto out;
@@ -4240,7 +4791,7 @@ static int prd_show_do_sd(struct siw_hal_prd_data *prd, char *buf)
 	 * rawdata - pass : 0, fail : 1
 	 * rawdata tunecode - pass : 0, fail : 2
 	 */
-	if(param->sd_test_flag & U3_M2_RAWDATA_TEST_FLAG) {
+	if (sd_test_flag & U3_M2_RAWDATA_TEST_FLAG) {
 		u3_rawdata_ret = prd_rawdata_test(prd, U3_M2_RAWDATA_TEST, result_on);
 		if (u3_rawdata_ret < 0) {
 			goto out;
@@ -4252,7 +4803,7 @@ static int prd_show_do_sd(struct siw_hal_prd_data *prd, char *buf)
 	 * rawdata - pass : 0, fail : 1
 	 * rawdata tunecode - pass : 0, fail : 2
 	 */
-	if(param->sd_test_flag & U3_M1_RAWDATA_TEST_FLAG) {
+	if (sd_test_flag & U3_M1_RAWDATA_TEST_FLAG) {
 		u3_m1_rawdata_ret = prd_rawdata_test(prd, U3_M1_RAWDATA_TEST, result_on);
 		if (u3_m1_rawdata_ret < 0) {
 			goto out;
@@ -4264,7 +4815,7 @@ static int prd_show_do_sd(struct siw_hal_prd_data *prd, char *buf)
 	Jitter - pass : 0, fail : 1
 	This will be enabled later.
 	*/
-	if(param->sd_test_flag & U3_JITTER_TEST_FLAG) {
+	if (sd_test_flag & U3_JITTER_TEST_FLAG) {
 		u3_jitter_ret = prd_rawdata_test(prd, U3_JITTER_TEST, result_on);
 		if (u3_jitter_ret < 0) {
 			goto out;
@@ -4276,7 +4827,7 @@ static int prd_show_do_sd(struct siw_hal_prd_data *prd, char *buf)
 	Jitter - pass : 0, fail : 1
 	This will be enabled later.
 	*/
-	if(param->sd_test_flag & U3_M1_JITTER_TEST_FLAG) {
+	if (sd_test_flag & U3_M1_JITTER_TEST_FLAG) {
 		u3_m1_jitter_ret = prd_rawdata_test(prd, U3_M1_JITTER_TEST, result_on);
 		if (u3_m1_jitter_ret < 0) {
 			goto out;
@@ -4291,18 +4842,18 @@ static int prd_show_do_sd(struct siw_hal_prd_data *prd, char *buf)
 	 *   LCD brightness ON 742ms -> LCD brightness OFF 278mms -> LCD brightness ON 278ms ->
 	 *   Read RawData & Compare with BLU Jitter Spec
 	 */
-	if(param->sd_test_flag & U3_BLU_JITTER_TEST_FLAG) {
+	if (sd_test_flag & U3_BLU_JITTER_TEST_FLAG) {
 		blu_jitter_ret = prd_rawdata_test(prd, U3_BLU_JITTER_TEST, result_on);
 		if (blu_jitter_ret < 0) {
 			goto out;
 		}
-	 }
+	}
 
 	/*
 	 * OPEN_NODE_TEST
 	 * open - pass : 0, fail : 1
 	 */
-	if (param->sd_test_flag & OPEN_NODE_TEST_FLAG) {
+	if (sd_test_flag & OPEN_NODE_TEST_FLAG) {
 		open_ret = prd_open_short_test(prd, OPEN_NODE_TEST, result_on);
 		if (open_ret < 0) {
 			goto out;
@@ -4313,7 +4864,7 @@ static int prd_show_do_sd(struct siw_hal_prd_data *prd, char *buf)
 	 * SHORT_NODE_TEST
 	 * short - pass : 0, fail : 1
 	 */
-	if (param->sd_test_flag & SHORT_NODE_TEST_FLAG) {
+	if (sd_test_flag & SHORT_NODE_TEST_FLAG) {
 		short_ret = prd_open_short_test(prd, SHORT_NODE_TEST, result_on);
 		if (short_ret < 0) {
 			goto out;
@@ -4324,7 +4875,7 @@ static int prd_show_do_sd(struct siw_hal_prd_data *prd, char *buf)
 	 * SHORT_FULL_TEST
 	 * short full - pass : 0, fail : 1
 	 */
-	if (param->sd_test_flag & SHORT_FULL_TEST_FLAG) {
+	if (sd_test_flag & SHORT_FULL_TEST_FLAG) {
 		short_full_ret = prd_open_short_test(prd, SHORT_FULL_TEST, result_on);
 		if (short_full_ret < 0) {
 			goto out;
@@ -4334,37 +4885,37 @@ static int prd_show_do_sd(struct siw_hal_prd_data *prd, char *buf)
 	size += siw_snprintf(buf, size,
 				"\n========RESULT=======\n");
 
-	if (param->sd_test_flag & IRQ_TEST_FLAG) {
+	if (sd_test_flag & IRQ_TEST_FLAG) {
 		size += siw_snprintf_sd_result(buf, size,
 				"IRQ", irq_ret);
 	}
 
-	if(param->sd_test_flag & U3_M2_RAWDATA_TEST_FLAG) {
+	if (sd_test_flag & U3_M2_RAWDATA_TEST_FLAG) {
 		size += siw_snprintf_sd_result(buf, size,
 				"U3 Raw Data", u3_rawdata_ret);
 	}
 
-	if(param->sd_test_flag & U3_M1_RAWDATA_TEST_FLAG) {
+	if (sd_test_flag & U3_M1_RAWDATA_TEST_FLAG) {
 		size += siw_snprintf_sd_result(buf, size,
 				"U3 M1 Raw Data", u3_m1_rawdata_ret);
 	}
 
-	if(param->sd_test_flag & U3_JITTER_TEST_FLAG) {
+	if (sd_test_flag & U3_JITTER_TEST_FLAG) {
 		size += siw_snprintf_sd_result(buf, size,
 				"U3 Jitter", u3_jitter_ret);
 	}
 
-	if(param->sd_test_flag & U3_M1_JITTER_TEST_FLAG) {
+	if (sd_test_flag & U3_M1_JITTER_TEST_FLAG) {
 		size += siw_snprintf_sd_result(buf, size,
 				"U3 M1 Jitter", u3_m1_jitter_ret);
 	}
 
-	if(param->sd_test_flag & U3_BLU_JITTER_TEST_FLAG) {
+	if (sd_test_flag & U3_BLU_JITTER_TEST_FLAG) {
 		size += siw_snprintf_sd_result(buf, size,
 				"Blu Jitter", blu_jitter_ret);
 	}
 
-	if (param->sd_test_flag & \
+	if (sd_test_flag & \
 		(OPEN_NODE_TEST_FLAG | SHORT_NODE_TEST_FLAG | SHORT_FULL_TEST_FLAG)) {
 		if (!open_ret && !short_ret && !short_full_ret) {
 			size += siw_snprintf(buf, size,
@@ -4471,6 +5022,11 @@ static int prd_show_prd_get_data_raw_core(struct device *dev,
 		memset(buf, 0, size);
 
 	ret = prd_read_raw_memory(prd, offset, buf, size);
+	if (ret < 0) {
+		goto out;
+	}
+
+	ret = prd_read_raw_memory_self(prd, cmd, prd->buf_self);
 	if (ret < 0) {
 		goto out;
 	}
@@ -4613,10 +5169,60 @@ static int prd_show_prd_get_data_do_raw_ait(struct device *dev, u8*buf, int siz
 //	struct siw_hal_reg *reg = chip->reg;
 	struct siw_hal_prd_data *prd = (struct siw_hal_prd_data *)ts->prd;
 	u8 *pbuf = (buf) ? buf : (u8 *)prd->m2_buf_even_rawdata;
+	int ret = 0;
 
-	return prd_show_prd_get_data_raw_core(dev, pbuf, size,
+	ret = prd_show_prd_get_data_raw_core(dev, pbuf, size,
 				prd->img_cmd.raw, prd->img_offset.raw, flag);
+	if (ret < 0) {
+		goto out;
+	}
+
+	prd_swap_raw_memory(prd, PRD_BUF_SWAP_RAW, prd->m2_buf_even_rawdata, size, 0, 0, 0);
+
+out:
+	return ret;
 }
+
+#if defined(__SIW_SUPPORT_PRD_RAW_CMP)
+static void __prd_calc_buff_cmp_16(void *new_raw, void *old_raw, int row, int col, int opt)
+{
+	int16_t *__new_raw = new_raw;
+	int16_t *__old_raw = old_raw;
+	int new_val, old_val;
+	int total = row * col;
+	int i;
+
+	if (opt & 0x01)
+		total = row + col;
+
+	for (i = 0; i < total ;i++) {
+		new_val = __new_raw[i];
+		old_val = __old_raw[i];
+
+		__new_raw[i] = new_val - old_val;
+		__old_raw[i] = new_val;
+	}
+}
+
+static void __prd_calc_raw_cmp(struct siw_hal_prd_data *prd)
+{
+	struct siw_hal_prd_param *param = &prd->param;
+
+	if (!(t_prd_dbg_flag & PRD_DBG_FLAG_RAW_CMP)) {
+		return;
+	}
+
+	__prd_calc_buff_cmp_16(prd->m2_buf_even_rawdata, prd->m2_buf_back,
+		param->row, param->col + param->col_add, 0);
+
+	if (!prd->panel_type) {
+		return;
+	}
+
+	__prd_calc_buff_cmp_16(prd->buf_self, prd->buf_self_back,
+		param->row, param->col, 1);
+}
+#endif	/* __SIW_SUPPORT_PRD_RAW_CMP */
 
 static int prd_show_prd_get_data_raw_ait(struct device *dev)
 {
@@ -4645,6 +5251,15 @@ static int prd_show_prd_get_data_raw_ait(struct device *dev)
 		goto out;
 	}
 
+#if defined(__SIW_SUPPORT_PRD_RAW_CMP)
+	__prd_calc_raw_cmp(prd);
+#endif	/* __SIW_SUPPORT_PRD_RAW_DIFF */
+
+	if (prd->panel_type) {
+		prd_print_rawdata_self(prd, prd->img_cmd.raw, prd->buf_write, M2_EVEN_DATA, log_size, 0);
+		return ret;
+	}
+
 	prd_print_rawdata(prd, prd->buf_write, M2_EVEN_DATA, log_size, 0);
 
 out:
@@ -4667,9 +5282,18 @@ static int prd_show_prd_get_data_do_ait_basedata(struct device *dev,
 		[1] = prd->m2_buf_odd_rawdata, \
 	};
 	u8 *pbuf = (buf) ? buf : (u8 *)buf_rawdata[step];
+	int ret = 0;
 
-	return prd_show_prd_get_data_raw_core(dev, pbuf, size,
+	ret = prd_show_prd_get_data_raw_core(dev, pbuf, size,
 				ait_cmd[step], ait_offset[step], flag);
+	if (ret < 0) {
+		goto out;
+	}
+
+	prd_swap_raw_memory(prd, PRD_BUF_SWAP_BASE, prd->m2_buf_even_rawdata, size, 0, 0, 0);
+
+out:
+	return ret;
 }
 
 static int prd_show_prd_get_data_ait_basedata(struct device *dev)
@@ -4701,6 +5325,11 @@ static int prd_show_prd_get_data_ait_basedata(struct device *dev)
 					i,
 					0);
 		if (ret < 0) {
+			goto out;
+		}
+
+		if (prd->panel_type) {
+			prd_print_rawdata_self(prd, prd->img_cmd.baseline_even, prd->buf_write, M2_EVEN_DATA, log_size, 0);
 			goto out;
 		}
 
@@ -4801,6 +5430,9 @@ static int prd_show_prd_get_data_do_deltadata(struct device *dev, u8 *buf, int s
 		goto out;
 	}
 
+	prd_swap_raw_memory(prd, PRD_BUF_SWAP_DELTA, prd->buf_delta,
+		size_rd, param->row + 2, param->col + 2, 0);
+
 	memset(pbuf, 0, size);
 
 	for (i = 0; i < ctrl->m2_row_col_size; i++){
@@ -4840,6 +5472,11 @@ static int prd_show_prd_get_data_deltadata(struct device *dev)
 		goto out;
 	}
 
+	if (prd->panel_type) {
+		prd_print_rawdata_self(prd, prd->img_cmd.delta, prd->buf_write, M2_EVEN_DATA, log_size, 0);
+		goto out;
+	}
+
 	prd_print_rawdata(prd, prd->buf_write, M2_EVEN_DATA, log_size, 0);
 
 out:
@@ -4867,6 +5504,9 @@ static int prd_show_prd_get_data_do_labeldata(struct device *dev, u8 *buf, int s
 	if (ret < 0) {
 		goto out;
 	}
+
+	prd_swap_raw_memory(prd, PRD_BUF_SWAP_LABEL, prd->buf_label_tmp,
+		size_rd, param->row + 2, param->col + 2, 1);
 
 	memset(pbuf, 0, size);
 
@@ -4905,6 +5545,11 @@ static int prd_show_prd_get_data_labeldata(struct device *dev)
 				size,
 				0);
 	if (ret < 0) {
+		goto out;
+	}
+
+	if (prd->panel_type) {
+		prd_print_rawdata_self(prd, prd->img_cmd.label, prd->buf_write, LABEL_DATA, log_size, 0);
 		goto out;
 	}
 
@@ -4966,9 +5611,18 @@ static int prd_show_prd_get_data_do_debug_buf(struct device *dev, u8 *buf, int s
 //	struct siw_hal_reg *reg = chip->reg;
 	struct siw_hal_prd_data *prd = (struct siw_hal_prd_data *)ts->prd;
 	u8 *pbuf = (buf) ? buf : (u8 *)prd->buf_debug;
+	int ret = 0;
 
-	return prd_show_prd_get_data_raw_core(dev, pbuf, size,
+	ret = prd_show_prd_get_data_raw_core(dev, pbuf, size,
 				IT_DONT_USE_CMD, prd->img_offset.debug, flag);
+	if (ret < 0) {
+		goto out;
+	}
+
+	prd_swap_raw_memory(prd, PRD_BUF_SWAP_DEBUG, pbuf, size, 0, 0, 0);
+
+out:
+	return ret;
 }
 
 static int prd_show_prd_get_data_debug_buf(struct device *dev)
@@ -4995,6 +5649,11 @@ static int prd_show_prd_get_data_debug_buf(struct device *dev)
 				size,
 				0);
 	if (ret < 0) {
+		goto out;
+	}
+
+	if (prd->panel_type) {
+		prd_print_rawdata_self(prd, prd->img_cmd.debug, prd->buf_write, DEBUG_DATA, log_size, 0);
 		goto out;
 	}
 
@@ -5059,7 +5718,7 @@ static ssize_t prd_show_get_data_common(struct device *dev, char *buf, int type)
 
 	ret = prd_drv_exception_check(prd);
 	if (ret) {
-		size += siw_snprintf(buf, size,
+		size += siw_prd_buf_snprintf(buf, size,
 					"drv exception(%d) detected, test canceled\n", ret);
 		t_prd_err(prd, "%s", buf);
 		return (ssize_t)size;
@@ -5081,13 +5740,13 @@ static ssize_t prd_show_get_data_common(struct device *dev, char *buf, int type)
 	case CMD_BLU_JITTER:
 		break;
 	default:
-		size += siw_snprintf(buf, size, "%s\n", prd->buf_write);
+		size += siw_prd_buf_snprintf(buf, size, "%s\n", prd->buf_write);
 		break;
 	}
 #endif
-	size += siw_snprintf(buf, size, "Get Data[%s] result:\n",
+	size += siw_prd_buf_snprintf(buf, size, "Get Data[%s] result:\n",
 				prd_get_data_cmd_name[type]);
-	size += siw_snprintf(buf, size, "%s\n",
+	size += siw_prd_buf_snprintf(buf, size, "%s\n",
 				(ret < 0) ? "Fail" : "Pass");
 	return (ssize_t)size;
 }
@@ -5104,7 +5763,7 @@ static ssize_t prd_show_label(struct device *dev, char *buf)
 
 	/* LCD mode check */
 	if (chip->lcd_mode != LCD_MODE_U3) {
-		size += siw_snprintf(buf, size,
+		size += siw_prd_buf_snprintf(buf, size,
 					"Current LCD mode(%d) is not U3, halted\n",
 					chip->lcd_mode);
 		return (ssize_t)size;
@@ -5129,7 +5788,7 @@ static ssize_t prd_show_rawdata_ait(struct device *dev, char *buf)
 
 	/* LCD mode check */
 	if (chip->lcd_mode != LCD_MODE_U3) {
-		size += siw_snprintf(buf, size,
+		size += siw_prd_buf_snprintf(buf, size,
 					"Current LCD mode(%d) is not U3, halted\n",
 					chip->lcd_mode);
 		return (ssize_t)size;
@@ -5149,7 +5808,7 @@ static ssize_t prd_show_basedata(struct device *dev, char *buf)
 
 	/* LCD mode check */
 	if (chip->lcd_mode != LCD_MODE_U3) {
-		size += siw_snprintf(buf, size,
+		size += siw_prd_buf_snprintf(buf, size,
 					"Current LCD mode(%d) is not U3, halted\n",
 					chip->lcd_mode);
 		return size;
@@ -5162,6 +5821,10 @@ static int prd_show_do_lpwg_sd(struct siw_hal_prd_data *prd, char *buf)
 {
 //	struct device *dev = prd->dev;
 	struct siw_hal_prd_param *param = &prd->param;
+#if defined(__SIW_SUPPORT_PRD_SET_SD)
+	struct siw_hal_prd_sd_param *sd_param = &prd->sd_param;
+#endif
+	u32 lpwg_sd_test_flag = param->lpwg_sd_test_flag;
 	int result_on = prd->result_on;
 	int m1_rawdata_ret = 0;
 	int m2_rawdata_ret = 0;
@@ -5176,19 +5839,27 @@ static int prd_show_do_lpwg_sd(struct siw_hal_prd_data *prd, char *buf)
 		goto out;
 	}
 
+#if defined(__SIW_SUPPORT_PRD_SET_SD)
+	if ((sd_param->set_sd_class == SET_SD_CLASS_LPWG_SD) && sd_param->set_sd_flag) {
+		lpwg_sd_test_flag = sd_param->set_sd_flag;
+		t_prd_info(prd, "lpwg_sd_test_flag locally changed %Xh(%Xh)\n",
+			lpwg_sd_test_flag, param->lpwg_sd_test_flag);
+	}
+#endif	/* __SIW_SUPPORT_PRD_SET_SD */
+
 	/*
 	 * U0_M2_RAWDATA_TEST & U0_M1_RAWDATA_TEST
 	 * rawdata - pass : 0, fail : 1
 	 * rawdata tunecode - pass : 0, fail : 2
 	 */
-	if(param->lpwg_sd_test_flag & U0_M2_RAWDATA_TEST_FLAG) {
+	if (lpwg_sd_test_flag & U0_M2_RAWDATA_TEST_FLAG) {
 		m2_rawdata_ret = prd_rawdata_test(prd, U0_M2_RAWDATA_TEST, result_on);
 		if (m2_rawdata_ret < 0) {
 			goto out;
 		}
 	}
 
-	if(param->lpwg_sd_test_flag & U0_M1_RAWDATA_TEST_FLAG) {
+	if (lpwg_sd_test_flag & U0_M1_RAWDATA_TEST_FLAG) {
 		m1_rawdata_ret = prd_rawdata_test(prd, U0_M1_RAWDATA_TEST, result_on);
 		if (m1_rawdata_ret < 0) {
 			goto out;
@@ -5200,7 +5871,7 @@ static int prd_show_do_lpwg_sd(struct siw_hal_prd_data *prd, char *buf)
 	 * Jitter - pass : 0, fail : 1
 	 * This will be enabled later.
 	*/
-	if(param->lpwg_sd_test_flag & U0_JITTER_TEST_FLAG) {
+	if (lpwg_sd_test_flag & U0_JITTER_TEST_FLAG) {
 		u0_jitter_ret = prd_rawdata_test(prd, U0_JITTER_TEST, result_on);
 		if (u0_jitter_ret < 0) {
 			goto out;
@@ -5212,7 +5883,7 @@ static int prd_show_do_lpwg_sd(struct siw_hal_prd_data *prd, char *buf)
 	 * Jitter - pass : 0, fail : 1
 	 * This will be enabled later.
 	*/
-	if(param->lpwg_sd_test_flag & U0_M1_JITTER_TEST_FLAG) {
+	if (lpwg_sd_test_flag & U0_M1_JITTER_TEST_FLAG) {
 		u0_m1_jitter_ret = prd_rawdata_test(prd, U0_M1_JITTER_TEST, result_on);
 		if (u0_m1_jitter_ret < 0) {
 			goto out;
@@ -5221,8 +5892,7 @@ static int prd_show_do_lpwg_sd(struct siw_hal_prd_data *prd, char *buf)
 
 	size = siw_snprintf(buf, size, "\n========RESULT=======\n");
 
-	sd_u0_test = param->lpwg_sd_test_flag &	\
-			 (U0_M2_RAWDATA_TEST_FLAG | U0_M1_RAWDATA_TEST_FLAG);
+	sd_u0_test = lpwg_sd_test_flag & (U0_M2_RAWDATA_TEST_FLAG | U0_M1_RAWDATA_TEST_FLAG);
 
 	if (sd_u0_test) {
 		if (!m1_rawdata_ret && !m2_rawdata_ret) {
@@ -5248,12 +5918,12 @@ static int prd_show_do_lpwg_sd(struct siw_hal_prd_data *prd, char *buf)
 		}
 	}
 
-	if(param->lpwg_sd_test_flag & U0_JITTER_TEST_FLAG) {
+	if (lpwg_sd_test_flag & U0_JITTER_TEST_FLAG) {
 		size += siw_snprintf_sd_result(buf, size,
 				"U0 Jitter", u0_jitter_ret);
 	}
 
-	if(param->lpwg_sd_test_flag & U0_M1_JITTER_TEST_FLAG) {
+	if (lpwg_sd_test_flag & U0_M1_JITTER_TEST_FLAG) {
 		size += siw_snprintf_sd_result(buf, size,
 				"U0 M1 Jitter", u0_m1_jitter_ret);
 	}
@@ -5670,6 +6340,9 @@ static ssize_t prd_show_dbg_mask(struct device *dev, char *buf)
 				"prd->dbg_mask %08Xh\n",
 				prd->dbg_mask);
 	size += siw_snprintf(buf, size,
+				"t_prd_dbg_flag %08Xh\n",
+				t_prd_dbg_flag);
+	size += siw_snprintf(buf, size,
 				"t_prd_dbg_mask %08Xh\n",
 				t_prd_dbg_mask);
 
@@ -5677,6 +6350,8 @@ static ssize_t prd_show_dbg_mask(struct device *dev, char *buf)
 				"\nUsage:\n");
 	size += siw_snprintf(buf, size,
 				" prd->dbg_mask  : echo 0 {mask_value} > prd_dbg_mask\n");
+	size += siw_snprintf(buf, size,
+				" t_prd_dbg_flag : echo 8 {mask_value} > prd_dbg_mask\n");
 	size += siw_snprintf(buf, size,
 				" t_prd_dbg_mask : echo 9 {mask_value} > prd_dbg_mask\n");
 
@@ -5690,6 +6365,7 @@ static void prd_store_dbg_mask_usage(struct device *dev)
 
 	t_prd_info(prd, "Usage:\n");
 	t_prd_info(prd, " prd->dbg_mask  : echo 0 {mask_value(hex)} > prd_dbg_mask\n");
+	t_prd_info(prd, " t_prd_dbg_flag : echo 8 {mask_value(hex)} > prd_dbg_mask\n");
 	t_prd_info(prd, " t_prd_dbg_mask : echo 9 {mask_value(hex)} > prd_dbg_mask\n");
 }
 
@@ -5712,6 +6388,12 @@ static ssize_t prd_store_dbg_mask(struct device *dev,
 		old_value = prd->dbg_mask;
 		prd->dbg_mask = new_value;
 		t_prd_info(prd, "prd->dbg_mask changed : %08Xh -> %08xh\n",
+			old_value, new_value);
+		break;
+	case 8 :
+		old_value = t_prd_dbg_flag;
+		t_prd_dbg_flag = new_value;
+		t_dev_info(dev, "t_prd_dbg_flag changed : %08Xh -> %08xh\n",
 			old_value, new_value);
 		break;
 	case 9 :
@@ -5737,10 +6419,19 @@ static ssize_t prd_store_dbg_mask(struct device *dev,
 
 static int prd_show_set_sd_item(char *buf, int size, char *title, int *value)
 {
-	int lower = value[0];
-	int upper = value[1];
+	int lower = 0;
+	int upper = 0;
 	int disabled = 0;
 	int invalid = 0;
+
+	if (value == NULL) {
+		size = siw_snprintf(buf, size,
+				" %s\n", title);
+		return size;
+	}
+
+	lower = value[0];
+	upper = value[1];
 
 	disabled = !!(!lower && !upper);
 
@@ -5764,6 +6455,8 @@ static ssize_t prd_show_set_sd(struct device *dev, char *buf)
 	struct siw_hal_prd_data *prd = (struct siw_hal_prd_data *)ts->prd;
 	struct siw_hal_prd_param *param = &prd->param;
 	struct siw_hal_prd_sd_param *sd_param = &prd->sd_param;
+	u32 sd_test_flag = param->sd_test_flag;
+	u32 lpwg_sd_test_flag = param->lpwg_sd_test_flag;
 	char title[32] = {0, };
 	int valid = 0;
 	int disabled = 0;
@@ -5772,61 +6465,84 @@ static ssize_t prd_show_set_sd(struct device *dev, char *buf)
 	int lower, upper;
 	int size = 0;
 
-	if (!param->sd_test_flag) {
+	if (!sd_test_flag) {
 		size += siw_snprintf(buf, size, "[sd - disabled]\n");
 		goto skip_show_set_sd;
 	}
 
 	size += siw_snprintf(buf, size, "[sd]\n");
 
-	if(param->sd_test_flag & U3_M2_RAWDATA_TEST_FLAG) {
+	size += siw_snprintf(buf, size, "sd_test_flag %Xh\n", sd_test_flag);
+
+	if (sd_test_flag & U3_M2_RAWDATA_TEST_FLAG) {
 		siw_prd_set_sd_sprintf(title, U3_M2_RAWDATA_TEST);
 		size += prd_show_set_sd_item(buf, size, title, sd_param->u3_m2);
 	}
-	if(param->sd_test_flag & U3_M1_RAWDATA_TEST_FLAG) {
+	if (sd_test_flag & U3_M1_RAWDATA_TEST_FLAG) {
 		siw_prd_set_sd_sprintf(title, U3_M1_RAWDATA_TEST);
 		size += prd_show_set_sd_item(buf, size, title, sd_param->u3_m1);
 	}
-	if(param->sd_test_flag & U3_BLU_JITTER_TEST_FLAG) {
+	if (sd_test_flag & U3_BLU_JITTER_TEST_FLAG) {
 		siw_prd_set_sd_sprintf(title, U3_BLU_JITTER_TEST);
 		size += prd_show_set_sd_item(buf, size, title, sd_param->u3_blu_jitter);
 	}
-	if(param->sd_test_flag & U3_JITTER_TEST_FLAG) {
+	if (sd_test_flag & U3_JITTER_TEST_FLAG) {
 		siw_prd_set_sd_sprintf(title, U3_JITTER_TEST);
 		size += prd_show_set_sd_item(buf, size, title, sd_param->u3_jitter);
 	}
-	if(param->sd_test_flag & U3_M1_JITTER_TEST_FLAG) {
+	if (sd_test_flag & U3_M1_JITTER_TEST_FLAG) {
 		siw_prd_set_sd_sprintf(title, U3_M1_JITTER_TEST);
 		size += prd_show_set_sd_item(buf, size, title, sd_param->u3_m1_jitter);
 	}
+	if (sd_test_flag & OPEN_NODE_TEST_FLAG) {
+		siw_prd_set_sd_sprintf(title, OPEN_NODE_TEST);
+		size += prd_show_set_sd_item(buf, size, title, NULL);
+	}
+	if (sd_test_flag & SHORT_NODE_TEST_FLAG) {
+		siw_prd_set_sd_sprintf(title, SHORT_NODE_TEST);
+		size += prd_show_set_sd_item(buf, size, title, NULL);
+	}
+	if (sd_test_flag & SHORT_FULL_TEST_FLAG) {
+		siw_prd_set_sd_sprintf(title, SHORT_FULL_TEST);
+		size += prd_show_set_sd_item(buf, size, title, NULL);
+	}
+	if (sd_test_flag & IRQ_TEST_FLAG) {
+		siw_prd_set_sd_sprintf(title, IRQ_TEST);
+		size += prd_show_set_sd_item(buf, size, title, NULL);
+	}
 skip_show_set_sd:
 
-	if (!param->lpwg_sd_test_flag) {
+	if (!lpwg_sd_test_flag) {
 		size += siw_snprintf(buf, size, "[lpwg_sd - disabled]\n");
 		goto skip_show_set_lpwg_sd;
 	}
 
 	size += siw_snprintf(buf, size, "[lpwg_sd]\n");
 
-	if(param->lpwg_sd_test_flag & U0_M2_RAWDATA_TEST_FLAG) {
+	size += siw_snprintf(buf, size, "lpwg_sd_test_flag %Xh\n", lpwg_sd_test_flag);
+
+	if (lpwg_sd_test_flag & U0_M2_RAWDATA_TEST_FLAG) {
 		siw_prd_set_sd_sprintf(title, U0_M2_RAWDATA_TEST);
 		size += prd_show_set_sd_item(buf, size, title, sd_param->u0_m2);
 	}
-	if(param->lpwg_sd_test_flag & U0_M1_RAWDATA_TEST_FLAG) {
+	if (lpwg_sd_test_flag & U0_M1_RAWDATA_TEST_FLAG) {
 		siw_prd_set_sd_sprintf(title, U0_M1_RAWDATA_TEST);
 		size += prd_show_set_sd_item(buf, size, title, sd_param->u0_m1);
 	}
-	if(param->lpwg_sd_test_flag & U0_JITTER_TEST_FLAG) {
+	if (lpwg_sd_test_flag & U0_JITTER_TEST_FLAG) {
 		siw_prd_set_sd_sprintf(title, U0_JITTER_TEST);
 		size += prd_show_set_sd_item(buf, size, title, sd_param->u0_jitter);
 	}
-	if(param->lpwg_sd_test_flag & U0_M1_JITTER_TEST_FLAG) {
+	if (lpwg_sd_test_flag & U0_M1_JITTER_TEST_FLAG) {
 		siw_prd_set_sd_sprintf(title, U0_M1_JITTER_TEST);
 		size += prd_show_set_sd_item(buf, size, title, sd_param->u0_m1_jitter);
 	}
 skip_show_set_lpwg_sd:
 
-	if (!param->sd_test_flag && !param->lpwg_sd_test_flag) {
+	size += siw_snprintf(buf, size, "set_sd_flag %Xh(%d)\n",
+			sd_param->set_sd_flag, sd_param->set_sd_class);
+
+	if (!sd_test_flag && !lpwg_sd_test_flag) {
 		return (ssize_t)size;
 	}
 
@@ -5834,10 +6550,10 @@ skip_show_set_lpwg_sd:
 	lower = sd_param->last_val[0];
 	upper = sd_param->last_val[1];
 	if ((type >=0) && (type < UX_INVALID)) {
-		if (param->sd_test_flag & (1<<type)) {
+		if (sd_test_flag & (1<<type)) {
 			valid |= !!(1<<type);
 		}
-		if (param->lpwg_sd_test_flag & (1<<type)) {
+		if (lpwg_sd_test_flag & (1<<type)) {
 			valid |= !!(1<<type);
 		}
 	}
@@ -5870,53 +6586,202 @@ static void prd_store_set_sd_usage(struct device *dev)
 	struct siw_ts *ts = to_touch_core(dev);
 	struct siw_hal_prd_data *prd = (struct siw_hal_prd_data *)ts->prd;
 	struct siw_hal_prd_param *param = &prd->param;
+	u32 sd_test_flag = param->sd_test_flag;
+	u32 lpwg_sd_test_flag = param->lpwg_sd_test_flag;
 
-	if (!param->sd_test_flag && !param->lpwg_sd_test_flag) {
+	if (!sd_test_flag && !lpwg_sd_test_flag) {
 		return;
 	}
 
 	t_prd_info(prd, "Usage:\n");
 	t_prd_info(prd, " echo {type} {lower} {upper} > set_sd\n");
 
-	if (!param->sd_test_flag) {
+	if (!sd_test_flag) {
 		goto skip_store_set_sd_usage;
 	}
 
 	t_prd_info(prd, " [type for sd]\n");
-	if(param->sd_test_flag & U3_M2_RAWDATA_TEST_FLAG) {
+	if (sd_test_flag & U3_M2_RAWDATA_TEST_FLAG) {
 		t_prd_info_set_sd(prd, U3_M2_RAWDATA_TEST);
 	}
-	if(param->sd_test_flag & U3_M1_RAWDATA_TEST_FLAG) {
+	if (sd_test_flag & U3_M1_RAWDATA_TEST_FLAG) {
 		t_prd_info_set_sd(prd, U3_M1_RAWDATA_TEST);
 	}
-	if(param->sd_test_flag & U3_BLU_JITTER_TEST_FLAG) {
+	if (sd_test_flag & U3_BLU_JITTER_TEST_FLAG) {
 		t_prd_info_set_sd(prd, U3_BLU_JITTER_TEST);
 	}
-	if(param->sd_test_flag & U3_JITTER_TEST_FLAG) {
+	if (sd_test_flag & U3_JITTER_TEST_FLAG) {
 		t_prd_info_set_sd(prd, U3_JITTER_TEST);
 	}
-	if(param->sd_test_flag & U3_M1_JITTER_TEST_FLAG) {
+	if (sd_test_flag & U3_M1_JITTER_TEST_FLAG) {
 		t_prd_info_set_sd(prd, U3_M1_JITTER_TEST);
+	}
+	if (sd_test_flag & OPEN_NODE_TEST_FLAG) {
+		t_prd_info_set_sd(prd, OPEN_NODE_TEST);
+	}
+	if (sd_test_flag & SHORT_NODE_TEST_FLAG) {
+		t_prd_info_set_sd(prd, SHORT_NODE_TEST);
+	}
+	if (sd_test_flag & SHORT_FULL_TEST_FLAG) {
+		t_prd_info_set_sd(prd, SHORT_FULL_TEST);
+	}
+	if (sd_test_flag & IRQ_TEST_FLAG) {
+		t_prd_info_set_sd(prd, IRQ_TEST);
 	}
 skip_store_set_sd_usage:
 
-	if (!param->lpwg_sd_test_flag) {
+	if (!lpwg_sd_test_flag) {
 		return;
 	}
 
 	t_prd_info(prd, " [type for lpwd_sd]\n");
-	if(param->lpwg_sd_test_flag & U0_M2_RAWDATA_TEST_FLAG) {
+	if (lpwg_sd_test_flag & U0_M2_RAWDATA_TEST_FLAG) {
 		t_prd_info_set_sd(prd, U0_M2_RAWDATA_TEST);
 	}
-	if(param->lpwg_sd_test_flag & U0_M1_RAWDATA_TEST_FLAG) {
+	if (lpwg_sd_test_flag & U0_M1_RAWDATA_TEST_FLAG) {
 		t_prd_info_set_sd(prd, U0_M1_RAWDATA_TEST);
 	}
-	if(param->lpwg_sd_test_flag & U0_JITTER_TEST_FLAG) {
+	if (lpwg_sd_test_flag & U0_JITTER_TEST_FLAG) {
 		t_prd_info_set_sd(prd, U0_JITTER_TEST);
 	}
-	if(param->lpwg_sd_test_flag & U0_M1_JITTER_TEST_FLAG) {
+	if (lpwg_sd_test_flag & U0_M1_JITTER_TEST_FLAG) {
 		t_prd_info_set_sd(prd, U0_M1_JITTER_TEST);
 	}
+}
+
+enum {
+	CMD_SET_SD_TEST_FLAG		= 32,
+	/* */
+	CMD_SET_SD_CTRL_FLAG		= 64,
+};
+
+static int __prd_store_set_sd_flag(struct device *dev, int type)
+{
+	struct siw_ts *ts = to_touch_core(dev);
+	struct siw_hal_prd_data *prd = (struct siw_hal_prd_data *)ts->prd;
+	struct siw_hal_prd_param *param = &prd->param;
+	struct siw_hal_prd_sd_param *sd_param = &prd->sd_param;
+	u32 sd_test_flag = param->sd_test_flag;
+	u32 flag = 0;
+
+	if (!sd_test_flag) {
+		t_prd_info(prd, "set_sd: sd not supported\n");
+		return -EINVAL;
+	}
+
+	if (!(sd_test_flag & BIT(type))) {
+		t_prd_info(prd, "set_sd: set set_sd_flag, invalid type %d\n", type);
+		return -EINVAL;
+	}
+
+	sd_param->set_sd_flag = BIT(type);
+
+	flag = OPEN_SHORT_RESULT_DATA_FLAG |	\
+		OPEN_SHORT_RESULT_RAWDATA_FLAG |	\
+		OPEN_SHORT_RESULT_ALWAYS_FLAG;
+
+	sd_param->set_sd_flag |= (sd_test_flag & flag);
+	sd_param->set_sd_class = SET_SD_CLASS_SD;
+
+	return 0;
+}
+
+static int __prd_store_set_lpwg_sd_flag(struct device *dev, int type)
+{
+	struct siw_ts *ts = to_touch_core(dev);
+	struct siw_hal_prd_data *prd = (struct siw_hal_prd_data *)ts->prd;
+	struct siw_hal_prd_param *param = &prd->param;
+	struct siw_hal_prd_sd_param *sd_param = &prd->sd_param;
+	u32 lpwg_sd_test_flag = param->lpwg_sd_test_flag;
+
+	if (!lpwg_sd_test_flag) {
+		t_prd_info(prd, "set_sd: lpwg_sd not supported\n");
+		return -EINVAL;
+	}
+
+	if (!(lpwg_sd_test_flag & BIT(type))) {
+		t_prd_info(prd, "set_sd: set set_sd_flag, invalid type %d\n", type);
+		return -EINVAL;
+	}
+
+	sd_param->set_sd_flag = BIT(type);
+	sd_param->set_sd_class = SET_SD_CLASS_LPWG_SD;
+
+	return 0;
+}
+
+static int prd_store_set_sd_flag(struct device *dev,
+				int cmd, int onoff, int type)
+{
+	struct siw_ts *ts = to_touch_core(dev);
+	struct siw_hal_prd_data *prd = (struct siw_hal_prd_data *)ts->prd;
+//	struct siw_hal_prd_param *param = &prd->param;
+	struct siw_hal_prd_sd_param *sd_param = &prd->sd_param;
+	int ret = 0;
+
+	if (cmd == CMD_SET_SD_TEST_FLAG) {
+		if (!onoff) {
+			sd_param->set_sd_flag = 0;
+			sd_param->set_sd_class = SET_SD_CLASS_NONE;
+			t_prd_info(prd, "set_sd: clr set_sd_flag\n");
+			return 1;
+		}
+
+		/*
+		 * echo 32 1 0 > set_sd
+		 * => sd_param->set_sd_flag = (1<<0) if valid
+		 * (U3_M2_RAWDATA_TEST = 0)
+		 *
+		 * echo 32 0 0 > set_sd
+		 * => sd_param->set_sd_flag = 0
+		 */
+		if (TEST_CLASS_FLAG_SD & BIT(type)) {
+			ret = __prd_store_set_sd_flag(dev, type);
+		}
+
+		if (TEST_CLASS_FLAG_LPWG_SD & BIT(type)) {
+			ret = __prd_store_set_lpwg_sd_flag(dev, type);
+		}
+
+		if (!ret) {
+			t_prd_info(prd, "set_sd: set set_sd_flag %s(%Xh)\n",
+				prd_get_test_str(type), sd_param->set_sd_flag);
+		}
+
+		return 1;
+	}
+
+	if (cmd == CMD_SET_SD_CTRL_FLAG) {
+		int data = 0;
+
+		switch (type) {
+		case 0:
+			data = prd->result_on;
+			prd->result_on = (onoff) ? RESULT_ON : RESULT_OFF;
+			t_prd_info(prd, "set_sd: set ctrl_flag: result_on(%d -> %d)\n",
+				data, prd->result_on);
+			break;
+		case 1:
+			data = prd->file_wr_off;
+			prd->file_wr_off = !!(onoff);
+			t_prd_info(prd, "set_sd: set ctrl_flag: file_wr_off(%d -> %d)\n",
+				data, prd->file_wr_off);
+			break;
+		case 2:
+			data = prd->file_rd_off;
+			prd->file_rd_off = !!(onoff);
+			t_prd_info(prd, "set_sd: set ctrl_flag: file_rd_off(%d -> %d)\n",
+				data, prd->file_rd_off);
+			break;
+		default:
+			t_prd_err(prd, "set_sd: set ctrl_flag: unknown type %d\n", type);
+			break;
+		}
+
+		return 1;
+	}
+
+	return 0;
 }
 
 static ssize_t prd_store_set_sd(struct device *dev,
@@ -5926,6 +6791,8 @@ static ssize_t prd_store_set_sd(struct device *dev,
 	struct siw_hal_prd_data *prd = (struct siw_hal_prd_data *)ts->prd;
 	struct siw_hal_prd_param *param = &prd->param;
 	struct siw_hal_prd_sd_param *sd_param = &prd->sd_param;
+	u32 sd_test_flag = param->sd_test_flag;
+	u32 lpwg_sd_test_flag = param->lpwg_sd_test_flag;
 	int type = 0;
 	int valid = 0;
 	int lower = 0, upper = 0;
@@ -5937,11 +6804,15 @@ static ssize_t prd_store_set_sd(struct device *dev,
 		return count;
 	}
 
+	if (prd_store_set_sd_flag(dev, type, lower, upper)) {
+		return count;
+	}
+
 	if ((type >=0) && (type < UX_INVALID)) {
-		if (param->sd_test_flag & (1<<type)) {
+		if (sd_test_flag & (1<<type)) {
 			valid |= !!(1<<type);
 		}
-		if (param->lpwg_sd_test_flag & (1<<type)) {
+		if (lpwg_sd_test_flag & (1<<type)) {
 			valid |= !!(1<<type);
 		}
 	}
@@ -5955,10 +6826,10 @@ static ssize_t prd_store_set_sd(struct device *dev,
 		return count;
 	}
 
-	if (!param->sd_test_flag) {
+	if (!sd_test_flag) {
 		goto skip_set_sd;
 	}
-	if(!(param->sd_test_flag & (1<<type))) {
+	if (!(sd_test_flag & (1<<type))) {
 		goto skip_set_sd;
 	}
 	switch (type) {
@@ -5991,10 +6862,10 @@ static ssize_t prd_store_set_sd(struct device *dev,
 	}
 skip_set_sd:
 
-	if (!param->lpwg_sd_test_flag) {
+	if (!lpwg_sd_test_flag) {
 		goto skip_set_lpwg_sd;
 	}
-	if(!(param->lpwg_sd_test_flag & (1<<type))) {
+	if (!(lpwg_sd_test_flag & (1<<type))) {
 		goto skip_set_lpwg_sd;
 	}
 	switch (type) {
@@ -6053,6 +6924,7 @@ skip_set_lpwg_sd:
 		touch_attr_##_name
 
 static SIW_TOUCH_HAL_PRD_ATTR(sd, prd_show_sd, NULL);
+static SIW_TOUCH_HAL_PRD_ATTR(lpwg_sd, prd_show_lpwg_sd, NULL);
 static SIW_TOUCH_HAL_PRD_ATTR(delta, prd_show_delta, NULL);
 static SIW_TOUCH_HAL_PRD_ATTR(label, prd_show_label, NULL);
 static SIW_TOUCH_HAL_PRD_ATTR(rawdata_prd, prd_show_rawdata_prd, NULL);
@@ -6060,7 +6932,6 @@ static SIW_TOUCH_HAL_PRD_ATTR(rawdata_tcm, prd_show_rawdata_tcm, NULL);
 static SIW_TOUCH_HAL_PRD_ATTR(rawdata, prd_show_rawdata_ait, NULL);
 static SIW_TOUCH_HAL_PRD_ATTR(base, prd_show_basedata, NULL);
 static SIW_TOUCH_HAL_PRD_ATTR(debug_buf, prd_show_debug_buf, NULL);
-static SIW_TOUCH_HAL_PRD_ATTR(lpwg_sd, prd_show_lpwg_sd, NULL);
 static SIW_TOUCH_HAL_PRD_ATTR(file_test, prd_show_file_test, prd_store_file_test);
 
 static SIW_TOUCH_HAL_PRD_ATTR(prd_app_raw, prd_show_app_raw, NULL);
@@ -6087,6 +6958,7 @@ struct siw_hal_prd_attribute {
 
 static const struct siw_hal_prd_attribute siw_hal_prd_attribute_list_all[] = {
 	_SIW_TOUCH_HAL_PRD_LIST_T(sd, PRD_SYS_EN_SD),
+	_SIW_TOUCH_HAL_PRD_LIST_T(lpwg_sd, PRD_SYS_EN_LPWG_SD),
 	_SIW_TOUCH_HAL_PRD_LIST_T(delta, PRD_SYS_EN_DELTA),
 	_SIW_TOUCH_HAL_PRD_LIST_T(label, PRD_SYS_EN_LABEL),
 	_SIW_TOUCH_HAL_PRD_LIST_T(rawdata_prd, PRD_SYS_EN_RAWDATA_PRD),
@@ -6094,7 +6966,6 @@ static const struct siw_hal_prd_attribute siw_hal_prd_attribute_list_all[] = {
 	_SIW_TOUCH_HAL_PRD_LIST_T(rawdata, PRD_SYS_EN_RAWDATA_AIT),
 	_SIW_TOUCH_HAL_PRD_LIST_T(base, PRD_SYS_EN_BASE),
 	_SIW_TOUCH_HAL_PRD_LIST_T(debug_buf, PRD_SYS_EN_DEBUG_BUF),
-	_SIW_TOUCH_HAL_PRD_LIST_T(lpwg_sd, PRD_SYS_EN_LPWG_SD),
 	_SIW_TOUCH_HAL_PRD_LIST_T(file_test, PRD_SYS_EN_FILE_TEST),
 	_SIW_TOUCH_HAL_PRD_LIST_T(prd_app_raw, PRD_SYS_EN_APP_RAW),
 	_SIW_TOUCH_HAL_PRD_LIST_T(prd_app_base, PRD_SYS_EN_APP_BASE),
@@ -6186,35 +7057,42 @@ static void siw_hal_prd_free_buffer(struct device *dev)
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
 	struct siw_hal_prd_data *prd = (struct siw_hal_prd_data *)ts->prd;
+	u8 *buf_src = prd->buf_src;
+	int buf_size = prd->buf_size;
 
 	t_prd_dbg_base(prd, "[param free buffer]\n");
 
-	if (prd->buf_src != NULL) {
-		t_prd_info(prd, "buffer released: %p(%d)\n",
-			prd->buf_src, prd->buf_size);
-		kfree(prd->buf_src);
-
-		prd->buf_src = NULL;
-		prd->buf_size = 0;
-
-		prd->m2_buf_even_rawdata = NULL;
-		prd->m2_buf_odd_rawdata = NULL;
-
-		prd->m1_buf_even_rawdata = NULL;
-		prd->m1_buf_odd_rawdata = NULL;
-		prd->m1_buf_tmp = NULL;
-
-		prd->open_buf_result_rawdata = NULL;
-		prd->short_buf_result_rawdata = NULL;
-		prd->open_buf_result_data = NULL;
-		prd->short_buf_result_data = NULL;
-
-		prd->buf_delta = NULL;
-		prd->buf_debug = NULL;
-
-		prd->buf_label_tmp = NULL;
-		prd->buf_label = NULL;
+	if (prd->buf_src == NULL) {
+		return;
 	}
+
+	prd->m2_buf_even_rawdata = NULL;
+	prd->m2_buf_odd_rawdata = NULL;
+
+	prd->m1_buf_even_rawdata = NULL;
+	prd->m1_buf_odd_rawdata = NULL;
+	prd->m1_buf_tmp = NULL;
+
+	prd->open_buf_result_rawdata = NULL;
+	prd->short_buf_result_rawdata = NULL;
+	prd->open_buf_result_data = NULL;
+	prd->short_buf_result_data = NULL;
+
+	prd->buf_delta = NULL;
+	prd->buf_debug = NULL;
+
+	prd->buf_label_tmp = NULL;
+	prd->buf_label = NULL;
+
+	prd->buf_self = NULL;
+
+	prd->buf_src = NULL;
+	prd->buf_size = 0;
+
+	t_prd_info(prd, "buffer released: %p(%d)\n",
+		buf_src, buf_size);
+
+	kfree(buf_src);
 }
 
 static int siw_hal_prd_alloc_buffer(struct device *dev)
@@ -6235,6 +7113,12 @@ static int siw_hal_prd_alloc_buffer(struct device *dev)
 	total_size += (ctrl->debug_buf_size<<PRD_RAWDATA_SZ_POW);
 	total_size += ctrl->label_tmp_size;
 	total_size += ctrl->m2_row_col_size;
+	total_size += (ctrl->buf_self_size<<1);
+
+#if defined(__SIW_SUPPORT_PRD_RAW_CMP)
+	total_size += ctrl->m2_frame_size;
+	total_size += (ctrl->buf_self_size<<1);
+#endif
 
 	buf = kzalloc(total_size + 128, GFP_KERNEL);
 	if (buf == NULL) {
@@ -6263,6 +7147,10 @@ static int siw_hal_prd_alloc_buffer(struct device *dev)
 	buf += ctrl->m2_frame_size;
 	prd->m2_buf_tmp = (int16_t *)buf;
 	buf += ctrl->m2_frame_size;
+#if defined(__SIW_SUPPORT_PRD_RAW_CMP)
+	prd->m2_buf_back = (int16_t *)buf;
+	buf += ctrl->m2_frame_size;
+#endif
 
 	prd->m1_buf_even_rawdata = (int16_t *)buf;
 	buf += ctrl->m1_frame_size;
@@ -6290,8 +7178,45 @@ static int siw_hal_prd_alloc_buffer(struct device *dev)
 	buf += ctrl->label_tmp_size;
 
 	prd->buf_label = (u8 *)buf;
-//	buf += ctrl->m2_row_col_size;
+	buf += ctrl->m2_row_col_size;
 
+	prd->buf_self = (u16 *)buf;
+	buf += (ctrl->buf_self_size<<1);
+#if defined(__SIW_SUPPORT_PRD_RAW_CMP)
+	prd->buf_self_back = (u16 *)buf;
+	buf += (ctrl->buf_self_size<<1);
+#endif
+
+	t_prd_dbg_base(prd, "buf: m2_buf_even_rawdata         %p\n",
+		prd->m2_buf_even_rawdata);
+	t_prd_dbg_base(prd, "buf: m2_buf_odd_rawdata          %p\n",
+		prd->m2_buf_odd_rawdata);
+	t_prd_dbg_base(prd, "buf: m2_buf_tmp                  %p\n",
+		prd->m2_buf_tmp);
+	t_prd_dbg_base(prd, "buf: m1_buf_even_rawdata         %p\n",
+		prd->m1_buf_even_rawdata);
+	t_prd_dbg_base(prd, "buf: m1_buf_odd_rawdata          %p\n",
+		prd->m1_buf_odd_rawdata);
+	t_prd_dbg_base(prd, "buf: m1_buf_tmp                  %p\n",
+		prd->m1_buf_tmp);
+	t_prd_dbg_base(prd, "buf: open_buf_result_rawdata     %p\n",
+		prd->open_buf_result_rawdata);
+	t_prd_dbg_base(prd, "buf: short_buf_result_rawdata    %p\n",
+		prd->short_buf_result_rawdata);
+	t_prd_dbg_base(prd, "buf: open_buf_result_data        %p\n",
+		prd->open_buf_result_data);
+	t_prd_dbg_base(prd, "buf: short_buf_result_data       %p\n",
+		prd->short_buf_result_data);
+	t_prd_dbg_base(prd, "buf: buf_delta                   %p\n",
+		prd->buf_delta);
+	t_prd_dbg_base(prd, "buf: buf_debug                   %p\n",
+		prd->buf_debug);
+	t_prd_dbg_base(prd, "buf: buf_label_tmp               %p\n",
+		prd->buf_label_tmp);
+	t_prd_dbg_base(prd, "buf: buf_label                   %p\n",
+		prd->buf_label);
+	t_prd_dbg_base(prd, "buf: buf_self                    %p\n",
+		prd->buf_self);
 	return 0;
 }
 
@@ -6330,6 +7255,7 @@ static void siw_hal_prd_parse_ctrl(struct device *dev, struct siw_hal_prd_param 
 	case CHIP_SW1828:
 	case CHIP_SW49105:
 	case CHIP_SW49106:
+	case CHIP_SW42103:
 		prd->open_result_type = 0;
 		break;
 	default:
@@ -6386,6 +7312,38 @@ static void siw_hal_prd_parse_ctrl(struct device *dev, struct siw_hal_prd_param 
 		ctrl->short_full_result_size, ctrl->short_full_result_col);
 	t_prd_dbg_base(prd, "ctrl: short full: rawdata: size %d, col %d\n",
 		ctrl->short_full_rawdata_size, ctrl->short_full_rawdata_col);
+
+	ctrl->buf_self_size = (row_size + col_size)<<PRD_RAWDATA_SZ_POW;
+
+	t_prd_dbg_base(prd, "ctrl: buf_self_size %d\n",
+		ctrl->buf_self_size);
+}
+
+static void siw_hal_prd_setup_tune(struct device *dev,
+	struct siw_hal_prd_tune *tune, u32 ch)
+{
+//	struct siw_touch_chip *chip = to_touch_chip(dev);
+//	struct siw_ts *ts = chip->ts;
+	u32 hdr = 2;
+	u32 r_base = 0;
+
+	tune->ch = ch;
+
+	tune->code_size = ((ch<<3)+4);
+
+	tune->code_l_goft_offset = 0;
+	tune->code_l_m1_oft_offset = hdr;
+	tune->code_l_g1_oft_offset = (tune->code_l_m1_oft_offset + ch);
+	tune->code_l_g2_oft_offset = (tune->code_l_g1_oft_offset + ch);
+	tune->code_l_g3_oft_offset = (tune->code_l_g2_oft_offset + ch);
+
+	r_base = (tune->code_l_g3_oft_offset + ch);
+
+	tune->code_r_goft_offset = r_base;
+	tune->code_r_m1_oft_offset = r_base + hdr;
+	tune->code_r_g1_oft_offset = (tune->code_r_m1_oft_offset + ch);
+	tune->code_r_g2_oft_offset = (tune->code_r_g1_oft_offset + ch);
+	tune->code_r_g3_oft_offset = (tune->code_r_g2_oft_offset + ch);
 }
 
 static void siw_hal_prd_parse_tune(struct device *dev, struct siw_hal_prd_param *param)
@@ -6398,20 +7356,9 @@ static void siw_hal_prd_parse_tune(struct device *dev, struct siw_hal_prd_param 
 
 	t_prd_dbg_base(prd, "[param parse tune]\n");
 
-	tune->ch = ch;
-	tune->code_size = ((ch<<3)+4);
+	memset(tune, 0, sizeof(*tune));
 
-	tune->code_l_goft_offset = 0;
-	tune->code_l_m1_oft_offset = (1<<1);
-	tune->code_l_g1_oft_offset = (tune->code_l_m1_oft_offset + ch);
-	tune->code_l_g2_oft_offset = (tune->code_l_g1_oft_offset + ch);
-	tune->code_l_g3_oft_offset = (tune->code_l_g2_oft_offset + ch);
-
-	tune->code_r_goft_offset = (tune->code_l_g3_oft_offset + ch);
-	tune->code_r_m1_oft_offset = (tune->code_r_goft_offset + 2);
-	tune->code_r_g1_oft_offset = (tune->code_r_m1_oft_offset + ch);
-	tune->code_r_g2_oft_offset = (tune->code_r_g1_oft_offset + ch);
-	tune->code_r_g3_oft_offset = (tune->code_r_g2_oft_offset + ch);
+	siw_hal_prd_setup_tune(dev, tune, ch);
 
 	t_prd_dbg_base(prd, "tune: ch %d, code %d\n",
 		ch, tune->code_size);
@@ -6485,6 +7432,26 @@ static void siw_hal_prd_set_offset(struct device *dev, struct siw_hal_prd_param 
 			old_addr = prd->img_offset.debug;
 			prd->img_offset.debug = addr;
 			break;
+		case IMG_OFFSET_IDX_RAW_S:
+			old_addr = prd->img_offset.raw_s;
+			prd->img_offset.raw_s = addr;
+			break;
+		case IMG_OFFSET_IDX_BASELINE_S:
+			old_addr = prd->img_offset.baseline_s;
+			prd->img_offset.baseline_s = addr;
+			break;
+		case IMG_OFFSET_IDX_DELTA_S:
+			old_addr = prd->img_offset.delta_s;
+			prd->img_offset.delta_s = addr;
+			break;
+		case IMG_OFFSET_IDX_LABEL_S:
+			old_addr = prd->img_offset.label_s;
+			prd->img_offset.label_s = addr;
+			break;
+		case IMG_OFFSET_IDX_DEBUG_S:
+			old_addr = prd->img_offset.debug_s;
+			prd->img_offset.debug_s = addr;
+			break;
 		default:
 			old_addr = 0;
 			addr = 0;
@@ -6550,6 +7517,16 @@ static void siw_hal_prd_set_sd_cmd(struct siw_hal_prd_data *prd)
 	sd_cmd->cmd_short_full = 0;
 
 	switch (chip_type) {
+	/* TBD */
+	case CHIP_SW42000:
+	case CHIP_SW42000A:
+		sd_cmd->cmd_open_node = 1;
+		sd_cmd->cmd_short_node = 2;
+		sd_cmd->cmd_m2_rawdata = 5;
+		sd_cmd->cmd_m1_rawdata = 3;
+		sd_cmd->cmd_jitter = 13;
+		sd_cmd->cmd_m1_jitter = 4;
+		break;
 	case CHIP_SW49407:
 		sd_cmd->cmd_open_node = 1;
 		sd_cmd->cmd_short_node = 2;
@@ -6712,24 +7689,19 @@ static void siw_hal_prd_param_quirks(struct device *dev,
 	}
 }
 
-static int siw_hal_prd_init_param(struct device *dev)
+static int siw_hal_prd_param_lookup(struct device *dev,
+	struct siw_hal_prd_param *p)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
 	struct siw_hal_fw_info *fw = &chip->fw;
 	struct siw_hal_prd_data *prd = (struct siw_hal_prd_data *)ts->prd;
 	struct siw_hal_prd_param *param = (struct siw_hal_prd_param *)prd_params;
-	struct siw_hal_prd_param __param = {0, };
-	int len, found;
-	int idx;
-	int ret;
+	int found = 0;
+	int len = 0;
+	int idx = 0;
 
-	idx = 0;
-	while (1) {
-		if (!param->chip_type) {
-			break;
-		}
-
+	while (param->chip_type) {
 		if (param->chip_type == touch_chip_type(ts)) {
 			found = !!(param->name == NULL);
 			if (!found) {
@@ -6748,62 +7720,105 @@ static int siw_hal_prd_init_param(struct device *dev)
 					name_idx++;
 				}
 			}
+		}
 
-			if (found) {
-				/* to disable prd control for a specific type */
-				if (!param->row || !param->col) {
-					t_prd_info(prd, "%s[%s] disabled\n",
-						touch_chip_name(ts), fw->product_id);
-					return -EFAULT;
-				}
+		if (found) {
+			memcpy(p, param, sizeof(*param));
 
-				t_prd_dbg_base(prd, "%s[%s] param %d selected\n",
-					touch_chip_name(ts), fw->product_id, idx);
+			t_prd_dbg_base(prd, "%s[%s] param %d selected\n",
+				touch_chip_name(ts), fw->product_id, idx);
 
-				memcpy(&__param, param, sizeof(__param));
-				param = &__param;
-
-				if (!touch_mode_allowed(ts, LCD_MODE_U0)) {
-					param->lpwg_sd_test_flag = 0;
-				}
-
-				if (!param->sd_test_flag) {
-					param->sysfs_off_flag |= PRD_SYS_EN_SD;
-				}
-				if (!param->lpwg_sd_test_flag) {
-					param->sysfs_off_flag |= PRD_SYS_EN_LPWG_SD;
-				}
-
-				siw_hal_prd_param_quirks(dev, param);
-
-				t_prd_info(prd, "sd_test_flag %Xh, lpwg_sd_test_flag %Xh\n",
-					param->sd_test_flag, param->lpwg_sd_test_flag);
-
-				if (param->sd_test_flag & OPEN_SHORT_RESULT_ALWAYS_FLAG) {
-					prd->dbg_mask |= PRD_DBG_OPEN_SHORT_DATA;
-				}
-
-				prd->result_on = (param->ctrl_flag & CTRL_FLAG_RESULT_OFF) ?	\
-								RESULT_OFF : RESULT_ON;
-
-				prd->file_wr_off = !!(param->ctrl_flag & CTRL_FLAG_FILE_WR_OFF);
-				prd->file_rd_off = !!(param->ctrl_flag & CTRL_FLAG_FILE_RD_OFF);
-
-				ret = siw_hal_prd_parse_param(dev, param);
-				if (ret < 0) {
-					t_prd_err(prd, "%s[%s] param parsing failed, %d\n",
-						touch_chip_name(ts), fw->product_id, ret);
-				} else {
-					memcpy(&prd->param, param, sizeof(*param));
-				}
-				return ret;
-			}
+			return idx;
 		}
 
 		param++;
 		idx++;
 	}
 
+	return -ENOENT;
+}
+
+static int siw_hal_prd_param_setup(struct device *dev,
+		struct siw_hal_prd_param *param)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	struct siw_hal_fw_info *fw = &chip->fw;
+	struct siw_hal_prd_data *prd = (struct siw_hal_prd_data *)ts->prd;
+	int ret = 0;
+
+	/* to disable prd control for a specific type */
+	if (!param->row || !param->col) {
+		t_prd_info(prd, "%s[%s] disabled\n",
+			touch_chip_name(ts), fw->product_id);
+		return -EFAULT;
+	}
+
+	if (!touch_mode_allowed(ts, LCD_MODE_U0)) {
+		param->lpwg_sd_test_flag = 0;
+	}
+
+	if (!param->sd_test_flag) {
+		param->sysfs_off_flag |= PRD_SYS_EN_SD;
+	}
+	if (!param->lpwg_sd_test_flag) {
+		param->sysfs_off_flag |= PRD_SYS_EN_LPWG_SD;
+	}
+
+	siw_hal_prd_param_quirks(dev, param);
+
+	t_prd_info(prd, "sd_test_flag %Xh, lpwg_sd_test_flag %Xh\n",
+		param->sd_test_flag, param->lpwg_sd_test_flag);
+	t_prd_info(prd, "buf_swap_flag %Xh\n",
+		param->buf_swap_flag);
+
+	if (param->sd_test_flag & OPEN_SHORT_RESULT_ALWAYS_FLAG) {
+		prd->dbg_mask |= PRD_DBG_OPEN_SHORT_DATA;
+	}
+
+	prd->panel_type = chip->opt.t_oled;
+
+	prd->result_on = (param->ctrl_flag & CTRL_FLAG_RESULT_OFF) ?	\
+					RESULT_OFF : RESULT_ON;
+
+	prd->file_wr_off = !!(param->ctrl_flag & CTRL_FLAG_FILE_WR_OFF);
+	prd->file_rd_off = !!(param->ctrl_flag & CTRL_FLAG_FILE_RD_OFF);
+
+	ret = siw_hal_prd_parse_param(dev, param);
+	if (ret < 0) {
+		t_prd_err(prd, "%s[%s] param parsing failed, %d\n",
+			touch_chip_name(ts), fw->product_id, ret);
+		return ret;
+	}
+
+	memcpy(&prd->param, param, sizeof(*param));
+
+	return 0;
+}
+
+static int siw_hal_prd_init_param(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	struct siw_hal_fw_info *fw = &chip->fw;
+	struct siw_hal_prd_data *prd = (struct siw_hal_prd_data *)ts->prd;
+	struct siw_hal_prd_param param = {0, };
+	int ret = 0;
+
+	if (t_prd_dbg_flag & PRD_DBG_FLAG_DISABLE) {
+		goto out;
+	}
+
+	ret = siw_hal_prd_param_lookup(dev, &param);
+	if (ret < 0) {
+		goto out;
+	}
+
+	ret = siw_hal_prd_param_setup(dev, &param);
+
+	return ret;
+
+out:
 	t_prd_info(prd, "%s[%s] param not found\n",
 		touch_chip_name(ts), fw->product_id);
 
