@@ -2246,6 +2246,9 @@ static int siw_hal_power(struct device *dev, int ctrl)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
+	int skip_reset = ctrl & 0x80;
+
+	ctrl &= 0x0F;
 
 	if ((ctrl < 0) || (ctrl > POWER_ON)) {
 		t_dev_err(dev, "power ctrl: wrong ctrl value, %d\n", ctrl);
@@ -2260,7 +2263,9 @@ static int siw_hal_power(struct device *dev, int ctrl)
 		t_dev_dbg_pm(dev, "power ctrl: power off\n");
 		atomic_set(&chip->init, IC_INIT_NEED);
 
-		siw_hal_set_gpio_reset(dev, GPIO_OUT_ZERO);
+		if (!skip_reset) {
+			siw_hal_set_gpio_reset(dev, GPIO_OUT_ZERO);
+		}
 		siw_hal_power_vio(dev, 0);
 		siw_hal_power_vdd(dev, 0);
 		touch_msleep(chip->drv_reset_low + hal_dbg_delay(chip, HAL_DBG_DLY_HW_RST_0));
@@ -2270,7 +2275,9 @@ static int siw_hal_power(struct device *dev, int ctrl)
 		t_dev_dbg_pm(dev, "power ctrl: power on\n");
 		siw_hal_power_vdd(dev, 1);
 		siw_hal_power_vio(dev, 1);
-		siw_hal_set_gpio_reset(dev, GPIO_OUT_ONE);
+		if (!skip_reset) {
+			siw_hal_set_gpio_reset(dev, GPIO_OUT_ONE);
+		}
 		break;
 
 	case POWER_SLEEP:
@@ -2838,7 +2845,7 @@ static int siw_hal_ic_info_boot(struct device *dev)
 	return 0;
 }
 
-static int siw_hal_hw_reset_quirk(struct device *dev, int delay);
+static int siw_hal_hw_reset_quirk(struct device *dev, int pwr_con, int delay);
 
 static int siw_hal_ic_info_quirk(struct device *dev)
 {
@@ -3499,7 +3506,7 @@ static int siw_hal_init(struct device *dev)
 		t_dev_dbg_base(dev, "retry getting ic info (%d)\n", i);
 
 		if (chip->fquirks.hw_reset_quirk != NULL) {
-			chip->fquirks.hw_reset_quirk(dev, 0);
+			chip->fquirks.hw_reset_quirk(dev, 1, 0);
 			continue;
 		}
 
@@ -3561,7 +3568,7 @@ static int siw_hal_reinit(struct device *dev,
 	pwr_con &= 0x0F;
 
 	if (!skip_quirk && (chip->fquirks.hw_reset_quirk != NULL)) {
-		ret = chip->fquirks.hw_reset_quirk(dev, delay);
+		ret = chip->fquirks.hw_reset_quirk(dev, pwr_con, delay);
 		goto reset_done;
 	}
 
@@ -3782,13 +3789,19 @@ static int siw_hal_sw_reset(struct device *dev)
 	return ret;
 }
 
-static int siw_hal_hw_reset_quirk(struct device *dev, int delay)
+static int siw_hal_hw_reset_quirk(struct device *dev, int pwr_con, int delay)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
 	int ret = 0;
 
 	t_dev_info(dev, "run sw reset (reset gpio deactivated)\n");
+
+	if (pwr_con) {
+		siw_hal_power(dev, POWER_OFF | 0x80);
+		siw_hal_power(dev, POWER_ON | 0x80);
+		touch_msleep((delay) ? delay : ts->caps.hw_reset_delay);
+	}
 
 	ret = __siw_hal_sw_reset(dev);
 
@@ -3801,21 +3814,22 @@ static int siw_hal_hw_reset(struct device *dev, int ctrl)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
-	int skip_quirk = 0;
+	int pwr_con = 0;
 
-	skip_quirk = ctrl & 0x10;
+	pwr_con = !!(ctrl & 0x80);
+	pwr_con |= (ctrl & 0x10);
 	ctrl &= 0x0F;
 
 	t_dev_info(dev, "HW Reset(%s)\n",
 		(ctrl == HW_RESET_ASYNC) ? "Async" : "Sync");
 
 	if (ctrl == HW_RESET_ASYNC) {
-		siw_hal_reinit(dev, skip_quirk, hal_dbg_delay(chip, HAL_DBG_DLY_HW_RST_1), 0, NULL);
+		siw_hal_reinit(dev, pwr_con, hal_dbg_delay(chip, HAL_DBG_DLY_HW_RST_1), 0, NULL);
 		siw_touch_qd_init_work_hw(ts);
 		return 0;
 	}
 
-	siw_hal_reinit(dev, skip_quirk, ts->caps.hw_reset_delay, 1, siw_hal_init);
+	siw_hal_reinit(dev, pwr_con, ts->caps.hw_reset_delay, 1, siw_hal_init);
 
 	return 0;
 }
@@ -3824,6 +3838,7 @@ static int siw_hal_reset_ctrl(struct device *dev, int ctrl)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
+	int ctrl_low = ctrl & 0xF;
 	int ret = -EINVAL;
 
 	mutex_lock(&ts->reset_lock);
@@ -3833,18 +3848,10 @@ static int siw_hal_reset_ctrl(struct device *dev, int ctrl)
 
 	siw_hal_watch_set_rtc_clear(dev);
 
-	switch (ctrl) {
+	switch (ctrl_low) {
 	case SW_RESET:
 		ret = siw_hal_sw_reset(dev);
 		break;
-
-	/*
-	 * skip quirk for sysfs access.
-	 * e.g.) echo 0x11 > reset_ctrl
-	 */
-	case (HW_RESET_ASYNC | 0x10):
-	case (HW_RESET_SYNC | 0x10):
-		/* fall through */
 	case HW_RESET_ASYNC:
 	case HW_RESET_SYNC:
 		ret = siw_hal_hw_reset(dev, ctrl);

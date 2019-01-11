@@ -559,7 +559,7 @@ struct siw_hal_debug {
 };
 
 struct siw_hal_fquirks {	//function quirks
-	int (*hw_reset_quirk)(struct device *dev, int delay);
+	int (*hw_reset_quirk)(struct device *dev, int pwr_con, int delay);
 };
 
 struct siw_touch_chip {
