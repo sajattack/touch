@@ -1,0 +1,62 @@
+
+---------------------------------------------------------------------------------------------------
+
+[  579.775714] [c1] siw_touch spi1.0: FW upgrade work func
+[  579.780900] [c1] wake disabled for irq 512
+[  579.784948] [c1] siw_touch spi1.0: irq(512) wake disabled
+[  579.790352] [c1] siw_touch spi1.0: irq(512) disabled
+[  579.795279] [c1] siw_touch spi1.0: FW upgrade: status 1(BUSY)
+[  579.801025] [c1] siw_touch spi1.0: fw type: FW_TYPE_0
+[  579.806039] [c1] siw_touch spi1.0: getting fw from file
+[  579.811271] [c1] siw_touch spi1.0: target fw: /sdcard/L1W57F2_fullcode_0_10.img (abs)
+[  579.828621] [c1] siw_touch spi1.0: fw size: 131072
+[  579.832060] [c1] siw_touch spi1.0: FW compare: bin-ver: 0.01 (L1W57F2)(0)
+[  579.838745] [c1] siw_touch spi1.0: FW compare: dev-ver: 0.10 (L1W57F2)
+[  579.845234] [c1] siw_touch spi1.0: FW compare: up 01, fup 08
+[  579.864133] [c6] siw_touch spi1.0: FW upgrade: TC stop(0C03h, 0x00000002)
+[  580.006884] [c6] siw_touch spi1.0: ===== FW upgrade: start (0) =====
+[  580.011761] [c6] siw_touch spi1.0: FW upgrade: not include conf data
+[  580.018130] [c6] siw_touch spi1.0: FW chk_img: code size 20000h, code crc 38DFE7Ch
+[  580.119472] [c1] siw_touch spi1.0: FW upgrade: flash mass erase done
+[  580.282300] [c1] siw_touch spi1.0: FW upgrade: downloading...(12%)
+[  580.444398] [c1] siw_touch spi1.0: FW upgrade: downloading...(25%)
+[  580.606376] [c1] siw_touch spi1.0: FW upgrade: downloading...(37%)
+[  580.768300] [c1] siw_touch spi1.0: FW upgrade: downloading...(50%)
+[  580.930233] [c1] siw_touch spi1.0: FW upgrade: downloading...(62%)
+[  581.092167] [c1] siw_touch spi1.0: FW upgrade: downloading...(75%)
+[  581.254231] [c1] siw_touch spi1.0: FW upgrade: downloading...(87%)
+[  581.416184] [c1] siw_touch spi1.0: FW upgrade: downloading...(100%)
+[  581.737065] [c1] siw_touch spi1.0: FW upgrade: boot loader ready
+[  582.062023] [c2] siw_touch spi1.0: FW upgrade: flash crc result(005Dh) 800D800Dh
+[  582.068120] [c2] siw_touch spi1.0: FW upgrade: flash crc pass(005Eh) 1h
+[  582.176844] [c2] siw_touch spi1.0: FW upgrade: flash crc check done
+[  582.391856] [c2] siw_touch spi1.0: ===== FW upgrade: done (0) =====
+[  582.396660] [c2] siw_touch spi1.0: FW upgrade: status 0(OK)
+
+//Auto-reset after FW upgrade
+[  582.402248] [c2] siw_touch spi1.0: SW42000A reset control(0x1)
+[  582.408038] [c2] siw_touch spi1.0: HW Reset(Async)
+[  582.412833] [c2] siw_touch spi1.0: (W) (warn) already irq disabled
+[  582.626855] [c2] siw_touch spi1.0: SW42000A init work start(v2.21b)
+[  582.632585] [c2] siw_touch spi1.0: [T] chip id 7600, version v0.10 (0x040A000A, 0x01)
+[  582.639484] [c2] siw_touch spi1.0: [T] product id L1W57F2, flash boot idle(done), crc ok (0x00000004)
+[  582.649285] [c2] siw_touch spi1.0: [SW42000A] IC info is good: 10, 4
+[  582.655554] [c2] siw_touch spi1.0: lpwg resume: mode 0, screen 1
+[  582.660998] [c2] siw_touch spi1.0: lpwg resume: screen(3)
+[  582.666465] [c2] siw_touch spi1.0: current driving mode is U3
+[  582.672211] [c2] siw_touch spi1.0: DDI Display Mode[FFFFh] = 0x00000003
+[  582.678904] [c2] siw_touch spi1.0: TC Driving[0C03h] wr 0x00000301
+[  582.716993] [c2] siw_touch spi1.0: command done: mode 3, running_sts 04h
+[  582.722236] [c2] siw_touch spi1.0: lpwg resume(1, 0): lcd_mode 3, driving_mode 3
+[  582.729610] [c2] siw_touch spi1.0: SW42000A init done
+[  582.734644] [c2] siw_touch spi1.0: clr IRQS_PENDING(512)
+[  582.739954] [c2] siw_touch spi1.0: irq(512) enabled
+[  582.744793] [c2] wake enabled for irq 512
+[  582.748782] [c2] siw_touch spi1.0: irq(512) wake enabled
+
+---------------------------------------------------------------------------------------------------
+
+---------------------------------------------------------------------------------------------------
+
+---------------------------------------------------------------------------------------------------
+
