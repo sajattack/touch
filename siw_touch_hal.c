@@ -8677,40 +8677,55 @@ static void siw_hal_show_chipset_option(struct siw_touch_chip *chip)
 {
 	struct device *dev = chip->dev;
 	struct siw_touch_chip_opt *opt = &chip->opt;
+	struct chip_options {
+		const char *fmt;
+		int value;
+		int chk;
+	} *options, lists[] = {
+		{	" f_info_more     : %d\n", opt->f_info_more, 0	},
+		{	" f_ver_ext       : %d\n", opt->f_ver_ext, 0	},
+		{	" f_attn_opt      : %d\n", opt->f_attn_opt, 0	},
+		{	" f_glove_en      : %d\n", opt->f_glove_en, 0	},
+		{	" f_grab_en       : %d\n", opt->f_grab_en, 0	},
+		{	" f_dbg_report    : %d\n", opt->f_dbg_report, 0	},
+		{	" f_u2_blank_chg  : %d\n", opt->f_u2_blank_chg, 0	},
+		{	" f_flex_report   : %d\n", opt->f_flex_report, 0	},
+		/* */
+		{	" t_boot_mode     : %d\n", opt->t_boot_mode, 0	},
+		{	" t_sts_mask      : %d\n", opt->t_sts_mask, 0	},
+		{	" t_chk_mode      : %d\n", opt->t_chk_mode, 0	},
+		{	" t_sw_rst        : %d\n", opt->t_sw_rst, SIW_SW_RST_TYPE_NONE	},
+		{	" t_clock         : %d\n", opt->t_clock, 0	},
+		{	" t_chk_mipi      : %d\n", opt->t_chk_mipi, 0	},
+		{	" t_chk_frame     : %d\n", opt->t_chk_frame, 0	},
+		{	" t_chk_tci_debug : %d\n", opt->t_chk_tci_debug, 0	},
+		{	" t_chk_sys_error : %d\n", opt->t_chk_sys_error, 0	},
+		{	" t_chk_sys_fault : %d\n", opt->t_chk_sys_fault, 0	},
+		{	" t_chk_fault     : %d\n", opt->t_chk_fault, 0	},
+		{	" t_oled          : %d\n", opt->t_oled, 0	},
+		/* */
+		{	" t_tc_cmd        : %d\n", opt->t_tc_cmd, 0	},
+		{	" t_tc_quirk      : %d\n", opt->t_tc_quirk, 0	},
+		{	" t_lpwg          : %d\n", opt->t_lpwg, 0	},
+		{	" t_knock         : %d\n", opt->t_knock, 0	},
+		{	" t_swipe         : %d\n", opt->t_swipe, 0	},
+		/* */
+		{	" t_bus_opt       : %d\n", opt->t_bus_opt, 0	},
+		{	" t_rw_opt        : %d\n", opt->t_rw_opt, 0	},
+		{	" t_i2c_opt       : %d\n", opt->t_i2c_opt, 0	},
+		{	" t_spi_opt       : %d\n", opt->t_spi_opt, 0	},
+		{ NULL, 0, 0	},
+	};
+
+	options = lists;
 
 	t_dev_info(dev, "[opt summary]\n");
-	t_dev_info(dev, " f_info_more     : %d\n", opt->f_info_more);
-	t_dev_info(dev, " f_ver_ext       : %d\n", opt->f_ver_ext);
-	t_dev_info(dev, " f_attn_opt      : %d\n", opt->f_attn_opt);
-	t_dev_info(dev, " f_glove_en      : %d\n", opt->f_glove_en);
-	t_dev_info(dev, " f_grab_en       : %d\n", opt->f_grab_en);
-	t_dev_info(dev, " f_dbg_report    : %d\n", opt->f_dbg_report);
-	t_dev_info(dev, " f_u2_blank_chg  : %d\n", opt->f_u2_blank_chg);
-	t_dev_info(dev, " f_flex_report   : %d\n", opt->f_flex_report);
+	while (options->fmt != NULL) {
+		if (options->value != options->chk)
+			t_dev_info(dev, options->fmt, options->value);
 
-	t_dev_info(dev, " t_boot_mode     : %d\n", opt->t_boot_mode);
-	t_dev_info(dev, " t_sts_mask      : %d\n", opt->t_sts_mask);
-	t_dev_info(dev, " t_chk_mode      : %d\n", opt->t_chk_mode);
-	t_dev_info(dev, " t_sw_rst        : %d\n", opt->t_sw_rst);
-	t_dev_info(dev, " t_clock         : %d\n", opt->t_clock);
-	t_dev_info(dev, " t_chk_mipi      : %d\n", opt->t_chk_mipi);
-	t_dev_info(dev, " t_chk_frame     : %d\n", opt->t_chk_frame);
-	t_dev_info(dev, " t_chk_tci_debug : %d\n", opt->t_chk_tci_debug);
-	t_dev_info(dev, " t_chk_sys_error : %d\n", opt->t_chk_sys_error);
-	t_dev_info(dev, " t_chk_sys_fault : %d\n", opt->t_chk_sys_fault);
-	t_dev_info(dev, " t_chk_fault     : %d\n", opt->t_chk_fault);
-	t_dev_info(dev, " t_oled          : %d\n", opt->t_oled);
-
-	t_dev_info(dev, " t_tc_cmd        : %d\n", opt->t_tc_cmd);
-	t_dev_info(dev, " t_tc_quirk      : %d\n", opt->t_tc_quirk);
-	t_dev_info(dev, " t_lpwg          : %d\n", opt->t_lpwg);
-	t_dev_info(dev, " t_knock         : %d\n", opt->t_knock);
-	t_dev_info(dev, " t_swipe         : %d\n", opt->t_swipe);
-
-	t_dev_info(dev, " t_bus_opt       : %d\n", opt->t_bus_opt);
-	t_dev_info(dev, " t_rw_opt        : %d\n", opt->t_rw_opt);
-	t_dev_info(dev, " t_i2c_opt       : %d\n", opt->t_i2c_opt);
-	t_dev_info(dev, " t_spi_opt       : %d\n", opt->t_spi_opt);
+		options++;
+	}
 
 	t_dev_info(dev, " drv_reset_low   : %d ms\n", chip->drv_reset_low);
 	t_dev_info(dev, " drv_delay       : %d ms\n", chip->drv_delay);
