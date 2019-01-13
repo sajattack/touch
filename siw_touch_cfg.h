@@ -32,45 +32,11 @@
 
 #define __SIW_SUPPORT_PRD
 
-#if defined(CONFIG_TOUCHSCREEN_SIW_LG4895) ||	\
-	defined(CONFIG_TOUCHSCREEN_SIW_LG4946) ||	\
-	defined(CONFIG_TOUCHSCREEN_SIW_SW49406) ||	\
-	defined(CONFIG_TOUCHSCREEN_SIW_SW49407)
-#define __SIW_SUPPORT_WATCH
-
-#if defined(CONFIG_TOUCHSCREEN_SIW_OPT_SINGLE_SCR)
-#undef __SIW_SUPPORT_WATCH
-#endif
-#endif
-
 //#define __SIW_SUPPORT_DEBUG_OPTION
 
 #if defined(CONFIG_ANDROID)
 #define __SIW_SUPPORT_WAKE_LOCK
 #endif
-
-#if defined(CONFIG_TOUCHSCREEN_SIW_LG4894) ||	\
-	defined(CONFIG_TOUCHSCREEN_SIW_LG4895) ||	\
-	defined(CONFIG_TOUCHSCREEN_SIW_LG4946) ||	\
-	defined(CONFIG_TOUCHSCREEN_SIW_LG4951) ||	\
-	defined(CONFIG_TOUCHSCREEN_SIW_SW49105) ||	\
-	defined(CONFIG_TOUCHSCREEN_SIW_SW49106) ||	\
-	defined(CONFIG_TOUCHSCREEN_SIW_SW49406) ||	\
-	defined(CONFIG_TOUCHSCREEN_SIW_SW49407) ||	\
-	defined(CONFIG_TOUCHSCREEN_SIW_SW49408) ||	\
-	defined(CONFIG_TOUCHSCREEN_SIW_SW49501)
-#define __SIW_SUPPORT_UEVENT
-#endif
-
-#if defined(CONFIG_TOUCHSCREEN_SIW_SW46104) ||	\
-	defined(CONFIG_TOUCHSCREEN_SIW_SW49407) ||	\
-	defined(CONFIG_TOUCHSCREEN_SIW_SW49408) ||	\
-	defined(CONFIG_TOUCHSCREEN_SIW_SW49501) ||	\
-	defined(CONFIG_TOUCHSCREEN_SIW_SW42103) ||	\
-	defined(CONFIG_TOUCHSCREEN_SIW_SW17700)
-#define __SIW_FW_TYPE_1
-#endif
-
 
 //#define __SIW_SUPPORT_PM_QOS
 
@@ -88,10 +54,18 @@
 #define __SIW_CONFIG_FB
 #endif
 
+/*****************************************************************************
+ * Automotive
+ *****************************************************************************/
 #if defined(CONFIG_TOUCHSCREEN_SIW_SW1828) ||	\
 	defined(CONFIG_TOUCHSCREEN_SIW_SW42103) ||	\
 	defined(CONFIG_TOUCHSCREEN_SIW_SW17700)
 #define __SIW_PANEL_CLASS_AUTO
+
+#if defined(CONFIG_TOUCHSCREEN_SIW_SW42103) ||	\
+	defined(CONFIG_TOUCHSCREEN_SIW_SW17700)
+#define __SIW_FW_TYPE_1
+#endif
 
 //#define __SIW_SUPPORT_PROBE_POST_RETRY
 //#define __SIW_SUPPORT_INIT_RETRY
@@ -111,6 +85,9 @@
 #endif
 
 #define __SIW_CONFIG_SYSTEM_PM
+/*****************************************************************************
+ * Large
+ *****************************************************************************/
 #elif defined(CONFIG_TOUCHSCREEN_SIW_SW42101)
 #define __SIW_PANEL_CLASS_LARGE
 
@@ -123,8 +100,30 @@
 #endif
 
 #define __SIW_CONFIG_SYSTEM_PM
-#else	/* General case for Mobile */
+/*****************************************************************************
+ * Mobile
+ *****************************************************************************/
+#else
 #define __SIW_PANEL_CLASS_MOBILE
+
+#define __SIW_SUPPORT_UEVENT
+
+#if defined(CONFIG_TOUCHSCREEN_SIW_LG4895) ||	\
+	defined(CONFIG_TOUCHSCREEN_SIW_LG4946) ||	\
+	defined(CONFIG_TOUCHSCREEN_SIW_SW49406) ||	\
+	defined(CONFIG_TOUCHSCREEN_SIW_SW49407)
+#if !defined(CONFIG_TOUCHSCREEN_SIW_OPT_SINGLE_SCR)
+#define __SIW_SUPPORT_WATCH
+#endif
+#endif
+
+#if defined(CONFIG_TOUCHSCREEN_SIW_SW46104) ||	\
+	defined(CONFIG_TOUCHSCREEN_SIW_SW49407) ||	\
+	defined(CONFIG_TOUCHSCREEN_SIW_SW49408) ||	\
+	defined(CONFIG_TOUCHSCREEN_SIW_SW49501) ||	\
+	defined(CONFIG_TOUCHSCREEN_SIW_SW42000)
+#define __SIW_FW_TYPE_1
+#endif
 
 #if defined(CONFIG_TOUCHSCREEN_SIW_SW42000) ||	\
 	defined(CONFIG_TOUCHSCREEN_SIW_SW42000A) ||	\
@@ -140,7 +139,8 @@
 #define __SIW_CONFIG_KNOCK
 
 //#define __SIW_CONFIG_SYSTEM_PM	//Custom option for special scenario
-#endif	/* */
+#endif
+/*****************************************************************************/
 
 #if defined(__SIW_CONFIG_SYSTEM_PM)
 #if defined(CONFIG_HIBERNATE_CALLBACKS)
