@@ -161,12 +161,60 @@ static void siw_config_status(struct device *dev)
 	t_dev_info(dev, "cfg status : __SIW_CONFIG_FASTBOOT\n");
 #endif
 
+#if defined(__SIW_SUPPORT_PINCTRL)
+	t_dev_info(dev, "cfg status : __SIW_SUPPORT_PINCTRL\n");
+#endif
+
+#if defined(__SIW_SUPPORT_PWRCTRL)
+	t_dev_info(dev, "cfg status : __SIW_SUPPORT_PWRCTRL\n");
+#endif
+
+#if defined(__SIW_SUPPORT_WAKE_LOCK)
+	t_dev_info(dev, "cfg status : __SIW_SUPPORT_WAKE_LOCK\n");
+#endif
+
+#if defined(__SIW_SUPPORT_UEVENT)
+	t_dev_info(dev, "cfg status : __SIW_SUPPORT_UEVENT\n");
+#endif
+
+#if defined(__SIW_CONFIG_KNOCK)
+	t_dev_info(dev, "cfg status : __SIW_CONFIG_KNOCK\n");
+#endif
+
+#if defined(__SIW_CONFIG_SWIPE)
+	t_dev_info(dev, "cfg status : __SIW_CONFIG_SWIPE\n");
+#endif
+
+#if defined(__SIW_CONFIG_PROX_ON_SUSPEND)
+	t_dev_info(dev, "cfg status : __SIW_CONFIG_PROX_ON_SUSPEND\n");
+#endif
+
+#if defined(__SIW_CONFIG_PROX_ON_RESUME)
+	t_dev_info(dev, "cfg status : __SIW_CONFIG_PROX_ON_RESUME\n");
+#endif
+
+#if defined(__SIW_SUPPORT_PRD)
+	t_dev_info(dev, "cfg status : __SIW_SUPPORT_PRD\n");
+#endif
+
+#if defined(__SIW_SUPPORT_ABT)
+	t_dev_info(dev, "cfg status : __SIW_SUPPORT_ABT\n");
+#endif
+
+#if defined(__SIW_SUPPORT_WATCH)
+	t_dev_info(dev, "cfg status : __SIW_SUPPORT_WATCH\n");
+#endif
+
 #if defined(__SIW_SUPPORT_PROBE_POST_RETRY)
 	t_dev_info(dev, "cfg status : __SIW_SUPPORT_PROBE_POST_RETRY\n");
 #endif
 
 #if defined(__SIW_SUPPORT_INIT_RETRY)
 	t_dev_info(dev, "cfg status : __SIW_SUPPORT_INIT_RETRY\n");
+#endif
+
+#if defined(__SIW_SUPPORT_MON_THREAD)
+	t_dev_info(dev, "cfg status : __SIW_SUPPORT_MON_THREAD\n");
 #endif
 }
 
