@@ -139,7 +139,7 @@ enum {
 
 #define PRD_SET_TEST_STR(_name)		[_name] = #_name
 
-static const char *__prd_test_str[] = {
+static const char *__prd_test_str[UX_INVALID] = {
 	PRD_SET_TEST_STR(U3_M2_RAWDATA_TEST),
 	PRD_SET_TEST_STR(U3_M1_RAWDATA_TEST),
 	PRD_SET_TEST_STR(U0_M2_RAWDATA_TEST),
@@ -161,7 +161,7 @@ static const char *__prd_test_str[] = {
 
 static inline const char *prd_get_test_str(int type)
 {
-	int valid = (type < ARRAY_SIZE(__prd_test_str)) & (__prd_test_str[type] != NULL);
+	int valid = (type < UX_INVALID) & (__prd_test_str[type] != NULL);
 	return (valid) ? __prd_test_str[type] : "";
 }
 
@@ -1169,44 +1169,22 @@ static const char *prd_get_data_cmd_name[] = {
 	__PRD_GET_DATA_CMD_SET(CMD_DEBUG_BUF),
 };
 
-static const char *prd_cmp_tool_str[][2] = {
-	[U3_M2_RAWDATA_TEST] = {
-		[0] = "U3_M2_Lower",
-		[1] = "U3_M2_Upper",
-	},
-	[U3_M1_RAWDATA_TEST] = {
-		[0] = "U3_M1_Lower",
-		[1] = "U3_M1_Upper",
-	},
-	[U0_M2_RAWDATA_TEST] = {
-		[0] = "U0_M2_Lower",
-		[1] = "U0_M2_Upper",
-	},
-	[U0_M1_RAWDATA_TEST] = {
-		[0] = "U0_M1_Lower",
-		[1] = "U0_M1_Upper",
-	},
-	[U3_BLU_JITTER_TEST] = {
-		[0] = "U3_Blu_Jitter_Lower",
-		[1] = "U3_Blu_Jitter_Upper",
-	},
-	[U3_JITTER_TEST] = {
-		[0] = "U3_Jitter_Lower",
-		[1] = "U3_Jitter_Upper",
-	},
-	[U3_M1_JITTER_TEST] = {
-		[0] = "U3_M1_Jitter_Lower",
-		[1] = "U3_M1_Jitter_Upper",
-	},
-	[U0_JITTER_TEST] = {
-		[0] = "U0_Jitter_Lower",
-		[1] = "U0_Jitter_Upper",
-	},
-	[U0_M1_JITTER_TEST] = {
-		[0] = "U0_M1_Jitter_Lower",
-		[1] = "U0_M1_Jitter_Upper",
-	},
+static const char *prd_cmp_tool_str[UX_INVALID][2] = {
+	[U3_M2_RAWDATA_TEST]	= { "U3_M2_Lower", "U3_M2_Upper", },
+	[U3_M1_RAWDATA_TEST]	= { "U3_M1_Lower", "U3_M1_Upper", },
+	[U0_M2_RAWDATA_TEST]	= { "U0_M2_Lower", "U0_M2_Upper", },
+	[U0_M1_RAWDATA_TEST]	= { "U0_M1_Lower", "U0_M1_Upper", },
+	[U3_BLU_JITTER_TEST]	= { "U3_Blu_Jitter_Lower", "U3_Blu_Jitter_Upper", },
+	[U3_JITTER_TEST]		= { "U3_Jitter_Lower", "U3_Jitter_Upper", },
+	[U3_M1_JITTER_TEST]		= { "U3_M1_Jitter_Lower", "U3_M1_Jitter_Upper", },
+	[U0_JITTER_TEST]		= { "U0_Jitter_Lower", "U0_Jitter_Upper", },
+	[U0_M1_JITTER_TEST]		= { "U0_M1_Jitter_Lower", "U0_M1_Jitter_Upper", },
 };
+
+static inline const char *prd_get_cmp_tool_str(int type, int upper)
+{
+	return (type < UX_INVALID) ? prd_cmp_tool_str[type][!!upper] : NULL;
+}
 
 enum{
 	M1_EVEN_DATA = 0,
@@ -3919,13 +3897,13 @@ static int prd_compare_rawdata(struct siw_hal_prd_data *prd, int type)
 	int opt = 1;
 	int ret = 0;
 
-	if ((type >= UX_INVALID) && !prd_cmp_tool_str[type]) {
+	if (prd_get_cmp_tool_str(type, 0) == NULL) {
 		t_prd_err(prd, "invalid type, %d\n", type);
 		return -EINVAL;
 	}
 
-	snprintf(lower_str, sizeof(lower_str), prd_cmp_tool_str[type][0]);
-	snprintf(upper_str, sizeof(upper_str), prd_cmp_tool_str[type][1]);
+	snprintf(lower_str, sizeof(lower_str), prd_get_cmp_tool_str(type, 0));
+	snprintf(upper_str, sizeof(upper_str), prd_get_cmp_tool_str(type, 1));
 
 	sel_m1 = prd_check_type(prd, type, 2);
 	if (sel_m1 < 0) {
@@ -6897,13 +6875,13 @@ skip_set_lpwg_sd:
 		return count;
 	}
 
-	if (prd_cmp_tool_str[type]) {
-		t_prd_info(prd, "set_sd: %s %d, %s %d\n",
-			prd_cmp_tool_str[type][0], lower,
-			prd_cmp_tool_str[type][0], upper);
-	} else {
+	if (prd_get_cmp_tool_str(type, 0) == NULL) {
 		t_prd_info(prd, "set_sd: type %d, lower %d, upper %d\n",
 			type, lower, upper);
+	} else {
+		t_prd_info(prd, "set_sd: %s %d, %s %d\n",
+			prd_get_cmp_tool_str(type, 0), lower,
+			prd_get_cmp_tool_str(type, 1), upper);
 	}
 
 	return count;
