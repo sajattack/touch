@@ -1075,6 +1075,7 @@ struct siw_ts {
 #endif
 #if defined(__SIW_CONFIG_FB)
 	struct notifier_block fb_notif;
+#endif	/* __SIW_CONFIG_FB */
 	char fb_msg_unblank[32];
 	char fb_msg_blank[32];
 	int fb_ret_revert_resume;
@@ -1083,7 +1084,6 @@ struct siw_ts {
 	int fb_ret_early_suspend;
 	int fb_ret_resume;
 	int fb_ret_suspend;
-#endif	/* __SIW_CONFIG_FB */
 
 	struct siw_mon_thread mon_thread;
 

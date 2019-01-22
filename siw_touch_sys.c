@@ -217,6 +217,10 @@ int siw_touch_sys_power_lock(struct device *dev, int set)
 	return 0;
 }
 
+#define DRM_RET_NOOP		(-EPERM)
+#define DRM_RESUME			FB_RESUME
+#define DRM_SUSPEND			FB_SUSPEND
+
 #if defined(__SIW_CONFIG_SYS_FB)
 /*
  * Example about DRM(Direct Rendering Manager) interface
@@ -224,71 +228,208 @@ int siw_touch_sys_power_lock(struct device *dev, int set)
  * because this highly depends on system architecture.
  */
 #if defined(__SIW_SUPPORT_DRM_EXAMPLE)
-static int drm_notifier_callback(
+#include <linux/msm_drm_notify.h>
+
+#define __DRM_EARLY_EVENT_BLANK		MSM_DRM_EARLY_EVENT_BLANK
+#define __DRM_EVENT_BLANK			MSM_DRM_EVENT_BLANK
+#define __DRM_BLANK_UNBLANK			MSM_DRM_BLANK_UNBLANK
+#define __DRM_BLANK_POWERDOWN		MSM_DRM_BLANK_POWERDOWN
+#else	/* __SIW_SUPPORT_DRM_EXAMPLE */
+#define __DRM_EARLY_EVENT_BLANK		-1
+#define __DRM_EVENT_BLANK			-1
+#define __DRM_BLANK_UNBLANK			-1
+#define __DRM_BLANK_POWERDOWN		-2
+#endif	/* __SIW_SUPPORT_DRM_EXAMPLE */
+
+static int __drm_register_client(struct notifier_block *block)
+{
+#if defined(__SIW_SUPPORT_DRM_EXAMPLE)
+	return msm_drm_register_client(block);
+#else
+	return 0;
+#endif
+}
+
+static int __drm_unregister_client(struct notifier_block *block)
+{
+#if defined(__SIW_SUPPORT_DRM_EXAMPLE)
+	return msm_drm_unregister_client(block);
+#else
+	return 0;
+#endif
+}
+
+static int __drm_blank(void *data)
+{
+#if defined(__SIW_SUPPORT_DRM_EXAMPLE)
+	struct msm_drm_notifier *ev = (struct msm_drm_notifier *)data;
+
+	if (ev) {
+		return *(int *)ev->data;
+	}
+#endif
+
+	return -EINVAL;
+}
+
+static int siw_drm_notifier_work(
+			struct siw_ts *ts,
+			unsigned long event, int blank)
+{
+	struct device *dev = ts->dev;
+	char *fb_msg_unblank = ts->fb_msg_unblank;
+	char *fb_msg_blank = ts->fb_msg_blank;
+	int ret = DRM_RET_NOOP;
+
+#if 0
+	if (event == __DRM_R_EARLY_EVENT_BLANK) {
+		switch (blank) {
+		case __DRM_BLANK_UNBLANK:
+			t_dev_info(dev, "%s(r_early)\n", fb_msg_unblank);
+			ret = ts->fb_ret_revert_suspend;
+			break;
+		case __DRM_BLANK_POWERDOWN:
+			t_dev_info(dev, "%s(r_early)\n", fb_msg_blank);
+			ret = ts->fb_ret_revert_resume;
+			break;
+		}
+		goto out;
+	}
+#endif
+
+	if (event == __DRM_EARLY_EVENT_BLANK) {
+		switch (blank) {
+		case __DRM_BLANK_UNBLANK:
+			t_dev_info(dev, "%s(early)\n", fb_msg_unblank);
+			ret = ts->fb_ret_early_resume;
+		case __DRM_BLANK_POWERDOWN:
+			t_dev_info(dev, "%s(early)\n", fb_msg_blank);
+			ret = ts->fb_ret_early_suspend;
+		}
+		goto out;
+	}
+
+	if (event == __DRM_EVENT_BLANK) {
+		switch (blank) {
+		case __DRM_BLANK_UNBLANK:
+			t_dev_info(dev, "%s\n", fb_msg_unblank);
+			ret = ts->fb_ret_resume;
+		case __DRM_BLANK_POWERDOWN:
+			t_dev_info(dev, "%s\n", fb_msg_blank);
+			ret = ts->fb_ret_suspend;
+		}
+		goto out;
+	}
+
+out:
+	return ret;
+}
+
+static int siw_drm_notifier_callback(
 			struct notifier_block *self,
 			unsigned long event, void *data)
 {
 	struct siw_ts *ts =
 		container_of(self, struct siw_ts, sys_fb_notif);
 	struct device *dev = ts->dev;
-	struct msm_drm_notifier *ev = (struct msm_drm_notifier *)data;
-	int *blank;
+	int blank = __drm_blank(data);
+	int ret = 0;
 
-	if (!ev || !ev->data) {
+	if (blank < 0) {
 		return 0;
 	}
 
-	blank = (int *)ev->data;
-
-	if (event == MSM_DRM_EARLY_EVENT_BLANK) {
-		if (*blank == MSM_DRM_BLANK_UNBLANK) {
-			t_dev_info(dev, "drm_unblank(early)\n");
-		} else if (*blank == MSM_DRM_BLANK_POWERDOWN) {
-			t_dev_info(dev, "drm_blank(early)\n");
-			siw_touch_suspend_call(dev);
-		}
-	}
-
-	if (event == MSM_DRM_EVENT_BLANK) {
-		if (*blank == MSM_DRM_BLANK_UNBLANK) {
-			t_dev_info(dev, "drm_unblank\n");
-			siw_touch_resume_call(dev);
-		} else if (*blank == MSM_DRM_BLANK_POWERDOWN) {
-			t_dev_info(dev, "drm_blank\n");
-		}
+	ret = siw_drm_notifier_work(ts, event, blank);
+	switch (ret) {
+	case DRM_RESUME:
+		siw_touch_resume_call(dev);
+		break;
+	case DRM_SUSPEND:
+		siw_touch_suspend_call(dev);
+		break;
 	}
 
 	return 0;
 }
-#endif
-#endif	/* __SIW_CONFIG_SYS_FB */
 
-int siw_touch_sys_fb_register_client(struct device *dev)
+static int siw_drm_register_client(struct device *dev)
 {
-#if defined(__SIW_SUPPORT_DRM_EXAMPLE)
 	struct siw_ts *ts = to_touch_core(dev);
 
 	t_dev_info(dev, "drm_register_client - sys_fb_notif\n");
 
-	ts->sys_fb_notif.notifier_call = drm_notifier_callback;
+	ts->fb_ret_revert_resume = DRM_RET_NOOP;
+	ts->fb_ret_revert_suspend = DRM_RET_NOOP;
+	ts->fb_ret_early_resume = DRM_RET_NOOP;
+	ts->fb_ret_early_suspend = DRM_RET_NOOP;
+	ts->fb_ret_resume = DRM_RET_NOOP;
+	ts->fb_ret_suspend = DRM_RET_NOOP;
 
-	return msm_drm_register_client(&ts->sys_fb_notif);
-#else
-	return 0;
+#if defined(__SIW_PANEL_CLASS_MOBILE_OLED)
+	snprintf(ts->fb_msg_unblank, sizeof(ts->fb_msg_unblank), "drm_unblank");
+	snprintf(ts->fb_msg_blank, sizeof(ts->fb_msg_blank), "drm_blank");
+
+	ts->fb_ret_suspend = DRM_SUSPEND;		/* suspend later */
+	ts->fb_ret_resume = DRM_RESUME;			/* resume later */
+#elif defined(__SIW_CONFIG_SYSTEM_PM)
+	snprintf(ts->fb_msg_unblank, sizeof(ts->fb_msg_unblank), "drm_unblank");
+	snprintf(ts->fb_msg_blank, sizeof(ts->fb_msg_blank), "drm_blank");
+
+	ts->fb_ret_revert_resume = DRM_RESUME;	/* revert to resume */
+	ts->fb_ret_early_suspend = DRM_SUSPEND;	/* suspend early */
+	ts->fb_ret_resume = DRM_RESUME;			/* resume later */
+#else	/* */
+	snprintf(ts->fb_msg_unblank, sizeof(ts->fb_msg_unblank), "DRM_UNBLANK");
+	snprintf(ts->fb_msg_blank, sizeof(ts->fb_msg_blank), "DRM_BLANK");
 #endif
+
+	ts->sys_fb_notif.notifier_call = siw_drm_notifier_callback;
+
+	return __drm_register_client(&ts->sys_fb_notif);
 }
 
-int siw_touch_sys_fb_unregister_client(struct device *dev)
+static int siw_drm_unregister_client(struct device *dev)
 {
-#if defined(__SIW_SUPPORT_DRM_EXAMPLE)
 	struct siw_ts *ts = to_touch_core(dev);
 
 	t_dev_info(dev, "drm_unregister_client - sys_fb_notif\n");
 
-	return msm_drm_unregister_client(&ts->sys_fb_notif);
-#else
+	return __drm_unregister_client(&ts->sys_fb_notif);
+}
+#else	/* __SIW_CONFIG_SYS_FB */
+static inline int siw_drm_register_client(struct device *dev)
+{
 	return 0;
-#endif
+}
+
+static inline int siw_drm_unregister_client(struct device *dev)
+{
+	return 0;
+}
+#endif	/* __SIW_CONFIG_SYS_FB */
+
+int siw_touch_sys_fb_register_client(struct device *dev)
+{
+	int ret = 0;
+
+	ret = siw_drm_register_client(dev);
+	if (ret < 0) {
+		t_dev_err(dev, "failed to register drm client, %d\n", ret);
+	}
+
+	return ret;
+}
+
+int siw_touch_sys_fb_unregister_client(struct device *dev)
+{
+	int ret = 0;
+
+	ret = siw_drm_unregister_client(dev);
+	if (ret < 0) {
+		t_dev_err(dev, "failed to unregister drm client, %d\n", ret);
+	}
+
+	return ret;
 }
 
 
