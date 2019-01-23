@@ -14,10 +14,6 @@
 
 #include "siw_touch_cfg.h"
 
-#if defined(__SIW_SUPPORT_PM_QOS)
-#include <linux/pm_qos.h>
-#endif
-
 #include "siw_touch_hal_reg.h"
 
 struct siw_hal_rw_multi {
@@ -613,9 +609,6 @@ struct siw_touch_chip {
 	atomic_t boot;
 	atomic_t esd_noti_sent;
 	int boot_fail_cnt;
-#if defined(__SIW_SUPPORT_PM_QOS)
-	struct pm_qos_request pm_qos_req;
-#endif
 	struct siw_hal_reg_log reg_log[REG_LOG_MAX];
 	struct siw_hal_debug dbg;
 	int fw_abs_path;

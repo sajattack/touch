@@ -173,6 +173,10 @@ static void siw_config_status(struct device *dev)
 	t_dev_info(dev, "cfg status : __SIW_SUPPORT_WAKE_LOCK\n");
 #endif
 
+#if defined(__SIW_SUPPORT_PM_QOS)
+	t_dev_info(dev, "cfg status : __SIW_SUPPORT_PM_QOS\n");
+#endif
+
 #if defined(__SIW_SUPPORT_UEVENT)
 	t_dev_info(dev, "cfg status : __SIW_SUPPORT_UEVENT\n");
 #endif
@@ -547,6 +551,65 @@ void siw_touch_lpwg_wake_unlock(struct device *dev)
 
 }
 #endif	/* __SIW_SUPPORT_WAKE_LOCK */
+
+#if defined(__SIW_SUPPORT_PM_QOS)
+static void __used siw_touch_init_pm_qos_req(struct siw_ts *ts)
+{
+	struct pm_qos_request *req = &ts->pm_qos_req;
+
+	if (!pm_qos_request_active(req)) {
+		pm_qos_add_request(req, PM_QOS_CPU_DMA_LATENCY, PM_QOS_DEFAULT_VALUE);
+	}
+}
+
+static void __used siw_touch_free_pm_qos_req(struct siw_ts *ts)
+{
+	struct pm_qos_request *req = &ts->pm_qos_req;
+
+	if (!pm_qos_request_active(req)) {
+		return;
+	}
+
+	pm_qos_remove_request(req);
+}
+
+void __used siw_touch_set_pm_qos_req(struct device *dev, int new_value)
+{
+	struct siw_ts *ts = to_touch_core(dev);
+	struct pm_qos_request *req = &ts->pm_qos_req;
+
+	if (!pm_qos_request_active(req)) {
+		return;
+	}
+
+	pm_qos_update_request(req, new_value);
+}
+
+void __used siw_touch_clr_pm_qos_req(struct device *dev)
+{
+	siw_touch_set_pm_qos_req(dev, PM_QOS_DEFAULT_VALUE);
+}
+#else	/* __SIW_SUPPORT_PM_QOS */
+static inline void siw_touch_init_pm_qos_req(struct siw_ts *ts)
+{
+
+}
+
+static inline void siw_touch_free_pm_qos_req(struct siw_ts *ts)
+{
+
+}
+
+void siw_touch_set_pm_qos_req(struct device *dev, s32 new_value)
+{
+
+}
+
+void siw_touch_clr_pm_qos_req(struct device *dev)
+{
+
+}
+#endif	/* __SIW_SUPPORT_PM_QOS */
 
 int siw_touch_power_state(struct device *dev)
 {
@@ -1016,6 +1079,8 @@ static void __used siw_touch_init_locks(struct siw_ts *ts)
 	mutex_init(&ts->power_lock);
 
 	siw_touch_init_wake_lock(ts);
+
+	siw_touch_init_pm_qos_req(ts);
 }
 
 static void __used siw_touch_free_locks(struct siw_ts *ts)
@@ -1028,6 +1093,8 @@ static void __used siw_touch_free_locks(struct siw_ts *ts)
 	mutex_destroy(&ts->power_lock);
 
 	siw_touch_free_wake_lock(ts);
+
+	siw_touch_free_pm_qos_req(ts);
 }
 
 static void siw_touch_initialize(struct siw_ts *ts)

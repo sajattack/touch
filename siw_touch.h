@@ -42,6 +42,10 @@
 #include <linux/wakelock.h>
 #endif
 
+#if defined(__SIW_SUPPORT_PM_QOS)
+#include <linux/pm_qos.h>
+#endif
+
 #include <linux/input/siw_touch_notify.h>
 
 #include "siw_touch_hal_reg.h"
@@ -998,6 +1002,11 @@ struct siw_ts {
 	struct wake_lock core_wake_lock;
 	struct wake_lock lpwg_wake_lock;
 #endif
+
+#if defined(__SIW_SUPPORT_PM_QOS)
+	struct pm_qos_request pm_qos_req;
+#endif
+
 	struct state_info state;
 
 	struct touch_pins pins;
@@ -1717,6 +1726,10 @@ extern void siw_touch_core_wake_lock(struct device *dev, int timeout);
 extern void siw_touch_core_wake_unlock(struct device *dev);
 extern void siw_touch_lpwg_wake_lock(struct device *dev, int timeout);
 extern void siw_touch_lpwg_wake_unlock(struct device *dev);
+
+/* __SIW_SUPPORT_PM_QOS */
+extern void siw_touch_set_pm_qos_req(struct device *dev, int new_value);
+extern void siw_touch_clr_pm_qos_req(struct device *dev);
 
 extern int siw_touch_power_state(struct device *dev);
 extern int siw_touch_power_lock(struct device *dev, int set);

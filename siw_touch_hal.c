@@ -7430,13 +7430,9 @@ static int siw_hal_irq_handler(struct device *dev)
 		return 0;
 	}
 
-#if defined(__SIW_SUPPORT_PM_QOS)
-	pm_qos_update_request(&chip->pm_qos_req, 10);
-#endif
+	siw_touch_set_pm_qos_req(dev, 10);
 	ret = siw_hal_irq_get_report(dev);
-#if defined(__SIW_SUPPORT_PM_QOS)
-	pm_qos_update_request(&chip->pm_qos_req, PM_QOS_DEFAULT_VALUE);
-#endif
+	siw_touch_clr_pm_qos_req(dev);
 	if (ret < 0) {
 		goto out;
 	}
@@ -8757,10 +8753,6 @@ static void __siw_hal_do_remove(struct device *dev)
 
 	siw_hal_power(dev, POWER_OFF);
 
-#if defined(__SIW_SUPPORT_PM_QOS)
-	pm_qos_remove_request(&chip->pm_qos_req);
-#endif
-
 	siw_hal_power_free(dev);
 	siw_hal_free_gpios(dev);
 
@@ -8801,12 +8793,6 @@ static int siw_hal_probe(struct device *dev)
 
 	siw_hal_init_gpios(dev);
 	siw_hal_power_init(dev);
-
-#if defined(__SIW_SUPPORT_PM_QOS)
-	pm_qos_add_request(&chip->pm_qos_req,
-				PM_QOS_CPU_DMA_LATENCY,
-				PM_QOS_DEFAULT_VALUE);
-#endif
 
 	siw_hal_power(dev, POWER_ON);
 	siw_hal_trigger_gpio_reset(dev, 0);
