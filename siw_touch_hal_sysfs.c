@@ -1229,6 +1229,8 @@ static int siw_hal_create_sysfs(struct device *dev)
 	t_dev_dbg_base(dev, "%s sysfs registered\n",
 			touch_chip_name(ts));
 
+	chip->sysfs_done = 1;
+
 	return 0;
 
 out_add:
@@ -1244,12 +1246,17 @@ static void siw_hal_remove_sysfs(struct device *dev)
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
 
+	if (!chip->sysfs_done)
+		return;
+
 	siw_hal_sysfs_add(dev, DRIVER_FREE);
 
 	sysfs_remove_group(&ts->kobj, &siw_hal_attribute_group);
 
 	t_dev_dbg_base(dev, "%s sysfs unregistered\n",
 			touch_chip_name(ts));
+
+	chip->sysfs_done = 0;
 }
 
 int siw_hal_sysfs(struct device *dev, int on_off)

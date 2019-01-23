@@ -614,6 +614,8 @@ struct siw_touch_chip {
 	int fw_abs_path;
 	int fwup_status;
 	/* */
+	int sysfs_done;
+	/* */
 	struct siw_hal_fquirks fquirks;
 };
 
