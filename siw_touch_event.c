@@ -305,10 +305,7 @@ void siw_touch_send_uevent(void *ts_data, int type)
 	}
 
 	if (atomic_read(&ts->state.uevent) == UEVENT_IDLE) {
-	#if defined(__SIW_SUPPORT_WAKE_LOCK)
-		wake_lock_timeout(&ts->lpwg_wake_lock,
-						msecs_to_jiffies(3000));
-	#endif
+		siw_touch_lpwg_wake_lock(ts->dev, 3000);
 
 		atomic_set(&ts->state.uevent, UEVENT_BUSY);
 

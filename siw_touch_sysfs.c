@@ -294,9 +294,8 @@ static ssize_t _store_lpwg_data(struct device *dev,
 	t_dev_info(dev, "uevent reply %d\n", reply);
 
 	atomic_set(&ts->state.uevent, UEVENT_IDLE);
-#if defined(__SIW_SUPPORT_WAKE_LOCK)
-	wake_unlock(&ts->lpwg_wake_lock);
-#endif
+
+	siw_touch_lpwg_wake_unlock(dev);
 
 	return count;
 }

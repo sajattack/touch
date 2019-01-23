@@ -995,6 +995,7 @@ struct siw_ts {
 
 	struct kobject kobj;
 #if defined(__SIW_SUPPORT_WAKE_LOCK)
+	struct wake_lock core_wake_lock;
 	struct wake_lock lpwg_wake_lock;
 #endif
 	struct state_info state;
@@ -1710,6 +1711,12 @@ extern void *siw_setup_operations(struct siw_ts *ts, struct siw_touch_operations
 
 extern int siw_touch_set(struct device *dev, u32 cmd, void *buf);
 extern int siw_touch_get(struct device *dev, u32 cmd, void *buf);
+
+/* __SIW_SUPPORT_WAKE_LOCK */
+extern void siw_touch_core_wake_lock(struct device *dev, int timeout);
+extern void siw_touch_core_wake_unlock(struct device *dev);
+extern void siw_touch_lpwg_wake_lock(struct device *dev, int timeout);
+extern void siw_touch_lpwg_wake_unlock(struct device *dev);
 
 extern int siw_touch_power_state(struct device *dev);
 extern int siw_touch_power_lock(struct device *dev, int set);

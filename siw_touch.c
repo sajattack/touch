@@ -461,6 +461,93 @@ int siw_touch_get(struct device *dev, u32 cmd, void *buf)
 	return ret;
 }
 
+#if defined(__SIW_SUPPORT_WAKE_LOCK)
+#define SIW_TOUCH_CORE_LOCK_NAME		"touch_core"
+#define SIW_TOUCH_LPWG_LOCK_NAME		"touch_lpwg"
+
+static void __used siw_touch_init_wake_lock(struct siw_ts *ts)
+{
+	wake_lock_init(&ts->core_wake_lock,
+		WAKE_LOCK_SUSPEND, SIW_TOUCH_CORE_LOCK_NAME);
+	wake_lock_init(&ts->lpwg_wake_lock,
+		WAKE_LOCK_SUSPEND, SIW_TOUCH_LPWG_LOCK_NAME);
+}
+
+static void __used siw_touch_free_wake_lock(struct siw_ts *ts)
+{
+	wake_lock_destroy(&ts->core_wake_lock);
+	wake_lock_destroy(&ts->lpwg_wake_lock);
+}
+
+void __used siw_touch_core_wake_lock(struct device *dev, int timeout)
+{
+	struct siw_ts *ts = to_touch_core(dev);
+
+	if (!timeout) {
+		wake_lock(&ts->core_wake_lock);
+		return;
+	}
+
+	wake_lock_timeout(&ts->core_wake_lock, msecs_to_jiffies(timeout));
+}
+
+void __used siw_touch_core_wake_unlock(struct device *dev)
+{
+	struct siw_ts *ts = to_touch_core(dev);
+
+	wake_unlock(&ts->core_wake_lock);
+}
+
+void __used siw_touch_lpwg_wake_lock(struct device *dev, int timeout)
+{
+	struct siw_ts *ts = to_touch_core(dev);
+
+	if (!timeout) {
+		wake_lock(&ts->lpwg_wake_lock);
+		return;
+	}
+
+	wake_lock_timeout(&ts->lpwg_wake_lock, msecs_to_jiffies(timeout));
+}
+
+void __used siw_touch_lpwg_wake_unlock(struct device *dev)
+{
+	struct siw_ts *ts = to_touch_core(dev);
+
+	wake_unlock(&ts->lpwg_wake_lock);
+}
+#else	/* __SIW_SUPPORT_WAKE_LOCK */
+static inline void __used siw_touch_init_wake_lock(struct siw_ts *ts)
+{
+
+}
+
+static inline void __used siw_touch_free_wake_lock(struct siw_ts *ts)
+{
+
+}
+
+void siw_touch_core_wake_lock(struct device *dev, int timeout)
+{
+
+}
+
+void siw_touch_core_wake_unlock(struct device *dev)
+{
+
+}
+
+void siw_touch_lpwg_wake_lock(struct device *dev, int timeout)
+{
+
+}
+
+void siw_touch_lpwg_wake_unlock(struct device *dev)
+{
+
+}
+#endif	/* __SIW_SUPPORT_WAKE_LOCK */
+
 int siw_touch_power_state(struct device *dev)
 {
 	struct siw_ts *ts = to_touch_core(dev);
@@ -479,6 +566,12 @@ int siw_touch_power_lock(struct device *dev, int set)
 	int ret = 0;
 
 	mutex_lock(&ts->power_lock);
+
+	if (set) {
+		siw_touch_core_wake_lock(dev, 0);
+	} else {
+		siw_touch_core_wake_unlock(dev);
+	}
 
 	ret = siw_touch_sys_power_lock(dev, set);
 
@@ -913,8 +1006,6 @@ static void siw_touch_update_sensitivity(struct siw_ts *ts)
 }
 #endif	/* __SIW_SUPPORT_ASC */
 
-#define SIW_TOUCH_LPWG_LOCK_NAME		"touch_lpwg"
-
 static void __used siw_touch_init_locks(struct siw_ts *ts)
 {
 	t_dev_dbg_base(ts->dev, "touch init locks\n");
@@ -923,10 +1014,8 @@ static void __used siw_touch_init_locks(struct siw_ts *ts)
 	mutex_init(&ts->reset_lock);
 	mutex_init(&ts->probe_lock);
 	mutex_init(&ts->power_lock);
-#if defined(__SIW_SUPPORT_WAKE_LOCK)
-	wake_lock_init(&ts->lpwg_wake_lock,
-		WAKE_LOCK_SUSPEND, SIW_TOUCH_LPWG_LOCK_NAME);
-#endif
+
+	siw_touch_init_wake_lock(ts);
 }
 
 static void __used siw_touch_free_locks(struct siw_ts *ts)
@@ -937,9 +1026,8 @@ static void __used siw_touch_free_locks(struct siw_ts *ts)
 	mutex_destroy(&ts->reset_lock);
 	mutex_destroy(&ts->probe_lock);
 	mutex_destroy(&ts->power_lock);
-#if defined(__SIW_SUPPORT_WAKE_LOCK)
-	wake_lock_destroy(&ts->lpwg_wake_lock);
-#endif
+
+	siw_touch_free_wake_lock(ts);
 }
 
 static void siw_touch_initialize(struct siw_ts *ts)
@@ -1593,9 +1681,9 @@ static irqreturn_t __used siw_touch_irq_handler(int irq, void *dev_id)
 		t_dev_info(dev, "interrupt in suspend[%d]\n",
 				atomic_read(&ts->state.pm));
 		atomic_set(&ts->state.pm, DEV_PM_SUSPEND_IRQ);
-	#if defined(__SIW_SUPPORT_WAKE_LOCK)
-		wake_lock_timeout(&ts->lpwg_wake_lock, msecs_to_jiffies(1000));
-	#endif
+
+		siw_touch_lpwg_wake_lock(dev, 1000);
+
 		return IRQ_HANDLED;
 	}
 
@@ -1604,6 +1692,7 @@ static irqreturn_t __used siw_touch_irq_handler(int irq, void *dev_id)
 
 static int _siw_touch_do_irq_thread(struct siw_ts *ts)
 {
+	struct device *dev = ts->dev;
 	int ret = 0;
 
 	ts->intr_status = 0;
@@ -1614,7 +1703,7 @@ static int _siw_touch_do_irq_thread(struct siw_ts *ts)
 
 	ret = siw_ops_irq_handler(ts);
 	if (ret < 0) {
-		t_dev_dbg_irq(ts->dev, "Err in irq_handler of %s, %d",
+		t_dev_dbg_irq(dev, "Err in irq_handler of %s, %d",
 				touch_chip_name(ts), ret);
 		if (ret == -ERESTART) {
 			if (t_dbg_flag & DBG_FLAG_SKIP_IRQ_RESET) {
@@ -1622,9 +1711,7 @@ static int _siw_touch_do_irq_thread(struct siw_ts *ts)
 			}
 
 			if (atomic_read(&ts->state.pm) == DEV_PM_RESUME) {
-			#if defined(__SIW_SUPPORT_WAKE_LOCK)
-				wake_lock_timeout(&ts->lpwg_wake_lock, msecs_to_jiffies(1000));
-			#endif
+				siw_touch_lpwg_wake_lock(dev, 1000);
 			}
 
 			siw_touch_reset(ts);
