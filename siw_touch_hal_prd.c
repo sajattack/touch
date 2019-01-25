@@ -391,21 +391,74 @@ struct siw_hal_prd_ctrl {
 	u32 buf_self_size;
 };
 
+/* __SIW_SUPPORT_PRD_TUNE_FLEX */
+/*
+ * [OLED]
+ * (TBD)
+ */
+
+/*
+ * [AIT]
+ * unit_base = sizeof(code_goft_tune_hdr) + ((ch)<<2);
+ *                                          : u8 loft_tune_ux_m1[ch]
+ *                                            u8 loft_tune_ux_m2_g1[ch]
+ *                                            u8 loft_tune_ux_m2_g2[ch]
+ *                                            u8 loft_tune_ux_m2_g3[ch]
+ * unit_size = unit_base<<1;	//left + right
+ * [u3 & u0 case]
+ * total size = sizeof(u32) + (unit_size * 2);
+ *              : u32 magic
+ * grp_u3_offset = sizeof(u32)
+ * grp_u0_offset = sizeof(u32) + unit_size
+ *
+ * [u3 & u2 & u0 case - SW49408/SW49409/SW49410]
+ * total size = sizeof(u32) + (unit_size * 3);
+ * grp_u3_offset = sizeof(u32)
+ * grp_u2_offset = sizeof(u32) + unit_size
+ * grp_u0_offset = sizeof(u32) + (unit_size * 2);
+ *
+ * [u3 & u0 & u2 case - later]
+ * total size = sizeof(u32) + (unit_size * 3);
+ * grp_u3_offset = sizeof(u32)
+ * grp_u0_offset = sizeof(u32) + unit_size
+ * grp_u2_offset = sizeof(u32) + (unit_size * 2);
+ */
+
+struct code_goft_tune_hdr {
+	u32 goft_tune_m1:4;
+	u32 goft_tune_m1_sign:1;
+	u32 goft_tune_m2:4;
+	u32 goft_tune_m2_sign:1;
+	u32 goft_tune_nd:5;
+	u32 rsvd:17;
+} __packed;
+
 struct siw_hal_prd_tune {
+	int type;
+	u32 magic_size;
+	u32 hdr_size;
+	u32 unit_base;
+	u32 unit_size;
+	u32 grp_u3_offset;
+	u32 grp_u2_offset;
+	u32 grp_u0_offset;
+	//
 	u32 ch;
 	u32 code_size;
 	//
 	u32 code_l_goft_offset;
-	u32 code_l_m1_oft_offset;
-	u32 code_l_g1_oft_offset;
-	u32 code_l_g2_oft_offset;
-	u32 code_l_g3_oft_offset;
+	u32 code_l_m1_goft_offset;
+	u32 code_l_g1_goft_offset;
+	u32 code_l_g2_goft_offset;
+	u32 code_l_g3_goft_offset;
+	u32 code_l_nd_goft_offset;
 	//
 	u32 code_r_goft_offset;
-	u32 code_r_m1_oft_offset;
-	u32 code_r_g1_oft_offset;
-	u32 code_r_g2_oft_offset;
-	u32 code_r_g3_oft_offset;
+	u32 code_r_m1_goft_offset;
+	u32 code_r_g1_goft_offset;
+	u32 code_r_g2_goft_offset;
+	u32 code_r_g3_goft_offset;
+	u32 code_r_nd_goft_offset;
 };
 
 struct siw_hal_prd_sd_cmd {
@@ -4206,72 +4259,103 @@ out:
 	return ret;
 }
 
-static void prd_tune_display(struct siw_hal_prd_data *prd, char *tc_tune_code,
-			int offset, int type, int result_on)
+enum {
+	PRD_TUNE_LEFT = 0,
+	PRD_TUNE_RIGHT = 1,
+	/* */
+	PRD_TUNE_GOFT_M1 = 0x10,
+	PRD_TUNE_GOFT_M2,
+};
+
+static void prd_tune_display_goft(struct siw_hal_prd_data *prd, char *tc_tune_code,
+			int offset, int type, int result_on, int lr)
 {
 	struct siw_hal_prd_tune *tune = &prd->tune;
 //	struct device *dev = prd->dev;
 	char *log_buf = prd->log_buf;
-	char *temp;
-	int code_size = tune->code_size;
+	char *sign_str = NULL;
+	int sign_mask = BIT(4);
+	int data_mask = BIT(4) - 1;
+	int sign = 0;
+	int data = 0;
+	int size = 0;
+
+	/* __SIW_SUPPORT_PRD_TUNE_FLEX */
+	if (tune->type) {
+		struct code_goft_tune_hdr *tune_hdr = NULL;
+
+		tune_hdr = (struct code_goft_tune_hdr *)&tc_tune_code[offset];
+
+		switch (type) {
+		case PRD_TUNE_GOFT_M1:
+			sign = tune_hdr->goft_tune_m1_sign;
+			data = tune_hdr->goft_tune_m1;
+			break;
+		case PRD_TUNE_GOFT_M2:
+			sign = tune_hdr->goft_tune_m2_sign;
+			data = tune_hdr->goft_tune_m2;
+			break;
+		default:
+			t_prd_err(prd, "unknown tune type, %d\n", type);
+			return;
+		}
+	} else {
+		offset += (type == PRD_TUNE_GOFT_M2);
+		sign = tc_tune_code[offset] & sign_mask;
+		data = tc_tune_code[offset] & data_mask;
+	}
+
+	t_prd_dbg_base(prd, "tune_display(goft): data offset %Xh\n", offset);
+
+	sign_str = (sign || !data) ? " " : "-";
+
+	size = siw_prd_log_buf_snprintf(log_buf, 0,
+				"GOFT(%s) tune : ", (lr == PRD_TUNE_LEFT) ? "L" : "R");
+	size += siw_prd_log_buf_snprintf(log_buf, size, "%s%d ",
+				sign_str, data);
+	siw_prd_log_info(prd, log_buf, size);
+
+	size += siw_prd_log_buf_snprintf(log_buf, size, "\n");
+
+	if (result_on == RESULT_ON) {
+		prd_write_file(prd, log_buf, TIME_INFO_SKIP);
+	}
+}
+
+static void prd_tune_display_loft(struct siw_hal_prd_data *prd, char *tc_tune_code,
+			int offset, int result_on, int lr)
+{
+	struct siw_hal_prd_tune *tune = &prd->tune;
+//	struct device *dev = prd->dev;
+	char *log_buf = prd->log_buf;
+	char *tune_data = &tc_tune_code[offset];
+	char *sign_str = NULL;
+	int sign_mask = BIT(5);
+	int data_mask = BIT(5) - 1;
+	int sign = 0;
+	int data = 0;
 	int size = 0;
 	int i = 0;
 
-	temp = kzalloc(code_size, GFP_KERNEL);
-	if (temp == NULL) {
-		t_prd_err(prd, "tune_display failed: NULL buf\n");
-		return;
-	}
+	t_prd_dbg_base(prd, "tune_display(loft): data offset %Xh\n", offset);
 
-	switch (type) {
-	case PRD_TUNE_DISPLAY_TYPE_1:
-		size = snprintf(log_buf, code_size,
-					"GOFT tune_code_read : ");
-		if ((tc_tune_code[offset] >> 4) == 1) {
-			temp[offset] = tc_tune_code[offset] - (0x1 << 4);
-			size += snprintf(log_buf + size,
-						code_size - size,
-						" %d  ", temp[offset]);
-		} else {
-			size += snprintf(log_buf + size,
-						code_size - size,
-						"-%d  ", tc_tune_code[offset]);
-		}
-		t_prd_info(prd, "%s\n", log_buf);
-		size += snprintf(log_buf + size, code_size - size, "\n");
-		if (result_on == RESULT_ON) {
-			prd_write_file(prd, log_buf, TIME_INFO_SKIP);
-		}
-		break;
-	case PRD_TUNE_DISPLAY_TYPE_2:
-		size = snprintf(log_buf, code_size,
-					"LOFT tune_code_read : ");
-		for (i = 0; i < tune->ch; i++) {
-			if ((tc_tune_code[offset+i]) >> 5 == 1) {
-				temp[offset+i] =
-					tc_tune_code[offset+i] - (0x1 << 5);
-				size += snprintf(log_buf + size,
-							code_size - size,
-							" %d  ", temp[offset+i]);
-			} else {
-				size += snprintf(log_buf + size,
-							code_size - size,
-							"-%d  ",
-							tc_tune_code[offset+i]);
-			}
-		}
-		t_prd_info(prd, "%s\n", log_buf);
-		size += snprintf(log_buf + size, code_size - size, "\n");
-		if (result_on == RESULT_ON) {
-			prd_write_file(prd, log_buf, TIME_INFO_SKIP);
-		}
-		break;
-	default:
-		t_prd_err(prd, "unknown tune type\n");
-		break;
+	size = siw_prd_log_buf_snprintf(log_buf, 0,
+				"LOFT(%s) tune : ", (lr == PRD_TUNE_LEFT) ? "L" : "R");
+	for (i = 0; i < tune->ch; i++) {
+		sign = (*tune_data) & sign_mask;
+		data = (*tune_data) & data_mask;
+		sign_str = (sign || !data) ? " " : "-";
+		size += siw_prd_log_buf_snprintf(log_buf, size, "%s%d ",
+					sign_str, data);
+		tune_data++;
 	}
+	siw_prd_log_info(prd, log_buf, size);
 
-	kfree(temp);
+	size += siw_prd_log_buf_snprintf(log_buf, size, "\n");
+
+	if (result_on == RESULT_ON) {
+		prd_write_file(prd, log_buf, TIME_INFO_SKIP);
+	}
 }
 
 /*
@@ -4283,8 +4367,9 @@ static int prd_do_read_tune_code(struct siw_hal_prd_data *prd, u8 *buf, int type
 	struct device *dev = prd->dev;
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_hal_reg *reg = chip->reg;
-	u32 tune_code_offset;
-	u32 offset;
+	u32 grp_offset = 0;
+	u32 tune_code_offset = 0;
+	u32 offset = 0;
 	int ret = 0;
 
 	if (siw_addr_is_skip(reg->prd_tune_result_offset)) {
@@ -4300,8 +4385,8 @@ static int prd_do_read_tune_code(struct siw_hal_prd_data *prd, u8 *buf, int type
 	}
 	offset = (tune_code_offset >> 16) & 0xFFFF;
 
-	t_prd_info(prd, "tune_code_offset = %Xh", offset);
-//	t_prd_dbg_base(prd, "tune_code_offset = %Xh", offset);
+	t_prd_info(prd, "tune_code: offset %Xh, size %Xh\n",
+		offset, tune->code_size);
 
 	ret = prd_read_raw_memory(prd, offset, buf, tune->code_size);
 	if (ret < 0) {
@@ -4312,60 +4397,66 @@ static int prd_do_read_tune_code(struct siw_hal_prd_data *prd, u8 *buf, int type
 		prd_write_file(prd, "\n[Read Tune Code]\n", TIME_INFO_SKIP);
 	}
 
+	/* __SIW_SUPPORT_PRD_TUNE_FLEX */
+	switch (type) {
+	case U3_M2_RAWDATA_TEST:
+	case U3_M1_RAWDATA_TEST:
+		grp_offset = tune->grp_u3_offset;
+		break;
+	case U0_M2_RAWDATA_TEST:
+	case U0_M1_RAWDATA_TEST:
+		grp_offset = tune->grp_u0_offset;
+		break;
+	}
+
 	switch (type) {
 	case U3_M1_RAWDATA_TEST:
 	case U0_M1_RAWDATA_TEST:
-		prd_tune_display(prd, buf,
-					tune->code_l_goft_offset,
-					PRD_TUNE_DISPLAY_TYPE_1,
-					result_on);
-		prd_tune_display(prd, buf,
-					tune->code_r_goft_offset,
-					PRD_TUNE_DISPLAY_TYPE_1,
-					result_on);
-		prd_tune_display(prd, buf,
-					tune->code_l_m1_oft_offset,
-					PRD_TUNE_DISPLAY_TYPE_2,
-					result_on);
-		prd_tune_display(prd, buf,
-					tune->code_r_m1_oft_offset,
-					PRD_TUNE_DISPLAY_TYPE_2,
-					result_on);
+		prd_tune_display_goft(prd, buf,
+					grp_offset + tune->code_l_goft_offset,
+					PRD_TUNE_GOFT_M1,
+					result_on, PRD_TUNE_LEFT);
+		prd_tune_display_goft(prd, buf,
+					grp_offset + tune->code_r_goft_offset,
+					PRD_TUNE_GOFT_M1,
+					result_on, PRD_TUNE_RIGHT);
+
+		prd_tune_display_loft(prd, buf,
+					grp_offset + tune->code_l_m1_goft_offset,
+					result_on, PRD_TUNE_LEFT);
+		prd_tune_display_loft(prd, buf,
+					grp_offset + tune->code_r_m1_goft_offset,
+					result_on, PRD_TUNE_RIGHT);
 		break;
 	case U3_M2_RAWDATA_TEST:
 	case U0_M2_RAWDATA_TEST:
-		prd_tune_display(prd, buf,
-					tune->code_l_goft_offset + 1,
-					PRD_TUNE_DISPLAY_TYPE_1,
-					result_on);
-		prd_tune_display(prd, buf,
-					tune->code_r_goft_offset + 1,
-					PRD_TUNE_DISPLAY_TYPE_1,
-					result_on);
-		prd_tune_display(prd, buf,
-					tune->code_l_g1_oft_offset,
-					PRD_TUNE_DISPLAY_TYPE_2,
-					result_on);
-		prd_tune_display(prd, buf,
-					tune->code_l_g2_oft_offset,
-					PRD_TUNE_DISPLAY_TYPE_2,
-					result_on);
-		prd_tune_display(prd, buf,
-					tune->code_l_g3_oft_offset,
-					PRD_TUNE_DISPLAY_TYPE_2,
-					result_on);
-		prd_tune_display(prd, buf,
-					tune->code_r_g1_oft_offset,
-					PRD_TUNE_DISPLAY_TYPE_2,
-					result_on);
-		prd_tune_display(prd, buf,
-					tune->code_r_g2_oft_offset,
-					PRD_TUNE_DISPLAY_TYPE_2,
-					result_on);
-		prd_tune_display(prd, buf,
-					tune->code_r_g3_oft_offset,
-					PRD_TUNE_DISPLAY_TYPE_2,
-					result_on);
+		prd_tune_display_goft(prd, buf,
+					grp_offset + tune->code_l_goft_offset,
+					PRD_TUNE_GOFT_M2,
+					result_on, PRD_TUNE_LEFT);
+		prd_tune_display_goft(prd, buf,
+					grp_offset + tune->code_r_goft_offset,
+					PRD_TUNE_GOFT_M2,
+					result_on, PRD_TUNE_RIGHT);
+
+		prd_tune_display_loft(prd, buf,
+					grp_offset + tune->code_l_g1_goft_offset,
+					result_on, PRD_TUNE_LEFT);
+		prd_tune_display_loft(prd, buf,
+					grp_offset + tune->code_l_g2_goft_offset,
+					result_on, PRD_TUNE_LEFT);
+		prd_tune_display_loft(prd, buf,
+					grp_offset + tune->code_l_g3_goft_offset,
+					result_on, PRD_TUNE_LEFT);
+		prd_tune_display_loft(prd, buf,
+					grp_offset + tune->code_r_g1_goft_offset,
+					result_on, PRD_TUNE_RIGHT);
+		prd_tune_display_loft(prd, buf,
+					grp_offset + tune->code_r_g2_goft_offset,
+					result_on, PRD_TUNE_RIGHT);
+		prd_tune_display_loft(prd, buf,
+					grp_offset + tune->code_r_g3_goft_offset,
+					result_on, PRD_TUNE_RIGHT);
 		break;
 	}
 	if (result_on == RESULT_ON) {
@@ -4379,8 +4470,13 @@ out:
 static int prd_read_tune_code(struct siw_hal_prd_data *prd, int type, int result_on)
 {
 	struct siw_hal_prd_tune *tune = &prd->tune;
-	u8 *buf;
-	int ret;
+	u8 *buf = NULL;
+	int ret = 0;
+
+	if (!tune->code_size) {
+		t_prd_warn(prd, "no tune configuration\n");
+		return ret;
+	}
 
 	buf = kzalloc(tune->code_size, GFP_KERNEL);
 	if (buf == NULL) {
@@ -7112,31 +7208,84 @@ static void siw_hal_prd_parse_ctrl(struct device *dev, struct siw_hal_prd_param 
 		ctrl->buf_self_size);
 }
 
+/* __SIW_SUPPORT_PRD_TUNE_FLEX */
 static void siw_hal_prd_setup_tune(struct device *dev,
 	struct siw_hal_prd_tune *tune, u32 ch)
 {
-//	struct siw_touch_chip *chip = to_touch_chip(dev);
-//	struct siw_ts *ts = chip->ts;
-	u32 hdr = 2;
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	struct siw_hal_prd_data *prd = (struct siw_hal_prd_data *)ts->prd;
+	u32 hdr = 0;
 	u32 r_base = 0;
+	int nd_offset = 0;
+
+	if (prd->panel_type) {
+		/* TBD */
+		return;
+	}
 
 	tune->ch = ch;
 
-	tune->code_size = ((ch<<3)+4);
+	switch (touch_chip_type(ts)) {
+	case CHIP_SW49408:
+		tune->type = 1;
+		break;
+	}
+
+	switch (tune->type) {
+	case 2:	/* 'U3 - U0 - U2' or 'U3 - U0' */
+		tune->magic_size = sizeof(u32);
+		tune->hdr_size = sizeof(struct code_goft_tune_hdr);
+		tune->unit_base = tune->hdr_size + (ch<<2) + (ch * nd_offset);
+		tune->unit_size = tune->unit_base<<1;
+		tune->grp_u3_offset = tune->magic_size;
+		tune->grp_u0_offset = tune->magic_size + tune->unit_size;
+		if (touch_mode_allowed(ts, LCD_MODE_U2)) {
+			tune->grp_u2_offset = tune->magic_size + (tune->unit_size<<1);
+		}
+		tune->code_size = tune->magic_size + (tune->unit_size * 3);
+		break;
+	case 1:	/* 'U3 - U2 - U0' or 'U3 - U0' */
+		tune->magic_size = sizeof(u32);
+		tune->hdr_size = sizeof(struct code_goft_tune_hdr);
+		tune->unit_base = tune->hdr_size + (ch<<2) + (ch * nd_offset);
+		tune->unit_size = tune->unit_base<<1;
+		tune->grp_u3_offset = tune->magic_size;
+		if (touch_mode_allowed(ts, LCD_MODE_U2)) {
+			tune->grp_u2_offset = tune->magic_size + tune->unit_size;
+		}
+		tune->grp_u0_offset = tune->magic_size + (tune->unit_size<<1);
+		tune->code_size = tune->magic_size + (tune->unit_size * 3);
+		break;
+	default:
+		tune->hdr_size = 2;
+		tune->code_size = ((ch<<3)+4);
+		break;
+	}
+
+	t_prd_dbg_base(prd, "tune: type %d, magic_size %d, hdr_size %d\n",
+		tune->type, tune->magic_size, tune->hdr_size);
+	t_prd_dbg_base(prd, "tune: u3_offset %Xh, u2_offset %Xh, u0_offset %Xh\n",
+		tune->grp_u3_offset, tune->grp_u2_offset, tune->grp_u0_offset);
+
+	hdr = tune->hdr_size;
 
 	tune->code_l_goft_offset = 0;
-	tune->code_l_m1_oft_offset = hdr;
-	tune->code_l_g1_oft_offset = (tune->code_l_m1_oft_offset + ch);
-	tune->code_l_g2_oft_offset = (tune->code_l_g1_oft_offset + ch);
-	tune->code_l_g3_oft_offset = (tune->code_l_g2_oft_offset + ch);
+	tune->code_l_m1_goft_offset = hdr;
+	tune->code_l_g1_goft_offset = (tune->code_l_m1_goft_offset + ch);
+	tune->code_l_g2_goft_offset = (tune->code_l_g1_goft_offset + ch);
+	tune->code_l_g3_goft_offset = (tune->code_l_g2_goft_offset + ch);
+	tune->code_l_nd_goft_offset = (nd_offset) ? (tune->code_l_g3_goft_offset + ch) : 0;
 
-	r_base = (tune->code_l_g3_oft_offset + ch);
+	r_base = (nd_offset) ? tune->code_l_nd_goft_offset : tune->code_l_g3_goft_offset;
+	r_base += ch;
 
 	tune->code_r_goft_offset = r_base;
-	tune->code_r_m1_oft_offset = r_base + hdr;
-	tune->code_r_g1_oft_offset = (tune->code_r_m1_oft_offset + ch);
-	tune->code_r_g2_oft_offset = (tune->code_r_g1_oft_offset + ch);
-	tune->code_r_g3_oft_offset = (tune->code_r_g2_oft_offset + ch);
+	tune->code_r_m1_goft_offset = r_base + hdr;
+	tune->code_r_g1_goft_offset = (tune->code_r_m1_goft_offset + ch);
+	tune->code_r_g2_goft_offset = (tune->code_r_g1_goft_offset + ch);
+	tune->code_r_g3_goft_offset = (tune->code_r_g2_goft_offset + ch);
+	tune->code_r_nd_goft_offset = (nd_offset) ? (tune->code_r_g3_goft_offset + ch) : 0;
 }
 
 static void siw_hal_prd_parse_tune(struct device *dev, struct siw_hal_prd_param *param)
@@ -7153,22 +7302,32 @@ static void siw_hal_prd_parse_tune(struct device *dev, struct siw_hal_prd_param 
 
 	siw_hal_prd_setup_tune(dev, tune, ch);
 
+	if (!tune->code_size) {
+		t_prd_info(prd, "no tune configuration\n");
+		return;
+	}
+
 	t_prd_dbg_base(prd, "tune: ch %d, code %d\n",
 		ch, tune->code_size);
+
+	if (prd->panel_type) {
+		/* TBD */
+	}
+
 	t_prd_dbg_base(prd, "tune: l_goft %Xh, l_m1_oft %Xh\n",
 		tune->code_l_goft_offset,
-		tune->code_l_m1_oft_offset);
+		tune->code_l_m1_goft_offset);
 	t_prd_dbg_base(prd, "tune: l_g1_oft %Xh, l_g2_oft %Xh, l_g3_oft %Xh\n",
-		tune->code_l_g1_oft_offset,
-		tune->code_l_g2_oft_offset,
-		tune->code_l_g3_oft_offset);
+		tune->code_l_g1_goft_offset,
+		tune->code_l_g2_goft_offset,
+		tune->code_l_g3_goft_offset);
 	t_prd_dbg_base(prd, "tune: r_goft %Xh, r_m1_oft %Xh\n",
 		tune->code_r_goft_offset,
-		tune->code_r_m1_oft_offset);
+		tune->code_r_m1_goft_offset);
 	t_prd_dbg_base(prd, "tune: r_g1_oft %Xh, r_g2_oft %Xh, r_g3_oft %Xh\n",
-		tune->code_r_g1_oft_offset,
-		tune->code_r_g2_oft_offset,
-		tune->code_r_g3_oft_offset);
+		tune->code_r_g1_goft_offset,
+		tune->code_r_g2_goft_offset,
+		tune->code_r_g3_goft_offset);
 }
 
 static void siw_hal_prd_set_offset(struct device *dev, struct siw_hal_prd_param *param)
