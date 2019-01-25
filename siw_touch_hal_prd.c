@@ -1129,13 +1129,6 @@ static const struct siw_hal_prd_param prd_params[] = {
 #define RAW_OFFSET_EVEN(_addr)		(((_addr) >> 16) & 0xFFFF)
 #define RAW_OFFSET_ODD(_addr)		((_addr) & 0xFFFF)
 
-#define siw_prd_buf_snprintf(_buf, _size, _fmt, _args...) \
-		__siw_snprintf(_buf, PRD_BUF_SIZE, _size, _fmt, ##_args)
-
-#define siw_prd_log_buf_snprintf(_buf, _size, _fmt, _args...) \
-		__siw_snprintf(_buf, PRD_LOG_BUF_SIZE, _size, _fmt, ##_args)
-
-
 enum {
 	CMD_TEST_EXIT = 0,
 	CMD_TEST_ENTER,
@@ -1292,6 +1285,8 @@ module_param_named(s_prd_dbg_flag, t_prd_dbg_flag, int, S_IRUGO|S_IWUSR|S_IWGRP)
 enum {
 	PRD_DBG_FLAG_RAW_CMP			= (1<<7),
 	/* */
+	PRD_DBG_FLAG_RAW_LOG_OFF		= (1<<16),
+	/* */
 	PRD_DBG_FLAG_DISABLE			= (1<<30),
 };
 
@@ -1351,6 +1346,23 @@ enum {
 #define siw_prd_sysfs_err_invalid_param(_prd)	\
 		t_prd_err(_prd, "Invalid param\n");
 
+#define siw_prd_buf_snprintf(_buf, _size, _fmt, _args...) \
+		__siw_snprintf(_buf, PRD_BUF_SIZE, _size, _fmt, ##_args);	\
+
+#define siw_prd_log_buf_snprintf(_buf, _size, _fmt, _args...) \
+		__siw_snprintf(_buf, PRD_LOG_BUF_SIZE, _size, _fmt, ##_args);	\
+
+#define siw_prd_log_info(_prd, _buf, _size)	\
+		do {	\
+			if (!(t_prd_dbg_flag & PRD_DBG_FLAG_RAW_LOG_OFF)) {	\
+				if (_size)	t_prd_info(_prd, "%s\n", _buf);	\
+			}	\
+		} while (0)
+
+#define siw_snprintf_sd_result(_buf, _size, _item, _ret) \
+		siw_snprintf(_buf, _size, "%s : %s\n", _item, (_ret) ? "Fail" : "Pass")
+
+#define __PRD_LOG_VIA_SHELL
 
 static int prd_drv_exception_check(struct siw_hal_prd_data *prd)
 {
@@ -2985,69 +2997,6 @@ out:
 	return ret;
 }
 
-static int prd_print_os_data(struct siw_hal_prd_data *prd, int type)
-{
-	struct siw_hal_prd_param *param = &prd->param;
-	struct siw_hal_prd_ctrl *ctrl = &prd->ctrl;
-	int i = 0, j = 0;
-	int size = 0;
-	int log_size = 0;
-	u16 *os_buf = NULL;
-	int col_size = 0;
-	char *log_buf = prd->log_buf;
-
-	memset(prd->buf_write, 0, PRD_BUF_SIZE);
-
-	switch (type) {
-	case OPEN_NODE_TEST:
-		col_size = ctrl->open_result_col;
-		os_buf = prd->open_buf_result_data;
-		break;
-	case SHORT_NODE_TEST:
-		col_size = ctrl->short_result_col;
-		os_buf = prd->short_buf_result_data;
-		break;
-	case SHORT_FULL_TEST:
-		col_size = ctrl->short_full_result_col;
-		os_buf = prd->short_buf_result_data;
-		break;
-	}
-
-	size = siw_prd_buf_snprintf(prd->buf_write, size, "\n   : ");
-	log_size = siw_prd_log_buf_snprintf(log_buf, log_size, "   : ");
-
-	for (i = 0; i < col_size; i++) {
-		size += siw_prd_buf_snprintf(prd->buf_write,
-		size, "[%2d] ", i);
-		log_size += siw_prd_log_buf_snprintf(log_buf,
-		log_size, "[%2d] ", i);
-	}
-	t_prd_info(prd, "%s\n", log_buf);
-
-	for (i = 0; i < param->row; i++) {
-		log_size = 0;
-
-		size += siw_prd_buf_snprintf(prd->buf_write,
-			size,  "\n[%2d] ", i);
-		log_size += siw_prd_log_buf_snprintf(log_buf,
-				log_size,  "[%2d] ", i);
-		for (j = 0; j < col_size; j++) {
-			//if (j == param->col)
-			//	continue;
-			size += siw_prd_buf_snprintf(prd->buf_write,
-				size, "%4X ", os_buf[i * col_size + j]);
-			log_size += siw_prd_log_buf_snprintf(log_buf,
-				log_size, "%4X ", os_buf[i * col_size + j]);
-		}
-		t_prd_info(prd, "%s\n", log_buf);
-	}
-	size += siw_prd_buf_snprintf(prd->buf_write, size, "\n");
-	prd_write_file(prd, prd->buf_write, TIME_INFO_SKIP);
-	memset(prd->buf_write, 0, size);
-
-	return size;
-}
-
 //#define __SIW_SUPPORT_PRD_DIGIT_5
 
 #if defined(__SIW_SUPPORT_PRD_DIGIT_5)
@@ -3067,6 +3016,75 @@ static int prd_print_os_data(struct siw_hal_prd_data *prd, int type)
 #define PRD_LOG_FMT_OS_RAW_NO	__PRD_LOG_FMT_RAW_NO
 #define PRD_LOG_FMT_OS_RAW		__PRD_LOG_FMT_DIGIT_BASE
 
+static int prd_print_os_data(struct siw_hal_prd_data *prd, int type)
+{
+	struct siw_hal_prd_param *param = &prd->param;
+	struct siw_hal_prd_ctrl *ctrl = &prd->ctrl;
+	int i = 0, j = 0;
+	int size = 0;
+	int log_size = 0;
+	u16 *os_buf = NULL;
+	int row_size = param->row;
+	int col_size = param->col;
+	char *log_buf = prd->log_buf;
+
+	memset(prd->buf_write, 0, PRD_BUF_SIZE);
+
+	switch (type) {
+	case OPEN_NODE_TEST:
+		col_size = ctrl->open_result_col;
+		os_buf = prd->open_buf_result_data;
+		break;
+	case SHORT_NODE_TEST:
+		col_size = ctrl->short_result_col;
+		os_buf = prd->short_buf_result_data;
+		break;
+	case SHORT_FULL_TEST:
+		col_size = ctrl->short_full_result_col;
+		os_buf = prd->short_buf_result_data;
+		break;
+	default:
+		siw_prd_log_buf_snprintf(log_buf, log_size, "os test: [print_data] unknown type, %d\n", type);
+		t_prd_err(prd, "%s", log_buf);
+		size = siw_prd_buf_snprintf(prd->buf_write, size, "%s", log_buf);
+		goto out;
+	}
+
+	size += siw_prd_buf_snprintf(prd->buf_write, size, "\n");
+
+	log_size = siw_prd_log_buf_snprintf(log_buf, log_size, __PRD_LOG_FMT_PRE);
+
+	for (i = 0; i < col_size; i++) {
+		log_size += siw_prd_log_buf_snprintf(log_buf,
+						log_size, PRD_LOG_FMT_OS_RAW_NO, i);
+	}
+	siw_prd_log_info(prd, log_buf, log_size);
+
+	size += siw_prd_buf_snprintf(prd->buf_write, size, "%s\n", log_buf);
+
+	for (i = 0; i < row_size; i++) {
+		log_size = 0;
+
+		log_size += siw_prd_log_buf_snprintf(log_buf,
+						log_size, PRD_LOG_FMT_OS_RAW_NO, i);
+		for (j = 0; j < col_size; j++) {
+			//if (j == param->col)
+			//	continue;
+			log_size += siw_prd_log_buf_snprintf(log_buf,
+						log_size, PRD_LOG_FMT_OS_RAW, os_buf[i * col_size + j]);
+		}
+		siw_prd_log_info(prd, log_buf, log_size);
+
+		size += siw_prd_buf_snprintf(prd->buf_write, size, "%s\n", log_buf);
+	}
+
+out:
+	prd_write_file(prd, prd->buf_write, TIME_INFO_SKIP);
+	memset(prd->buf_write, 0, size);
+
+	return size;
+}
+
 static int prd_print_os_rawdata(struct siw_hal_prd_data *prd, u8 type)
 {
 	struct siw_hal_prd_param *param = &prd->param;
@@ -3075,7 +3093,8 @@ static int prd_print_os_rawdata(struct siw_hal_prd_data *prd, u8 type)
 	int size = 0;
 	int log_size = 0;
 	u16 *os_buf = NULL;
-	int col_size = 0;
+	int row_size = param->row;
+	int col_size = param->col;
 	char *log_buf = prd->log_buf;
 
 	memset(prd->buf_write, 0, PRD_BUF_SIZE);
@@ -3093,18 +3112,24 @@ static int prd_print_os_rawdata(struct siw_hal_prd_data *prd, u8 type)
 		col_size = ctrl->short_full_rawdata_col;
 		os_buf = prd->short_buf_result_rawdata;
 		break;
+	default:
+		siw_prd_log_buf_snprintf(log_buf, log_size, "os test: [print_rawdata] unknown type, %d\n", type);
+		t_prd_err(prd, "%s", log_buf);
+		size = siw_prd_buf_snprintf(prd->buf_write, size, "%s", log_buf);
+		goto out;
 	}
 
-	size = siw_prd_buf_snprintf(prd->buf_write, size, "\n" PRD_LOG_FMT_OS_PRE);
+	size += siw_prd_buf_snprintf(prd->buf_write, size, "\n");
+
 	log_size = siw_prd_log_buf_snprintf(log_buf, log_size, PRD_LOG_FMT_OS_PRE);
 
 	for (i = 0; i < col_size; i++) {
-		size += siw_prd_buf_snprintf(prd->buf_write,
-		size, PRD_LOG_FMT_OS_COL_NO, i);
 		log_size += siw_prd_log_buf_snprintf(log_buf,
-		log_size, PRD_LOG_FMT_OS_COL_NO, i);
+						log_size, PRD_LOG_FMT_OS_COL_NO, i);
 	}
-	t_prd_info(prd, "%s\n", log_buf);
+	siw_prd_log_info(prd, log_buf, log_size);
+
+	size += siw_prd_buf_snprintf(prd->buf_write, size, "%s\n", log_buf);
 
 	/*
 	 * short data replace algorithm
@@ -3117,32 +3142,31 @@ static int prd_print_os_rawdata(struct siw_hal_prd_data *prd, u8 type)
 		memset(os_buf, 0, short_buf_size);
 
 		for (i = 0; i < col_size; i++) {
-			for (j = 0; j < param->row; j++) {
-				os_buf[j * col_size + i] = short_temp_buf[i*param->row + j];
+			for (j = 0; j < row_size; j++) {
+				os_buf[j * col_size + i] = short_temp_buf[i*row_size + j];
 			}
 		}
 	}
 
-	for (i = 0; i < param->row; i++) {
+	for (i = 0; i < row_size; i++) {
 		log_size = 0;
 
-		size += siw_prd_buf_snprintf(prd->buf_write,
-			size, "\n" PRD_LOG_FMT_OS_RAW_NO, i);
 		log_size += siw_prd_log_buf_snprintf(log_buf,
-				log_size, PRD_LOG_FMT_OS_RAW_NO, i);
+						log_size, PRD_LOG_FMT_OS_RAW_NO, i);
 
 		for (j = 0; j < col_size; j++) {
 			if (j == param->col)
 				continue;
-			size += siw_prd_buf_snprintf(prd->buf_write,
-				size, PRD_LOG_FMT_OS_RAW, os_buf[i * col_size + j]);
+
 			log_size += siw_prd_log_buf_snprintf(log_buf,
-					log_size, PRD_LOG_FMT_OS_RAW, os_buf[i * col_size + j]);
+							log_size, PRD_LOG_FMT_OS_RAW, os_buf[i * col_size + j]);
 		}
-		t_prd_info(prd, "%s\n", log_buf);
+		siw_prd_log_info(prd, log_buf, log_size);
+
+		size += siw_prd_buf_snprintf(prd->buf_write, size, "%s\n", log_buf);
 	}
 
-	size += siw_prd_buf_snprintf(prd->buf_write, size, "\n");
+out:
 	prd_write_file(prd, prd->buf_write, TIME_INFO_SKIP);
 	memset(prd->buf_write, 0, size);
 
@@ -3158,12 +3182,20 @@ static int prd_os_xline_result_read(struct siw_hal_prd_data *prd, int type)
 	if (param->sd_test_flag & OPEN_SHORT_RESULT_DATA_FLAG) {
 		//open short fail reason "result data"
 		ret = prd_os_result_data_get(prd, type);
+		if (ret < 0) {
+			return ret;
+		}
+
 		prd_print_os_data(prd, type);
 	}
 
 	if (param->sd_test_flag & OPEN_SHORT_RESULT_RAWDATA_FLAG) {
 		//open short fail reason "result raw data"
 		ret = prd_os_result_rawdata_get(prd, type);
+		if (ret < 0) {
+			return ret;
+		}
+
 		prd_print_os_rawdata(prd, type);
 
 		if (type == SHORT_FULL_TEST) {
@@ -3174,7 +3206,8 @@ static int prd_os_xline_result_read(struct siw_hal_prd_data *prd, int type)
 			}
 		}
 	}
-	return ret;
+
+	return 0;
 }
 
 static int prd_control_open_short_result(struct siw_hal_prd_data *prd,
@@ -3230,24 +3263,23 @@ static int prd_print_pre(struct siw_hal_prd_data *prd, char *buf,
 	int i;
 	int log_size = 0;
 
-	t_prd_info(prd, "-------- %s(%d %d) --------\n",
-				name, row_size, col_size);
+	log_size += siw_prd_log_buf_snprintf(log_buf, log_size,
+					"-------- %s(%d %d) --------",
+					name, row_size, col_size);
+	siw_prd_log_info(prd, log_buf, log_size);
 
-	size += siw_prd_buf_snprintf(buf, size,
-				"-------- %s(%d %d) --------\n",
-				name, row_size, col_size);
+	size += siw_prd_buf_snprintf(buf, size, "%s\n", log_buf);
 
-	/* print a frame data */
-	size += siw_prd_buf_snprintf(buf, size, PRD_LOG_FMT_RAW_PRE);
-	log_size += siw_prd_log_buf_snprintf(log_buf,
-						log_size,  PRD_LOG_FMT_RAW_PRE);
+	log_size = 0;
+	log_size += siw_prd_log_buf_snprintf(log_buf, log_size, PRD_LOG_FMT_RAW_PRE);
 
 	for (i = 0; i < col_size; i++) {
-		size += siw_prd_buf_snprintf(buf, size, PRD_LOG_FMT_RAW_COL_NO, i);
 		log_size += siw_prd_log_buf_snprintf(log_buf,
-						log_size,  PRD_LOG_FMT_RAW_COL_NO, i);
+						log_size, PRD_LOG_FMT_RAW_COL_NO, i);
 	}
-	t_prd_info(prd, "%s\n", log_buf);
+	siw_prd_log_info(prd, log_buf, log_size);
+
+	size += siw_prd_buf_snprintf(buf, size, "%s\n", log_buf);
 
 	return size;
 }
@@ -3258,8 +3290,9 @@ static int prd_print_post(struct siw_hal_prd_data *prd, char *buf,
 	size += siw_prd_buf_snprintf(buf, size, "\n");
 
 	size += siw_prd_buf_snprintf(buf, size,
-				"\nRawdata min : %d , max : %d\n",
+				"Rawdata min : %d , max : %d\n",
 				min, max);
+
 	t_prd_info(prd, "Rawdata min : %d , max : %d\n",
 				min, max);
 
@@ -3303,12 +3336,10 @@ static int prd_print_xxx(struct siw_hal_prd_data *prd, char *buf,
 
 	col_i = 0;
 	for (i = 0; i < row_size; i++) {
-		size += siw_prd_buf_snprintf(buf, size, "\n" PRD_LOG_FMT_RAW_RAW_NO, i);
-
 		log_size = 0;
 		memset(log_buf, 0, sizeof(prd->log_buf));
 		log_size += siw_prd_log_buf_snprintf(log_buf,
-						log_size,  PRD_LOG_FMT_RAW_RAW_NO, i);
+						log_size, PRD_LOG_FMT_RAW_RAW_NO, i);
 
 		if (type == PRD_PRT_TYPE_S16) {
 			rawdata_s16 = &((int16_t *)rawdata_buf)[col_i];
@@ -3322,10 +3353,7 @@ static int prd_print_xxx(struct siw_hal_prd_data *prd, char *buf,
 				curr_raw = *rawdata_u8++;
 			}
 
-			size += siw_prd_buf_snprintf(buf, size,
-						PRD_LOG_FMT_RAW_RAW, curr_raw);
-
-			log_size += siw_prd_buf_snprintf(log_buf,
+			log_size += siw_prd_log_buf_snprintf(log_buf,
 							log_size,
 							PRD_LOG_FMT_RAW_RAW, curr_raw);
 
@@ -3336,7 +3364,9 @@ static int prd_print_xxx(struct siw_hal_prd_data *prd, char *buf,
 				max = curr_raw;
 			}
 		}
-		t_prd_info(prd, "%s\n", log_buf);
+		siw_prd_log_info(prd, log_buf, log_size);
+
+		size += siw_prd_buf_snprintf(buf, size, "%s\n", log_buf);
 
 		col_i += (col_size + col_add);
 	}
@@ -3430,27 +3460,23 @@ static int prd_print_pre_self(struct siw_hal_prd_data *prd, char *buf,
 
 	size &= ~BIT(31);
 
-	t_prd_info(prd, "-------- %s(%d %d) --------\n",
-				name, row_size, col_size);
+	log_size += siw_prd_log_buf_snprintf(log_buf, log_size,
+					"-------- %s(%d %d) --------",
+					name, row_size, col_size);
+	siw_prd_log_info(prd, log_buf, log_size);
 
-	size += siw_prd_buf_snprintf(buf, size,
-				"-------- %s(%d %d) --------\n",
-				name, row_size, col_size);
+	size += siw_prd_buf_snprintf(buf, size, "%s\n", log_buf);
 
-	/* print a frame data */
-	size += siw_prd_buf_snprintf(buf, size, PRD_LOG_FMT_RAW_PRE);
-	log_size += siw_prd_log_buf_snprintf(log_buf,
-						log_size,  PRD_LOG_FMT_RAW_PRE);
-
-	size += siw_prd_buf_snprintf(buf, size, PRD_LOG_FMT_RAW_PRE_SELF);
-	log_size += siw_prd_log_buf_snprintf(log_buf, log_size,  PRD_LOG_FMT_RAW_PRE_SELF);
+	log_size = 0;
+	log_size += siw_prd_log_buf_snprintf(log_buf, log_size, PRD_LOG_FMT_RAW_PRE PRD_LOG_FMT_RAW_PRE_SELF);
 
 	for (i = 0; i < col_size; i++) {
-		size += siw_prd_buf_snprintf(buf, size, PRD_LOG_FMT_RAW_COL_NO, i);
 		log_size += siw_prd_log_buf_snprintf(log_buf,
-						log_size,  PRD_LOG_FMT_RAW_COL_NO, i);
+						log_size, PRD_LOG_FMT_RAW_COL_NO, i);
 	}
-	t_prd_info(prd, "%s\n", log_buf);
+	siw_prd_log_info(prd, log_buf, log_size);
+
+	size += siw_prd_buf_snprintf(buf, size, "%s\n", log_buf);
 
 	return size;
 }
@@ -3496,12 +3522,8 @@ static int prd_print_xxx_self(struct siw_hal_prd_data *prd,
 	log_size = 0;
 	memset(log_buf, 0, sizeof(prd->log_buf));
 
-	size += siw_prd_buf_snprintf(buf, size, "\n");
-
-	size += siw_prd_buf_snprintf(buf, size, PRD_LOG_FMT_RAW_PRE_SELF);
 	log_size += siw_prd_log_buf_snprintf(log_buf, log_size, PRD_LOG_FMT_RAW_PRE_SELF);
 
-	size += siw_prd_buf_snprintf(buf, size, PRD_LOG_FMT_RAW_PRE_EMPTY);
 	log_size += siw_prd_log_buf_snprintf(log_buf, log_size, PRD_LOG_FMT_RAW_PRE_EMPTY);
 
 	for (i = 0; i < col_size; i++) {
@@ -3512,19 +3534,16 @@ static int prd_print_xxx_self(struct siw_hal_prd_data *prd,
 		}
 		offset_horiz++;
 
-		size += siw_prd_buf_snprintf(buf, size,
-					PRD_LOG_FMT_RAW_RAW, curr_raw);
-
-		log_size += siw_prd_buf_snprintf(log_buf,
+		log_size += siw_prd_log_buf_snprintf(log_buf,
 						log_size,
 						PRD_LOG_FMT_RAW_RAW, curr_raw);
 	}
-	t_prd_info(prd, "%s\n", log_buf);
+	siw_prd_log_info(prd, log_buf, log_size);
+
+	size += siw_prd_buf_snprintf(buf, size, "%s\n", log_buf);
 
 	col_i = 0;
 	for (i = 0; i < row_size; i++) {
-		size += siw_prd_buf_snprintf(buf, size, "\n" PRD_LOG_FMT_RAW_RAW_NO, i);
-
 		log_size = 0;
 		memset(log_buf, 0, sizeof(prd->log_buf));
 		log_size += siw_prd_log_buf_snprintf(log_buf,
@@ -3537,10 +3556,8 @@ static int prd_print_xxx_self(struct siw_hal_prd_data *prd,
 			curr_raw = ((u8 *)prd->buf_self)[offset_verti];
 		}
 		offset_verti++;
-		size += siw_prd_buf_snprintf(buf, size,
-					PRD_LOG_FMT_RAW_RAW, curr_raw);
 
-		log_size += siw_prd_buf_snprintf(log_buf,
+		log_size += siw_prd_log_buf_snprintf(log_buf,
 						log_size,
 						PRD_LOG_FMT_RAW_RAW, curr_raw);
 
@@ -3557,10 +3574,7 @@ static int prd_print_xxx_self(struct siw_hal_prd_data *prd,
 				curr_raw = *rawdata_u8++;
 			}
 
-			size += siw_prd_buf_snprintf(buf, size,
-						PRD_LOG_FMT_RAW_RAW, curr_raw);
-
-			log_size += siw_prd_buf_snprintf(log_buf,
+			log_size += siw_prd_log_buf_snprintf(log_buf,
 							log_size,
 							PRD_LOG_FMT_RAW_RAW, curr_raw);
 
@@ -3571,7 +3585,9 @@ static int prd_print_xxx_self(struct siw_hal_prd_data *prd,
 				max = curr_raw;
 			}
 		}
-		t_prd_info(prd, "%s\n", log_buf);
+		siw_prd_log_info(prd, log_buf, log_size);
+
+		size += siw_prd_buf_snprintf(buf, size, "%s\n", log_buf);
 
 		col_i += (col_size + col_add);
 	}
@@ -4409,13 +4425,13 @@ static int prd_conrtol_rawdata_result(struct siw_hal_prd_data *prd, int type, in
 		test_cnt = param->m2_cnt;
 	}
 
-#if 1
 	/* print Raw Data */
 	for (i = 0; i < test_cnt; i++) {
 		size = prd_print_rawdata(prd, prd->buf_write, print_type[i], size, opt);
 	}
+
 	if (size)
-		size += siw_prd_buf_snprintf(prd->buf_write, size, "\n\n");
+		size += siw_prd_buf_snprintf(prd->buf_write, size, "\n");
 
 	if (result_on == RESULT_ON) {
 		/* Frame Data write to Result File */
@@ -4427,28 +4443,6 @@ static int prd_conrtol_rawdata_result(struct siw_hal_prd_data *prd, int type, in
 		result = prd_compare_rawdata(prd, type);
 		prd_write_file(prd, prd->buf_write, TIME_INFO_SKIP);
 	}
-#else
-	/* print Raw Data */
-	for (i = 0; i < test_cnt; i++) {
-		size = prd_print_rawdata(prd, prd->buf_write, print_type[i], size, opt);
-
-		if (size)
-			size += siw_prd_buf_snprintf(prd->buf_write, size, "\n\n");
-
-		if (result_on == RESULT_ON) {
-			/* Frame Data write to Result File */
-			prd_write_file(prd, prd->buf_write, TIME_INFO_SKIP);
-
-			memset(prd->buf_write, 0, PRD_BUF_SIZE);
-		}
-	}
-
-	if (result_on == RESULT_ON) {
-		/* rawdata compare result(pass : 0 fail : 1) */
-		result = prd_compare_rawdata(prd, type);
-		prd_write_file(prd, prd->buf_write, TIME_INFO_SKIP);
-	}
-#endif
 
 	return result;
 }
@@ -4503,7 +4497,7 @@ static int prd_do_rawdata_test(struct siw_hal_prd_data *prd,
 	t_prd_info(prd, "========%s========\n", test_str);
 
 	if (result_on == RESULT_ON) {
-		snprintf(test_type, sizeof(test_type), "\n\n[%s]\n", test_str);
+		snprintf(test_type, sizeof(test_type), "\n[%s]\n", test_str);
 		/* Test Type Write */
 		prd_write_file(prd, test_type, TIME_INFO_SKIP);
 	}
@@ -4678,11 +4672,6 @@ static int prd_write_test_control(struct siw_hal_prd_data *prd, u32 mode)
 out:
 	return ret;
 }
-
-#define siw_snprintf_sd_result(_buf, _size, _item, _ret) \
-		siw_snprintf(_buf, _size, "%s : %s\n", _item, (_ret) ? "Fail" : "Pass")
-
-#define __PRD_LOG_VIA_SHELL
 
 static int __prd_sd_pre(struct siw_hal_prd_data *prd, char *buf)
 {
@@ -6280,10 +6269,10 @@ static ssize_t prd_store_dbg_mask(struct device *dev,
 
 #if defined(__SIW_SUPPORT_PRD_SET_SD)
 #define siw_prd_set_sd_sprintf(_buf, _title) \
-		sprintf(_buf, "%-20s(%d) -", #_title, _title)
+		sprintf(_buf, "%-20s(%d) -", prd_get_test_str(_title), (_title))
 
 #define t_prd_info_set_sd(_prd, _title) \
-		t_prd_info(_prd, "  %-20s - %d\n", #_title, _title)
+		t_prd_info(_prd, "  %-20s - %d\n", prd_get_test_str(_title), (_title))
 
 static int prd_show_set_sd_item(char *buf, int size, char *title, int *value)
 {
@@ -6889,26 +6878,6 @@ static void siw_hal_prd_free_buffer(struct device *dev)
 		return;
 	}
 
-	prd->m2_buf_even_rawdata = NULL;
-	prd->m2_buf_odd_rawdata = NULL;
-
-	prd->m1_buf_even_rawdata = NULL;
-	prd->m1_buf_odd_rawdata = NULL;
-	prd->m1_buf_tmp = NULL;
-
-	prd->open_buf_result_rawdata = NULL;
-	prd->short_buf_result_rawdata = NULL;
-	prd->open_buf_result_data = NULL;
-	prd->short_buf_result_data = NULL;
-
-	prd->buf_delta = NULL;
-	prd->buf_debug = NULL;
-
-	prd->buf_label_tmp = NULL;
-	prd->buf_label = NULL;
-
-	prd->buf_self = NULL;
-
 	prd->buf_src = NULL;
 	prd->buf_size = 0;
 
@@ -7051,11 +7020,12 @@ static void siw_hal_prd_parse_ctrl(struct device *dev, struct siw_hal_prd_param 
 	struct siw_hal_prd_ctrl *ctrl = &prd->ctrl;
 	u32 row_size = param->row;
 	u32 col_size = param->col;
+	u32 col_add = param->col_add;
 
 	t_prd_dbg_base(prd, "[param parse ctrl]\n");
 
 	ctrl->m2_row_col_size = (row_size * col_size);
-	ctrl->m2_row_col_buf_size = (row_size * (col_size + param->col_add));
+	ctrl->m2_row_col_buf_size = (row_size * (col_size + col_add));
 	ctrl->m1_row_col_size = (row_size * param->m1_col);
 	ctrl->m2_frame_size = (ctrl->m2_row_col_buf_size<<PRD_RAWDATA_SZ_POW);
 	ctrl->m1_frame_size = (ctrl->m1_row_col_size<<PRD_RAWDATA_SZ_POW);
@@ -7091,7 +7061,7 @@ static void siw_hal_prd_parse_ctrl(struct device *dev, struct siw_hal_prd_param 
 	switch (prd->open_result_type) {
 	case 1:
 		ctrl->open_result_size = ctrl->m2_frame_size;
-		ctrl->open_result_col = col_size + param->col_add;
+		ctrl->open_result_col = col_size + col_add;
 		break;
 	default:
 		ctrl->open_result_size = ctrl->m1_frame_size;
@@ -7100,7 +7070,7 @@ static void siw_hal_prd_parse_ctrl(struct device *dev, struct siw_hal_prd_param 
 	}
 
 	ctrl->open_rawdata_size = ctrl->m2_frame_size;
-	ctrl->open_rawdata_col = col_size + param->col_add;
+	ctrl->open_rawdata_col = col_size + col_add;
 
 	t_prd_dbg_base(prd, "ctrl: open: result: size %d, col %d\n",
 		ctrl->open_result_size, ctrl->open_result_col);
@@ -7127,9 +7097,9 @@ static void siw_hal_prd_parse_ctrl(struct device *dev, struct siw_hal_prd_param 
 		ctrl->short_rawdata_size, ctrl->short_rawdata_col);
 
 	ctrl->short_full_result_size = ctrl->m2_frame_size;
-	ctrl->short_full_result_col = col_size + param->col_add;
+	ctrl->short_full_result_col = col_size + col_add;
 	ctrl->short_full_rawdata_size = ctrl->m2_frame_size;
-	ctrl->short_full_rawdata_col = col_size + param->col_add;
+	ctrl->short_full_rawdata_col = col_size + col_add;
 
 	t_prd_dbg_base(prd, "ctrl: short full: result: size %d, col %d\n",
 		ctrl->short_full_result_size, ctrl->short_full_result_col);
