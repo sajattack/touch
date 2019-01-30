@@ -1400,10 +1400,10 @@ enum {
 		t_prd_err(_prd, "Invalid param\n");
 
 #define siw_prd_buf_snprintf(_buf, _size, _fmt, _args...) \
-		__siw_snprintf(_buf, PRD_BUF_SIZE, _size, _fmt, ##_args);	\
+		__siw_snprintf(_buf, PRD_BUF_SIZE, _size, _fmt, ##_args);
 
 #define siw_prd_log_buf_snprintf(_buf, _size, _fmt, _args...) \
-		__siw_snprintf(_buf, PRD_LOG_BUF_SIZE, _size, _fmt, ##_args);	\
+		__siw_snprintf(_buf, PRD_LOG_BUF_SIZE, _size, _fmt, ##_args);
 
 #define siw_prd_log_info(_prd, _buf, _size)	\
 		do {	\
@@ -5174,10 +5174,6 @@ static void __prd_calc_raw_cmp(struct siw_hal_prd_data *prd)
 {
 	struct siw_hal_prd_param *param = &prd->param;
 
-	if (!(t_prd_dbg_flag & PRD_DBG_FLAG_RAW_CMP)) {
-		return;
-	}
-
 	__prd_calc_buff_cmp_16(prd->m2_buf_even_rawdata, prd->m2_buf_back,
 		param->row, param->col + param->col_add, 0);
 
@@ -5187,6 +5183,27 @@ static void __prd_calc_raw_cmp(struct siw_hal_prd_data *prd)
 
 	__prd_calc_buff_cmp_16(prd->buf_self, prd->buf_self_back,
 		param->row, param->col, 1);
+}
+
+static void __prd_show_raw_cmp(struct siw_hal_prd_data *prd)
+{
+	if (!(t_prd_dbg_flag & PRD_DBG_FLAG_RAW_CMP)) {
+		return;
+	}
+
+	__prd_calc_raw_cmp(prd);
+
+	if (prd->panel_type) {
+		prd_print_rawdata_self(prd, prd->img_cmd.raw, prd->buf_write, M2_EVEN_DATA, 0, 0);
+		return;
+	}
+
+	prd_print_rawdata(prd, prd->buf_write, M2_EVEN_DATA, 0, 0);
+}
+#else	/* __SIW_SUPPORT_PRD_RAW_CMP */
+static inline void __prd_show_raw_cmp(struct siw_hal_prd_data *prd)
+{
+
 }
 #endif	/* __SIW_SUPPORT_PRD_RAW_CMP */
 
@@ -5217,16 +5234,15 @@ static int prd_show_prd_get_data_raw_ait(struct device *dev)
 		goto out;
 	}
 
-#if defined(__SIW_SUPPORT_PRD_RAW_CMP)
-	__prd_calc_raw_cmp(prd);
-#endif	/* __SIW_SUPPORT_PRD_RAW_DIFF */
-
 	if (prd->panel_type) {
 		prd_print_rawdata_self(prd, prd->img_cmd.raw, prd->buf_write, M2_EVEN_DATA, log_size, 0);
-		return ret;
+		goto out_done;
 	}
 
 	prd_print_rawdata(prd, prd->buf_write, M2_EVEN_DATA, log_size, 0);
+
+out_done:
+	__prd_show_raw_cmp(prd);
 
 out:
 	return ret;
