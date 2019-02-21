@@ -1915,22 +1915,10 @@ static struct siw_touch_pdata *siw_touch_probe_common(struct siw_ts *ts)
 		goto out;
 	}
 
-	ret = siw_touch_bus_alloc_buffer(ts);
-	if (ret < 0) {
-		t_dev_err(dev, "failed to alloc bus buffer, %d\n", ret);
-		goto out;
-	}
-
-	ret = siw_touch_bus_pin_get(ts);
-	if (ret < 0) {
-		t_dev_err(dev, "failed to setup bus pin, %d\n", ret);
-		goto out_bus_pin;
-	}
-
-	ret = siw_touch_bus_init(ts->dev);
+	ret = siw_touch_bus_init(ts);
 	if (ret < 0) {
 		t_dev_err(dev, "failed to setup bus, %d\n", ret);
-		goto out_bus_init;
+		goto out;
 	}
 
 	siw_touch_init_locks(ts);
@@ -1982,11 +1970,7 @@ out_init_input:
 out_init_works:
 	siw_touch_free_locks(ts);
 
-out_bus_init:
-	siw_touch_bus_pin_put(ts);
-
-out_bus_pin:
-	siw_touch_bus_free_buffer(ts);
+	siw_touch_bus_free(ts);
 
 out:
 	return NULL;
@@ -2008,9 +1992,7 @@ static void siw_touch_remove_common(struct siw_ts *ts)
 
 	siw_touch_free_locks(ts);
 
-	siw_touch_bus_pin_put(ts);
-
-	siw_touch_bus_free_buffer(ts);
+	siw_touch_bus_free(ts);
 }
 
 static int __siw_touch_probe_init(void *data)

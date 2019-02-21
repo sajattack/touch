@@ -140,7 +140,7 @@ void siw_touch_bus_ts_free(struct device *dev)
 #define TOUCH_PINCTRL_SLEEP		"touch_pin_sleep"
 
 #if defined(__SIW_SUPPORT_PINCTRL)	//See siw_touch_cfg.h
-int siw_touch_bus_pin_get(struct siw_ts *ts)
+static int __used siw_touch_bus_pin_get(struct siw_ts *ts)
 {
 	struct device *dev = ts->dev;
 	struct touch_pinctrl *pinctrl = &ts->pinctrl;
@@ -196,7 +196,7 @@ out:
 	return ret;
 }
 
-int siw_touch_bus_pin_put(struct siw_ts *ts)
+static int __used siw_touch_bus_pin_put(struct siw_ts *ts)
 {
 	struct device *dev = ts->dev;
 	struct touch_pinctrl *pinctrl = &ts->pinctrl;
@@ -216,7 +216,7 @@ out:
 	return 0;
 }
 #else	/* __SIW_SUPPORT_PINCTRL */
-int siw_touch_bus_pin_get(struct siw_ts *ts)
+static int siw_touch_bus_pin_get(struct siw_ts *ts)
 {
 	struct device *dev = ts->dev;
 
@@ -224,7 +224,7 @@ int siw_touch_bus_pin_get(struct siw_ts *ts)
 	return 0;
 }
 
-int siw_touch_bus_pin_put(struct siw_ts *ts)
+static int siw_touch_bus_pin_put(struct siw_ts *ts)
 {
 	struct device *dev = ts->dev;
 
@@ -369,7 +369,7 @@ out:
 	return -ENOMEM;
 }
 
-int siw_touch_bus_alloc_buffer(struct siw_ts *ts)
+static int siw_touch_bus_alloc_buffer(struct siw_ts *ts)
 {
 	struct device *dev = ts->dev;
 	int buf_size = touch_buf_size(ts);
@@ -406,7 +406,7 @@ out_tx_buf:
 	return ret;
 }
 
-int siw_touch_bus_free_buffer(struct siw_ts *ts)
+static int siw_touch_bus_free_buffer(struct siw_ts *ts)
 {
 	struct device *dev = ts->dev;
 
@@ -418,17 +418,52 @@ int siw_touch_bus_free_buffer(struct siw_ts *ts)
 	return 0;
 }
 
-int siw_touch_bus_init(struct device *dev)
+int siw_touch_bus_init(struct siw_ts *ts)
 {
-	struct siw_ts *ts = to_touch_core(dev);
+	struct device *dev = ts->dev;
+	int ret = 0;
+
+	ret = siw_touch_bus_alloc_buffer(ts);
+	if (ret < 0) {
+		t_dev_err(dev, "failed to alloc bus buffer, %d\n", ret);
+		goto out;
+	}
+
+	ret = siw_touch_bus_pin_get(ts);
+	if (ret < 0) {
+		t_dev_err(dev, "failed to setup bus pin, %d\n", ret);
+		goto out_bus_pin;
+	}
 
 	if (!ts->bus_init) {
 		t_dev_err(dev, "no bus_init %s(%d)\n",
 			dev_name(dev), touch_bus_type(ts));
-		return -EINVAL;
+		ret = -EINVAL;
+		goto out_bus_init;
 	}
 
-	return ts->bus_init(dev);
+	ret = ts->bus_init(dev);
+	if (ret < 0) {
+		goto out_bus_init;
+	}
+
+	return 0;
+
+out_bus_init:
+	siw_touch_bus_pin_put(ts);
+
+out_bus_pin:
+	siw_touch_bus_free_buffer(ts);
+
+out:
+	return ret;
+}
+
+void siw_touch_bus_free(struct siw_ts *ts)
+{
+	siw_touch_bus_pin_put(ts);
+
+	siw_touch_bus_free_buffer(ts);
 }
 
 int siw_touch_bus_read(struct device *dev,

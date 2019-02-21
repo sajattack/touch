@@ -114,16 +114,12 @@ extern struct siw_ts *siw_touch_bus_ts_alloc(struct device *dev,
 				size_t addr, int irq, const char *name);
 extern void siw_touch_bus_ts_free(struct device *dev);
 
-extern int siw_touch_bus_pin_get(struct siw_ts *ts);
-extern int siw_touch_bus_pin_put(struct siw_ts *ts);
-
 extern void *siw_touch_bus_create_bus_drv(int bus_type);
 extern void siw_touch_bus_free_bus_drv(void *bus_drv);
 
-extern int siw_touch_bus_alloc_buffer(struct siw_ts *ts);
-extern int siw_touch_bus_free_buffer(struct siw_ts *ts);
+extern int siw_touch_bus_init(struct siw_ts *ts);
+extern void siw_touch_bus_free(struct siw_ts *ts);
 
-extern int siw_touch_bus_init(struct device *dev);
 extern int siw_touch_bus_read(struct device *dev, struct touch_bus_msg *msg);
 extern int siw_touch_bus_write(struct device *dev, struct touch_bus_msg *msg);
 
