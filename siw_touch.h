@@ -1113,6 +1113,8 @@ struct siw_ts {
 #define _IRQ_USE_WAKE				(1UL<<0)	/* unavailable */
 #define _IRQ_USE_SCHEDULE_WORK		(1UL<<1)
 
+#define _TOUCH_BUS_USE_DMA			(1UL<<7)
+
 #define _TOUCH_USE_MON_THREAD		(1UL<<8)
 #define _TOUCH_USE_PINCTRL			(1UL<<9)
 #define _TOUCH_USE_PWRCTRL			(1UL<<10)
@@ -1179,6 +1181,8 @@ enum {
 enum {
 	IRQ_USE_WAKE				= _IRQ_USE_WAKE,
 	IRQ_USE_SCHEDULE_WORK		= _IRQ_USE_SCHEDULE_WORK,
+	/* */
+	TOUCH_BUS_USE_DMA			= _TOUCH_BUS_USE_DMA,
 	/* */
 	TOUCH_USE_MON_THREAD		= _TOUCH_USE_MON_THREAD,
 	TOUCH_USE_PINCTRL			= _TOUCH_USE_PINCTRL,

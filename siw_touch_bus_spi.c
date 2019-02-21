@@ -142,6 +142,26 @@ static int siw_touch_spi_init(struct device *dev)
 	return 0;
 }
 
+#define __SIW_SUPPORT_SPI_DMA
+
+#if defined(__SIW_SUPPORT_SPI_DMA)
+static int __is_dma_mapped(struct spi_device *spi,
+							struct touch_bus_msg *msg)
+{
+	int is_dma_mapped = !!(msg->tx_dma);
+
+	is_dma_mapped &= (msg->rx_buf != NULL) ? !!(msg->rx_dma) : 1;
+
+	return is_dma_mapped;
+}
+#else	/* __SIW_SUPPORT_SPI_DMA */
+static inline int __is_dma_mapped(struct spi_device *spi,
+							struct touch_bus_msg *msg)
+{
+	return 0;
+}
+#endif	/* __SIW_SUPPORT_SPI_DMA */
+
 static int siw_touch_spi_do_read(struct spi_device *spi,
 							struct touch_bus_msg *msg)
 {
@@ -164,6 +184,8 @@ static int siw_touch_spi_do_read(struct spi_device *spi,
 	}
 
 	siw_touch_spi_message_init(spi, &m);
+
+	m.is_dma_mapped = __is_dma_mapped(spi, msg);
 
 	x.tx_buf = msg->tx_buf;
 	x.rx_buf = msg->rx_buf;
@@ -206,6 +228,8 @@ int siw_touch_spi_do_write(struct spi_device *spi,
 	}
 
 	siw_touch_spi_message_init(spi, &m);
+
+	m.is_dma_mapped = __is_dma_mapped(spi, msg);
 
 	x.tx_buf = msg->tx_buf;
 	x.rx_buf = msg->rx_buf;

@@ -262,10 +262,11 @@ static void *__buffer_alloc(struct device *dev, size_t size,
 				dma_addr_t *dma_handle, gfp_t gfp,
 				char *name)
 {
+	struct siw_ts *ts = to_touch_core(dev);
 	void *buf = NULL;
 	dma_addr_t _dma = 0;
 
-	if (siw_touch_sys_bus_use_dma(dev) && dma_handle) {
+	if ((touch_flags(ts) & TOUCH_BUS_USE_DMA) && dma_handle) {
 		gfp &= ~GFP_DMA;
 		buf = dma_alloc_coherent(NULL, size, &_dma, gfp);
 		if (!buf || !_dma) {
@@ -297,10 +298,12 @@ static void __buffer_free(struct device *dev, size_t size,
 				void *buf, dma_addr_t dma_handle,
 				char *name)
 {
+	struct siw_ts *ts = to_touch_core(dev);
+
 	if (!buf)
 		return;
 
-	if (siw_touch_sys_bus_use_dma(dev) && dma_handle) {
+	if ((touch_flags(ts) & TOUCH_BUS_USE_DMA) && dma_handle) {
 		t_dev_dbg_base(dev, "free %s: buf %p, phy %zxh, size %zxh\n",
 					name, buf, (size_t)dma_handle, size);
 		dma_free_coherent(NULL, size, buf, dma_handle);
@@ -422,6 +425,14 @@ int siw_touch_bus_init(struct siw_ts *ts)
 {
 	struct device *dev = ts->dev;
 	int ret = 0;
+
+	if (t_dbg_flag & DBG_FLAG_TEST_BUS_USE_DMA) {
+		ts->flags |= TOUCH_BUS_USE_DMA;
+	}
+
+	if (t_dbg_flag & DBG_FLAG_SKIP_BUS_USE_DMA) {
+		ts->flags &= ~TOUCH_BUS_USE_DMA;
+	}
 
 	ret = siw_touch_bus_alloc_buffer(ts);
 	if (ret < 0) {
