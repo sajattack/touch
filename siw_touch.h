@@ -578,6 +578,8 @@ struct siw_touch_fquirks {	//function quirks
 	/* */
 	int (*gpio_init_irq)(struct device *dev);
 	int (*gpio_free_irq)(struct device *dev);
+	/* */
+	void *sysfs_group;
 };
 
 enum {

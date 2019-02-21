@@ -1288,17 +1288,6 @@ static ssize_t _store_grab_state(struct device *dev,
 	return (ssize_t)count;
 }
 
-ssize_t __weak show_sys_con(struct device *dev, char *buf)
-{
-	return 0;
-}
-
-ssize_t __weak store_sys_con(struct device *dev,
-				const char *buf, size_t count)
-{
-	return count;
-}
-
 
 #define SIW_TOUCH_ATTR(_name, _show, _store)	\
 		TOUCH_ATTR(_name, _show, _store)
@@ -1400,9 +1389,6 @@ static SIW_TOUCH_ATTR(glove_status,
 static SIW_TOUCH_ATTR(grab_status,
 						_show_grab_state,
 						_store_grab_state);
-static SIW_TOUCH_ATTR(sys_con,
-						show_sys_con,
-						store_sys_con);
 
 
 static struct attribute *siw_touch_attribute_list[] = {
@@ -1450,7 +1436,6 @@ static struct attribute *siw_touch_attribute_list_normal[] = {
 	&_SIW_TOUCH_ATTR_T(dbg_test).attr,
 	&_SIW_TOUCH_ATTR_T(glove_status).attr,
 	&_SIW_TOUCH_ATTR_T(grab_status).attr,
-	&_SIW_TOUCH_ATTR_T(sys_con).attr,
 	NULL,
 };
 
@@ -1571,12 +1556,22 @@ static int siw_touch_add_sysfs_normal(struct siw_ts *ts)
 {
 	struct device *dev = ts->dev;
 	struct kobject *kobj = &ts->kobj;
+	struct siw_touch_fquirks *fquirks = touch_fquirks(ts);
+	const struct attribute_group *sysfs_grp = fquirks->sysfs_group;
 	int ret;
 
 	ret = sysfs_create_group(kobj, &siw_touch_attribute_group_normal);
 	if (ret < 0) {
 		t_dev_err(dev, "failed to add sysfs(normal)\n");
 		goto out;
+	}
+
+	if (sysfs_grp != NULL) {
+		ret = sysfs_create_group(kobj, sysfs_grp);
+		if (ret < 0) {
+			t_dev_err(dev, "failed to add fquirks sysfs\n");
+			goto out_sysfs_grp;
+		}
 	}
 
 	ret = siw_ops_sysfs(ts, DRIVER_INIT);
@@ -1588,6 +1583,11 @@ static int siw_touch_add_sysfs_normal(struct siw_ts *ts)
 	return 0;
 
 out_ops_sysfs:
+	if (sysfs_grp != NULL) {
+		sysfs_remove_group(kobj, sysfs_grp);
+	}
+
+out_sysfs_grp:
 	sysfs_remove_group(kobj, &siw_touch_attribute_group_normal);
 
 out:
@@ -1598,8 +1598,14 @@ static void siw_touch_del_sysfs_normal(struct siw_ts *ts)
 {
 //	struct device *dev = ts->dev;
 	struct kobject *kobj = &ts->kobj;
+	struct siw_touch_fquirks *fquirks = touch_fquirks(ts);
+	const struct attribute_group *sysfs_grp = fquirks->sysfs_group;
 
 	siw_ops_sysfs(ts, DRIVER_FREE);
+
+	if (sysfs_grp != NULL) {
+		sysfs_remove_group(kobj, sysfs_grp);
+	}
 
 	sysfs_remove_group(kobj, &siw_touch_attribute_group_normal);
 }
