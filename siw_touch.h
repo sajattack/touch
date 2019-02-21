@@ -29,6 +29,7 @@
 #include <linux/input/mt.h>
 #include <linux/fs.h>
 #include <linux/slab.h>
+#include <linux/ctype.h>
 
 #if defined(__SIW_CONFIG_EARLYSUSPEND)
 #include <linux/earlysuspend.h>
@@ -1666,6 +1667,18 @@ static inline void touch_putname(void *name)
 	if (name != NULL) {
 		__putname(name);
 	}
+}
+
+static inline int touch_str_to_lower(char *dst, char *src)
+{
+	int len = strlen(src);
+	int ret = len;
+
+	while (len--) {
+		*dst++ = tolower(*src++);
+	}
+
+	return ret;
 }
 
 

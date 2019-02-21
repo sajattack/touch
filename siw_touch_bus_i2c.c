@@ -273,9 +273,11 @@ static const struct dev_pm_ops siw_touch_i2c_pm_ops = {
 #endif	/* CONFIG_PM_SLEEP */
 
 static struct i2c_device_id siw_touch_i2c_id[] = {
+	{ "siw,reserved", 0 },
 	{ SIW_TOUCH_NAME, 0 },
 	{ }
 };
+MODULE_DEVICE_TABLE(i2c, siw_touch_i2c_id);
 
 int siw_touch_i2c_add_driver(void *data)
 {
@@ -283,6 +285,8 @@ int siw_touch_i2c_add_driver(void *data)
 	struct siw_touch_bus_drv *bus_drv = NULL;
 	struct siw_touch_pdata *pdata = NULL;
 	struct i2c_driver *i2c_drv = NULL;
+	struct i2c_device_id *id = siw_touch_i2c_id;
+	char chip_name[I2C_NAME_SIZE] = {0, };
 	char *drv_name = NULL;
 	int bus_type;
 	int ret = 0;
@@ -322,13 +326,15 @@ int siw_touch_i2c_add_driver(void *data)
 	i2c_drv->remove = siw_touch_i2c_remove;
 	i2c_drv->shutdown = siw_touch_i2c_shutdown;
 	i2c_drv->id_table = siw_touch_i2c_id;
-	if (drv_name != NULL) {
-		memset((void *)siw_touch_i2c_id[0].name, 0, I2C_NAME_SIZE);
-		snprintf((char *)siw_touch_i2c_id[0].name,
-				I2C_NAME_SIZE,
-				"%s",
-				drv_name);
-	}
+
+	/*
+	 * for non-DTS case
+	 * : change siw_touch_i2c_id[0].name to compatible name
+	 */
+	touch_str_to_lower(chip_name, pdata_chip_name(pdata));
+	memset((void *)id->name, 0, I2C_NAME_SIZE);
+	snprintf((char *)id->name, I2C_NAME_SIZE, "siw,%s", chip_name);
+	id->driver_data = pdata_chip_type(pdata);
 
 	ret = i2c_add_driver(i2c_drv);
 	if (ret) {

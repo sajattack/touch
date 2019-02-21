@@ -363,9 +363,11 @@ static const struct dev_pm_ops siw_touch_spi_pm_ops = {
 #endif	/* CONFIG_PM_SLEEP */
 
 static struct spi_device_id siw_touch_spi_id[] = {
+	{ "siw,reserved", 0 },
 	{ SIW_TOUCH_NAME, 0 },
 	{ }
 };
+MODULE_DEVICE_TABLE(spi, siw_touch_spi_id);
 
 int siw_touch_spi_add_driver(void *data)
 {
@@ -373,6 +375,8 @@ int siw_touch_spi_add_driver(void *data)
 	struct siw_touch_bus_drv *bus_drv = NULL;
 	struct siw_touch_pdata *pdata = NULL;
 	struct spi_driver *spi_drv = NULL;
+	struct spi_device_id *id = siw_touch_spi_id;
+	char chip_name[SPI_NAME_SIZE] = {0, };
 	char *drv_name = NULL;
 	int bus_type;
 	int ret = 0;
@@ -412,13 +416,15 @@ int siw_touch_spi_add_driver(void *data)
 	spi_drv->remove = siw_touch_spi_remove;
 	spi_drv->shutdown = siw_touch_spi_shutdown;
 	spi_drv->id_table = siw_touch_spi_id;
-	if (drv_name != NULL) {
-		memset((void *)siw_touch_spi_id[0].name, 0, SPI_NAME_SIZE);
-		snprintf((char *)siw_touch_spi_id[0].name,
-				SPI_NAME_SIZE,
-				"%s",
-				drv_name);
-	}
+
+	/*
+	 * for non-DTS case
+	 * : change siw_touch_spi_id[0].name to compatible name
+	 */
+	touch_str_to_lower(chip_name, pdata_chip_name(pdata));
+	memset((void *)id->name, 0, SPI_NAME_SIZE);
+	snprintf((char *)id->name, SPI_NAME_SIZE, "siw,%s", chip_name);
+	id->driver_data = pdata_chip_type(pdata);
 
 	ret = spi_register_driver(spi_drv);
 	if (ret) {
