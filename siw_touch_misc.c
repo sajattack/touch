@@ -60,9 +60,9 @@
 #define SIW_MISC_NAME	"siw_touch_misc"
 
 enum {
-	SIW_MISC_BUF_SZ = (4<<10),
+	SIW_MISC_BUF_SZ = PAGE_SIZE,
 	/* */
-	SIW_MISC_NAME_SZ = 128,
+	SIW_MISC_NAME_SZ = 32,
 };
 
 struct siw_misc_data {
@@ -70,20 +70,19 @@ struct siw_misc_data {
 	struct device *dev;
 	/* */
 	char name[SIW_MISC_NAME_SZ];
+	struct mutex lock;
 //	spinlock_t bus_lock;
 	int users;
-	u8* buf;
+	u8 *buf;
 };
-
-struct siw_misc_data *__siw_misc_data = NULL;
-
-DEFINE_MUTEX(siw_misc_lock);
 
 static ssize_t siw_misc_read(struct file *filp,
 					char __user *buf,
 					size_t count, loff_t *f_pos)
 {
-	struct siw_misc_data *misc_data = __siw_misc_data;
+	struct miscdevice *misc = filp->private_data;
+	struct siw_misc_data *misc_data = \
+		container_of(misc, struct siw_misc_data, misc);
 	struct device *dev = NULL;
 	u32 addr;
 	ssize_t result = 0;
@@ -93,7 +92,7 @@ static ssize_t siw_misc_read(struct file *filp,
 		return -EMSGSIZE;
 	}
 
-	mutex_lock(&siw_misc_lock);
+	mutex_lock(&misc_data->lock);
 
 	dev = misc_data->dev;
 
@@ -121,7 +120,7 @@ static ssize_t siw_misc_read(struct file *filp,
 
 out:
 
-	mutex_unlock(&siw_misc_lock);
+	mutex_unlock(&misc_data->lock);
 
 	return ret;
 }
@@ -134,7 +133,9 @@ static ssize_t siw_misc_write(struct file *filp,
 					const char __user *buf,
 					size_t count, loff_t *f_pos)
 {
-	struct siw_misc_data *misc_data = __siw_misc_data;
+	struct miscdevice *misc = filp->private_data;
+	struct siw_misc_data *misc_data = \
+		container_of(misc, struct siw_misc_data, misc);
 	struct device *dev = NULL;
 	u32 addr;
 	ssize_t ret = -EFAULT;
@@ -147,7 +148,7 @@ static ssize_t siw_misc_write(struct file *filp,
 		return -EINVAL;
 	}
 
-	mutex_lock(&siw_misc_lock);
+	mutex_lock(&misc_data->lock);
 
 	dev = misc_data->dev;
 
@@ -171,35 +172,24 @@ static ssize_t siw_misc_write(struct file *filp,
 	}
 
 out:
-	mutex_unlock(&siw_misc_lock);
+	mutex_unlock(&misc_data->lock);
 
 	return ret;
 }
 
 static int siw_misc_open(struct inode *inode, struct file *filp)
 {
-	struct siw_misc_data *misc_data = __siw_misc_data;
+	struct miscdevice *misc = filp->private_data;
+	struct siw_misc_data *misc_data = \
+		container_of(misc, struct siw_misc_data, misc);
 	struct device *dev = NULL;
 	int ret = 0;
 
-	if (misc_data == NULL) {
-		return -ENOENT;
-	}
-
-	mutex_lock(&siw_misc_lock);
+	mutex_lock(&misc_data->lock);
 
 	dev = misc_data->dev;
 
 	if (!misc_data->users) {
-		if (!misc_data->buf) {
-			misc_data->buf = kmalloc(SIW_MISC_BUF_SZ, GFP_KERNEL);
-			if (!misc_data->buf) {
-				t_dev_err(dev, "open ENOMEM\n");
-				ret = -ENOMEM;
-				goto out;
-			}
-		}
-
 		siw_touch_irq_control(dev, INTERRUPT_DISABLE);
 
 		siw_touch_mon_pause(dev);
@@ -207,22 +197,21 @@ static int siw_misc_open(struct inode *inode, struct file *filp)
 
 	misc_data->users++;
 
-out:
-	mutex_unlock(&siw_misc_lock);
+	t_dev_info(dev, "siw_misc: opened(%d)\n", misc_data->users);
+
+	mutex_unlock(&misc_data->lock);
 	return ret;
 }
 
 static int siw_misc_release(struct inode *inode, struct file *filp)
 {
-	struct siw_misc_data *misc_data = __siw_misc_data;
+	struct miscdevice *misc = filp->private_data;
+	struct siw_misc_data *misc_data = \
+		container_of(misc, struct siw_misc_data, misc);
 	struct device *dev;
 	int ret = 0;
 
-	if (misc_data == NULL) {
-		return -ENOENT;
-	}
-
-	mutex_lock(&siw_misc_lock);
+	mutex_lock(&misc_data->lock);
 
 	dev = misc_data->dev;
 
@@ -232,27 +221,61 @@ static int siw_misc_release(struct inode *inode, struct file *filp)
 
 	misc_data->users--;
 	if (!misc_data->users) {
-		if (misc_data->buf) {
-			kfree(misc_data->buf);
-			misc_data->buf = NULL;
-		}
-
 		siw_touch_mon_resume(dev);
 
 		siw_touch_irq_control(dev, INTERRUPT_ENABLE);
 	}
 
+	t_dev_info(dev, "siw_misc: released(%d)\n", misc_data->users);
+
 out:
-	mutex_unlock(&siw_misc_lock);
+	mutex_unlock(&misc_data->lock);
 
 	return ret;
+}
+
+static int siw_misc_do_ioctl(struct device *dev, unsigned int cmd, unsigned long arg)
+{
+	/* test log */
+	t_dev_info(dev, "siw_misc: ioctl: D %Xh, T %Xh, N %Xh, S %Xh (%08Xh)\n",
+		_IOC_DIR(cmd), _IOC_TYPE(cmd), _IOC_NR(cmd), _IOC_SIZE(cmd), cmd);
+
+	return 0;
+}
+
+static long __used siw_misc_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+{
+	struct miscdevice *misc = filp->private_data;
+	struct siw_misc_data *misc_data = \
+		container_of(misc, struct siw_misc_data, misc);
+	struct device *dev = NULL;
+	struct siw_ts *ts = NULL;
+	int ret = 0;
+
+	mutex_lock(&misc_data->lock);
+
+	dev = misc_data->dev;
+
+	ts = to_touch_core(dev);
+
+	if (touch_get_dev_data(ts) == NULL) {
+		t_dev_info(dev, "siw_misc_ioctl: touch not connected, skipped\n");
+		goto out;
+	}
+
+	ret = siw_misc_do_ioctl(dev, cmd, arg);
+
+out:
+	mutex_unlock(&misc_data->lock);
+
+	return (long)ret;
 }
 
 static const struct file_operations siw_misc_fops = {
 	.owner			= THIS_MODULE,
 	.read			= siw_misc_read,
 	.write			= siw_misc_write,
-//	.unlocked_ioctl	= siw_misc_ioctl,
+	.unlocked_ioctl	= siw_misc_ioctl,
 	.open 			= siw_misc_open,
 	.release		= siw_misc_release,
 	.llseek			= no_llseek,
@@ -264,14 +287,24 @@ int siw_touch_misc_init(struct device *dev)
 	struct siw_misc_data *misc_data = NULL;
 	struct miscdevice *misc = NULL;
 	char *name;
+	int str_sz = sizeof(struct siw_misc_data);
 	int ret = 0;
 
-	misc_data = kzalloc(sizeof(*misc_data), GFP_KERNEL);
+	if (ts->misc != NULL) {
+		t_dev_warn(dev, "siw misc already alloacted\n");
+		goto out;
+	}
+
+	misc_data = kzalloc(str_sz + SIW_MISC_BUF_SZ, GFP_KERNEL);
 	if (misc_data == NULL) {
 		t_dev_err(dev, "can't alloacte misc data\n");
 		ret = -ENOMEM;
 		goto out;
 	}
+
+	misc_data->buf = ((u8 *)misc_data) + str_sz;
+	misc_data->dev = dev;
+//	spin_lock_init(&misc_data->bus_lock);
 
 	misc = &misc_data->misc;
 
@@ -286,6 +319,8 @@ int siw_touch_misc_init(struct device *dev)
 	misc->name = misc_data->name;
 	misc->fops = &siw_misc_fops;
 
+	mutex_init(&misc_data->lock);
+
 	/* register misc device */
 	ret = misc_register(misc);
 	if (ret < 0) {
@@ -293,11 +328,7 @@ int siw_touch_misc_init(struct device *dev)
 		goto out_register;
 	}
 
-	misc_data->dev = dev;
-
-//	spin_lock_init(&misc_data->bus_lock);
-
-	__siw_misc_data = misc_data;
+	ts->misc = misc_data;
 
 	t_dev_info(dev, "siw misc register done (%d)\n", misc->minor);
 
@@ -313,15 +344,20 @@ out:
 
 void siw_touch_misc_free(struct device *dev)
 {
-	struct siw_misc_data *misc_data = __siw_misc_data;
+	struct siw_ts *ts = to_touch_core(dev);
+	struct siw_misc_data *misc_data = ts->misc;
 
-	if (misc_data) {
-		misc_deregister(&misc_data->misc);
-
-		kfree(misc_data);
+	if (misc_data == NULL) {
+		return;
 	}
 
-	__siw_misc_data = NULL;
+	mutex_destroy(&misc_data->lock);
+
+	misc_deregister(&misc_data->misc);
+
+	kfree(misc_data);
+
+	ts->misc = NULL;
 }
 
 #endif	/* __SIW_SUPPORT_MISC */

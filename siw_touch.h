@@ -1105,6 +1105,9 @@ struct siw_ts {
 	void *abt;
 	void *prd;
 
+	//__SIW_SUPPORT_MISC
+	void *misc;
+
 	u32 flags;
 #define _IRQ_USE_WAKE				(1UL<<0)	/* unavailable */
 #define _IRQ_USE_SCHEDULE_WORK		(1UL<<1)
