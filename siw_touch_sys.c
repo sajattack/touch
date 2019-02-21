@@ -47,31 +47,6 @@
 #include <soc/qcom/lge/board_lge.h>
 #endif
 
-
-/*
- * depends on AP bus
- */
-int siw_touch_sys_bus_use_dma(struct device *dev)
-{
-	struct siw_ts *ts = to_touch_core(dev);
-
-	if (touch_bus_type(ts) != BUS_IF_SPI) {
-		return 0;
-	}
-
-#if defined(__If_the_bus_of_your_chipset_needs_dma_control__)
-	{
-		return 1;
-	}
-#elif defined(CONFIG_ARCH_EXYNOS5)
-	{
-		return 0;
-	}
-#endif
-
-	return 0;
-}
-
 int siw_touch_get_boot_mode(void)
 {
 #if defined(CONFIG_SIW_GET_BOOT_MODE)
