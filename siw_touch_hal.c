@@ -5961,7 +5961,7 @@ static int siw_hal_tc_driving(struct device *dev, int mode)
 
 	siw_hal_chk_dbg_report(dev, tc_status, 0);
 
-	running_status = tc_status & 0x1F;
+	running_status = siw_tc_sts_running_sts(tc_status);
 
 	re_init = 0;
 	if (mode == LCD_MODE_STOP) {
