@@ -31,10 +31,6 @@
 #include <linux/slab.h>
 #include <linux/ctype.h>
 
-#if defined(__SIW_CONFIG_EARLYSUSPEND)
-#include <linux/earlysuspend.h>
-#endif
-
 #if defined(__SIW_CONFIG_FB)
 #include <linux/fb.h>
 #endif
@@ -1079,9 +1075,6 @@ struct siw_ts {
 
 #if defined(__SIW_CONFIG_SYS_FB)
 	struct notifier_block sys_fb_notif;
-#endif
-#if defined(__SIW_CONFIG_EARLYSUSPEND)
-	struct early_suspend early_suspend;
 #endif
 #if defined(__SIW_CONFIG_FB)
 	struct notifier_block fb_notif;

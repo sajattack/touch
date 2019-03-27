@@ -710,7 +710,6 @@ void siw_touch_resume_call(struct device *dev)
 
 #if !defined(__SIW_PANEL_CLASS_MOBILE) &&	\
 	!defined(__SIW_CONFIG_SYS_FB) &&	\
-	!defined(__SIW_CONFIG_EARLYSUSPEND) &&	\
 	!defined(__SIW_CONFIG_FB)
 #define __SIW_CONFIG_PM_BUS
 #endif
@@ -750,56 +749,6 @@ static int __used siw_touch_free_pm(struct siw_ts *ts)
 	t_dev_info(dev, "free pm - sys_fb\n");
 
 	siw_touch_sys_fb_unregister_client(dev);
-
-	return 0;
-}
-#elif defined(__SIW_CONFIG_EARLYSUSPEND)
-/**
- * touch pm control using early pm
- *
- */
-static void siw_touch_early_suspend(struct early_suspend *h)
-{
-	struct siw_ts *ts =
-		container_of(h, struct siw_ts, early_suspend);
-	struct device *dev = ts->dev;
-
-	t_dev_info(ts->dev, "early suspend\n");
-
-	siw_touch_suspend(dev);
-}
-
-static void siw_touch_early_resume(struct early_suspend *h)
-{
-	struct siw_ts *ts =
-		container_of(h, struct siw_ts, early_suspend);
-	struct device *dev = ts->dev;
-
-	t_dev_info(ts->dev, "early resume\n");
-
-	siw_touch_resume(dev);
-}
-
-static int __used siw_touch_init_pm(struct siw_ts *ts)
-{
-	struct device *dev = ts->dev;
-
-	t_dev_info(dev, "init pm - early_suspend\n");
-
-	ts->early_suspend.level = EARLY_SUSPEND_LEVEL_DISABLE_FB + 1;
-	ts->early_suspend.suspend = siw_touch_early_suspend;
-	ts->early_suspend.resume = siw_touch_early_resume;
-	register_early_suspend(&ts->early_suspend);
-	return 0;
-}
-
-static int __used siw_touch_free_pm(struct siw_ts *ts)
-{
-	struct device *dev = ts->dev;
-
-	t_dev_info(dev, "free pm - early_suspend\n");
-
-	unregister_early_suspend(&ts->early_suspend);
 
 	return 0;
 }
