@@ -986,9 +986,6 @@ struct siw_ts {
 	int irq;
 	unsigned long irqflags;
 	unsigned long irqflags_curr;
-	irq_handler_t handler_fn;
-	irq_handler_t thread_fn;
-	struct delayed_work work_irq;
 
 	void *bus_dev;				/* i2c or spi */
 	struct device *dev;			/* client device : i2c->dev or spi->dev */
@@ -1112,9 +1109,6 @@ struct siw_ts {
 	void *misc;
 
 	u32 flags;
-#define _IRQ_USE_WAKE				(1UL<<0)	/* unavailable */
-#define _IRQ_USE_SCHEDULE_WORK		(1UL<<1)
-
 #define _TOUCH_BUS_USE_DMA			(1UL<<7)
 
 #define _TOUCH_USE_MON_THREAD		(1UL<<8)
@@ -1181,9 +1175,6 @@ enum {
 };
 
 enum {
-	IRQ_USE_WAKE				= _IRQ_USE_WAKE,
-	IRQ_USE_SCHEDULE_WORK		= _IRQ_USE_SCHEDULE_WORK,
-	/* */
 	TOUCH_BUS_USE_DMA			= _TOUCH_BUS_USE_DMA,
 	/* */
 	TOUCH_USE_MON_THREAD		= _TOUCH_USE_MON_THREAD,

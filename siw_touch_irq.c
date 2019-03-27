@@ -179,84 +179,6 @@ void siw_touch_irq_control(struct device *dev, int on_off)
 	siw_touch_disable_irq(dev, ts->irq);
 }
 
-#if defined(__SIW_CONFIG_OF)
-static void siw_touch_irq_work_func(struct work_struct *work)
-{
-	struct siw_ts *ts =
-			container_of(work, struct siw_ts, work_irq.work);
-	struct device *dev = ts->dev;
-
-	t_dev_dbg_irq(dev, "irq_work_func\n");
-
-	if (ts->thread_fn)
-		ts->thread_fn(ts->irq, ts);
-}
-
-static irqreturn_t siw_touch_work_irq_handler(int irq, void *dev_id)
-{
-	struct siw_ts *ts = (struct siw_ts *)dev_id;
-	struct device *dev = ts->dev;
-
-	t_dev_dbg_irq(dev, "work_irq_handler\n");
-
-	if (ts->handler_fn(ts->irq, ts) == IRQ_WAKE_THREAD)
-		queue_delayed_work(ts->wq, &ts->work_irq, 0);
-
-	return IRQ_HANDLED;
-}
-#endif
-
-static int siw_touch_request_irq_queue_work(struct siw_ts *ts,
-								irq_handler_t handler_fn,
-							    irq_handler_t thread_fn,
-							    unsigned long flags,
-							    const char *name)
-{
-#if defined(__SIW_CONFIG_OF)
-	struct device *dev = ts->dev;
-	struct device_node *node = NULL;
-	u32 ints[2] = { 0, 0 };
-	int ret = 0;
-
-	ts->handler_fn = handler_fn;
-	ts->thread_fn = thread_fn;
-	INIT_DELAYED_WORK(&ts->work_irq, siw_touch_irq_work_func);
-
-	//AP specific scheme
-	node = of_find_compatible_node(NULL, NULL, "vendor,vendor-touch");
-	if (!node) {
-		t_dev_err(dev, "request_irq can not find touch eint device node!.\n");
-		ret = -ENXIO;
-		goto out;
-	}
-
-	ret = of_property_read_u32_array(node, "debounce", ints, ARRAY_SIZE(ints));
-	if (ret < 0) {
-		t_dev_err(dev, "failed to parse GPIO defaults: %d\n", ret);
-		goto out;
-	}
-	gpio_set_debounce(ints[0], ints[1]);
-
-	/*
-	 * Default flags = 0x2002 : IRQF_ONESHOT | IRQF_TRIGGER_FALLING
-     */
-	ts->irq = irq_of_parse_and_map(node, 0);
-	ret = request_irq(ts->irq, siw_touch_work_irq_handler,
-					flags, name, (void *)ts);
-	if (ret) {
-		t_dev_err(dev, "request_irq IRQ LINE NOT AVAILABLE!, %d\n", ret);
-		goto out;
-	}
-
-	t_dev_info(dev, "irq:%d, debounce:%d-%d:\n", ts->irq, ints[0], ints[1]);
-
-out:
-	return ret;
-#else
-	return -1;
-#endif
-}
-
 #define __SIW_SUPPORT_IRQ_INDEX_CHECK
 
 /*
@@ -309,7 +231,6 @@ int siw_touch_request_irq(struct siw_ts *ts,
 							    const char *name)
 {
 	struct device *dev = ts->dev;
-	u32 irq_use_scheule_work = touch_flags(ts) & IRQ_USE_SCHEDULE_WORK;
 	int ret = 0;
 
 	siw_touch_irq_index_check(ts);
@@ -320,13 +241,7 @@ int siw_touch_request_irq(struct siw_ts *ts,
 		goto out;
 	}
 
-	if (irq_use_scheule_work) {
-		ret = siw_touch_request_irq_queue_work(ts,
-									handler, thread_fn,
-									flags, name);
-	} else {
-		ret = request_threaded_irq(ts->irq, handler, thread_fn, flags, name, (void *)ts);
-	}
+	ret = request_threaded_irq(ts->irq, handler, thread_fn, flags, name, (void *)ts);
 	if (ret) {
 		t_dev_err(dev, "failed to request irq(%d, %s, 0x%X), %d\n",
 				ts->irq, name, (u32)flags, ret);
@@ -335,9 +250,7 @@ int siw_touch_request_irq(struct siw_ts *ts,
 
 	ts->irqflags_curr = flags;
 
-	t_dev_info(dev, "%s irq request done(%d, %s, 0x%X)\n",
-			(irq_use_scheule_work) ?	\
-			"queue work" : "threaded",
+	t_dev_info(dev, "threaded irq request done(%d, %s, 0x%X)\n",
 			ts->irq, name, (u32)flags);
 
 out:
