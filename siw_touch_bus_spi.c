@@ -491,26 +491,6 @@ int siw_touch_spi_del_driver(void *data)
 
 	return 0;
 }
-
-#else	/* CONFIG_SPI_MASTER */
-int siw_touch_spi_add_driver(void *data)
-{
-//	struct siw_touch_pdata *pdata = data;
-
-	t_pr_err("SPI : not supported in this system\n");
-	return -ENODEV;
-}
-
-int siw_touch_spi_del_driver(void *data)
-{
-//	struct siw_touch_pdata *pdata = data;
-
-	t_pr_err("SPI : not supported in this system\n");
-	return -ENODEV;
-}
-
 #endif	/* CONFIG_SPI_MASTER */
-
-
 
 

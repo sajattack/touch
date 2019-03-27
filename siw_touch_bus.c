@@ -45,10 +45,31 @@
 #include "siw_touch_hal.h"
 #include "siw_touch_irq.h"
 #include "siw_touch_bus.h"
-#include "siw_touch_bus_i2c.h"
-#include "siw_touch_bus_spi.h"
 #include "siw_touch_sys.h"
 
+int __weak siw_touch_i2c_add_driver(void *data)
+{
+	t_pr_err("I2C : not supported in this system\n");
+	return -ENODEV;
+}
+
+int __weak siw_touch_i2c_del_driver(void *data)
+{
+	t_pr_err("I2C : not supported in this system\n");
+	return -ENODEV;
+}
+
+int __weak siw_touch_spi_add_driver(void *data)
+{
+	t_pr_err("SPI : not supported in this system\n");
+	return -ENODEV;
+}
+
+int __weak siw_touch_spi_del_driver(void *data)
+{
+	t_pr_err("SPI : not supported in this system\n");
+	return -ENODEV;
+}
 
 static int siw_touch_bus_tr_data_init(struct siw_ts *ts)
 {
