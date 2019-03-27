@@ -1304,26 +1304,28 @@ static char __prd_out_file_mo_mcv[PRD_TMP_FILE_NAME_SZ] =	\
 			"/sdcard/siw/prd_out_mfts_mcv.txt";
 
 #if defined(MODULE)
+#define __PRD_FILE_DEFAULT_PERM		(S_IRUGO | S_IWUSR | S_IWGRP)
+
 /* use eg. prd_if=arc1 to change name */
-module_param_string(prd_if, __prd_in_file, sizeof(__prd_in_file), 0);
+module_param_string(prd_if, __prd_in_file, sizeof(__prd_in_file), __PRD_FILE_DEFAULT_PERM);
 
 /* use eg. prd_if_m=arc1 to change name */
-module_param_string(prd_if_m, __prd_in_file_m, sizeof(__prd_in_file_m), 0);
+module_param_string(prd_if_m, __prd_in_file_m, sizeof(__prd_in_file_m), __PRD_FILE_DEFAULT_PERM);
 
 /* use eg. prd_of=arc1 to change name */
-module_param_string(prd_of, __prd_out_file, sizeof(__prd_out_file), 0);
+module_param_string(prd_of, __prd_out_file, sizeof(__prd_out_file), __PRD_FILE_DEFAULT_PERM);
 
 /* use eg. prd_of_mo_aat=arc1 to change name */
-module_param_string(prd_of_mo_aat, __prd_out_file_mo_aat, sizeof(__prd_out_file_mo_aat), 0);
+module_param_string(prd_of_mo_aat, __prd_out_file_mo_aat, sizeof(__prd_out_file_mo_aat), __PRD_FILE_DEFAULT_PERM);
 
 /* use eg. prd_of_mo_mfo=arc1 to change name */
-module_param_string(prd_of_mo_mfo, __prd_out_file_mo_mfo, sizeof(__prd_out_file_mo_mfo), 0);
+module_param_string(prd_of_mo_mfo, __prd_out_file_mo_mfo, sizeof(__prd_out_file_mo_mfo), __PRD_FILE_DEFAULT_PERM);
 
 /* use eg. prd_of_mo_mfl=arc1 to change name */
-module_param_string(prd_of_mo_mfl, __prd_out_file_mo_mfl, sizeof(__prd_out_file_mo_mfl), 0);
+module_param_string(prd_of_mo_mfl, __prd_out_file_mo_mfl, sizeof(__prd_out_file_mo_mfl), __PRD_FILE_DEFAULT_PERM);
 
 /* use eg. prd_of_mo_mcv=arc1 to change name */
-module_param_string(prd_of_mo_mcv, __prd_out_file_mo_mcv, sizeof(__prd_out_file_mo_mcv), 0);
+module_param_string(prd_of_mo_mcv, __prd_out_file_mo_mcv, sizeof(__prd_out_file_mo_mcv), __PRD_FILE_DEFAULT_PERM);
 #endif
 
 
