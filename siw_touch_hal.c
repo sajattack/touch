@@ -2245,13 +2245,44 @@ static const char *siw_hal_pwr_name[] = {
 	[POWER_ON]		= "Power on",
 };
 
+static int siw_hal_power_core(struct device *dev, int ctrl)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+
+	switch (ctrl) {
+	case POWER_OFF:
+		t_dev_dbg_pm(dev, "power core: power off\n");
+		atomic_set(&chip->init, IC_INIT_NEED);
+
+		siw_hal_power_vio(dev, 0);
+		siw_hal_power_vdd(dev, 0);
+
+		touch_msleep(chip->drv_reset_low + hal_dbg_delay(chip, HAL_DBG_DLY_HW_RST_0));
+		break;
+
+	case POWER_ON:
+		t_dev_dbg_pm(dev, "power core: power on\n");
+		siw_hal_power_vdd(dev, 1);
+		siw_hal_power_vio(dev, 1);
+		break;
+
+	case POWER_SLEEP:
+		break;
+
+	case POWER_WAKE:
+		break;
+
+	case POWER_HW_RESET:
+		break;
+	}
+
+	return 0;
+}
+
 static int siw_hal_power(struct device *dev, int ctrl)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
-	int skip_reset = ctrl & 0x80;
-
-	ctrl &= 0x0F;
 
 	if ((ctrl < 0) || (ctrl > POWER_ON)) {
 		t_dev_err(dev, "power ctrl: wrong ctrl value, %d\n", ctrl);
@@ -2266,21 +2297,17 @@ static int siw_hal_power(struct device *dev, int ctrl)
 		t_dev_dbg_pm(dev, "power ctrl: power off\n");
 		atomic_set(&chip->init, IC_INIT_NEED);
 
-		if (!skip_reset) {
-			siw_hal_set_gpio_reset(dev, GPIO_OUT_ZERO);
-		}
-		siw_hal_power_vio(dev, 0);
-		siw_hal_power_vdd(dev, 0);
-		touch_msleep(chip->drv_reset_low + hal_dbg_delay(chip, HAL_DBG_DLY_HW_RST_0));
+		siw_hal_set_gpio_reset(dev, GPIO_OUT_ZERO);
+
+		siw_hal_power_core(dev, ctrl);
 		break;
 
 	case POWER_ON:
 		t_dev_dbg_pm(dev, "power ctrl: power on\n");
-		siw_hal_power_vdd(dev, 1);
-		siw_hal_power_vio(dev, 1);
-		if (!skip_reset) {
-			siw_hal_set_gpio_reset(dev, GPIO_OUT_ONE);
-		}
+
+		siw_hal_power_core(dev, ctrl);
+
+		siw_hal_set_gpio_reset(dev, GPIO_OUT_ONE);
 		break;
 
 	case POWER_SLEEP:
@@ -2294,6 +2321,7 @@ static int siw_hal_power(struct device *dev, int ctrl)
 	case POWER_HW_RESET:
 		t_dev_info(dev, "power ctrl: reset\n");
 		siw_hal_reset_ctrl(dev, HW_RESET_ASYNC);
+		break;
 	}
 
 	return 0;
@@ -3857,8 +3885,12 @@ static int siw_hal_hw_reset_quirk(struct device *dev, int pwr_con, int delay)
 	t_dev_info(dev, "run sw reset (reset gpio deactivated)\n");
 
 	if (pwr_con) {
-		siw_hal_power(dev, POWER_OFF | 0x80);
-		siw_hal_power(dev, POWER_ON | 0x80);
+		siw_touch_irq_control(dev, INTERRUPT_DISABLE);
+
+		atomic_set(&chip->init, IC_INIT_NEED);
+
+		siw_hal_power_core(dev, POWER_OFF);
+		siw_hal_power_core(dev, POWER_ON);
 		touch_msleep((delay) ? delay : ts->caps.hw_reset_delay);
 	}
 
