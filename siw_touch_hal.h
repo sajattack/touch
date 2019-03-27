@@ -283,8 +283,6 @@ struct siw_hal_fw_info {
 	u32 version_ext;
 	/* */
 	u8 product_id[8+4];
-	u8 image_version[4];
-	u8 image_product_id[8+4];
 	u8 revision;
 	u32 fpc;
 	u32 wfr;
