@@ -900,124 +900,6 @@ static int __used __siw_touch_init_pm_none(struct siw_ts *ts, char *title)
 #define siw_touch_free_pm(_ts)		__siw_touch_init_pm_none(_ts, "free")
 #endif
 
-#if defined(__SIW_SUPPORT_ASC)
-/**
- * siw_touch_get_max_delta -
- * @ts : touch core info
- *
- */
-static void siw_touch_get_max_delta(struct siw_ts *ts)
-{
-	struct device *dev = ts->dev;
-	struct asc_info *asc = &(ts->asc);
-	int ret;
-
-	if (asc->use_delta_chk == DELTA_CHK_OFF) {
-		t_dev_warn(dev, "DELTA_CHK is OFf\n");
-		return;
-	}
-
-	if (atomic_read(&ts->state.fb) != FB_RESUME) {
-		t_dev_warn(dev, "fb state is not FB_RESUME\n");
-		return;
-	}
-
-	if (atomic_read(&ts->state.core) != CORE_NORMAL) {
-		t_dev_warn(dev, "core state is not CORE_NORMAL\n");
-		return;
-	}
-
-	mutex_lock(&ts->lock);
-	ret = siw_ops_asc(ts, ASC_READ_MAX_DELTA, 0);
-	mutex_unlock(&ts->lock);
-	if (ret < 0) {
-		t_dev_err(dev, "delta change failed, %d\n", ret);
-		return;
-	}
-
-	asc->delta = ret;
-	asc->delta_updated = true;
-
-	t_dev_info(dev, "delta = %d\n", asc->delta);
-}
-
-static const char *asc_str[] = {
-	"NORMAL",
-	"ACUTE",
-	"OBTUSE",
-};
-
-/**
- * siw_touch_change_sensitivity - change touch sensitivity
- * @ts : touch core info
- * @target : target sensitivity
- *
- */
-void siw_touch_change_sensitivity(struct siw_ts *ts,
-						int target)
-{
-	struct device *dev = ts->dev;
-	struct asc_info *asc = &(ts->asc);
-	int ret;
-
-	if (atomic_read(&ts->state.fb) != FB_RESUME) {
-		t_dev_warn(dev, "fb state is not FB_RESUME\n");
-		return;
-	}
-
-	if (atomic_read(&ts->state.core) != CORE_NORMAL) {
-		t_dev_warn(dev, "core state is not CORE_NORMAL\n");
-		return;
-	}
-
-	if (asc->curr_sensitivity == target) {
-		return;
-	}
-
-	t_dev_info(dev, "sensitivity(curr->next) = (%s -> %s)\n",
-				asc_str[asc->curr_sensitivity],
-				asc_str[target]);
-
-	mutex_lock(&ts->lock);
-	ret = siw_ops_asc(ts, ASC_WRITE_SENSITIVITY, target);
-	mutex_unlock(&ts->lock);
-	if (ret < 0) {
-		t_dev_err(dev, "sensitivity change failed, %d\n", ret);
-		return;
-	}
-
-	asc->curr_sensitivity = target;
-}
-
-static void siw_touch_update_sensitivity(struct siw_ts *ts)
-{
-	struct device *dev = ts->dev;
-	struct asc_info *asc = &(ts->asc);
-	int target = NORMAL_SENSITIVITY;
-
-	if (asc->use_delta_chk == DELTA_CHK_OFF) {
-		t_dev_warn(dev, "DELTA_CHK is OFf\n");
-		return;
-	}
-
-	if (asc->delta_updated == false) {
-		t_dev_warn(dev, "delta is not updated.\n");
-		return;
-	}
-
-	if (asc->delta < asc->low_delta_thres) {
-		target = ACUTE_SENSITIVITY;
-	} else if (asc->delta > asc->high_delta_thres) {
-		target = OBTUSE_SENSITIVITY;
-	} else {
-		target = NORMAL_SENSITIVITY;
-	}
-
-	asc->delta_updated = false;
-	siw_touch_change_sensitivity(ts, target);
-}
-#endif	/* __SIW_SUPPORT_ASC */
-
 static void __used siw_touch_init_locks(struct siw_ts *ts)
 {
 	t_dev_dbg_base(ts->dev, "touch init locks\n");
@@ -1058,13 +940,14 @@ static void siw_touch_init_work_func(struct work_struct *work)
 			container_of(to_delayed_work(work),
 						struct siw_ts, init_work);
 	struct device *dev = ts->dev;
+	int is_probe = (atomic_read(&ts->state.core) == CORE_PROBE);
 	int do_fw_upgrade = 0;
 	int ret = 0;
 
 	t_dev_info(dev, "%s init work start(%s)\n",
 		touch_chip_name(ts), SIW_DRV_VERSION);
 
-	if (atomic_read(&ts->state.core) == CORE_PROBE) {
+	if (is_probe) {
 		do_fw_upgrade |= !!(ts->role.use_fw_upgrade);
 	}
 
@@ -1089,7 +972,7 @@ static void siw_touch_init_work_func(struct work_struct *work)
 				touch_chip_name(ts), ret, INIT_RETRY_DELAY);
 		siw_touch_qd_init_work_jiffies(ts, INIT_RETRY_DELAY);
 	#else	/* __SIW_SUPPORT_INIT_RETRY */
-		if (atomic_read(&ts->state.core) == CORE_PROBE) {
+		if (is_probe) {
 			t_dev_err(dev, "%s init work failed(%d), try again\n",
 				touch_chip_name(ts), ret);
 			atomic_set(&ts->state.core, CORE_NORMAL);
@@ -1108,21 +991,6 @@ static void siw_touch_init_work_func(struct work_struct *work)
 		siw_touch_qd_upgrade_work_now(ts);
 		return;
 	}
-
-#if defined(__SIW_SUPPORT_ASC)
-	if (ts->asc.use_asc == ASC_ON) {
-		if (atomic_read(&ts->state.core) == CORE_UPGRADE) {
-			mutex_lock(&ts->lock);
-			ret = siw_ops_asc(ts, ASC_GET_FW_SENSITIVITY, 0);
-			mutex_unlock(&ts->lock);
-			if (ret < 0) {
-				t_dev_warn(dev, "sensitivity change failed, %d\n", ret);
-			}
-		}
-
-		siw_touch_qd_toggle_delta_work_jiffies(ts, 0);
-	}
-#endif	/* __SIW_SUPPORT_ASC */
 
 	atomic_set(&ts->state.core, CORE_NORMAL);
 
@@ -1261,83 +1129,6 @@ static int siw_touch_reset(struct siw_ts *ts)
 	return siw_ops_reset(ts, HW_RESET_ASYNC);
 }
 #endif	/* __SIW_CONFIG_USE_SYS_PANEL_RESET */
-
-
-#if defined(__SIW_SUPPORT_ASC)
-static void siw_touch_toggle_delta_check_work_func(
-			struct work_struct *work)
-{
-	struct siw_ts *ts =
-			container_of(to_delayed_work(work),
-				struct siw_ts, toggle_delta_work);
-	struct device *dev = ts->dev;
-	struct asc_info *asc = &(ts->asc);
-	int connect_status = atomic_read(&ts->state.connect);
-	int wireless_status = atomic_read(&ts->state.wireless);
-	int call_status = atomic_read(&ts->state.incoming_call);
-	int onhand_status = atomic_read(&ts->state.onhand);
-	int delta = DELTA_CHK_OFF;
-	int target = NORMAL_SENSITIVITY;
-
-	if (asc->use_asc == ASC_OFF) {
-		t_dev_info(dev, "ASC is off\n");
-		return;
-	}
-
-	t_dev_info(dev, "connect = %d, wireless = %d, call = %d, onhand = %d\n",
-			connect_status, wireless_status,
-			call_status, onhand_status);
-
-	if ((connect_status != CONNECT_INVALID) ||
-		(wireless_status != 0) ||
-		(call_status != INCOMING_CALL_IDLE)) {
-		/* */
-	} else {
-		delta = DELTA_CHK_ON;
-
-		switch (onhand_status) {
-		case IN_HAND_ATTN :
-		case IN_HAND_NO_ATTN :
-			break;
-		case NOT_IN_HAND :
-			target = ACUTE_SENSITIVITY;
-			break;
-		default:
-			delta = -1;
-			break;
-		}
-	}
-
-	if (delta < 0) {
-		t_dev_info(dev, "Unknown onhand_status\n");
-		return;
-	}
-
-	asc->use_delta_chk = delta;
-	siw_touch_change_sensitivity(ts, target);
-
-	t_dev_info(dev, "curr_sensitivity = %s, use_delta_chk = %d\n",
-			asc_str[asc->curr_sensitivity], asc->use_delta_chk);
-
-	siwmon_submit_ops_step_core(dev, "Delta work done", 0);
-}
-
-static void siw_touch_finger_input_check_work_func(
-		struct work_struct *work)
-{
-	struct siw_ts *ts =
-		container_of(to_delayed_work(work),
-				struct siw_ts, finger_input_work);
-
-	if ((ts->tcount == 1) && (!ts->asc.delta_updated))
-		siw_touch_get_max_delta(ts);
-
-	if ((ts->tcount == 0) && (ts->asc.delta_updated))
-		siw_touch_update_sensitivity(ts);
-
-	return;
-}
-#endif	/* __SIW_SUPPORT_ASC */
 
 #if defined(__SIW_SUPPORT_MON_THREAD)
 static int siw_touch_mon_chk_pause(struct siw_ts *ts)
@@ -1656,12 +1447,6 @@ static int __used siw_touch_init_works(struct siw_ts *ts)
 	INIT_DELAYED_WORK(&ts->init_work, siw_touch_init_work_func);
 	INIT_DELAYED_WORK(&ts->upgrade_work, siw_touch_upgrade_work_func);
 	INIT_DELAYED_WORK(&ts->fb_work, siw_touch_fb_work_func);
-#if defined(__SIW_SUPPORT_ASC)
-	INIT_DELAYED_WORK(&ts->toggle_delta_work,
-					siw_touch_toggle_delta_check_work_func);
-	INIT_DELAYED_WORK(&ts->finger_input_work,
-					siw_touch_finger_input_check_work_func);
-#endif	/* __SIW_SUPPORT_ASC */
 	INIT_DELAYED_WORK(&ts->notify_work, siw_touch_atomic_notifer_work_func);
 	INIT_DELAYED_WORK(&ts->sys_reset_work, siw_touch_sys_reset_work_func);
 
@@ -1673,10 +1458,6 @@ static void __used siw_touch_free_works(struct siw_ts *ts)
 	if (ts->wq) {
 		cancel_delayed_work(&ts->sys_reset_work);
 		cancel_delayed_work(&ts->notify_work);
-	#if defined(__SIW_SUPPORT_ASC)
-		cancel_delayed_work(&ts->finger_input_work);
-		cancel_delayed_work(&ts->toggle_delta_work);
-	#endif	/* __SIW_SUPPORT_ASC */
 		cancel_delayed_work(&ts->fb_work);
 		cancel_delayed_work(&ts->upgrade_work);
 		cancel_delayed_work(&ts->init_work);
@@ -1737,12 +1518,6 @@ static int _siw_touch_do_irq_thread(struct siw_ts *ts)
 
 	if (ts->intr_status & TOUCH_IRQ_FINGER) {
 		siw_touch_report_event(ts);
-
-	#if defined(__SIW_SUPPORT_ASC)
-		if (ts->asc.use_delta_chk == DELTA_CHK_ON) {
-			siw_touch_qd_finger_input_work_jiffies(ts, 0);
-		}
-	#endif
 	}
 
 	if (ts->intr_status & TOUCH_IRQ_KNOCK)
@@ -1814,7 +1589,6 @@ static int __used siw_touch_verify_pdata(struct siw_ts *ts)
 		!ops->irq_lpwg ||
 		!ops->power ||
 		!ops->upgrade ||
-		!ops->asc ||
 		0)
 		return -EPERM;
 

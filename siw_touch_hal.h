@@ -367,12 +367,6 @@ static inline void siw_hal_fw_set_prod_id(struct siw_hal_fw_info *fw, u8 *prod, 
 }
 
 
-struct siw_hal_asc_info {
-	u16 normal_s;
-	u16 acute_s;
-	u16 obtuse_s;
-};
-
 struct siw_hal_swipe_info {
 	u8	distance;
 	u8	ratio_thres;
@@ -573,7 +567,6 @@ struct siw_touch_chip {
 	struct kobject kobj;
 	struct siw_hal_touch_info info;
 	struct siw_hal_fw_info fw;
-	struct siw_hal_asc_info asc;
 	struct siw_hal_swipe_ctrl swipe;
 	/* */
 	int report_type;

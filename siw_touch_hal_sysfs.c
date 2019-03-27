@@ -127,12 +127,7 @@ static int __show_reg_list(struct device *dev, char *buf, int size)
 	size += _reg_snprintf(buf, size, reg, cmd_raw_data_report_mode_write);
 	size += _reg_snprintf(buf, size, reg, spr_charger_status);
 	size += _reg_snprintf(buf, size, reg, ime_state);
-#if defined(__SIW_SUPPORT_ASC)
-	size += _reg_snprintf(buf, size, reg, max_delta);
-	size += _reg_snprintf(buf, size, reg, touch_max_w);
-	size += _reg_snprintf(buf, size, reg, touch_max_r);
 	size += _reg_snprintf(buf, size, reg, call_state);
-#endif
 	size += _reg_snprintf(buf, size, reg, tc_tsp_test_ctl);
 	size += _reg_snprintf(buf, size, reg, tc_tsp_test_status);
 	size += _reg_snprintf(buf, size, reg, tc_tsp_test_pf_result);

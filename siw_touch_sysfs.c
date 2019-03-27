@@ -56,21 +56,6 @@ static const char *siw_mfts_str[] = {
 };
 #endif
 
-#if defined(__SIW_SUPPORT_ASC)
-static const char *siw_incoming_call_str[] = {
-	"IDLE",
-	"RINGING",
-	"OFFHOOK",
-};
-
-static const char *siw_onhand_str[] = {
-	"IN_HAND_ATTN",
-	"NOT_IN_HAND",
-	"IN_HAND_NO_ATTN",
-};
-#endif	/* __SIW_SUPPORT_ASC */
-
-
 #define siw_sysfs_err_invalid_param(_dev)	\
 		t_dev_err(_dev, "Invalid param\n");
 
@@ -728,7 +713,13 @@ static ssize_t _store_debug_option_state(struct device *dev,
 	return count;
 }
 
-#if defined(__SIW_SUPPORT_ASC)
+#if defined(__SIW_SUPPORT_INCOMING_CALL)
+static const char *siw_incoming_call_str[] = {
+	[INCOMING_CALL_IDLE]	= "IDLE",
+	[INCOMING_CALL_RINGING]	= "RINGING",
+	[INCOMING_CALL_OFFHOOK]	= "OFFHOOK",
+};
+
 static ssize_t _show_incoming_call_state(struct device *dev, char *buf)
 {
 	struct siw_ts *ts = to_touch_core(dev);
@@ -765,9 +756,6 @@ static ssize_t _store_incoming_call_state(struct device *dev,
 		ret = siw_touch_blocking_notifier_call(NOTIFY_CALL_STATE,
 					&ts->state.incoming_call);
 
-		if (ts->asc.use_asc == ASC_ON)
-			siw_touch_qd_toggle_delta_work_jiffies(ts, 0);
-
 		t_dev_info(dev, "Incoming-call : %s(%d)\n",
 				siw_incoming_call_str[value], value);
 	} else {
@@ -776,107 +764,7 @@ static ssize_t _store_incoming_call_state(struct device *dev,
 
 	return count;
 }
-
-static ssize_t _show_asc_param(struct device *dev, char *buf)
-{
-	struct siw_ts *ts = to_touch_core(dev);
-	struct asc_info *asc = &(ts->asc);
-	int size = 0;
-
-	size += siw_snprintf(buf, size, "use_asc = %d\n",
-				asc->use_asc);
-	size += siw_snprintf(buf, size, "low_delta_thres = %d\n",
-				asc->low_delta_thres);
-	size += siw_snprintf(buf, size, "high_delta_thres = %d\n",
-				asc->high_delta_thres);
-
-	return (ssize_t)size;
-}
-
-static ssize_t _store_asc_param(struct device *dev,
-				const char *buf, size_t count)
-{
-	struct siw_ts *ts = to_touch_core(dev);
-	struct asc_info *asc = &(ts->asc);
-	unsigned char string[30] = {0, };
-	u32 value = 0;
-
-	if (touch_test_quirks(ts, CHIP_QUIRK_NOT_SUPPORT_ASC)) {
-		t_dev_err(dev, "asc control not supporeted in %s\n",
-				touch_chip_name(ts));
-		goto out;
-	}
-
-	if (sscanf(buf, "%s %d", string, &value) <= 0) {
-		siw_sysfs_err_invalid_param(dev);
-		return count;
-	}
-
-	if (!strcmp(string, "use_asc")) {
-		if (value == ASC_OFF) {
-			asc->use_delta_chk = DELTA_CHK_OFF;
-			siw_touch_change_sensitivity(ts, NORMAL_SENSITIVITY);
-			asc->use_asc = ASC_OFF;
-		} else if (value == ASC_ON) {
-			asc->use_asc = ASC_ON;
-			mutex_lock(&ts->lock);
-			siw_ops_asc(ts, ASC_GET_FW_SENSITIVITY, 0);
-			mutex_unlock(&ts->lock);
-			siw_touch_qd_toggle_delta_work_jiffies(ts, 0);
-		} else {
-			t_dev_info(dev, "ASC : Invalid value, %d\n", value);
-		}
-
-	} else if (!strcmp(string, "low_delta_thres")) {
-		asc->low_delta_thres = value;
-	} else if (!strcmp(string, "high_delta_thres")) {
-		asc->high_delta_thres = value;
-	}
-
-out:
-	return count;
-}
-
-static ssize_t _show_onhand(struct device *dev, char *buf)
-{
-	struct siw_ts *ts = to_touch_core(dev);
-	int value = 0;
-	int size = 0;
-
-	value = atomic_read(&ts->state.onhand);
-
-	t_dev_info(dev, "Hand : %s(%d)\n", siw_onhand_str[value], value);
-
-	size += siw_snprintf(buf, size, "%d\n", value);
-
-	return (ssize_t)size;
-}
-
-static ssize_t _store_onhand(struct device *dev,
-				const char *buf, size_t count)
-{
-	struct siw_ts *ts = to_touch_core(dev);
-	int value = 0;
-
-	if (sscanf(buf, "%d", &value) <= 0) {
-		siw_sysfs_err_invalid_param(dev);
-		return count;
-	}
-
-	if (value >= IN_HAND_ATTN && value <= IN_HAND_NO_ATTN) {
-		atomic_set(&ts->state.onhand, value);
-
-		if (ts->asc.use_asc == ASC_ON)
-			siw_touch_qd_toggle_delta_work_jiffies(ts, 0);
-
-		t_dev_info(dev, "Hand : %s(%d)\n", siw_onhand_str[value], value);
-	} else {
-		t_dev_info(dev, "Hand : Invalid value, %d\n", value);
-	}
-
-	return count;
-}
-#endif	/* __SIW_SUPPORT_ASC */
+#endif	/* __SIW_SUPPORT_INCOMING_CALL */
 
 static ssize_t _show_module_info(struct device *dev, char *buf)
 {
@@ -1352,17 +1240,11 @@ static SIW_TOUCH_ATTR(debug_tool_t,
 static SIW_TOUCH_ATTR(debug_option,
 						_show_debug_option_state,
 						_store_debug_option_state);
-#if defined(__SIW_SUPPORT_ASC)
+#if defined(__SIW_SUPPORT_INCOMING_CALL)
 static SIW_TOUCH_ATTR(incoming_call,
 						_show_incoming_call_state,
 						_store_incoming_call_state);
-static SIW_TOUCH_ATTR(asc,
-						_show_asc_param,
-						_store_asc_param);
-static SIW_TOUCH_ATTR(onhand,
-						_show_onhand,
-						_store_onhand);
-#endif	/* __SIW_SUPPORT_ASC */
+#endif	/* __SIW_SUPPORT_INCOMING_CALL */
 static SIW_TOUCH_ATTR(module_info,
 						_show_module_info, NULL);
 static SIW_TOUCH_ATTR(dbg_mask,
@@ -1427,11 +1309,9 @@ static struct attribute *siw_touch_attribute_list_normal[] = {
 	&_SIW_TOUCH_ATTR_T(debug_tool).attr,
 	&_SIW_TOUCH_ATTR_T(debug_tool_t).attr,
 	&_SIW_TOUCH_ATTR_T(debug_option).attr,
-#if defined(__SIW_SUPPORT_ASC)
+#if defined(__SIW_SUPPORT_INCOMING_CALL)
 	&_SIW_TOUCH_ATTR_T(incoming_call).attr,
-	&_SIW_TOUCH_ATTR_T(asc).attr,
-	&_SIW_TOUCH_ATTR_T(onhand).attr,
-#endif	/* __SIW_SUPPORT_ASC */
+#endif	/* __SIW_SUPPORT_INCOMING_CALL */
 	&_SIW_TOUCH_ATTR_T(dbg_mon).attr,
 	&_SIW_TOUCH_ATTR_T(dbg_test).attr,
 	&_SIW_TOUCH_ATTR_T(glove_status).attr,

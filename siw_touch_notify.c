@@ -158,25 +158,12 @@ static int _siw_touch_do_notify(struct siw_ts *ts,
 		if (atomic_read(&ts->state.connect) != value) {
 			atomic_set(&ts->state.connect, value);
 			ret = siw_ops_notify(ts, event, data);
-
-		#if defined(__SIW_SUPPORT_ASC)
-			if (ts->asc.use_asc == ASC_ON) {
-				siw_touch_qd_toggle_delta_work_jiffies(ts, 0);
-			}
-		#endif	/* __SIW_SUPPORT_ASC */
 		}
 		break;
 
 	case NOTIFY_WIRELEES:
 		atomic_set(&ts->state.wireless, value);
 		ret = siw_ops_notify(ts, event, data);
-
-	#if defined(__SIW_SUPPORT_ASC)
-		if (ts->asc.use_asc == ASC_ON) {
-			siw_touch_qd_toggle_delta_work_jiffies(ts, 0);
-		}
-	#endif	/* __SIW_SUPPORT_ASC */
-
 		break;
 
 	case NOTIFY_FB:

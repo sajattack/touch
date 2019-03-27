@@ -296,34 +296,6 @@ enum {
 };
 
 enum {
-	ASC_OFF = 0,
-	ASC_ON,
-};
-
-enum {
-	IN_HAND_ATTN = 0,
-	NOT_IN_HAND,
-	IN_HAND_NO_ATTN,
-};
-
-enum {
-	ASC_READ_MAX_DELTA = 0,
-	ASC_GET_FW_SENSITIVITY,
-	ASC_WRITE_SENSITIVITY,
-};
-
-enum {
-	DELTA_CHK_OFF = 0,
-	DELTA_CHK_ON,
-};
-
-enum {
-	NORMAL_SENSITIVITY = 0,
-	ACUTE_SENSITIVITY,
-	OBTUSE_SENSITIVITY,
-};
-
-enum {
 	NORMAL_BOOT = 0,
 	MINIOS_AAT,
 	MINIOS_MFTS_FOLDER,
@@ -349,7 +321,6 @@ struct state_info {
 	atomic_t sp_link;
 	atomic_t debug_tool;
 	atomic_t debug_option_mask;
-	atomic_t onhand;
 	atomic_t hw_reset;
 	atomic_t mon_ignore;
 	atomic_t glove;
@@ -465,16 +436,6 @@ struct tci_ctrl {
 	struct tci_info info[2];
 };
 
-struct asc_info {
-	u32	use_asc;
-	u8	curr_sensitivity;
-	bool use_delta_chk;
-	bool delta_updated;
-	u32	delta;
-	u32	low_delta_thres;
-	u32	high_delta_thres;
-};
-
 typedef int (*siw_mon_handler_t)(struct device *dev, u32 opt);
 
 struct siw_touch_operations {
@@ -499,7 +460,6 @@ struct siw_touch_operations {
 	int (*power)(struct device *dev, int power_mode);
 	int (*upgrade)(struct device *dev);
 	int (*lpwg)(struct device *dev,	u32 code, void *param);
-	int (*asc)(struct device *dev, u32 code, u32 value);
 	int (*notify)(struct device *dev, ulong event, void *data);
 	int (*set)(struct device *dev, u32 cmd, void *buf);
 	int (*get)(struct device *dev, u32 cmd, void *buf);
@@ -1020,7 +980,6 @@ struct siw_ts {
 	int is_cancel;
 	struct lpwg_info lpwg;
 	struct tci_ctrl tci;
-	struct asc_info asc;
 
 	int def_fwcnt;
 	const char *def_fwpath[4];
@@ -1064,8 +1023,6 @@ struct siw_ts {
 	struct delayed_work upgrade_work;
 	struct delayed_work notify_work;
 	struct delayed_work fb_work;
-	struct delayed_work toggle_delta_work;
-	struct delayed_work finger_input_work;
 	struct delayed_work sys_reset_work;
 
 	struct notifier_block blocking_notif;
@@ -1204,15 +1161,6 @@ enum {
 #define __siw_touch_qd_fb_work(_ts, _delay)	\
 		queue_delayed_work(_ts->wq, &_ts->fb_work, _delay)
 
-#if defined(__SIW_SUPPORT_ASC)
-/* goes to siw_touch_toggle_delta_check_work_func */
-#define __siw_touch_qd_toggle_delta_work(_ts, _delay)	\
-		queue_delayed_work(_ts->wq, &_ts->toggle_delta_work, _delay)
-/* goes to siw_touch_finger_input_check_work_func */
-#define __siw_touch_qd_finger_input_work(_ts, _delay)	\
-		queue_delayed_work(_ts->wq, &_ts->finger_input_work, _delay)
-#endif	/* __SIW_SUPPORT_ASC */
-
 /* goes to siw_touch_sys_reset_work_func  */
 #define __siw_touch_qd_sys_reset_work(_ts, _delay)	\
 		queue_delayed_work(_ts->wq, &_ts->sys_reset_work, _delay)
@@ -1243,18 +1191,6 @@ enum {
 		__siw_touch_qd_fb_work(_ts, 0)
 #define siw_touch_qd_fb_work_jiffies(_ts, _jiffies)	\
 		__siw_touch_qd_fb_work(_ts, msecs_to_jiffies(_jiffies))
-
-#if defined(__SIW_SUPPORT_ASC)
-#define siw_touch_qd_toggle_delta_work_now(_ts)	\
-		__siw_touch_qd_toggle_delta_work(_ts, 0)
-#define siw_touch_qd_toggle_delta_work_jiffies(_ts, _jiffies)	\
-		__siw_touch_qd_toggle_delta_work(_ts, msecs_to_jiffies(_jiffies))
-
-#define siw_touch_qd_finger_input_work_now(_ts)	\
-		__siw_touch_qd_finger_input_work(_ts, 0)
-#define siw_touch_qd_finger_input_work_jiffies(_ts, _jiffies)	\
-		__siw_touch_qd_finger_input_work(_ts, msecs_to_jiffies(_jiffies))
-#endif	/* __SIW_SUPPORT_ASC */
 
 #define siw_touch_qd_sys_reset_work_now(_ts)	\
 		__siw_touch_qd_sys_reset_work(_ts, 0)
@@ -1610,7 +1546,6 @@ static inline void siw_ops_restore_irq_handler(struct siw_ts *ts)
 #define siw_ops_power(_ts, args...)			siw_ops_xxx(power, -ESRCH, _ts, ##args)
 #define siw_ops_upgrade(_ts, args...)		siw_ops_xxx(upgrade, -ESRCH, _ts, ##args)
 #define siw_ops_lpwg(_ts, args...)			siw_ops_xxx(lpwg, 0, _ts, ##args)
-#define siw_ops_asc(_ts, args...)			siw_ops_xxx(asc, -ESRCH, _ts, ##args)
 #define siw_ops_notify(_ts, args...)		siw_ops_xxx(notify, 0, _ts, ##args)
 #define siw_ops_set(_ts, args...)			siw_ops_xxx(set, 0, _ts, ##args)
 #define siw_ops_get(_ts, args...)			siw_ops_xxx(get, 0, _ts, ##args)

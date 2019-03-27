@@ -6467,110 +6467,6 @@ static int siw_hal_lpwg(struct device *dev, u32 code, void *param)
 	return ret;
 }
 
-#if defined(__SIW_SUPPORT_ASC)
-static int siw_hal_asc(struct device *dev, u32 code, u32 value)
-{
-	struct siw_touch_chip *chip = to_touch_chip(dev);
-	struct siw_ts *ts = chip->ts;
-	struct siw_hal_reg *reg = chip->reg;
-	struct siw_hal_asc_info *asc = &chip->asc;
-	u32 rdata = 0;
-	u32 wdata = 0;
-	u32 asc_ret = 0;
-	size_t mon_data[6] = { 0, };
-	int mon_cnt = 0;
-	int ret = 0;
-
-	mon_data[mon_cnt++] = code;
-
-	switch (code) {
-	case ASC_READ_MAX_DELTA:
-		ret = siw_hal_reg_read(dev,
-					reg->max_delta,
-					(void *)&rdata, sizeof(rdata));
-		mon_data[mon_cnt++] = (size_t)reg->max_delta;
-		mon_data[mon_cnt++] = (size_t)rdata;
-		if (ret < 0) {
-			break;
-		}
-
-		asc_ret = rdata;
-
-		break;
-
-	case ASC_GET_FW_SENSITIVITY:
-		/* fall through */
-	case ASC_WRITE_SENSITIVITY:
-		ret = siw_hal_reg_read(dev,
-					reg->touch_max_r,
-					(void *)&rdata, sizeof(rdata));
-		mon_data[mon_cnt++] = (size_t)reg->touch_max_r;
-		mon_data[mon_cnt++] = (size_t)rdata;
-		if (ret < 0) {
-			break;
-		}
-
-		asc->normal_s = rdata;
-		asc->acute_s = (rdata / 10) * 6;
-		asc->obtuse_s = rdata;
-
-		if (code == ASC_GET_FW_SENSITIVITY) {
-			t_dev_info(dev,
-					"max_r(%04Xh) = %d, n_s %d, a_s = %d, o_s = %d\n",
-					reg->touch_max_r,
-					rdata,
-					asc->normal_s,
-					asc->acute_s,
-					asc->obtuse_s);
-			break;
-		}
-
-		switch (value) {
-		case NORMAL_SENSITIVITY :
-			wdata = asc->normal_s;
-			break;
-		case ACUTE_SENSITIVITY :
-			wdata = asc->acute_s;
-			break;
-		case OBTUSE_SENSITIVITY :
-			wdata = asc->obtuse_s;
-			break;
-		default:
-			wdata = rdata;
-			break;
-		}
-
-		ret = siw_hal_write_value(dev,
-					reg->touch_max_w,
-					wdata);
-		mon_data[mon_cnt++] = (size_t)reg->touch_max_w;
-		mon_data[mon_cnt++] = (size_t)wdata;
-		if (ret < 0) {
-			break;
-		}
-
-		t_dev_info(dev, "max_w(%04Xh) changed (%d -> %d)\n",
-				reg->touch_max_w,
-				rdata, wdata);
-		break;
-	default:
-		break;
-	}
-
-	siwmon_submit_ops_wh_name(dev, "%s asc done",
-			touch_chip_name(ts),
-			mon_data, mon_cnt, asc_ret);
-
-	return asc_ret;
-}
-#else	/* __SIW_SUPPORT_ASC */
-static int siw_hal_asc(struct device *dev, u32 code, u32 value)
-{
-	return 0;
-}
-#endif	/* __SIW_SUPPORT_ASC */
-
-
 #define siw_chk_sts_snprintf(_dev, _buf, _buf_max, _size, _fmt, _args...) \
 		({	\
 			int _n_size = 0;	\
@@ -9237,7 +9133,6 @@ static const struct siw_touch_operations siw_touch_default_ops = {
 	.power				= siw_hal_power,
 	.upgrade			= siw_hal_upgrade,
 	.lpwg				= siw_hal_lpwg,
-	.asc				= siw_hal_asc,
 	.notify				= siw_hal_notify,
 	.set				= siw_hal_set,
 	.get				= siw_hal_get,
