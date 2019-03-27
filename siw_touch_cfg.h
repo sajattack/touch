@@ -24,8 +24,6 @@
 
 //#define __SIW_SUPPORT_MISC
 
-//#define __SIW_SUPPORT_ASC
-
 #if defined(CONFIG_NET)
 //#define __SIW_SUPPORT_ABT
 #endif
@@ -48,8 +46,6 @@
 
 #if defined(__SIW_CONFIG_SYS_FB)
 /* for highest priority */
-#elif defined(CONFIG_HAS_EARLYSUSPEND)
-//#define __SIW_CONFIG_EARLYSUSPEND
 #elif defined(CONFIG_FB)
 #define __SIW_CONFIG_FB
 #endif
