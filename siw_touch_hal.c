@@ -2893,6 +2893,10 @@ static int siw_hal_ic_info_quirk(struct device *dev)
 			break;
 		}
 
+		if (touch_fquirks(ts)->gpio_set_reset != NULL) {
+			break;
+		}
+
 		chip->fquirks.hw_reset_quirk = siw_hal_hw_reset_quirk;
 
 		t_dev_info(dev, "[%s] reset quirk activated\n",
@@ -8735,15 +8739,27 @@ static void siw_hal_show_chipset_option(struct siw_touch_chip *chip)
 	siw_hal_show_tc_cmd_set(chip);
 }
 
-static void siw_hal_chipset_quirks(struct siw_touch_chip *chip)
+static void siw_hal_chipset_quirk_reset(struct siw_touch_chip *chip)
 {
 	struct siw_ts *ts = chip->ts;
 	struct device *dev = chip->dev;
 
-	if (touch_flags(ts) & TOUCH_SKIP_RESET_PIN) {
-		t_dev_info(dev, "hw_reset_quirk activated\n");
-		chip->fquirks.hw_reset_quirk = siw_hal_hw_reset_quirk;
+	if (!(touch_flags(ts) & TOUCH_SKIP_RESET_PIN)) {
+		return;
 	}
+
+	if (touch_fquirks(ts)->gpio_set_reset != NULL) {
+		return;
+	}
+
+	t_dev_info(dev, "hw_reset_quirk activated\n");
+
+	chip->fquirks.hw_reset_quirk = siw_hal_hw_reset_quirk;
+}
+
+static void siw_hal_chipset_quirks(struct siw_touch_chip *chip)
+{
+	siw_hal_chipset_quirk_reset(chip);
 }
 
 static void __siw_hal_do_remove(struct device *dev)
