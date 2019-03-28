@@ -1,7 +1,128 @@
-[Git history : 2018.04.17 PM 06:00]
+[Git history : 2019.03.28]
 
 ---------------------------------------------------------------------------------------------------
 
+* [tag] v2.21r
+* 276d2f7 - input: touchscreen: siw: version fix - 2.21r (Thu Mar 28 08:32:23 2019 +0900) <Harrison Kim>
+* 99ec671 - input: touchscreen: siw: core & hal & sysfs - remove unused control (Wed Mar 27 12:01:11 2019 +0900) <Harrison Kim>
+* cd57e65 - input: touchscreen: siw: core - remove unused control (Wed Mar 27 11:29:16 2019 +0900) <Harrison Kim>
+* 1f22f87 - input: touchscreen: siw: config - remove unused build option (Wed Mar 27 11:29:16 2019 +0900) <Harrison Kim>
+* da3b460 - input: touchscreen: siw: core - update gpio setup (Wed Mar 27 11:29:16 2019 +0900) <Harrison Kim>
+* a048f07 - input: touchscreen: siw: core - update irq setup (Wed Mar 27 11:29:16 2019 +0900) <Harrison Kim>
+* abbefe9 - input: touchscreen: siw: bus - file optimization (Wed Mar 27 10:41:43 2019 +0900) <Harrison Kim>
+* c9c46b9 - input: touchscreen: siw: hal - update version control (Wed Mar 27 10:41:35 2019 +0900) <Harrison Kim>
+* 148eee0 - input: touchscreen: siw: hal - update status check control (Wed Mar 27 10:41:35 2019 +0900) <Harrison Kim>
+* 8ce8237 - input: touchscreen: siw: hal - adjust power control (Wed Mar 27 10:41:35 2019 +0900) <Harrison Kim>
+* 68e29f1 - input: touchscreen: siw: hal - adjust reset quirk control (Wed Mar 27 10:41:35 2019 +0900) <Harrison Kim>
+* fafa911 - input: touchscreen: siw: prd - adjust parameter permission (Wed Mar 27 10:41:26 2019 +0900) <Harrison Kim>
+* 173e37b - input: touchscreen: siw: core & sysfs - add quirk control for sysfs (Thu Feb 21 10:26:40 2019 +0900) <Harrison Kim>
+* b6f347e - input: touchscreen: siw: sys - remove unnecessary function (Thu Feb 21 10:18:17 2019 +0900) <Harrison Kim>
+* 52c1ac1 - input: touchscreen: siw: core & bus - update bus control for buffer management (Thu Feb 21 10:17:33 2019 +0900) <Harrison Kim>
+* 50f479a - input: touchscreen: siw: core & bus - reorganize bus initialization (Thu Feb 21 10:01:26 2019 +0900) <Harrison Kim>
+* a85c03c - input: touchscreen: siw: core & bus - update initialization for non-DTS case (Thu Feb 21 10:01:26 2019 +0900) <Harrison Kim>
+* dcc275b - input: touchscreen: siw: core & misc - reorganize misc framework (Thu Feb 21 09:35:21 2019 +0900) <Harrison Kim>
+* [tag] v2.21b-f6
+* 58703f3 - input: touchscreen: siw: prd - update rawdata print control (Wed Jan 30 13:28:53 2019 +0900) <Harrison Kim>
+* 24738f6 - input: touchscreen: siw: prd - update tune control (Fri Jan 25 15:32:12 2019 +0900) <Harrison Kim>
+* 0d05642 - input: touchscreen: siw: prd - update log control (Fri Jan 25 15:31:37 2019 +0900) <Harrison Kim>
+* 47f1f60 - input: touchscreen: siw: hal & sysfs - add check flag for sysfs (Wed Jan 23 17:19:09 2019 +0900) <Harrison Kim>
+* 85004c8 - input: touchscreen: siw: core & hal & abt - reorganize pm_qos_request control (Wed Jan 23 14:16:52 2019 +0900) <Harrison Kim>
+* af9c9e7 - input: touchscreen: siw: core & sysfs - reorganize wake lock control (Wed Jan 23 14:08:07 2019 +0900) <Harrison Kim>
+* 6f951cf - input: touchscreen: siw: __reference: driver guide - 'mode change' updated (Tue Jan 22 14:03:46 2019 +0900) <Harrison Kim>
+* d96839d - input: touchscreen: siw: core & sys - update sys fb example (Tue Jan 22 13:30:27 2019 +0900) <Harrison Kim>
+* 3151741 - input: touchscreen: siw: prd - reorganize operation control (Mon Jan 21 14:54:32 2019 +0900) <Harrison Kim>
+* 4e6fc6f - input: touchscreen: siw: prd - fix string control (Mon Jan 21 14:54:15 2019 +0900) <Harrison Kim>
+* efa16be - input: touchscreen: siw: core - adjust config status log (Mon Jan 14 12:49:15 2019 +0900) <Harrison Kim>
+* aa68e09 - input: touchscreen: siw: hal - adjust chipset option log (Mon Jan 14 08:43:04 2019 +0900) <Harrison Kim>
+* f33fbcd - input: touchscreen: siw: config - adjust build options (Mon Jan 14 08:16:45 2019 +0900) <Harrison Kim>
+* 1356f3a - input: touchscreen: siw: __reference: driver guide - log example for SW42000A (Fri Jan 11 13:44:03 2019 +0900) <Harrison Kim>
+* 4f76a32 - input: touchscreen: siw: __reference: driver guide (pdf) (Fri Jan 11 13:43:47 2019 +0900) <Harrison Kim>
+* 47ab640 - input: touchscreen: siw: __reference: driver guide - 'FW upgrade' updated (Fri Jan 11 13:37:48 2019 +0900) <Harrison Kim>
+* 9485c72 - input: touchscreen: siw: __reference: driver guide - 'ESD notifier' updated (Fri Jan 11 13:37:32 2019 +0900) <Harrison Kim>
+* 3379936 - input: touchscreen: siw: __reference: driver guide - 'mode change' updated (Fri Jan 11 13:36:29 2019 +0900) <Harrison Kim>
+* 522b4f2 - input: touchscreen: siw: __reference: dts: SW42000A bring-up (example) (Fri Jan 11 13:35:48 2019 +0900) <Harrison Kim>
+* 0ee1ea1 - input: touchscreen: siw: abt - SW42000A bring-up (Fri Jan 11 13:24:41 2019 +0900) <Harrison Kim>
+* 4a86d0e - input: touchscreen: siw: prd - SW42000A bring-up (Fri Jan 11 13:24:27 2019 +0900) <Harrison Kim>
+* 61913ad - input: touchscreen: siw: core & hal & sysfs - SW42000A bring-up (Fri Jan 11 13:19:17 2019 +0900) <Harrison Kim>
+* 00b7982 - input: touchscreen: siw: config - SW42000A bring-up (Fri Jan 11 13:18:57 2019 +0900) <Harrison Kim>
+* 833b2ea - input: touchscreen: siw: hal - reorganize reset control (Fri Jan 11 11:41:37 2019 +0900) <Harrison Kim>
+* 81e3234 - input: touchscreen: siw: hal sysfs - add new attr for debugging (Fri Jan 11 11:41:04 2019 +0900) <Harrison Kim>
+* d62006c - input: touchscreen: siw: sys - update sys fb example (Fri Jan 11 11:40:25 2019 +0900) <Harrison Kim>
+* [tag] v2.21b-f5
+* dc889e5 - input: touchscreen: siw: core & bus - add shutdown callback (Fri Dec 28 13:04:39 2018 +0900) <Harrison Kim>
+* ec06741 - input: touchscreen: siw: prd - adjust address check control (Fri Dec 28 12:20:36 2018 +0900) <Harrison Kim>
+* 09e7ebf - input: touchscreen: siw: hal sysfs - adjust reg. debugging (Fri Dec 28 12:20:17 2018 +0900) <Harrison Kim>
+* c38d5f7 - input: touchscreen: siw: hal - update boot status check (Fri Dec 28 12:18:08 2018 +0900) <Harrison Kim>
+* 4c10627 - input: touchscreen: siw: hal - adjust address check control (Fri Dec 28 12:18:08 2018 +0900) <Harrison Kim>
+* ad5a875 - input: touchscreen: siw: hal - reorganize lpwg & swipe control (Fri Dec 28 12:18:08 2018 +0900) <Harrison Kim>
+* 2684540 - input: touchscreen: siw: core - add new event control (Fri Dec 28 09:34:35 2018 +0900) <Harrison Kim>
+* 8d9e8e3 - input: touchscreen: siw: hal - add new register access (Wed Dec 26 14:42:00 2018 +0900) <Harrison Kim>
+* 22dcb0e - input: touchscreen: siw: core - update retry control (Wed Dec 26 11:38:43 2018 +0900) <Harrison Kim>
+* 229e2d6 - input: touchscreen: siw: hal - reorganize register access (Fri Dec 21 10:49:52 2018 +0900) <Harrison Kim>
+* b970cfc - input: touchscreen: siw: abt - update sysfs control (Thu Dec 20 13:02:50 2018 +0900) <Harrison Kim>
+* 510be4e - input: touchscreen: siw: abt - adjust mutex control (Thu Dec 20 13:02:50 2018 +0900) <Harrison Kim>
+* adba455 - input: touchscreen: siw: abt - adjust log macros (Thu Dec 20 13:02:50 2018 +0900) <Harrison Kim>
+* 98a622b - input: touchscreen: siw: abt - adjust chip->init condition log (Thu Dec 20 13:02:42 2018 +0900) <Harrison Kim>
+* 87f3968 - input: touchscreen: siw: prd - update sysfs control (Thu Dec 20 12:47:39 2018 +0900) <Harrison Kim>
+* ab40a84 - input: touchscreen: siw: prd - adjust log control (Thu Dec 20 12:47:39 2018 +0900) <Harrison Kim>
+* ee28d3c - input: touchscreen: siw: core - update dts parsing (Thu Dec 20 12:47:39 2018 +0900) <Harrison Kim>
+* 659d650 - input: touchscreen: siw: config & core & sys - add new framework for sys fb (Mon Dec 17 14:36:37 2018 +0900) <Harrison Kim>
+* 279d1d7 - input: touchscreen: siw: core & hal - change variable name (Mon Dec 17 14:35:43 2018 +0900) <Harrison Kim>
+* e14a769 - input: touchscreen: siw: core & hal - add quirk control for flexibility (Mon Dec 17 08:21:40 2018 +0900) <Harrison Kim>
+* cfa8993 - input: touchscreen: siw: core & sys - add power control interface (Fri Dec 14 09:45:29 2018 +0900) <Harrison Kim>
+* [tag] v2.21b-f4
+* e253dc2 - input: touchscreen: siw: hal - adjust variable control (Wed Dec 12 14:54:14 2018 +0900) <Harrison Kim>
+* 0a6cacd - input: touchscreen: siw: hal - update log control for status check (Wed Dec 12 14:54:14 2018 +0900) <Harrison Kim>
+* b17d96c - input: touchscreen: siw: hal - update pre stage for fw_upgrade (Wed Dec 12 14:54:14 2018 +0900) <Harrison Kim>
+* 5688093 - input: touchscreen: siw: hal - update initial reg control (Wed Dec 12 14:54:14 2018 +0900) <Harrison Kim>
+* 3de29a3 - input: touchscreen: siw: hal - add new sub-function for ic info stage (Wed Dec 12 14:54:14 2018 +0900) <Harrison Kim>
+* 8e51e79 - input: touchscreen: siw: hal & sysfs - add new interface for fw_upgrade (Wed Dec 12 14:54:14 2018 +0900) <Harrison Kim>
+* 160a710 - input: touchscreen: siw: config & core & sysfs - add new retry controls (Mon Dec 10 13:52:21 2018 +0900) <Harrison Kim>
+* 42cd72c - input: touchscreen: siw: core & hal - reorganize mon thread control (Fri Dec 7 10:17:36 2018 +0900) <Harrison Kim>
+* bdfac6a - input: touchscreen: siw: core & sysfs - update init_late function (Thu Dec 6 10:45:52 2018 +0900) <Harrison Kim>
+* 21cd3f3 - input: touchscreen: siw: core - update fb callback control (Tue Dec 4 12:57:57 2018 +0900) <Harrison Kim>
+* f9a4900 - input: touchscreen: siw: hal - update exception control for HW access (Tue Dec 4 12:57:18 2018 +0900) <Harrison Kim>
+* c2240bb - input: touchscreen: siw: hal - update tc driving control (Wed Nov 28 13:48:37 2018 +0900) <Harrison Kim>
+* 1ceab25 - input: touchscreen: siw: hal - update status check control (Wed Nov 28 13:47:23 2018 +0900) <Harrison Kim>
+* [tag] v2.21b-f3
+* 6e33edb - input: touchscreen: siw: config & hal & bus - add new chipset option for bus (Fri Nov 16 12:45:56 2018 +0900) <Harrison Kim>
+* 8193042 - input: touchscreen: siw: bus - reorganize bus initialization (Fri Nov 16 12:45:22 2018 +0900) <Harrison Kim>
+* 52cde7c - input: touchscreen: siw: core sysfs - reorganize sysfs initialization (Fri Nov 16 10:55:19 2018 +0900) <Harrison Kim>
+* 3113158 - input: touchscreen: siw: hal - update status check control (Wed Nov 14 09:46:11 2018 +0900) <Harrison Kim>
+* 474a6d1 - input: touchscreen: siw: core - add check control for irq setup (Wed Nov 7 08:49:21 2018 +0900) <Harrison Kim>
+* 0429a99 - input: touchscreen: siw: core - update irq control (Wed Nov 7 08:48:54 2018 +0900) <Harrison Kim>
+* 641ef3c - input: touchscreen: siw: core - adjust debugging log option (Wed Nov 7 08:45:38 2018 +0900) <Harrison Kim>
+* 09bd75b - input: touchscreen: siw: __reference: driver guide - FW upgrade(readme text) (Tue Nov 6 13:24:48 2018 +0900) <Harrison Kim>
+* 395f84f - input: touchscreen: siw: hal - update mon thread control (Tue Nov 6 13:24:26 2018 +0900) <Harrison Kim>
+* d5268a4 - input: touchscreen: siw: prd - adjust file control (Tue Nov 6 13:24:04 2018 +0900) <Harrison Kim>
+* ac7edd5 - input: touchscreen: siw: hal - adjust file control (Tue Nov 6 13:23:27 2018 +0900) <Harrison Kim>
+* [tag] v2.21b-f2
+* 1cac918 - input: touchscreen: siw: hal - adjust log for chipset option (Mon Oct 8 09:33:24 2018 +0900) <Harrison Kim>
+* 24f45c4 - input: touchscreen: siw: hal - remove old flags (Mon Oct 8 09:33:06 2018 +0900) <Harrison Kim>
+* 7ae34d3 - input: touchscreen: siw: hal - adjust return control for initialization (Mon Oct 8 09:32:46 2018 +0900) <Harrison Kim>
+* accdbf5 - input: touchscreen: siw: hal - adjust return control for fw_upgrade (Mon Oct 8 09:32:28 2018 +0900) <Harrison Kim>
+* 3d9e0f0 - input: touchscreen: siw: hal - reorganize debugging log (Mon Oct 8 09:32:11 2018 +0900) <Harrison Kim>
+* 039c622 - input: touchscreen: siw: hal - adjust status check control (Mon Oct 8 09:31:48 2018 +0900) <Harrison Kim>
+* f2e8422 - input: touchscreen: siw: bus - reorganize memory control (Mon Oct 8 09:14:41 2018 +0900) <Harrison Kim>
+* 9a07b8b - input: touchscreen: siw: bus - adjust log for bus access (Mon Oct 8 09:14:14 2018 +0900) <Harrison Kim>
+* 5b85825 - input: touchscreen: siw: bus - adjust buffer control (Mon Oct 8 09:13:05 2018 +0900) <Harrison Kim>
+* ac39117 - input: touchscreen: siw: prd - adjust fw control (Mon Oct 8 09:11:57 2018 +0900) <Harrison Kim>
+* e742e62 - input: touchscreen: siw: __reference: driver guide - FW upgrade(readme text) (Tue Aug 21 13:14:15 2018 +0900) <Harrison Kim>
+* 4624382 - input: touchscreen: siw: __reference: driver guide - FW upgrade(readme text) (Tue Aug 21 09:13:31 2018 +0900) <Harrison Kim>
+* [tag] v2.21b-f1
+* 082e8ce - input: touchscreen: siw: __references: dts: SW17700 bring-up (example) (Thu Aug 16 11:02:35 2018 +0900) <Harrison Kim>
+* 107cfd7 - input: touchscreen: siw: hal - SW17700 bring-up (Thu Aug 16 09:14:38 2018 +0900) <Harrison Kim>
+* 9422deb - input: touchscreen: siw: config - SW17700 bring-up (Thu Aug 16 09:14:38 2018 +0900) <Harrison Kim>
+* 9fb4f7f - input: touchscreen: siw: hal - update mon thread control (Thu Aug 16 09:13:17 2018 +0900) <Harrison Kim>
+* 716e470 - input: touchscreen: siw: core - add build option for input control (Thu Aug 16 09:12:58 2018 +0900) <Harrison Kim>
+* b2b4aae - input: touchscreen: siw: core - update input log (Thu Aug 16 09:09:08 2018 +0900) <Harrison Kim>
+* 38c9b0a - input: touchscreen: siw: core - adjust fw_upgarde control (Thu Aug 16 09:09:08 2018 +0900) <Harrison Kim>
+* 2b89fa3 - input: touchscreen: siw: core - adjust log control (Thu Aug 16 09:09:08 2018 +0900) <Harrison Kim>
+* 86b858b - input: touchscreen: siw: version 2.21b begins (Thu Aug 16 08:42:17 2018 +0900) <Harrison Kim>
+
+---------------------------------------------------------------------------------------------------
+
+* [tag] v2.20r
 * 0838923 - input: touchscreen: siw: version fix - 2.20r (Tue Apr 17 09:09:24 2018 +0900) <Harrison Kim>
 * 4210ead - input: touchscreen: siw: hal - update boot status check (Wed Apr 11 11:47:35 2018 +0900) <Harrison Kim>
 * 563098e - input: touchscreen: siw: hal - update pre stage for fw_upgrade (Wed Apr 11 09:49:39 2018 +0900) <Harrison Kim>
@@ -113,6 +234,7 @@
 
 ---------------------------------------------------------------------------------------------------
 
+* [tag] v2.19r
 * 179f578 - input: touchscreen: siw: version fix - 2.19r (Mon Oct 16 07:17:40 2017 +0900) <Harrison Kim>
 * bcf223c - input: touchscreen: siw: core - adjust input event control (Fri Oct 13 14:14:53 2017 +0900) <Harrison Kim>
 * d6ec7bd - input: touchscreen: siw: SW49501 entry - remove pragma message (Thu Oct 12 16:27:07 2017 +0900) <Harrison Kim>
@@ -220,6 +342,7 @@
 
 ---------------------------------------------------------------------------------------------------
 
+* [tag] v2.18r
 * d46c0f1 - input: touchscreen: siw: version fix - 2.18r (Mon Apr 17 12:37:40 2017 +0900) <Harrison Kim>
 * 8c51f25 - input: touchscreen: siw: core - remove tci_reset_area element (Thu Apr 13 13:00:05 2017 +0900) <Harrison Kim>
 * b1d893c - input: touchscreen: siw: hal - remove tci_reset_area element (Thu Apr 13 12:59:49 2017 +0900) <Harrison Kim>
@@ -307,6 +430,7 @@
 
 ---------------------------------------------------------------------------------------------------
 
+* [tag] v2.17r
 * 223c157 - input: touchscreen: siw: version fix - v2.17r (Tue Jan 31 10:09:25 2017 +0900) <Harrison Kim>
 * 2e30282 - input: touchscreen: siw: core - udpate reg quirks setup (Tue Jan 31 09:17:52 2017 +0900) <Harrison Kim>
 * 28e62fb - input: touchscreen: siw: hal - adjust an obscure log message (Tue Jan 31 09:17:38 2017 +0900) <Harrison Kim>
@@ -377,6 +501,7 @@
 
 ---------------------------------------------------------------------------------------------------
 
+* [tag] v2.16r
 * bd9aa25 - input: touchscreen: siw: version fix - v2.16r (Fri Dec 2 14:44:28 2016 +0900) <Harrison Kim>
 * 55dfb0d - input: touchscreen: siw: __reference: driver guide (Fri Dec 2 14:22:34 2016 +0900) <Harrison Kim>
 * 3b0c410 - input: touchscreen: siw: update PRD layer - update open & short test (Fri Dec 2 13:41:13 2016 +0900) <Harrison Kim>
@@ -462,6 +587,7 @@
 
 ---------------------------------------------------------------------------------------------------
 
+* [tag] v2.15r
 * 73143a2 - input: touchscreen: siw: version fix - v2.15r (Mon Sep 26 09:02:20 2016 +0900) <Harrison Kim>
 * b633976 - input: touchscreen: siw: update Watch layer - add TOUCH_USE_FONT_BINARY option (Sat Sep 24 15:36:23 2016 +0900) <Harrison Kim>
 * 9264ea3 - input: touchscreen: siw: update Core layer - adjust second_screen option (Sat Sep 24 15:22:46 2016 +0900) <Harrison Kim>
@@ -503,7 +629,7 @@
 
 ---------------------------------------------------------------------------------------------------
 
-* bfdb6ec - (v2.14r) input: touchscreen: siw: version fix (Wed Aug 31 15:39:56 2016 +0900) <Harrison Kim>
+* bfdb6ec - (tag: v2.14r) input: touchscreen: siw: version fix (Wed Aug 31 15:39:56 2016 +0900) <Harrison Kim>
 * 614f582 - input: touchscreen: siw: update PRD layer - add new attr (Wed Aug 31 13:58:00 2016 +0900) <Harrison Kim>
 * 7bbc08d - input: touchscreen: siw: update PRD layer - update attr sub-function (Wed Aug 31 13:38:14 2016 +0900) <Harrison Kim>
 * 230caa0 - input: touchscreen: siw: update HAL layer - debug log for tci & swipe (Tue Aug 30 18:38:15 2016 +0900) <Harrison Kim>
@@ -544,7 +670,7 @@
 
 ---------------------------------------------------------------------------------------------------
 
-* 63e1b67 - (v2.13r) input: touchscreen: siw: version fix (Mon Jul 18 21:10:57 2016 +0900) <Harrison Kim>
+* 63e1b67 - (tag: v2.13r) input: touchscreen: siw: version fix (Mon Jul 18 21:10:57 2016 +0900) <Harrison Kim>
 * 1008dfb - input: touchscreen: siw: update HAL layer (Mon Jul 18 20:45:57 2016 +0900) <Harrison Kim>
 * 9658c77 - input: touchscreen: siw: update HAL layer (Mon Jul 18 20:42:58 2016 +0900) <Harrison Kim>
 * 58ae0a1 - input: touchscreen: siw: update MISC layer (Fri Jul 15 14:04:02 2016 +0900) <Harrison Kim>
@@ -583,7 +709,7 @@
 
 ---------------------------------------------------------------------------------------------------
 
-* e6c4bcb - (v2.12r) input: touchscreen: siw: version fix (Fri Jul 1 13:10:14 2016 +0900) <Harrison Kim>
+* e6c4bcb - (tag: v2.12r) input: touchscreen: siw: version fix (Fri Jul 1 13:10:14 2016 +0900) <Harrison Kim>
 * 236b73e - input: touchscreen: siw: update PRD layer (Thu Jun 30 17:13:14 2016 +0900) <Harrison Kim>
 * 04e1187 - input: touchscreen: siw: update check-status (Thu Jun 30 13:50:31 2016 +0900) <Harrison Kim>
 * 1089dea - input: touchscreen: siw: update MISC layer (Thu Jun 30 11:53:11 2016 +0900) <Harrison Kim>
@@ -621,7 +747,7 @@
 
 ---------------------------------------------------------------------------------------------------
 
-* cd02be1 - (v2.11r) input: touchscreen: siw: version fix (Wed Jun 15 17:50:41 2016 +0900) <Harrison Kim>
+* cd02be1 - (tag: v2.11r) input: touchscreen: siw: version fix (Wed Jun 15 17:50:41 2016 +0900) <Harrison Kim>
 * 7d20fe7 - input: touchscreen: siw: reorganize PRD configuration (Wed Jun 15 11:21:58 2016 +0900) <Harrison Kim>
 * 59af3d8 - input: touchscreen: siw: reorganize init late control (Wed Jun 15 09:53:53 2016 +0900) <Harrison Kim>
 * 24d268e - input: touchscreen: siw: add sysfs attr for debugging (Tue Jun 14 17:01:46 2016 +0900) <Harrison Kim>
