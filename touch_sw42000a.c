@@ -316,7 +316,7 @@ static int sw42000a_read_crc_pass(struct device *dev, u32 *data)
 		goto out;
 	}
 
-	if (chip->fquirks.hw_reset_quirk != NULL) {
+	if (chip->ops_quirk.hw_reset != NULL) {
 		goto out;
 	}
 
