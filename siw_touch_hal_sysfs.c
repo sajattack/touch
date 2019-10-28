@@ -1215,6 +1215,9 @@ static int siw_hal_create_sysfs(struct device *dev)
 	struct kobject *kobj = &ts->kobj;
 	int ret = 0;
 
+	if (chip->sysfs_done)
+		return 0;
+
 	ret = sysfs_create_group(kobj, &siw_hal_attribute_group);
 	if (ret < 0) {
 		t_dev_err(dev, "%s sysfs register failed\n",
@@ -1227,7 +1230,7 @@ static int siw_hal_create_sysfs(struct device *dev)
 		goto out_add;
 	}
 
-	t_dev_dbg_base(dev, "%s sysfs registered\n",
+	t_dev_info(dev, "%s sysfs registered\n",
 			touch_chip_name(ts));
 
 	chip->sysfs_done = 1;
@@ -1254,7 +1257,7 @@ static void siw_hal_remove_sysfs(struct device *dev)
 
 	sysfs_remove_group(&ts->kobj, &siw_hal_attribute_group);
 
-	t_dev_dbg_base(dev, "%s sysfs unregistered\n",
+	t_dev_info(dev, "%s sysfs unregistered\n",
 			touch_chip_name(ts));
 
 	chip->sysfs_done = 0;
