@@ -2645,15 +2645,13 @@ static int siw_hal_chk_status_type(struct device *dev)
 	struct siw_hal_status_mask_bit *mask_bit = &chip->status_mask_bit;
 	int t_sts_mask = chip->opt.t_sts_mask;
 
+	siw_hal_chk_report_type(dev);
+
 	if (chip->status_type) {
 		return 0;
 	}
 
 	if (!fw->product_id[0]) {
-		return -EINVAL;
-	}
-
-	if (siw_hal_chk_report_type(dev)) {
 		return -EINVAL;
 	}
 
@@ -3451,6 +3449,80 @@ static int siw_hal_send_esd_notifier(struct device *dev, int type)
 	return 1;
 }
 
+enum {
+	IC_TEST_ADDR_NOT_VALID = 0x8000,
+};
+
+int siw_hal_ic_test_unit(struct device *dev, u32 data)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+//	struct siw_ts *ts = chip->ts;
+	struct siw_hal_reg *reg = chip->reg;
+	u32 data_rd;
+	int ret;
+
+	if (!reg->spr_chip_test) {
+		t_dev_warn(dev, "ic test addr not valid, skip\n");
+		return IC_TEST_ADDR_NOT_VALID;
+	}
+
+	ret = siw_hal_write_value(dev,
+				reg->spr_chip_test,
+				data);
+	if (ret < 0) {
+		t_dev_err(dev, "ic test wr err, %08Xh, %d\n", data, ret);
+		goto out;
+	}
+
+	ret = siw_hal_read_value(dev,
+				reg->spr_chip_test,
+				&data_rd);
+	if (ret < 0) {
+		t_dev_err(dev, "ic test rd err: %08Xh, %d\n", data, ret);
+		goto out;
+	}
+
+	if (data != data_rd) {
+		t_dev_err(dev, "ic test cmp err, %08Xh, %08Xh\n", data, data_rd);
+		ret = -EFAULT;
+		goto out;
+	}
+
+out:
+	return ret;
+}
+
+static int siw_hal_ic_test(struct device *dev)
+{
+	u32 data[] = {
+		0x5A5A5A5A,
+		0xA5A5A5A5,
+		0xF0F0F0F0,
+		0x0F0F0F0F,
+		0xFF00FF00,
+		0x00FF00FF,
+		0xFFFF0000,
+		0x0000FFFF,
+		0xFFFFFFFF,
+		0x00000000,
+	};
+	int i;
+	int ret = 0;
+
+	for (i = 0; i < ARRAY_SIZE(data); i++) {
+		ret = siw_hal_ic_test_unit(dev, data[i]);
+		if ((ret == IC_TEST_ADDR_NOT_VALID) || (ret < 0)) {
+			break;
+		}
+	}
+
+	if (ret >= 0) {
+		t_dev_dbg_base(dev, "ic bus r/w test done\n");
+	}
+
+	return ret;
+}
+
 static int siw_hal_init_quirk(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
@@ -3473,6 +3545,40 @@ static int siw_hal_init_quirk(struct device *dev)
 	return 0;
 }
 
+static void siw_hal_init_reset(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+
+	if (chip->fquirks.hw_reset_quirk != NULL) {
+		chip->fquirks.hw_reset_quirk(dev, 1, 0);
+		return;
+	}
+
+	siw_touch_irq_control(dev, INTERRUPT_DISABLE);
+	siw_hal_power(dev, POWER_OFF);
+	siw_hal_power(dev, POWER_ON);
+	touch_msleep(ts->caps.hw_reset_delay);
+}
+
+static int siw_hal_init_pre(struct device *dev)
+{
+	int ret = 0;
+
+	ret = siw_hal_init_quirk(dev);
+	if (ret < 0) {
+		goto out;
+	}
+
+	ret = siw_hal_ic_test(dev);
+	if (ret < 0) {
+		goto out;
+	}
+
+out:
+	return ret;
+}
+
 static int siw_hal_init_charger(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
@@ -3483,7 +3589,7 @@ static int siw_hal_init_charger(struct device *dev)
 		return 0;
 	}
 
-	ret = siw_hal_init_quirk(dev);
+	ret = siw_hal_init_pre(dev);
 	if (ret < 0) {
 		return ret;
 	}
@@ -3506,19 +3612,17 @@ static int siw_hal_init(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
-	int init_retry = CHIP_INIT_RETRY_MAX;
+	int is_probe = !!(atomic_read(&ts->state.core) == CORE_PROBE);
+	int init_retry = (is_probe) ? CHIP_INIT_RETRY_PROBE : CHIP_INIT_RETRY_MAX;
 	int i;
 	int ret = 0;
 
 	atomic_set(&chip->boot, IC_BOOT_DONE);
 
-	if (atomic_read(&ts->state.core) == CORE_PROBE) {
-		init_retry = CHIP_INIT_RETRY_PROBE;
-	} else {
-		ret = siw_hal_init_quirk(dev);
-		if (ret < 0) {
-			goto out;
-		}
+	ret = siw_hal_init_pre(dev);
+	if (ret < 0) {
+		siw_hal_init_reset(dev);
+		goto out;
 	}
 
 	t_dev_dbg_base(dev, "charger_state = 0x%02X\n", chip->charger);
@@ -3570,15 +3674,7 @@ static int siw_hal_init(struct device *dev)
 
 		t_dev_dbg_base(dev, "retry getting ic info (%d)\n", i);
 
-		if (chip->fquirks.hw_reset_quirk != NULL) {
-			chip->fquirks.hw_reset_quirk(dev, 1, 0);
-			continue;
-		}
-
-		siw_touch_irq_control(dev, INTERRUPT_DISABLE);
-		siw_hal_power(dev, POWER_OFF);
-		siw_hal_power(dev, POWER_ON);
-		touch_msleep(ts->caps.hw_reset_delay);
+		siw_hal_init_reset(dev);
 	}
 	if (ret < 0) {
 		goto out;
@@ -3595,7 +3691,7 @@ static int siw_hal_init(struct device *dev)
 
 	ret = siw_hal_lpwg_mode(dev);
 	if (ret < 0) {
-		t_dev_err(dev, "failed to lpwg_control, %d\n", ret);
+		t_dev_err(dev, "failed to set lpwg control, %d\n", ret);
 		goto out;
 	}
 
@@ -6753,11 +6849,6 @@ static int siw_hal_do_check_status(struct device *dev,
 		return -STS_RET_ERR;
 	}
 
-	ret = siw_hal_chk_status_type(dev);
-	if (ret < 0) {
-		return ret;
-	}
-
 	reset_clr_bit = chip->status_mask_reset;
 	logging_clr_bit = chip->status_mask_logging;
 	int_norm_mask = chip->status_mask_normal;
@@ -8233,144 +8324,6 @@ static int siw_hal_early_probe(struct device *dev)
 	return 0;
 }
 
-enum {
-	IC_TEST_ADDR_NOT_VALID = 0x8000,
-};
-
-int siw_hal_ic_test_unit(struct device *dev, u32 data)
-{
-	struct siw_touch_chip *chip = to_touch_chip(dev);
-//	struct siw_ts *ts = chip->ts;
-	struct siw_hal_reg *reg = chip->reg;
-	u32 data_rd;
-	int ret;
-
-	if (!reg->spr_chip_test) {
-		t_dev_warn(dev, "ic test addr not valid, skip\n");
-		return IC_TEST_ADDR_NOT_VALID;
-	}
-
-	ret = siw_hal_write_value(dev,
-				reg->spr_chip_test,
-				data);
-	if (ret < 0) {
-		t_dev_err(dev, "ic test wr err, %08Xh, %d\n", data, ret);
-		goto out;
-	}
-
-	ret = siw_hal_read_value(dev,
-				reg->spr_chip_test,
-				&data_rd);
-	if (ret < 0) {
-		t_dev_err(dev, "ic test rd err: %08Xh, %d\n", data, ret);
-		goto out;
-	}
-
-	if (data != data_rd) {
-		t_dev_err(dev, "ic test cmp err, %08Xh, %08Xh\n", data, data_rd);
-		ret = -EFAULT;
-		goto out;
-	}
-
-out:
-	return ret;
-}
-
-static int siw_hal_ic_test(struct device *dev)
-{
-	u32 data[] = {
-		0x5A5A5A5A,
-		0xA5A5A5A5,
-		0xF0F0F0F0,
-		0x0F0F0F0F,
-		0xFF00FF00,
-		0x00FF00FF,
-		0xFFFF0000,
-		0x0000FFFF,
-		0xFFFFFFFF,
-		0x00000000,
-	};
-	int i;
-	int ret = 0;
-
-	for (i = 0; i < ARRAY_SIZE(data); i++) {
-		ret = siw_hal_ic_test_unit(dev, data[i]);
-		if ((ret == IC_TEST_ADDR_NOT_VALID) || (ret < 0)) {
-			break;
-		}
-	}
-
-	if (ret >= 0) {
-		t_dev_dbg_base(dev, "ic bus r/w test done\n");
-	}
-
-	return ret;
-}
-
-static int siw_hal_get_product_id(struct device *dev)
-{
-	struct siw_touch_chip *chip = to_touch_chip(dev);
-//	struct siw_ts *ts = chip->ts;
-	struct siw_hal_reg *reg = chip->reg;
-	struct siw_hal_fw_info *fw = &chip->fw;
-	u8 product_id[8+4] = { 0, };	//dummy 4-byte
-	int ret;
-
-	ret = siw_hal_reg_read(dev,
-				reg->tc_product_id1,
-				(void *)product_id, 8);
-	if (ret < 0) {
-		t_dev_err(dev,
-			"failed to read product id, %d\n",
-			ret);
-		return ret;
-	}
-
-	siw_hal_fw_set_prod_id(fw, (u8 *)product_id, 8);
-
-	t_dev_dbg_base(dev, "product id - %s\n", fw->product_id);
-
-	return 0;
-}
-
-static int siw_hal_chipset_check(struct device *dev)
-{
-//	struct siw_touch_chip *chip = to_touch_chip(dev);
-//	struct siw_ts *ts = chip->ts;
-	int ret = 0;
-
-	ret = siw_hal_init_quirk(dev);
-	if (ret < 0) {
-		goto out;
-	}
-
-	ret = siw_hal_ic_test(dev);
-	if (ret < 0) {
-		goto out;
-	}
-
-	ret = siw_hal_chk_boot(dev);
-	if (ret < 0) {
-		goto out;
-	}
-	if (ret) {
-		t_dev_err(dev, "Boot fail detected\n");
-		return 0;
-	}
-
-	/*
-	 * Preceding process
-	 * : get reference value to cope with product variation
-	 */
-	ret = siw_hal_get_product_id(dev);
-	if (ret < 0) {
-		goto out;
-	}
-
-out:
-	return ret;
-}
-
 /*
  * still under test...
  * Bit0 Bit1
@@ -8485,6 +8438,7 @@ static void siw_hal_chipset_option(struct siw_touch_chip *chip)
 //	struct device *dev = chip->dev;
 	struct siw_touch_chip_opt *opt = &chip->opt;
 	struct siw_ts *ts = chip->ts;
+	int is_i2c = !!(touch_bus_type(ts) == BUS_IF_I2C);
 
 	chip->mode_allowed_partial = !!touch_mode_allowed(ts, LCD_MODE_U3_PARTIAL);
 	chip->mode_allowed_qcover = !!touch_mode_allowed(ts, LCD_MODE_U3_QUICKCOVER);
@@ -8626,10 +8580,7 @@ static void siw_hal_chipset_option(struct siw_touch_chip *chip)
 	case CHIP_SW42103:
 		chip->drv_reset_low = 10;	//following LGD CAS recommendation
 
-		if (touch_bus_type(ts) == BUS_IF_I2C) {
-			opt->f_flex_report = 1;
-		}
-
+		opt->f_flex_report = is_i2c;
 		opt->t_boot_mode = 1;
 		opt->t_sts_mask = 3;
 		opt->t_sw_rst = 3;
@@ -8640,9 +8591,7 @@ static void siw_hal_chipset_option(struct siw_touch_chip *chip)
 	case CHIP_SW17700:
 		chip->drv_reset_low = 10;	//following LGD CAS recommendation
 
-		if (touch_bus_type(ts) == BUS_IF_I2C) {
-			opt->f_flex_report = 1;
-		}
+		opt->f_flex_report = is_i2c;
 		opt->t_boot_mode = 2;
 		opt->t_sts_mask = 5;
 
@@ -8793,11 +8742,6 @@ static int siw_hal_probe(struct device *dev)
 
 	siw_hal_power(dev, POWER_ON);
 	siw_hal_trigger_gpio_reset(dev, 0);
-
-	ret = siw_hal_chipset_check(dev);
-	if (ret < 0) {
-		goto out;
-	}
 
 	siw_hal_show_chipset_option(chip);
 
