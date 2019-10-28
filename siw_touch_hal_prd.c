@@ -7778,6 +7778,12 @@ static int siw_hal_prd_init_param(struct device *dev)
 		goto out;
 	}
 
+	if (fw->invalid_pid) {
+		t_prd_err(prd, "[init] invalid PID - \"%s\" (%03Xh)\n",
+			fw->product_id, fw->invalid_pid);
+		goto out;
+	}
+
 	ret = siw_hal_prd_param_lookup(dev, &param);
 	if (ret < 0) {
 		goto out;
