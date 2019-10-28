@@ -6723,13 +6723,10 @@ static int siw_hal_check_status_type_x(struct device *dev,
 	return ret;
 }
 
-#if defined(CONFIG_TOUCHSCREEN_SIW_SW1828) ||	\
-	defined(CONFIG_TOUCHSCREEN_SIW_SW42101) ||	\
-	defined(CONFIG_TOUCHSCREEN_SIW_SW42103) ||	\
-	defined(CONFIG_TOUCHSCREEN_SIW_SW17700)
-#define STS_RET_ERR		ERESTART
-#else
+#if defined(__SIW_PANEL_CLASS_MOBILE)
 #define STS_RET_ERR		ERANGE
+#else
+#define STS_RET_ERR		ERESTART
 #endif
 
 static int siw_hal_do_check_status(struct device *dev,
