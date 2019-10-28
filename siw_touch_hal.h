@@ -554,8 +554,12 @@ struct siw_hal_debug {
 	/* group 3 : rsvd */
 };
 
-struct siw_hal_fquirks {	//function quirks
-	int (*hw_reset_quirk)(struct device *dev, int pwr_con, int delay);
+struct siw_hal_ops_quirk {	//quirk operation
+	int (*hw_reset)(struct device *dev, int pwr_con, int delay);
+	/* */
+	int (*fwup_check)(struct device *dev, u8 *fw_buf);
+	int (*fwup_upgrade)(struct device *dev, u8 *fw_buf, int fw_size, int retry);
+	int (*boot_status)(struct device *dev, u32 *boot_st);
 };
 
 struct siw_touch_chip {
@@ -612,7 +616,7 @@ struct siw_touch_chip {
 	/* */
 	int sysfs_done;
 	/* */
-	struct siw_hal_fquirks fquirks;
+	struct siw_hal_ops_quirk ops_quirk;
 };
 
 enum {

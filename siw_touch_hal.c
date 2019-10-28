@@ -1223,12 +1223,20 @@ int siw_hal_get_boot_status(struct device *dev, u32 *boot_st)
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
 	struct siw_touch_fquirks *fquirks = touch_fquirks(ts);
+	struct siw_hal_ops_quirk *ops_quirk = &chip->ops_quirk;
 	struct siw_hal_reg *reg = chip->reg;
 	u32 bootmode = 0;
 	int ret = 0;
 
 	if (fquirks->boot_status) {
 		ret = fquirks->boot_status(dev, boot_st);
+		if (ret != -EAGAIN) {
+			return ret;
+		}
+	}
+
+	if (ops_quirk->boot_status) {
+		ret = ops_quirk->boot_status(dev, boot_st);
 		if (ret != -EAGAIN) {
 			return ret;
 		}
@@ -2915,7 +2923,7 @@ static int siw_hal_ic_info_quirk(struct device *dev)
 			break;
 		}
 
-		if (chip->fquirks.hw_reset_quirk != NULL) {
+		if (chip->ops_quirk.hw_reset != NULL) {
 			break;
 		}
 
@@ -2923,7 +2931,7 @@ static int siw_hal_ic_info_quirk(struct device *dev)
 			break;
 		}
 
-		chip->fquirks.hw_reset_quirk = siw_hal_hw_reset_quirk;
+		chip->ops_quirk.hw_reset = siw_hal_hw_reset_quirk;
 
 		t_dev_info(dev, "[%s] reset quirk activated\n",
 			touch_chip_name(ts));
@@ -3550,8 +3558,8 @@ static void siw_hal_init_reset(struct device *dev)
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
 
-	if (chip->fquirks.hw_reset_quirk != NULL) {
-		chip->fquirks.hw_reset_quirk(dev, 1, 0);
+	if (chip->ops_quirk.hw_reset != NULL) {
+		chip->ops_quirk.hw_reset(dev, 1, 0);
 		return;
 	}
 
@@ -3728,8 +3736,8 @@ static int siw_hal_reinit(struct device *dev,
 
 	pwr_con &= 0x0F;
 
-	if (!skip_quirk && (chip->fquirks.hw_reset_quirk != NULL)) {
-		ret = chip->fquirks.hw_reset_quirk(dev, pwr_con, delay);
+	if (!skip_quirk && (chip->ops_quirk.hw_reset != NULL)) {
+		ret = chip->ops_quirk.hw_reset(dev, pwr_con, delay);
 		goto reset_done;
 	}
 
@@ -3816,7 +3824,7 @@ static int siw_hal_sw_reset_type_3(struct device *dev)
 	u32 addr = 0;
 	u32 value = 0x03;
 
-	if (chip->fquirks.hw_reset_quirk != NULL) {
+	if (chip->ops_quirk.hw_reset != NULL) {
 		value |= 0x08;
 	}
 
@@ -3963,7 +3971,7 @@ static int siw_hal_sw_reset(struct device *dev)
 
 	touch_msleep(hal_dbg_delay(chip, HAL_DBG_DLY_SW_RST_1));
 
-	if (chip->fquirks.hw_reset_quirk != NULL) {
+	if (chip->ops_quirk.hw_reset != NULL) {
 		siw_touch_qd_init_work_hw(ts);
 	} else {
 		siw_touch_qd_init_work_sw(ts);
@@ -4567,6 +4575,7 @@ static int siw_hal_fw_compare(struct device *dev, u8 *fw_buf)
 	struct siw_ts *ts = chip->ts;
 	struct siw_hal_fw_info *fw = &chip->fw;
 	struct siw_touch_fquirks *fquirks = touch_fquirks(ts);
+	struct siw_hal_ops_quirk *ops_quirk = &chip->ops_quirk;
 	struct siw_hal_tc_version_bin *bin_ver;
 	int fw_max_size = touch_fw_size(ts);
 	u32 bin_ver_offset = 0;
@@ -4585,6 +4594,17 @@ static int siw_hal_fw_compare(struct device *dev, u8 *fw_buf)
 
 	if (fquirks->fwup_check) {
 		update = fquirks->fwup_check(dev, fw_buf);
+		if (update != -EAGAIN) {
+			if (update < 0) {
+				return update;
+			}
+			goto out;
+		}
+		update = 0;
+	}
+
+	if (ops_quirk->fwup_check) {
+		update = ops_quirk->fwup_check(dev, fw_buf);
 		if (update != -EAGAIN) {
 			if (update < 0) {
 				return update;
@@ -5060,6 +5080,7 @@ static int siw_hal_fw_upgrade(struct device *dev,
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
 	struct siw_touch_fquirks *fquirks = touch_fquirks(ts);
+	struct siw_hal_ops_quirk *ops_quirk = &chip->ops_quirk;
 	int fw_size_max;
 	u32 include_conf;
 	int ret = 0;
@@ -5068,6 +5089,14 @@ static int siw_hal_fw_upgrade(struct device *dev,
 
 	if (fquirks->fwup_upgrade) {
 		ret = fquirks->fwup_upgrade(dev, fw_buf, fw_size, retry);
+		if (ret < 0) {
+			goto out;
+		}
+		goto out_done;
+	}
+
+	if (ops_quirk->fwup_upgrade) {
+		ret = ops_quirk->fwup_upgrade(dev, fw_buf, fw_size, retry);
 		if (ret < 0) {
 			goto out;
 		}
@@ -8684,7 +8713,7 @@ static void siw_hal_chipset_quirk_reset(struct siw_touch_chip *chip)
 
 	t_dev_info(dev, "hw_reset_quirk activated\n");
 
-	chip->fquirks.hw_reset_quirk = siw_hal_hw_reset_quirk;
+	chip->ops_quirk.hw_reset = siw_hal_hw_reset_quirk;
 }
 
 static void siw_hal_chipset_quirks(struct siw_touch_chip *chip)
