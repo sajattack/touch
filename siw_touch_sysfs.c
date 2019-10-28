@@ -32,6 +32,7 @@
 
 #include "siw_touch.h"
 #include "siw_touch_hal.h"
+#include "siw_touch_gpio.h"
 #include "siw_touch_irq.h"
 #include "siw_touch_sys.h"
 
@@ -621,7 +622,7 @@ static ssize_t _show_irq_level(struct device *dev, char *buf)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
-	int irq_level = gpio_get_value(touch_irq_pin(ts));
+	int irq_level = siw_touch_gpio_get_value(dev, touch_irq_pin(ts));
 	int size = 0;
 
 //	t_dev_dbg_base(dev, "irq_level : %d\n", irq_level);
