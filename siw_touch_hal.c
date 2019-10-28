@@ -2604,12 +2604,13 @@ static int siw_hal_chk_report_type(struct device *dev)
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
 	struct siw_hal_fw_info *fw = &chip->fw;
+	int invalid_pid = fw->invalid_pid;
 
 	if (chip->report_type) {
 		return 0;
 	}
 
-	if (!fw->product_id[0]) {
+	if (invalid_pid) {
 		return -EINVAL;
 	}
 
@@ -2652,6 +2653,7 @@ static int siw_hal_chk_status_type(struct device *dev)
 	struct siw_hal_fw_info *fw = &chip->fw;
 	struct siw_hal_status_mask_bit *mask_bit = &chip->status_mask_bit;
 	int t_sts_mask = chip->opt.t_sts_mask;
+	int invalid_pid = fw->invalid_pid;
 
 	siw_hal_chk_report_type(dev);
 
@@ -2659,7 +2661,7 @@ static int siw_hal_chk_status_type(struct device *dev)
 		return 0;
 	}
 
-	if (!fw->product_id[0]) {
+	if (invalid_pid) {
 		return -EINVAL;
 	}
 
@@ -2980,6 +2982,7 @@ static int siw_hal_do_ic_info(struct device *dev, int prt_on)
 	u32 revision = 0;
 	u32 bootmode = 0;
 	u32 boot_chk_offset = 0;
+	int invalid_pid = 0;
 	struct siw_hal_rw_multi multi[] = {
 		{ 0, reg->spr_chip_id, &chip_id, sizeof(chip_id), "chip_id" },
 		{ 0, reg->tc_version, &version, sizeof(version), "version" },
@@ -3017,6 +3020,12 @@ static int siw_hal_do_ic_info(struct device *dev, int prt_on)
 	siw_hal_fw_set_version(fw, version, version_ext);
 	siw_hal_fw_set_revision(fw, revision);
 	siw_hal_fw_set_prod_id(fw, (u8 *)product, sizeof(product));
+
+	invalid_pid = fw->invalid_pid;
+	if (invalid_pid) {
+		t_dev_err(dev, "[info] invalid PID - \"%s\" (%03Xh)\n",
+			fw->product_id, invalid_pid);
+	}
 
 	siw_hal_chk_status_type(dev);
 
@@ -3081,6 +3090,10 @@ static int siw_hal_do_ic_info(struct device *dev, int prt_on)
 	}
 
 	siw_hal_ic_info_quirk(dev);
+
+	if (invalid_pid) {
+		return -EINVAL;
+	}
 
 	return 0;
 }
@@ -4662,9 +4675,6 @@ static int siw_hal_fw_compare(struct device *dev, u8 *fw_buf)
 		return -EINVAL;
 	}
 
-	memcpy(pid, &fw_buf[bin_pid_offset], 8);
-	t_dev_dbg_fwup(dev, "pid %s\n", pid);
-
 	if ((bin_ver_offset > fw_max_size) ||
 		(bin_ver_ext_offset > fw_max_size) ||
 		(bin_pid_offset > fw_max_size)) {
@@ -4675,6 +4685,14 @@ static int siw_hal_fw_compare(struct device *dev, u8 *fw_buf)
 
 	t_dev_dbg_fwup(dev, "ver %06Xh, ver_ext %06Xh, pid %06Xh\n",
 			bin_ver_offset, bin_ver_ext_offset, bin_pid_offset);
+
+	memcpy(pid, &fw_buf[bin_pid_offset], 8);
+	t_dev_dbg_fwup(dev, "pid %s\n", pid);
+
+	if (siw_hal_fw_check_pid(pid)) {
+		t_dev_err(dev, "[fw-bin] invalid pid - \"%s\"\n", pid);
+		return -EINVAL;
+	}
 
 	bin_ver = (struct siw_hal_tc_version_bin *)&fw_buf[bin_ver_offset];
 	bin_major = bin_ver->major;
@@ -4731,6 +4749,14 @@ static int siw_hal_fw_compare(struct device *dev, u8 *fw_buf)
 	}
 
 	if (memcmp(pid, fw->product_id, 8)) {
+		if (fw->invalid_pid) {
+			t_dev_err(dev,
+				"FW compare: bin-pid[%s], dev-pid invalid, halted (up %02X, fup %02X)\n",
+				pid, update, ts->force_fwup);
+			return -EINVAL;
+
+		}
+
 		t_dev_err(dev,
 			"FW compare: bin-pid[%s] != dev-pid[%s], halted (up %02X, fup %02X)\n",
 			pid, fw->product_id, update, ts->force_fwup);
@@ -8259,6 +8285,10 @@ static int siw_hal_mon_handler_skip(struct device *dev)
 	}
 
 	if (!chip->status_type || !chip->report_type) {
+		return 1;
+	}
+
+	if (chip->fw.invalid_pid) {
 		return 1;
 	}
 

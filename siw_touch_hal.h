@@ -282,6 +282,7 @@ struct siw_hal_fw_info {
 	} v;
 	u32 version_ext;
 	/* */
+	int invalid_pid;
 	u8 product_id[8+4];
 	u8 revision;
 	u32 fpc;
@@ -359,11 +360,52 @@ static inline void siw_hal_fw_set_revision(struct siw_hal_fw_info *fw, u32 revis
 	fw->revision = revision & 0xFF;
 }
 
+#define PID_LEN_MAX	8
+#if defined(CONFIG_TOUCHSCREEN_SIW_SW42000)
+#define PID_LEN_MIN	6
+#else
+#define PID_LEN_MIN	7
+#endif
+
+#define PID_IN_RANGE(_val, _min, _max)	(((_val) >= (_min)) && ((_val) <= (_max)))
+
+static inline int siw_hal_fw_check_pid(char *pid)
+{
+	int len = strlen(pid);
+	int invalid = 0;
+	int i;
+	char c;
+
+	if (len > PID_LEN_MAX) {
+		invalid |= BIT(9);
+	} else if (len < PID_LEN_MIN) {
+		invalid |= BIT(8);
+	}
+
+	for (i = 0; i < len; i++) {
+		c = pid[i];
+
+		if (PID_IN_RANGE(c, '0', '9')) {
+			continue;
+		}
+
+		if (PID_IN_RANGE(c, 'A', 'Z')) {
+			continue;
+		}
+
+		invalid |= BIT(i);
+	}
+
+	return invalid;
+}
+
 static inline void siw_hal_fw_set_prod_id(struct siw_hal_fw_info *fw, u8 *prod, u32 size)
 {
 	int len = min((int)sizeof(fw->product_id), (int)size);
 	memset(fw->product_id, 0, sizeof(fw->product_id));
 	memcpy(fw->product_id, prod, len);
+
+	fw->invalid_pid = siw_hal_fw_check_pid(fw->product_id);
 }
 
 
