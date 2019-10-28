@@ -973,8 +973,6 @@ static ssize_t _store_init_late(struct device *dev,
 }
 #endif	/* __SIW_SUPPORT_PROBE_POST_RETRY */
 
-extern int siw_touch_notify(struct siw_ts *ts, unsigned long event, void *data);
-
 static ssize_t _store_dbg_notify(struct device *dev,
 				const char *buf, size_t count)
 {
