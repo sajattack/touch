@@ -98,6 +98,41 @@ extern u32 t_dev_dbg_mask;
 #define _t_dev_trace(_dev, fmt, args...)	dev_info(_dev, LOG_SIG_TRACE fmt, ##args)
 #define _t_dev_dbg(_dev, fmt, args...)		dev_info(_dev, LOG_SIG_DBG fmt, ##args)
 
+#define t_dev_info_once(_dev, fmt, args...)	\
+		({						\
+			static bool __dev_info_once = false;	\
+			if (!__dev_info_once) {			\
+				__dev_info_once = true;		\
+				_t_dev_info(_dev, fmt, ##args);	\
+			}					\
+		})
+#define t_dev_warn_once(_dev, fmt, args...)	\
+		({						\
+			static bool __dev_warn_once = false;	\
+			if (!__dev_warn_once) { 		\
+				__dev_warn_once = true; 	\
+				_t_dev_warn(_dev, fmt, ##args); \
+			}					\
+		})
+
+#define t_dev_trace_once(_dev, fmt, args...)	\
+		({						\
+			static bool __dev_trace_once = false;	\
+			if (!__dev_trace_once) {		\
+				__dev_trace_once = true;	\
+				_t_dev_trace(_dev, fmt, ##args); \
+			}					\
+		})
+
+#define t_dev_err_once(_dev, fmt, args...)	\
+		({						\
+			static bool __dev_err_once = false; \
+			if (!__dev_err_once) {		\
+				__dev_err_once = true;	\
+				_t_dev_err(_dev, fmt, ##args); \
+			}					\
+		})
+
 #if 1
 #define t_dev_info(_dev, fmt, args...)		_t_dev_info(_dev, fmt, ##args)
 #define t_dev_warn(_dev, fmt, args...)		_t_dev_warn(_dev, fmt, ##args)
