@@ -59,6 +59,7 @@ enum {
 };
 
 enum {
+	SIW_TOUCH_BUF_MARGIN		= 32,
 	SIW_TOUCH_MAX_BUF_SIZE		= (32<<10),	//(64<<10),
 	SIW_TOUCH_MAX_BUF_IDX		= 4,
 	/* */
