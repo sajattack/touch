@@ -2329,6 +2329,9 @@ static int siw_hal_abt_create_sysfs(struct device *dev)
 		return -EINVAL;
 	}
 
+	if (ts->abt)
+		return 0;
+
 	abt = siw_hal_abt_alloc(dev);
 	if (!abt) {
 		ret = -ENOMEM;
