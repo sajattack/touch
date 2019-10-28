@@ -7856,6 +7856,9 @@ static int siw_hal_prd_create_sysfs(struct device *dev)
 		return -EINVAL;
 	}
 
+	if (ts->prd)
+		return 0;
+
 	prd = siw_hal_prd_alloc(dev);
 	if (!prd) {
 		ret = -ENOMEM;
