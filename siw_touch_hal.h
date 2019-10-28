@@ -706,7 +706,7 @@ struct siw_touch_chip {
 	atomic_t block_watch_cfg;
 	atomic_t init;
 	atomic_t boot;
-	atomic_t esd_noti_sent;
+	atomic_t abnormal_noti_sent;
 	int boot_fail_cnt;
 	struct siw_hal_reg_log reg_log[REG_LOG_MAX];
 	struct siw_hal_debug dbg;

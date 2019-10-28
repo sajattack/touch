@@ -3452,28 +3452,72 @@ static void siw_hal_lcd_event_read_reg(struct device *dev){ }
 
 #define DIC_ERR_TYPE	0x10
 
-static int siw_hal_send_esd_notifier(struct device *dev, int type)
+#if defined(__SIW_PANEL_CLASS_MOBILE)
+static int siw_hal_send_abnormal_notifier_mobile(struct device *dev, int type)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
 	int esd = type;
-	int ret;
+	int ret = 0;
+
+	if (chip->opt.t_oled)
+		return 0;
 
 	if (touch_flags(ts) & TOUCH_SKIP_ESD_EVENT) {
 		if (type < DIC_ERR_TYPE) {
-			t_dev_info(dev, "skip sending ESD notifier\n");
+			t_dev_info(dev, "skip sending abnormal notifier\n");
 			return 0;
 		}
 	}
 
-	t_dev_info(dev, "trigger ESD notifier, %Xh\n", type);
+	t_dev_info(dev, "trigger abnormal notifier, %Xh\n", type);
 
 	ret = siw_touch_atomic_notifier_call(LCD_EVENT_TOUCH_ESD_DETECTED, (void*)&esd);
 	if (ret)
 		t_dev_err(dev, "check the value, %d\n", ret);
 
-	/* Sending Event done */
+	/*
+	 * return value
+	 * 0    : reset touch
+	 * else : do not reset touch
+	 */
 	return 1;
+}
+#endif	/* __SIW_PANEL_CLASS_MOBILE */
+
+static int siw_hal_send_abnormal_notifier(struct device *dev, int type)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	struct siw_touch_fquirks *fquirks = touch_fquirks(ts);
+	int ret = 0;
+
+	if (fquirks->abnormal_notifier) {
+		t_dev_info(dev, "trigger abnormal notifier quirk, %Xh\n", type);
+
+		/*
+		 * type = -1 : cancel
+		 * else      : event operation
+		 */
+		ret = fquirks->abnormal_notifier(dev, type);
+		if (ret != -EAGAIN) {
+			return ret;
+		}
+	}
+
+	if (type == -1)
+		return 0;
+
+#if defined(__SIW_PANEL_CLASS_MOBILE)
+	return siw_hal_send_abnormal_notifier_mobile(dev, type);
+#else
+	/*
+	 * return value
+	 * 0    : reset touch
+	 * else : do not reset touch
+	 */
+	return 0;
+#endif
 }
 
 enum {
@@ -3684,7 +3728,7 @@ static int siw_hal_init(struct device *dev)
 			}
 
 			/* Don't do recovery twice continuously */
-			if (atomic_read(&chip->esd_noti_sent)) {
+			if (atomic_read(&chip->abnormal_noti_sent)) {
 				break;
 			}
 
@@ -3693,7 +3737,7 @@ static int siw_hal_init(struct device *dev)
 				break;
 			}
 
-			if (siw_hal_send_esd_notifier(dev, 2)) {
+			if (siw_hal_send_abnormal_notifier(dev, 2)) {
 				ret = -ETDSENTESD;
 				break;
 			}
@@ -3707,7 +3751,7 @@ static int siw_hal_init(struct device *dev)
 		goto out;
 	}
 
-	atomic_set(&chip->esd_noti_sent, 0);
+	atomic_set(&chip->abnormal_noti_sent, 0);
 
 	siw_hal_init_reg_set(dev);
 
@@ -6631,8 +6675,8 @@ static int siw_hal_check_status_type_x(struct device *dev,
 			irq, status, ic_status);
 
 		if (chip->lcd_mode != LCD_MODE_U0) {
-			if (siw_hal_send_esd_notifier(dev, 8)) {
-				atomic_set(&chip->esd_noti_sent, 1);
+			if (siw_hal_send_abnormal_notifier(dev, 8)) {
+				atomic_set(&chip->abnormal_noti_sent, 1);
 				return -ETDSENTESDIRQ;
 			}
 		}
@@ -6756,8 +6800,8 @@ static int siw_hal_check_status_type_x(struct device *dev,
 
 			esd_type = (ic_disp_err || tc_disp_err)? DIC_ERR_TYPE : 0;
 
-			if (siw_hal_send_esd_notifier(dev, esd_type | 1)) {
-				atomic_set(&chip->esd_noti_sent, 1);
+			if (siw_hal_send_abnormal_notifier(dev, esd_type | 1)) {
+				atomic_set(&chip->abnormal_noti_sent, 1);
 				return -ETDSENTESDIRQ;
 			}
 		}
@@ -8750,6 +8794,9 @@ static int siw_hal_remove(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
+
+	/* Send cancel message for quirk */
+	siw_hal_send_abnormal_notifier(dev, -1);
 
 	siw_hal_sysfs_post(dev, DRIVER_FREE);
 

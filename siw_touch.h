@@ -538,6 +538,8 @@ struct siw_touch_fquirks {	//function quirks
 	int (*gpio_init_irq)(struct device *dev);
 	int (*gpio_free_irq)(struct device *dev);
 	/* */
+	int (*abnormal_notifier)(struct device *dev, int type);
+	/* */
 	void *sysfs_group;
 };
 
