@@ -7347,6 +7347,55 @@ static int siw_hal_irq_get_report(struct device *dev)
 	return ret;
 }
 
+static int siw_hal_irq_exception(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	char *title = NULL;
+
+	if (atomic_read(&chip->init) == IC_INIT_NEED) {
+		title = "Not Ready, Need IC init (irq)";
+		goto out;
+	}
+
+	if (!chip->status_type) {
+		title = "No status type";
+		goto out;
+	}
+
+	if (!chip->report_type) {
+		title = "No report type";
+		goto out;
+	}
+
+	return 0;
+
+out:
+	t_dev_warn(dev, "%s\n", title);
+
+	return 1;
+}
+
+static int siw_hal_irq_skip_event(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	char *title = NULL;
+
+	switch (chip->driving_mode) {
+	case LCD_MODE_STOP:
+		title = "stop state";
+		goto out;
+	}
+
+	return 0;
+
+out:
+	t_dev_info(dev, "skip event - %s\n", title);
+	siw_touch_report_all_event(ts);
+
+	return 1;
+}
+
 static int siw_hal_irq_handler(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
@@ -7354,8 +7403,7 @@ static int siw_hal_irq_handler(struct device *dev)
 //	struct siw_hal_reg *reg = chip->reg;
 	int ret = 0;
 
-	if (atomic_read(&chip->init) == IC_INIT_NEED) {
-		t_dev_warn(dev, "Not Ready, Need IC init (irq)\n");
+	if (siw_hal_irq_exception(dev)) {
 		return 0;
 	}
 
@@ -7373,6 +7421,10 @@ static int siw_hal_irq_handler(struct device *dev)
 
 	t_dev_dbg_irq(dev, "hal irq handler: wakeup_type %d\n",
 			chip->info.wakeup_type);
+
+	if (siw_hal_irq_skip_event(dev)) {
+		goto out;
+	}
 
 	if (chip->info.wakeup_type == ABS_MODE) {
 		ret = siw_hal_irq_abs(dev);
