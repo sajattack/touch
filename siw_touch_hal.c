@@ -8086,6 +8086,10 @@ static int siw_hal_mon_handler_skip(struct device *dev)
 		return 1;
 	}
 
+	if (!chip->status_type || !chip->report_type) {
+		return 1;
+	}
+
 	return 0;
 }
 
