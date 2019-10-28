@@ -972,8 +972,9 @@ struct siw_ts {
 
 	u32 intr_status;
 	u32 intr_gesture;
-	u16 new_mask;
-	u16 old_mask;
+	u16 event_cnt_finger;
+	u32 new_mask;
+	u32 old_mask;
 	int tcount;
 	struct touch_data tdata[MAX_FINGER];
 	int is_cancel;
