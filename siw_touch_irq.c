@@ -40,7 +40,11 @@
 #include "siw_touch.h"
 #include "siw_touch_irq.h"
 
+#if defined(__SIW_PANEL_CLASS_MOBILE)
+#define __SIW_SUPPORT_IRQ_RESUME
+#endif
 
+#if defined(__SIW_SUPPORT_IRQ_RESUME)
 static void siw_touch_irq_pending_onoff(struct device *dev,
 					unsigned int irq, int onoff)
 {
@@ -63,17 +67,23 @@ static void siw_touch_irq_pending_onoff(struct device *dev,
 	}
 	raw_spin_unlock_irqrestore(&desc->lock, flags);
 }
+#else	/* !__SIW_SUPPORT_IRQ_RESUME */
+static void siw_touch_irq_pending_onoff(struct device *dev,
+					unsigned int irq, int onoff)
+{
+	t_dev_dbg_base(dev, "no irq pending control\n");
+}
+#endif	/* __SIW_SUPPORT_IRQ_RESUME */
 
-static void siw_touch_set_irq_pending(struct device *dev, unsigned int irq)
+static void __used siw_touch_set_irq_pending(struct device *dev, unsigned int irq)
 {
 	siw_touch_irq_pending_onoff(dev, irq, 1);
 }
 
-static void siw_touch_clr_irq_pending(struct device *dev, unsigned int irq)
+static void __used siw_touch_clr_irq_pending(struct device *dev, unsigned int irq)
 {
 	siw_touch_irq_pending_onoff(dev, irq, 0);
 }
-
 
 void siw_touch_enable_irq_wake(struct device *dev,
 									unsigned int irq)
@@ -112,7 +122,7 @@ void siw_touch_disable_irq(struct device *dev, unsigned int irq)
 	t_dev_info(dev, "irq(%d) disabled\n", irq);
 }
 
-#if 1
+#if defined(__SIW_SUPPORT_IRQ_RESUME)
 void siw_touch_resume_irq(struct device *dev)
 {
 	struct siw_ts *ts = to_touch_core(dev);
@@ -120,30 +130,16 @@ void siw_touch_resume_irq(struct device *dev)
 
 	t_dev_info(dev, "resume irq(%d)\n", irq);
 
-#if 1
-//	mutex_lock(&ts->lock);
-
 	disable_irq(irq);
 	siw_touch_set_irq_pending(dev, irq);
 	enable_irq(irq);
-
-//	mutex_unlock(&ts->lock);
-#else
-	{
-		struct irq_desc *desc = irq_to_desc(irq);
-		if (desc) {
-			siw_touch_set_irq_pending(dev, rq);
-			check_irq_resend(desc, irq);
-		}
-	}
-#endif
 }
-#else
+#else	/* !__SIW_SUPPORT_IRQ_RESUME */
 void siw_touch_resume_irq(struct device *dev)
 {
-	t_dev_dbg_irq(dev, "nop...\n");
+	t_dev_dbg_base(dev, "no irq resume control\n");
 }
-#endif
+#endif	/* __SIW_SUPPORT_IRQ_RESUME */
 
 void siw_touch_irq_control(struct device *dev, int on_off)
 {
@@ -232,6 +228,10 @@ int siw_touch_request_irq(struct siw_ts *ts,
 {
 	struct device *dev = ts->dev;
 	int ret = 0;
+
+#if defined(__SIW_SUPPORT_IRQ_RESUME)
+	t_dev_info(dev, "irq cfg status : __SIW_SUPPORT_IRQ_RESUME\n");
+#endif
 
 	siw_touch_irq_index_check(ts);
 
