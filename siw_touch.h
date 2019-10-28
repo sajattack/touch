@@ -30,6 +30,9 @@
 #include <linux/fs.h>
 #include <linux/slab.h>
 #include <linux/ctype.h>
+#include <linux/uaccess.h>
+#include <linux/pinctrl/pinctrl-state.h>
+#include <linux/pinctrl/consumer.h>
 
 #if defined(__SIW_CONFIG_FB)
 #include <linux/fb.h>
