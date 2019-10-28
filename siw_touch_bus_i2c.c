@@ -286,7 +286,8 @@ int siw_touch_i2c_add_driver(void *data)
 	struct siw_touch_pdata *pdata = NULL;
 	struct i2c_driver *i2c_drv = NULL;
 	struct i2c_device_id *id = siw_touch_i2c_id;
-	char chip_name[I2C_NAME_SIZE] = {0, };
+	char __chip_name[I2C_NAME_SIZE] = {0, };
+	char *chip_name = __chip_name;
 	char *drv_name = NULL;
 	int bus_type;
 	int ret = 0;
@@ -331,10 +332,14 @@ int siw_touch_i2c_add_driver(void *data)
 	 * for non-DTS case
 	 * : change siw_touch_i2c_id[0].name to compatible name
 	 */
-	touch_str_to_lower(chip_name, pdata_chip_name(pdata));
 	memset((void *)id->name, 0, I2C_NAME_SIZE);
+	if (pdata_compatible(pdata)) {
+		chip_name = pdata_compatible(pdata);
+	} else {
+		touch_str_to_lower(chip_name, pdata_chip_name(pdata));
+	}
 	snprintf((char *)id->name, I2C_NAME_SIZE, "siw,%s", chip_name);
-	id->driver_data = pdata_chip_type(pdata);
+	id->driver_data = (typeof(id->driver_data))pdata;
 
 	ret = i2c_add_driver(i2c_drv);
 	if (ret) {

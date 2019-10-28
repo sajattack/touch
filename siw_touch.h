@@ -624,6 +624,7 @@ struct siw_touch_font_bin {
 
 struct siw_touch_pdata {
 	/* Config. */
+	char *compatible;		//compatible name
 	char *chip_id;			//chip id(fixed)
 	char *chip_name;		//chip name
 	char *drv_name;			//driver name
@@ -751,6 +752,11 @@ static inline unsigned long pdata_test_prd_quirks(struct siw_touch_pdata *pdata,
 			unsigned long quirk_bit)
 {
 	return (pdata_get_prd_quirks(pdata) & quirk_bit);
+}
+
+static inline char *pdata_compatible(struct siw_touch_pdata *pdata)
+{
+	return pdata->compatible;
 }
 
 static inline char *pdata_chip_id(struct siw_touch_pdata *pdata)
