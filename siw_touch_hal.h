@@ -232,6 +232,12 @@ enum {
 	ABNORMAL_IC_DETECTION	= (ATTN_ESD_EN | ATTN_WDOG_EN),
 };
 
+enum {
+	WAFER_TYPE_MASK = (0x07),
+};
+
+#define FW_DN_LOG_UNIT			(8<<10)
+
 #define MAX_RW_SIZE_POW			(10)
 #define MAX_RW_SIZE				__SIZE_POW(MAX_RW_SIZE_POW)		//1K
 #define FLASH_CONF_SIZE_POWER	(10)
@@ -243,9 +249,59 @@ enum {
 #define FLASH_CODE_DNCHK_VALUE	0x42
 #define FLASH_CONF_DNCHK_VALUE	0x84
 
+#define FW_BOOT_LOADER_INIT		(0x74696E69)	//"init"
+#define FW_BOOT_LOADER_CODE		(0x544F4F42)	//"BOOT"
+
+#if defined(__SIW_FW_TYPE_1)
+/*
+ * Common CONF + Specific CONF(s)
+ */
+enum {
+	POW_C_CONF = 9,
+	POW_S_CONF = 10,
+};
 
 enum {
-	WAFER_TYPE_MASK = (0x07),
+	NUM_C_CONF = 1,
+	MIN_S_CONF = 1,
+	MAX_S_CONF = 31,
+};
+
+enum {
+	MIN_S_CONF_IDX = 1,
+	MAX_S_CONF_IDX = (MAX_S_CONF + 1),
+};
+
+#define FW_BOOT_CODE_ADDR		(0x044)
+#define FW_S_CONF_IDX_ADDR		(0x260)
+#define FW_S_CONF_DN_ADDR		(0x267)
+
+#define FW_TYPE_STR		"FW_TYPE_1"
+
+#define FLASH_CONF_DNCHK_VALUE_TYPE_X	(FLASH_CONF_DNCHK_VALUE | 0x0C)
+#define FLASH_CONF_SIZE_TYPE_X			(1<<POW_C_CONF)
+
+#define S_CFG_DBG_IDX			0
+#else	/* !__SIW_FW_TYPE_1 */
+#define FW_TYPE_STR		"FW_TYPE_0"
+
+#define FLASH_CONF_DNCHK_VALUE_TYPE_X	(FLASH_CONF_DNCHK_VALUE)
+#define FLASH_CONF_SIZE_TYPE_X			FLASH_CONF_SIZE
+#endif	/* __SIW_FW_TYPE_1 */
+
+#define FW_POST_QUIRK_DELAY		20
+#define FW_POST_QUIRK_COUNT		200
+
+#define	FW_POST_DELAY			20
+#define FW_POST_COUNT			200
+
+#define	CONF_POST_DELAY			20
+#define CONF_POST_COUNT			200
+
+enum {
+	BIN_VER_OFFSET_POS = 0xE8,
+	BIN_VER_EXT_OFFSET_POS = 0xDC,
+	BIN_PID_OFFSET_POS = 0xF0,
 };
 
 struct siw_hal_tc_version_bin {

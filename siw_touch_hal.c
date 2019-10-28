@@ -4199,8 +4199,6 @@ out:
 	return ret;
 }
 
-#define FW_DN_LOG_UNIT	(8<<10)
-
 static int siw_hal_fw_upgrade_fw_core(struct device *dev, u8 *dn_buf, int dn_size)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
@@ -4287,40 +4285,6 @@ out:
 }
 
 #if defined(__SIW_FW_TYPE_1)
-/*
- * Common CONF + Specific CONF(s)
- */
-enum {
-	POW_C_CONF = 9,
-	POW_S_CONF = 10,
-};
-
-enum {
-	NUM_C_CONF = 1,
-	MIN_S_CONF = 1,
-	MAX_S_CONF = 31,
-};
-
-enum {
-	MIN_S_CONF_IDX = 1,
-	MAX_S_CONF_IDX = (MAX_S_CONF + 1),
-};
-
-#define FW_BOOT_LOADER_INIT		(0x74696E69)	//"init"
-#define FW_BOOT_LOADER_CODE		(0x544F4F42)	//"BOOT"
-
-#define FW_BOOT_CODE_ADDR		(0x044)
-#define FW_S_CONF_IDX_ADDR		(0x260)
-#define FW_S_CONF_DN_ADDR		(0x267)
-
-#define FW_TYPE_STR		"FW_TYPE_1"
-
-#define FLASH_CONF_DNCHK_VALUE_TYPE_X	(FLASH_CONF_DNCHK_VALUE | 0x0C)
-#define FLASH_CONF_SIZE_TYPE_X			(1<<9)
-
-#define FW_POST_QUIRK_DELAY		20
-#define FW_POST_QUIRK_COUNT		200
-
 static int siw_hal_fw_upgrade_fw_post_quirk(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
@@ -4404,8 +4368,6 @@ static int siw_hal_fw_upgrade_conf_quirk(struct device *dev,
 out:
 	return ret;
 }
-
-#define S_CFG_DBG_IDX		0
 
 static void siw_hal_fw_var_init(struct device *dev)
 {
@@ -4530,14 +4492,6 @@ static int siw_hal_fw_size_check_post(struct device *dev, int fw_size)
 	return 0;
 }
 #else	/* __SIW_FW_TYPE_1 */
-#define FW_TYPE_STR		"FW_TYPE_0"
-
-#define FLASH_CONF_DNCHK_VALUE_TYPE_X	(FLASH_CONF_DNCHK_VALUE)
-#define FLASH_CONF_SIZE_TYPE_X			FLASH_CONF_SIZE
-
-#define FW_POST_QUIRK_DELAY		20
-#define FW_POST_QUIRK_COUNT		200
-
 static int siw_hal_fw_upgrade_fw_post_quirk(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
@@ -4608,12 +4562,6 @@ static int siw_hal_fw_size_check_post(struct device *dev, int fw_size)
 	return 0;
 }
 #endif	/* __SIW_FW_TYPE_1 */
-
-enum {
-	BIN_VER_OFFSET_POS = 0xE8,
-	BIN_VER_EXT_OFFSET_POS = 0xDC,
-	BIN_PID_OFFSET_POS = 0xF0,
-};
 
 static int siw_hal_fw_compare(struct device *dev, u8 *fw_buf)
 {
@@ -4912,9 +4860,6 @@ out:
 	return ret;
 }
 
-#define	FW_POST_DELAY		20
-#define FW_POST_COUNT		200
-
 static int siw_hal_fw_upgrade_fw_post(struct device *dev, int fw_size)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
@@ -5044,9 +4989,6 @@ static int siw_hal_fw_upgrade_release_cm3(struct device *dev)
 
 	return ret;
 }
-
-#define	CONF_POST_DELAY		20
-#define CONF_POST_COUNT		200
 
 static int siw_hal_fw_upgrade_conf_post(struct device *dev)
 {
