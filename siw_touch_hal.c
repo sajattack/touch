@@ -48,7 +48,6 @@
 #define __weak __attribute__((weak))
 #endif
 
-//#define __FW_VERIFY_TEST
 
 extern int siw_hal_sysfs(struct device *dev, int on_off);
 
@@ -4757,86 +4756,6 @@ out:
 	return update;
 }
 
-#if defined(__FW_VERIFY_TEST)
-static int __siw_hal_fw_up_verify(struct device *dev, u8 *chk_buf, int chk_size)
-{
-	struct siw_touch_chip *chip = to_touch_chip(dev);
-//	struct siw_ts *ts = chip->ts;
-	struct siw_hal_reg *reg = chip->reg;
-	u8 *fw_rd_data, *fw_data;
-	u8 *r_data, *w_data;
-	int fw_size;
-	int fw_pos, curr_size;
-	int i;
-	int ret = 0;
-
-	fw_size = chk_size;
-
-	fw_rd_data = kmalloc(fw_size, GFP_KERNEL);
-	if (!fw_rd_data) {
-		t_dev_err(dev, "FW upgrade: failed to allocate verifying memory\n");
-		ret = -ENOMEM;
-		goto out;
-	}
-
-	fw_data = fw_rd_data;
-	fw_pos = 0;
-	while (fw_size && fw_data) {
-		curr_size = min(fw_size, MAX_RW_SIZE);
-
-		/* code sram base address write */
-		ret = siw_hal_write_value(dev, reg->spr_code_offset, fw_pos>>2);
-		if (ret < 0) {
-			goto out_free;
-		}
-
-		ret = siw_hal_reg_read(dev, reg->code_access_addr,
-					(void *)fw_data, curr_size);
-		if (ret < 0) {
-			goto out_free;
-		}
-
-		fw_data += curr_size;
-		fw_pos += curr_size;
-		fw_size -= curr_size;
-	}
-
-	r_data = fw_rd_data;
-	w_data = chk_buf;
-	fw_size = chk_size;
-	for (i = 0; i < fw_size; i++) {
-		if ((*r_data) != (*w_data)) {
-			t_dev_err(dev, "* Err [%06X] rd(%02X) != wr(%02X)\n",
-				i, (*r_data), (*w_data));
-			ret = -EFAULT;
-		} else {
-		#if 0
-			t_dev_info(dev, "  OK! [%06X] rd(%02X) == wr(%02X)\n",
-				i, (*r_data), (*w_data));
-		#endif
-		}
-
-		r_data++;
-		w_data++;
-	}
-
-	if (ret >= 0) {
-		t_dev_info(dev, "FW dn verified\n");
-	}
-
-out_free:
-	kfree(fw_rd_data);
-
-out:
-	return ret;
-}
-#else	/* __FW_VERIFY_TEST */
-static int __siw_hal_fw_up_verify(struct device *dev, u8 *chk_buf, int chk_size)
-{
-	return 0;
-}
-#endif	/* __FW_VERIFY_TEST */
-
 static int siw_hal_fw_upgrade_fw_pre(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
@@ -4936,11 +4855,6 @@ static int siw_hal_fw_upgrade_fw(struct device *dev,
 	 */
 	fw_data = fw_buf;
 	ret = siw_hal_fw_upgrade_fw_core(dev, fw_data, fw_size_max);
-	if (ret < 0) {
-		goto out;
-	}
-
-	ret = __siw_hal_fw_up_verify(dev, fw_data, fw_size_max);
 	if (ret < 0) {
 		goto out;
 	}
