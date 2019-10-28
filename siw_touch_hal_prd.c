@@ -4703,13 +4703,21 @@ static void prd_ic_run_info_print(struct siw_hal_prd_data *prd)
 	struct siw_hal_reg *reg = chip->reg;
 	char *log_buf = prd->log_buf;
 	int ret = 0;
-	u32 rdata[4] = {0};
+	u32 rdata[4] = {0, };
+	struct siw_hal_rw_multi multi[] = {
+		{ 0, reg->info_lot_num, &rdata[0], sizeof(rdata[0]), "lot" },
+		{ 0, reg->info_serial_num, &rdata[1], sizeof(rdata[1]), "sn" },
+		{ 0, reg->info_date, &rdata[2], sizeof(rdata[2]), "date" },
+		{ 0, reg->info_time, &rdata[3], sizeof(rdata[3]), "time" },
+		{ -1, -1, NULL, }
+	};
 
 	memset(log_buf, 0, sizeof(prd->log_buf));
 
-	ret = siw_hal_reg_read(dev,
-				reg->info_lot_num,
-				(void *)&rdata, sizeof(rdata));
+	ret = siw_hal_reg_rw_multi(dev, multi, "prd ic info");
+	if (ret < 0) {
+		return;
+	}
 
 	ret = snprintf(log_buf, PRD_LOG_BUF_SIZE,
 				"\n===== Production Info =====\n");
