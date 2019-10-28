@@ -2782,6 +2782,11 @@ static int siw_hal_chk_status_type(struct device *dev)
 		break;
 	}
 
+	chip->status_mask_ic_normal = chip->status_mask_ic_valid;
+	chip->status_mask_ic_normal &= ~chip->status_mask_ic_abnormal;
+	chip->status_mask_ic_normal &= ~chip->status_mask_ic_error;
+	chip->status_mask_ic_normal &= ~chip->status_mask_ic_disp_err;
+
 #if defined(__SIW_SUPPORT_STATUS_OPT_IGNORE_ABNORMAL)
 	chip->status_mask_ic_abnormal = 0;
 #endif
@@ -2795,6 +2800,7 @@ static int siw_hal_chk_status_type(struct device *dev)
 	t_dev_info(dev, " normal      : %08Xh\n", chip->status_mask_normal);
 	t_dev_info(dev, " logging     : %08Xh\n", chip->status_mask_logging);
 	t_dev_info(dev, " reset       : %08Xh\n", chip->status_mask_reset);
+	t_dev_info(dev, " ic normal   : %08Xh\n", chip->status_mask_ic_normal);
 	t_dev_info(dev, " ic abnormal : %08Xh\n", chip->status_mask_ic_abnormal);
 	t_dev_info(dev, " ic error    : %08Xh\n", chip->status_mask_ic_error);
 	t_dev_info(dev, " ic valid    : %08Xh\n", chip->status_mask_ic_valid);
