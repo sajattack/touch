@@ -6780,11 +6780,17 @@ static int siw_hal_check_status_type_x(struct device *dev,
 
 	if (ic_abnormal || ic_error || ic_disp_err) {
 		u32 err_val[3] = { ic_abnormal, ic_error, ic_disp_err };
-		char *err_str[3] = {
+		char *err_str_ait[3] = {
 			"esd",
 			"watchdog",
 			"dic"
 		};
+		char *err_str_oled[3] = {
+			"spck",
+			"watchdog",
+			"dic"
+		};
+		char **err_str = (chip->opt.t_oled) ? err_str_oled : err_str_ait;
 		u32 sys_error, sys_fault;
 		int log_add = !log_flag;
 		int err_pre, i;
@@ -6830,7 +6836,11 @@ static int siw_hal_check_status_type_x(struct device *dev,
 
 		t_dev_err(dev, "%s\n", log);
 
-		esd_send |= (ic_abnormal | ic_disp_err);
+		if (chip->opt.t_oled) {
+			esd_send |= (ic_disp_err);
+		} else {
+			esd_send |= (ic_abnormal | ic_disp_err);
+		}
 		if (!esd_send) {
 			ret = -ERESTART;	//touch reset
 		}
