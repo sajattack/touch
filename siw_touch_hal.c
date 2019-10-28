@@ -4075,6 +4075,15 @@ static int siw_hal_reset_ctrl(struct device *dev, int ctrl)
 	return ret;
 }
 
+static u32 siw_hal_fw_act_buf_size(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	int buf_size = (touch_get_act_buf_size(ts) - SIW_TOUCH_BUF_MARGIN) & (~0x3FF);
+
+	return buf_size;
+}
+
 static int siw_hal_fw_rd_value(struct device *dev,
 				u32 addr, u32 *value)
 {
@@ -4127,6 +4136,33 @@ static int siw_hal_fw_wr_seq(struct device *dev,
 	return 0;
 }
 
+static int siw_hal_fw_wr_data(struct device *dev,
+				u32 addr, u8 *dn_buf, int dn_size)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+//	struct siw_ts *ts = chip->ts;
+	struct siw_hal_reg *reg = chip->reg;
+	u32 offset = reg->serial_data_offset;
+	u32 data_access = reg->data_i2cbase_addr;
+	int ret = 0;
+
+	if (!dn_size)
+		goto out;
+
+	ret = siw_hal_fw_wr_value(dev, offset, addr);
+	if (ret < 0) {
+		goto out;
+	}
+
+	ret = siw_hal_fw_wr_seq(dev, data_access, (void *)dn_buf, dn_size);
+	if (ret < 0) {
+		goto out;
+	}
+
+out:
+	return ret;
+}
+
 static int siw_hal_fw_sram_wr_enable(struct device *dev, int onoff)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
@@ -4136,7 +4172,7 @@ static int siw_hal_fw_sram_wr_enable(struct device *dev, int onoff)
 	int ret = 0;
 
 #if 0
-	ret = siw_hal_read_value(dev, reg->spr_sram_ctl, &data);
+	ret = siw_hal_fw_rd_value(dev, reg->spr_sram_ctl, &data);
 	if (ret < 0) {
 		goto out;
 	}
@@ -4146,14 +4182,14 @@ static int siw_hal_fw_sram_wr_enable(struct device *dev, int onoff)
 	else
 		data &= ~0x01;
 
-	ret = siw_hal_write_value(dev, reg->spr_sram_ctl, data);
+	ret = siw_hal_fw_wr_value(dev, reg->spr_sram_ctl, data);
 	if (ret < 0) {
 		goto out;
 	}
 #else
 //	data = !!onoff;
 	data = (onoff) ? 0x03 : 0x00;
-	ret = siw_hal_write_value(dev, reg->spr_sram_ctl, data);
+	ret = siw_hal_fw_wr_value(dev, reg->spr_sram_ctl, data);
 	if (ret < 0) {
 		goto out;
 	}
@@ -4176,6 +4212,7 @@ static int siw_hal_fw_upgrade_fw_core(struct device *dev, u8 *dn_buf, int dn_siz
 	int fw_pos, curr_size;
 	int fw_size_org = dn_size;
 	int fw_dn_size = 0, fw_dn_percent;
+	int buf_size = min(MAX_RW_SIZE, (int)siw_hal_fw_act_buf_size(dev));
 	int ret = 0;
 
 	fw_data = dn_buf;
@@ -4186,7 +4223,7 @@ static int siw_hal_fw_upgrade_fw_core(struct device *dev, u8 *dn_buf, int dn_siz
 				fw_pos,
 				fw_data[0], fw_data[1], fw_data[2], fw_data[3]);
 
-		curr_size = min(fw_size, MAX_RW_SIZE);
+		curr_size = min(fw_size, buf_size);
 
 		/* code sram base address write */
 		ret = siw_hal_fw_wr_value(dev, reg->spr_code_offset, fw_pos>>2);
@@ -4228,23 +4265,19 @@ out:
 static int siw_hal_fw_upgrade_conf_core(struct device *dev,
 				u32 addr, u8 *dn_buf, int dn_size)
 {
-	struct siw_touch_chip *chip = to_touch_chip(dev);
+//	struct siw_touch_chip *chip = to_touch_chip(dev);
 //	struct siw_ts *ts = chip->ts;
-	struct siw_hal_reg *reg = chip->reg;
-	int ret;
+	int buf_size = (int)siw_hal_fw_act_buf_size(dev);
+	int ret = 0;
 
-	/* conf sram base address write */
-	ret = siw_hal_fw_wr_value(dev,
-			reg->serial_data_offset,
-			addr);
-	if (ret < 0) {
+	if (dn_size > buf_size) {
+		t_dev_err(dev, "FW upgrade: buffer overflow, dn_size %d > %d\n",
+			dn_size, buf_size);
+		ret = -EOVERFLOW;
 		goto out;
 	}
 
-	/* Conf data download to conf sram */
-	ret = siw_hal_fw_wr_seq(dev,
-			reg->data_i2cbase_addr,
-			(void *)dn_buf, dn_size);
+	ret = siw_hal_fw_wr_data(dev, addr, dn_buf, dn_size);
 	if (ret < 0) {
 		goto out;
 	}
