@@ -513,6 +513,8 @@ struct siw_touch_fquirks {	//function quirks
 	int (*gpio_dir_input)(struct device *dev, int pin);
 	int (*gpio_dir_output)(struct device *dev, int pin, int value);
 	int (*gpio_set_pull)(struct device *dev, int pin, int value);
+	int (*gpio_set_value)(struct device *dev, int pin, int value);
+	int (*gpio_get_value)(struct device *dev, int pin);
 	/* */
 	int (*power_init)(struct device *dev);
 	int (*power_free)(struct device *dev);
