@@ -1184,11 +1184,6 @@ static int siw_hal_sysfs_add(struct device *dev, int on_off)
 			goto out;
 		}
 
-		ret = __siw_hal_sysfs_add_prd(dev, DRIVER_INIT);
-		if (ret < 0) {
-			goto out_prd;
-		}
-
 		ret = __siw_hal_sysfs_add_watch(dev, DRIVER_INIT);
 		if (ret < 0) {
 			goto out_watch;
@@ -1199,9 +1194,6 @@ static int siw_hal_sysfs_add(struct device *dev, int on_off)
 	__siw_hal_sysfs_add_watch(dev, DRIVER_FREE);
 
 out_watch:
-	__siw_hal_sysfs_add_prd(dev, DRIVER_FREE);
-
-out_prd:
 	__siw_hal_sysfs_add_abt(dev, DRIVER_FREE);
 
 out:
@@ -1273,4 +1265,10 @@ int siw_hal_sysfs(struct device *dev, int on_off)
 	return 0;
 }
 
+int siw_hal_sysfs_post(struct device *dev, int on_off)
+{
+	__siw_hal_sysfs_add_prd(dev, on_off);
+
+	return 0;
+}
 

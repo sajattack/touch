@@ -50,6 +50,7 @@
 
 
 extern int siw_hal_sysfs(struct device *dev, int on_off);
+extern int siw_hal_sysfs_post(struct device *dev, int on_off);
 
 /*
  * weak(dummy) function for ABT control
@@ -3726,6 +3727,8 @@ static int siw_hal_init(struct device *dev)
 		t_dev_err(dev, "failed to check watch, %d\n", ret);
 		goto out;
 	}
+
+	siw_hal_sysfs_post(dev, DRIVER_INIT);
 
 out:
 	if (ret < 0) {
@@ -8747,6 +8750,8 @@ static int siw_hal_remove(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
+
+	siw_hal_sysfs_post(dev, DRIVER_FREE);
 
 	__siw_hal_do_remove(dev);
 
