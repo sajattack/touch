@@ -4603,6 +4603,7 @@ static int siw_hal_fw_compare(struct device *dev, u8 *fw_buf)
 	u32 bin_raw_ext = 0;
 	int bin_diff = 0;
 	int update = 0;
+	int boot_failed = !!(atomic_read(&chip->boot) == IC_BOOT_FAIL);
 //	int ret = 0;
 
 	if (fquirks->fwup_check) {
@@ -4627,22 +4628,19 @@ static int siw_hal_fw_compare(struct device *dev, u8 *fw_buf)
 		update = 0;
 	}
 
-	if (fw->version_ext) {
-		dev_major = fw->version_ext >> 8;
-		dev_minor = fw->version_ext & 0xFF;
-	} else {
-		dev_major = fw->v.version.major;
-		dev_minor = fw->v.version.minor;
-	}
+	if (!boot_failed) {
+		if (fw->version_ext) {
+			dev_major = fw->version_ext >> 8;
+			dev_minor = fw->version_ext & 0xFF;
+		} else {
+			dev_major = fw->v.version.major;
+			dev_minor = fw->v.version.minor;
+		}
 
-	if (atomic_read(&chip->boot) == IC_BOOT_FAIL) {
-		update |= (1<<7);
-		goto out;
-	}
-
-	if (!dev_major && !dev_minor){
-		t_dev_err(dev, "fw can not be 0.0!! Check your panel connection!!\n");
-		return 0;
+		if (!dev_major && !dev_minor){
+			t_dev_err(dev, "fw can not be 0.0!! Check your panel connection!!\n");
+			return 0;
+		}
 	}
 
 	bin_ver_offset = *((u32 *)&fw_buf[BIN_VER_OFFSET_POS]);
@@ -4657,16 +4655,18 @@ static int siw_hal_fw_compare(struct device *dev, u8 *fw_buf)
 		bin_ver_ext_offset = 0;
 	}
 
-	if ((fw->version_ext && !bin_ver_ext_offset) ||
-		(!fw->version_ext && bin_ver_ext_offset)) {
-		if (!ts->force_fwup) {
-			t_dev_warn(dev,
-				"FW compare: different version format, "
-				"use force update %s",
-				(fw->version_ext) ? "(ext)" : "");
-			return -EINVAL;
+	if (!boot_failed) {
+		if ((fw->version_ext && !bin_ver_ext_offset) ||
+			(!fw->version_ext && bin_ver_ext_offset)) {
+			if (!ts->force_fwup) {
+				t_dev_warn(dev,
+					"FW compare: different version format, "
+					"use force update %s",
+					(fw->version_ext) ? "(ext)" : "");
+				return -EINVAL;
+			}
+			bin_diff = 1;
 		}
-		bin_diff = 1;
 	}
 
 	bin_pid_offset = *((u32 *)&fw_buf[BIN_PID_OFFSET_POS]);
@@ -4675,9 +4675,9 @@ static int siw_hal_fw_compare(struct device *dev, u8 *fw_buf)
 		return -EINVAL;
 	}
 
-	if ((bin_ver_offset > fw_max_size) ||
-		(bin_ver_ext_offset > fw_max_size) ||
-		(bin_pid_offset > fw_max_size)) {
+	if (((bin_ver_offset + 4) > fw_max_size) ||
+		((bin_ver_ext_offset + 4) > fw_max_size) ||
+		((bin_pid_offset + 8) > fw_max_size)) {
 		t_dev_err(dev, "FW compare: invalid offset - ver %06Xh, ver_ext %06Xh pid %06Xh, max %06Xh\n",
 			bin_ver_offset, bin_ver_ext_offset, bin_pid_offset, fw_max_size);
 		return -EINVAL;
@@ -4692,6 +4692,11 @@ static int siw_hal_fw_compare(struct device *dev, u8 *fw_buf)
 	if (siw_hal_fw_check_pid(pid)) {
 		t_dev_err(dev, "[fw-bin] invalid pid - \"%s\"\n", pid);
 		return -EINVAL;
+	}
+
+	if (boot_failed) {
+		update |= (1<<7);
+		goto out;
 	}
 
 	bin_ver = (struct siw_hal_tc_version_bin *)&fw_buf[bin_ver_offset];
