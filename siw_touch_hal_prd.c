@@ -4976,7 +4976,7 @@ out:
 	return (ssize_t)size;
 }
 
-static int prd_show_prd_get_data_raw_core(struct device *dev,
+static int prd_show_get_data_raw_core(struct device *dev,
 					u8 *buf, int size,
 					u32 cmd, u32 offset, int flag)
 {
@@ -5017,7 +5017,7 @@ out:
 	return ret;
 }
 
-static int prd_show_prd_get_data_raw_prd(struct device *dev)
+static int prd_show_get_data_raw_prd(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
@@ -5071,7 +5071,7 @@ out:
 	return ret;
 }
 
-static int prd_show_prd_get_data_raw_tcm(struct device *dev)
+static int prd_show_get_data_raw_tcm(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
@@ -5092,12 +5092,10 @@ static int prd_show_prd_get_data_raw_tcm(struct device *dev)
 	}
 #endif
 
-#if defined(__PRD_LOG_VIA_SHELL)
 	t_prd_info(prd, "======== rawdata(tcm) ========\n");
+#if defined(__PRD_LOG_VIA_SHELL)
 	log_size += siw_prd_buf_snprintf(prd->buf_write, log_size,
 					"======== rawdata(tcm) ========\n");
-#else
-	t_prd_info(prd, "======== CMD_RAWDATA_TCM ========\n");
 #endif
 
 	if (buf == NULL) {
@@ -5137,7 +5135,7 @@ out:
 	return ret;
 }
 
-static int prd_show_prd_get_data_do_raw_ait(struct device *dev, u8*buf, int size, int flag)
+static int prd_show_get_data_do_raw_ait(struct device *dev, u8*buf, int size, int flag)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
@@ -5146,13 +5144,13 @@ static int prd_show_prd_get_data_do_raw_ait(struct device *dev, u8*buf, int siz
 	u8 *pbuf = (buf) ? buf : (u8 *)prd->m2_buf_even_rawdata;
 	int ret = 0;
 
-	ret = prd_show_prd_get_data_raw_core(dev, pbuf, size,
+	ret = prd_show_get_data_raw_core(dev, pbuf, size,
 				prd->img_cmd.raw, prd->img_offset.raw, flag);
 	if (ret < 0) {
 		goto out;
 	}
 
-	prd_swap_raw_memory(prd, PRD_BUF_SWAP_RAW, prd->m2_buf_even_rawdata, size, 0, 0, 0);
+	prd_swap_raw_memory(prd, PRD_BUF_SWAP_RAW, pbuf, size, 0, 0, 0);
 
 out:
 	return ret;
@@ -5216,7 +5214,7 @@ static inline void __prd_show_raw_cmp(struct siw_hal_prd_data *prd)
 }
 #endif	/* __SIW_SUPPORT_PRD_RAW_CMP */
 
-static int prd_show_prd_get_data_raw_ait(struct device *dev)
+static int prd_show_get_data_raw_ait(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
@@ -5227,15 +5225,13 @@ static int prd_show_prd_get_data_raw_ait(struct device *dev)
 	int log_size = 0;
 	int ret = 0;
 
-#if defined(__PRD_LOG_VIA_SHELL)
 	t_prd_info(prd, "======== rawdata ========\n");
+#if defined(__PRD_LOG_VIA_SHELL)
 	log_size += siw_prd_buf_snprintf(prd->buf_write, log_size,
 					"======== rawdata ========\n");
-#else
-	t_prd_info(prd, "======== CMD_RAWDATA_AIT ========\n");
 #endif
 
-	ret = prd_show_prd_get_data_do_raw_ait(dev,
+	ret = prd_show_get_data_do_raw_ait(dev,
 				(u8 *)prd->m2_buf_even_rawdata,
 				size,
 				0);
@@ -5257,8 +5253,8 @@ out:
 	return ret;
 }
 
-static int prd_show_prd_get_data_do_ait_basedata(struct device *dev,
-					u8*buf, int size, int step, int flag)
+static int prd_show_get_data_do_ait_basedata(struct device *dev,
+					u8 *buf, int size, int step, int flag)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
@@ -5275,19 +5271,19 @@ static int prd_show_prd_get_data_do_ait_basedata(struct device *dev,
 	u8 *pbuf = (buf) ? buf : (u8 *)buf_rawdata[step];
 	int ret = 0;
 
-	ret = prd_show_prd_get_data_raw_core(dev, pbuf, size,
+	ret = prd_show_get_data_raw_core(dev, pbuf, size,
 				ait_cmd[step], ait_offset[step], flag);
 	if (ret < 0) {
 		goto out;
 	}
 
-	prd_swap_raw_memory(prd, PRD_BUF_SWAP_BASE, prd->m2_buf_even_rawdata, size, 0, 0, 0);
+	prd_swap_raw_memory(prd, PRD_BUF_SWAP_BASE, pbuf, size, 0, 0, 0);
 
 out:
 	return ret;
 }
 
-static int prd_show_prd_get_data_ait_basedata(struct device *dev)
+static int prd_show_get_data_ait_basedata(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
@@ -5301,16 +5297,14 @@ static int prd_show_prd_get_data_ait_basedata(struct device *dev)
 	int i = 0;
 	int ret = 0;
 
-#if defined(__PRD_LOG_VIA_SHELL)
 	t_prd_info(prd, "======== basedata ========\n");
+#if defined(__PRD_LOG_VIA_SHELL)
 	log_size += siw_prd_buf_snprintf(prd->buf_write, log_size,
 					"======== basedata ========\n");
-#else
-	t_prd_info(prd, "======== CMD_AIT_BASEDATA ========\n");
 #endif
 
 	for (i = 0; i < param->m2_cnt; i++) {
-		ret = prd_show_prd_get_data_do_ait_basedata(dev,
+		ret = prd_show_get_data_do_ait_basedata(dev,
 					NULL,
 					size,
 					i,
@@ -5334,7 +5328,7 @@ out:
 	return ret;
 }
 
-static int prd_show_prd_get_data_do_filtered_deltadata(struct device *dev, u8 *buf, int size, int flag)
+static int prd_show_get_data_do_filtered_deltadata(struct device *dev, u8 *buf, int size, int flag)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
@@ -5349,7 +5343,7 @@ static int prd_show_prd_get_data_do_filtered_deltadata(struct device *dev, u8 *b
 	int i;
 	int ret = 0;
 
-	ret = prd_show_prd_get_data_raw_core(dev, (u8 *)prd->buf_delta, size_rd,
+	ret = prd_show_get_data_raw_core(dev, (u8 *)prd->buf_delta, size_rd,
 				prd->img_cmd.f_delta, prd->img_offset.f_delta, flag);
 	if (ret < 0) {
 		goto out;
@@ -5367,7 +5361,7 @@ out:
 	return ret;
 }
 
-static int prd_show_prd_get_data_filtered_deltadata(struct device *dev)
+static int prd_show_get_data_filtered_deltadata(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
@@ -5378,15 +5372,13 @@ static int prd_show_prd_get_data_filtered_deltadata(struct device *dev)
 	int log_size = 0;
 	int ret = 0;
 
-#if defined(__PRD_LOG_VIA_SHELL)
 	t_prd_info(prd, "======== filtered deltadata ========\n");
+#if defined(__PRD_LOG_VIA_SHELL)
 	log_size += siw_prd_buf_snprintf(prd->buf_write, log_size,
 					"======== filtered deltadata ========\n");
-#else
-	t_prd_info(prd, "======== CMD_FILTERED_DELTADATA ========\n");
 #endif
 
-	ret = prd_show_prd_get_data_do_filtered_deltadata(dev,
+	ret = prd_show_get_data_do_filtered_deltadata(dev,
 				(u8 *)prd->m2_buf_even_rawdata,
 				size,
 				0);
@@ -5400,7 +5392,7 @@ out:
 	return ret;
 };
 
-static int prd_show_prd_get_data_do_deltadata(struct device *dev, u8 *buf, int size, int flag)
+static int prd_show_get_data_do_deltadata(struct device *dev, u8 *buf, int size, int flag)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
@@ -5415,7 +5407,7 @@ static int prd_show_prd_get_data_do_deltadata(struct device *dev, u8 *buf, int s
 	int i;
 	int ret = 0;
 
-	ret = prd_show_prd_get_data_raw_core(dev, (u8 *)prd->buf_delta, size_rd,
+	ret = prd_show_get_data_raw_core(dev, (u8 *)prd->buf_delta, size_rd,
 				prd->img_cmd.delta, prd->img_offset.delta, flag);
 	if (ret < 0) {
 		goto out;
@@ -5436,7 +5428,7 @@ out:
 	return ret;
 }
 
-static int prd_show_prd_get_data_deltadata(struct device *dev)
+static int prd_show_get_data_deltadata(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
@@ -5447,15 +5439,13 @@ static int prd_show_prd_get_data_deltadata(struct device *dev)
 	int log_size = 0;
 	int ret = 0;
 
-#if defined(__PRD_LOG_VIA_SHELL)
 	t_prd_info(prd, "======== deltadata ========\n");
+#if defined(__PRD_LOG_VIA_SHELL)
 	log_size += siw_prd_buf_snprintf(prd->buf_write, log_size,
 					"======== deltadata ========\n");
-#else
-	t_prd_info(prd, "======== CMD_DELTADATA ========\n");
 #endif
 
-	ret = prd_show_prd_get_data_do_deltadata(dev,
+	ret = prd_show_get_data_do_deltadata(dev,
 				(u8 *)prd->m2_buf_even_rawdata,
 				size,
 				0);
@@ -5475,7 +5465,7 @@ out:
 
 }
 
-static int prd_show_prd_get_data_do_labeldata(struct device *dev, u8 *buf, int size, int flag)
+static int prd_show_get_data_do_labeldata(struct device *dev, u8 *buf, int size, int flag)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
@@ -5490,7 +5480,7 @@ static int prd_show_prd_get_data_do_labeldata(struct device *dev, u8 *buf, int s
 	int i;
 	int ret = 0;
 
-	ret = prd_show_prd_get_data_raw_core(dev, (u8 *)prd->buf_label_tmp, size_rd,
+	ret = prd_show_get_data_raw_core(dev, (u8 *)prd->buf_label_tmp, size_rd,
 				prd->img_cmd.label, prd->img_offset.label, flag);
 	if (ret < 0) {
 		goto out;
@@ -5512,7 +5502,7 @@ out:
 
 }
 
-static int prd_show_prd_get_data_labeldata(struct device *dev)
+static int prd_show_get_data_labeldata(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
@@ -5523,15 +5513,13 @@ static int prd_show_prd_get_data_labeldata(struct device *dev)
 	int log_size = 0;
 	int ret = 0;
 
-#if defined(__PRD_LOG_VIA_SHELL)
 	t_prd_info(prd, "======== labeldata ========\n");
+#if defined(__PRD_LOG_VIA_SHELL)
 	log_size += siw_prd_buf_snprintf(prd->buf_write, log_size,
 					"======== labeldata ========\n");
-#else
-	t_prd_info(prd, "======== CMD_LABELDATA ========\n");
 #endif
 
-	ret = prd_show_prd_get_data_do_labeldata(dev,
+	ret = prd_show_get_data_do_labeldata(dev,
 				(u8 *)prd->buf_label,
 				size,
 				0);
@@ -5550,7 +5538,7 @@ out:
 	return ret;
 }
 
-static int prd_show_prd_get_data_blu_jitter(struct device *dev)
+static int prd_show_get_data_blu_jitter(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
@@ -5595,7 +5583,7 @@ out:
 	return ret;
 }
 
-static int prd_show_prd_get_data_do_debug_buf(struct device *dev, u8 *buf, int size, int flag)
+static int prd_show_get_data_do_debug_buf(struct device *dev, u8 *buf, int size, int flag)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
@@ -5604,7 +5592,7 @@ static int prd_show_prd_get_data_do_debug_buf(struct device *dev, u8 *buf, int s
 	u8 *pbuf = (buf) ? buf : (u8 *)prd->buf_debug;
 	int ret = 0;
 
-	ret = prd_show_prd_get_data_raw_core(dev, pbuf, size,
+	ret = prd_show_get_data_raw_core(dev, pbuf, size,
 				IT_DONT_USE_CMD, prd->img_offset.debug, flag);
 	if (ret < 0) {
 		goto out;
@@ -5616,7 +5604,7 @@ out:
 	return ret;
 }
 
-static int prd_show_prd_get_data_debug_buf(struct device *dev)
+static int prd_show_get_data_debug_buf(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
@@ -5627,15 +5615,13 @@ static int prd_show_prd_get_data_debug_buf(struct device *dev)
 	int log_size = 0;
 	int ret = 0;
 
-#if defined(__PRD_LOG_VIA_SHELL)
 	t_prd_info(prd, "======== debugdata ========\n");
+#if defined(__PRD_LOG_VIA_SHELL)
 	log_size += siw_prd_buf_snprintf(prd->buf_write, log_size,
 					"======== debugdata ========\n");
-#else
-	t_prd_info(prd, "======== CMD_DEBUGDATA ========\n");
 #endif
 
-	ret = prd_show_prd_get_data_do_debug_buf(dev,
+	ret = prd_show_get_data_do_debug_buf(dev,
 				(u8 *)prd->buf_debug,
 				size,
 				0);
@@ -5655,7 +5641,7 @@ out:
 }
 
 
-static ssize_t prd_show_prd_get_data(struct device *dev, int type)
+static ssize_t prd_show_get_data(struct device *dev, int type)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_ts *ts = chip->ts;
@@ -5664,31 +5650,31 @@ static ssize_t prd_show_prd_get_data(struct device *dev, int type)
 
 	switch (type) {
 	case CMD_RAWDATA_PRD:
-		ret = prd_show_prd_get_data_raw_prd(dev);
+		ret = prd_show_get_data_raw_prd(dev);
 		break;
 	case CMD_RAWDATA_TCM:
-		ret = prd_show_prd_get_data_raw_tcm(dev);
+		ret = prd_show_get_data_raw_tcm(dev);
 		break;
 	case CMD_RAWDATA_AIT:
-		ret = prd_show_prd_get_data_raw_ait(dev);
+		ret = prd_show_get_data_raw_ait(dev);
 		break;
 	case CMD_AIT_BASEDATA:
-		ret = prd_show_prd_get_data_ait_basedata(dev);
+		ret = prd_show_get_data_ait_basedata(dev);
 		break;
 	case CMD_FILTERED_DELTADATA:
-		ret = prd_show_prd_get_data_filtered_deltadata(dev);
+		ret = prd_show_get_data_filtered_deltadata(dev);
 		break;
 	case CMD_DELTADATA:
-		ret = prd_show_prd_get_data_deltadata(dev);
+		ret = prd_show_get_data_deltadata(dev);
 		break;
 	case CMD_LABELDATA:
-		ret = prd_show_prd_get_data_labeldata(dev);
+		ret = prd_show_get_data_labeldata(dev);
 		break;
 	case CMD_BLU_JITTER:
-		ret = prd_show_prd_get_data_blu_jitter(dev);
+		ret = prd_show_get_data_blu_jitter(dev);
 		break;
 	case CMD_DEBUG_BUF:
-		ret = prd_show_prd_get_data_debug_buf(dev);
+		ret = prd_show_get_data_debug_buf(dev);
 		break;
 	default:
 		t_prd_err(prd, "invalid get_data request CMD");
@@ -5716,10 +5702,10 @@ static ssize_t prd_show_get_data_common(struct device *dev, char *buf, int type)
 	}
 
 	siw_touch_mon_pause(dev);
-	ret = prd_show_prd_get_data(dev, type);
+	ret = prd_show_get_data(dev, type);
 	siw_touch_mon_resume(dev);
 	if (ret < 0){
-		t_prd_err(prd, "prd_show_prd_get_data(%d) failed, %d\n",
+		t_prd_err(prd, "prd_show_get_data(%d) failed, %d\n",
 			type, ret);
 	}
 
@@ -6199,23 +6185,23 @@ static ssize_t prd_show_app_operator(struct device *dev, char *buf, int mode)
 
 	switch (mode) {
 	case REPORT_RAW:
-		prd_show_prd_get_data_do_raw_ait(dev, pbuf, size, flag);
+		prd_show_get_data_do_raw_ait(dev, pbuf, size, flag);
 		break;
 	case REPORT_BASE:
-		prd_show_prd_get_data_do_ait_basedata(dev, pbuf, size, 0, flag);
+		prd_show_get_data_do_ait_basedata(dev, pbuf, size, 0, flag);
 		break;
 	case REPORT_DELTA:
-		prd_show_prd_get_data_do_deltadata(dev, pbuf, size, flag);
+		prd_show_get_data_do_deltadata(dev, pbuf, size, flag);
 		break;
 	case REPORT_LABEL:
 		size = ctrl->m2_row_col_size;
 		pbuf = (u8 *)prd->buf_label,
-		prd_show_prd_get_data_do_labeldata(dev, pbuf, size, flag);
+		prd_show_get_data_do_labeldata(dev, pbuf, size, flag);
 		break;
 	case REPORT_DEBUG_BUF:
 		size = ctrl->debug_buf_size;
 		pbuf = (u8 *)prd->buf_debug,
-		prd_show_prd_get_data_do_debug_buf(dev, pbuf, size, flag);
+		prd_show_get_data_do_debug_buf(dev, pbuf, size, flag);
 		break;
 	default:
 		t_prd_err(prd, "unknown mode, %d\n", mode);
