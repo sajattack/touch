@@ -59,12 +59,12 @@ extern int siw_hal_sysfs_post(struct device *dev, int on_off);
  */
 int __weak siw_hal_abt_init(struct device *dev)
 {
-	t_dev_warn(dev, "ABT disabled\n");
+	t_dev_info_once(dev, "ABT disabled\n");
 	return 0;
 }
 int __weak siw_hal_abt_sysfs(struct device *dev, int on_off)
 {
-	t_dev_warn(dev, "ABT disabled\n");
+	t_dev_info_once(dev, "ABT disabled\n");
 	return 0;
 }
 
@@ -75,13 +75,13 @@ int __weak siw_hal_abt_sysfs(struct device *dev, int on_off)
  */
 int __weak siw_hal_prd_sysfs(struct device *dev, int on_off)
 {
-	t_dev_warn(dev, "PRD disabled\n");
+	t_dev_info_once(dev, "PRD disabled\n");
 	return 0;
 }
 
 #if defined(__SIW_SUPPORT_WATCH)
 #define t_warn_weak_watch(_dev, fmt, args...)	\
-		t_dev_warn(_dev, "Watch disabled: "fmt, ##args)
+		t_dev_info_once(_dev, "Watch disabled: "fmt, ##args)
 #else
 #define t_warn_weak_watch(_dev, fmt, args...)	do { }while(0)
 #endif
