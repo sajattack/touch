@@ -961,8 +961,9 @@ int siw_hal_reg_read_single(struct device *dev, u32 addr, void *data, int size)
 
 		addr++;
 		__data++;
-		size -= 4;
+		size -= __size;
 	}
+
 	return ret;
 }
 
@@ -981,7 +982,7 @@ int siw_hal_reg_write_single(struct device *dev, u32 addr, void *data, int size)
 
 		addr++;
 		__data++;
-		size -= 4;
+		size -= __size;
 	}
 
 	return ret;
