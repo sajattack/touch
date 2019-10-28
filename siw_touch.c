@@ -169,8 +169,8 @@ static void siw_config_status(struct device *dev)
 	t_dev_info(dev, "cfg status : __SIW_SUPPORT_PWRCTRL\n");
 #endif
 
-#if defined(__SIW_SUPPORT_WAKE_LOCK)
-	t_dev_info(dev, "cfg status : __SIW_SUPPORT_WAKE_LOCK\n");
+#if defined(__SIW_SUPPORT_PM_WAKEUP)
+	t_dev_info(dev, "cfg status : __SIW_SUPPORT_PM_WAKEUP\n");
 #endif
 
 #if defined(__SIW_SUPPORT_PM_QOS)
@@ -465,62 +465,42 @@ int siw_touch_get(struct device *dev, u32 cmd, void *buf)
 	return ret;
 }
 
-#if defined(__SIW_SUPPORT_WAKE_LOCK)
-#define SIW_TOUCH_CORE_LOCK_NAME		"touch_core"
-#define SIW_TOUCH_LPWG_LOCK_NAME		"touch_lpwg"
-
+#if defined(__SIW_SUPPORT_PM_WAKEUP)
 static void __used siw_touch_init_wake_lock(struct siw_ts *ts)
 {
-	wake_lock_init(&ts->core_wake_lock,
-		WAKE_LOCK_SUSPEND, SIW_TOUCH_CORE_LOCK_NAME);
-	wake_lock_init(&ts->lpwg_wake_lock,
-		WAKE_LOCK_SUSPEND, SIW_TOUCH_LPWG_LOCK_NAME);
+	device_init_wakeup(ts->dev, true);
 }
 
 static void __used siw_touch_free_wake_lock(struct siw_ts *ts)
 {
-	wake_lock_destroy(&ts->core_wake_lock);
-	wake_lock_destroy(&ts->lpwg_wake_lock);
+	device_init_wakeup(ts->dev, false);
 }
 
 void __used siw_touch_core_wake_lock(struct device *dev, int timeout)
 {
-	struct siw_ts *ts = to_touch_core(dev);
-
 	if (!timeout) {
-		wake_lock(&ts->core_wake_lock);
+		pm_stay_awake(dev);
 		return;
 	}
 
-	wake_lock_timeout(&ts->core_wake_lock, msecs_to_jiffies(timeout));
+	pm_wakeup_event(dev, timeout);
 }
 
 void __used siw_touch_core_wake_unlock(struct device *dev)
 {
-	struct siw_ts *ts = to_touch_core(dev);
-
-	wake_unlock(&ts->core_wake_lock);
+	pm_relax(dev);
 }
 
 void __used siw_touch_lpwg_wake_lock(struct device *dev, int timeout)
 {
-	struct siw_ts *ts = to_touch_core(dev);
-
-	if (!timeout) {
-		wake_lock(&ts->lpwg_wake_lock);
-		return;
-	}
-
-	wake_lock_timeout(&ts->lpwg_wake_lock, msecs_to_jiffies(timeout));
+	siw_touch_core_wake_lock(dev, timeout);
 }
 
 void __used siw_touch_lpwg_wake_unlock(struct device *dev)
 {
-	struct siw_ts *ts = to_touch_core(dev);
-
-	wake_unlock(&ts->lpwg_wake_lock);
+	siw_touch_core_wake_unlock(dev);
 }
-#else	/* __SIW_SUPPORT_WAKE_LOCK */
+#else	/* !__SIW_SUPPORT_PM_WAKEUP */
 static inline void __used siw_touch_init_wake_lock(struct siw_ts *ts)
 {
 
@@ -550,7 +530,7 @@ void siw_touch_lpwg_wake_unlock(struct device *dev)
 {
 
 }
-#endif	/* __SIW_SUPPORT_WAKE_LOCK */
+#endif	/* __SIW_SUPPORT_PM_WAKEUP */
 
 #if defined(__SIW_SUPPORT_PM_QOS)
 static void __used siw_touch_init_pm_qos_req(struct siw_ts *ts)

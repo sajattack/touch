@@ -32,9 +32,7 @@
 
 //#define __SIW_SUPPORT_DEBUG_OPTION
 
-#if defined(CONFIG_ANDROID)
-#define __SIW_SUPPORT_WAKE_LOCK
-#endif
+#define __SIW_SUPPORT_PM_WAKEUP
 
 //#define __SIW_SUPPORT_PM_QOS
 
@@ -68,8 +66,8 @@
 
 #define __SIW_SUPPORT_MON_THREAD
 
-#ifdef __SIW_SUPPORT_WAKE_LOCK
-#undef __SIW_SUPPORT_WAKE_LOCK
+#ifdef __SIW_SUPPORT_PM_WAKEUP
+#undef __SIW_SUPPORT_PM_WAKEUP
 #endif
 
 #ifdef __SIW_SUPPORT_ABT

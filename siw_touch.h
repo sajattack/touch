@@ -35,9 +35,9 @@
 #include <linux/fb.h>
 #endif
 
-#if defined(__SIW_SUPPORT_WAKE_LOCK)
-#include <linux/wakelock.h>
-#endif
+#if defined(__SIW_SUPPORT_PM_WAKEUP)
+#include <linux/pm_wakeup.h>
+#endif	/* __SIW_SUPPORT_PM_WAKEUP */
 
 #if defined(__SIW_SUPPORT_PM_QOS)
 #include <linux/pm_qos.h>
@@ -955,10 +955,6 @@ struct siw_ts {
 	struct siw_touch_pdata *pdata;
 
 	struct kobject kobj;
-#if defined(__SIW_SUPPORT_WAKE_LOCK)
-	struct wake_lock core_wake_lock;
-	struct wake_lock lpwg_wake_lock;
-#endif
 
 #if defined(__SIW_SUPPORT_PM_QOS)
 	struct pm_qos_request pm_qos_req;
@@ -1663,7 +1659,6 @@ extern void *siw_setup_operations(struct siw_ts *ts, struct siw_touch_operations
 extern int siw_touch_set(struct device *dev, u32 cmd, void *buf);
 extern int siw_touch_get(struct device *dev, u32 cmd, void *buf);
 
-/* __SIW_SUPPORT_WAKE_LOCK */
 extern void siw_touch_core_wake_lock(struct device *dev, int timeout);
 extern void siw_touch_core_wake_unlock(struct device *dev);
 extern void siw_touch_lpwg_wake_lock(struct device *dev, int timeout);
