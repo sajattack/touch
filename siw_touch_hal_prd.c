@@ -1438,7 +1438,6 @@ static int prd_drv_exception_check(struct siw_hal_prd_data *prd)
 	if (atomic_read(&ts->state.sleep) != IC_NORMAL) {
 		t_prd_warn(prd, "not IC normal\n");
 		return 1;
-		return 1;
 	}
 
 	return 0;
