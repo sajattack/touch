@@ -993,12 +993,18 @@ static ssize_t _store_debug_power(struct device *dev,
 		return count;
 	}
 
-	ctrl = !!ctrl;
-
 	t_dev_info(dev, "debug_power: %s\n",
 		(ctrl) ? "on" : "off");
 
-	siw_ops_power(ts, ctrl);
+	if (!ctrl) {
+		siw_touch_irq_control(dev, INTERRUPT_DISABLE);
+	}
+
+	siw_ops_power(ts, (ctrl) ? POWER_ON : POWER_OFF);
+
+	if (ctrl) {
+		siw_touch_qd_init_work_hw(ts);
+	}
 
 	return count;
 }
