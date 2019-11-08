@@ -445,6 +445,9 @@ struct siw_hal_tc_version_ext_date {
 struct siw_hal_fw_info {
 	u32 chip_id_raw;
 	u8 chip_id[8];
+	u32 sys_id_addr;
+	u32 sys_id_raw;
+	u8 sys_id[8];
 	/* */
 	union {
 		struct siw_hal_tc_version version;

@@ -2661,6 +2661,7 @@ static int siw_hal_chk_report_type(struct device *dev)
 	switch (touch_chip_type(ts)) {
 	case CHIP_SW42000:
 	case CHIP_SW42000A:
+	case CHIP_SW82905:
 		chip->report_type = CHIP_REPORT_TYPE_1;
 		break;
 	default:
@@ -2875,6 +2876,7 @@ static const struct siw_ic_info_chip_proto siw_ic_info_chip_protos[] = {
 	{ CHIP_SW49501, 14, 4 },
 	{ CHIP_SW42000, 10, 4 },
 	{ CHIP_SW42000A, 10, 4 },
+	{ CHIP_SW82905, 10, 4 },
 	{ CHIP_SW42101, 15, 4 },
 	{ CHIP_SW42103, 17, 4 },
 	{ CHIP_SW17700, 18, 4 },
@@ -2994,12 +2996,60 @@ static int siw_hal_ic_info_quirk(struct device *dev)
 	return 0;
 }
 
+static int __siw_hal_get_sys_id(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	struct siw_hal_fw_info *fw = &chip->fw;
+	struct siw_hal_reg *reg = chip->reg;
+	u32 sys_id_addr = fw->sys_id_addr;
+	u32 data = 0;
+	int ret = 0;
+
+	fw->sys_id_raw = 0;
+	memset(fw->sys_id, 0, sizeof(fw->sys_id));
+
+	if (!sys_id_addr) {
+		return 0;
+	}
+
+	ret = siw_hal_write_value(dev, reg->spr_code_offset, sys_id_addr);
+	if (ret < 0) {
+		goto out;
+	}
+
+	ret = siw_hal_read_value(dev, reg->code_access_addr, (void *)&data);
+
+	/* ignore return value */
+	siw_hal_write_value(dev, reg->spr_code_offset, 0);
+
+	if (ret < 0) {
+		goto out;
+	}
+
+	if (!data) {
+		t_dev_warn(dev, "%s has no chip info\n", touch_chip_name(ts));
+		goto out;
+	}
+
+	fw->sys_id_raw = data;
+	snprintf(fw->sys_id, sizeof(fw->sys_id) - 1, "%X", data);
+
+out:
+	return ret;
+}
+
 static int siw_hal_do_ic_info_more(struct device *dev)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 	struct siw_hal_reg *reg = chip->reg;
 	struct siw_hal_fw_info *fw = &chip->fw;
 	int ret = 0;
+
+	ret = __siw_hal_get_sys_id(dev);
+	if (ret < 0) {
+		return ret;
+	}
 
 	if (chip->opt.f_info_more) {
 		struct siw_hal_rw_multi multi[] = {
@@ -3014,6 +3064,8 @@ static int siw_hal_do_ic_info_more(struct device *dev)
 		};
 
 		ret = siw_hal_reg_rw_multi(dev, multi, "ic_info(2)");
+
+		fw->wfr &= WAFER_TYPE_MASK;
 	}
 
 	return ret;
@@ -3025,6 +3077,7 @@ static int siw_hal_do_ic_info(struct device *dev, int prt_on)
 	struct siw_ts *ts = chip->ts;
 	struct siw_hal_reg *reg = chip->reg;
 	struct siw_hal_fw_info *fw = &chip->fw;
+	char sys_id_str[16] = { 0, };
 	u32 product[2] = {0};
 	u32 chip_id = 0;
 	u32 version = 0;
@@ -3066,6 +3119,10 @@ static int siw_hal_do_ic_info(struct device *dev, int prt_on)
 		return ret;
 	}
 
+	if (fw->sys_id_raw) {
+		snprintf(sys_id_str, sizeof(sys_id_str) - 1, "(%s)", fw->sys_id);
+	}
+
 	siw_hal_fw_set_chip_id(fw, chip_id);
 	siw_hal_fw_set_version(fw, version, version_ext);
 	siw_hal_fw_set_revision(fw, revision);
@@ -3079,24 +3136,24 @@ static int siw_hal_do_ic_info(struct device *dev, int prt_on)
 
 	siw_hal_chk_status_type(dev);
 
-	fw->wfr &= WAFER_TYPE_MASK;
-
 	if (fw->version_ext) {
 		int ferr;
 
 		ferr = siw_hal_fw_chk_version_ext(fw->version_ext,
 									fw->v.version.ext);
 		t_dev_info_sel(dev, prt_on,
-				"[T] chip id %s, version %08X(%u.%02u) (0x%02X) %s\n",
+				"[T] chip id %s%s, version %08X(%u.%02u) (0x%02X) %s\n",
 				chip->fw.chip_id,
+				(sys_id_str[0]) ? sys_id_str : "",
 				fw->version_ext,
 				fw->v.version.major, fw->v.version.minor,
 				fw->revision,
 				(ferr < 0) ? "(invalid)" : "");
 	} else {
 		t_dev_info_sel(dev, prt_on,
-				"[T] chip id %s, version v%u.%02u (0x%08X, 0x%02X)\n",
+				"[T] chip id %s%s, version v%u.%02u (0x%08X, 0x%02X)\n",
 				fw->chip_id,
+				(sys_id_str[0]) ? sys_id_str : "",
 				fw->v.version.major, fw->v.version.minor,
 				version, fw->revision);
 	}
@@ -3210,9 +3267,12 @@ static int siw_hal_init_reg_set_pre(struct device *dev)
 		addr_set = ADDR_SKIP_MASK;
 		break;
 	case CHIP_SW42000:
-	case CHIP_SW42000A:
 		wdata = (1<<is_spi);
 		wr_only = 1;
+		break;
+	case CHIP_SW42000A:
+	case CHIP_SW82905:
+		addr_set = ADDR_SKIP_MASK;
 		break;
 	default:
 		break;
@@ -7097,6 +7157,8 @@ static void siw_hal_chk_dbg_report(struct device *dev, u32 status, int irq)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 //	struct siw_ts *ts = chip->ts;
+	struct siw_hal_reg *reg = chip->reg;
+	u32 addr = reg->tc_ic_status;
 	u32 irq_type = siw_tc_sts_irq_type(status);
 	u32 ic_debug[4];
 	u32 debug_info = 0;
@@ -7116,7 +7178,9 @@ static void siw_hal_chk_dbg_report(struct device *dev, u32 status, int irq)
 		return;
 	}
 
-	ret = siw_hal_reg_read(dev, 0x23E, ic_debug, sizeof(ic_debug));
+	addr += ((0x100>>2) - 2);
+
+	ret = siw_hal_reg_read(dev, addr, ic_debug, sizeof(ic_debug));
 	if (ret < 0) {
 		return;
 	}
@@ -9624,6 +9688,23 @@ static int siw_hal_early_probe(struct device *dev)
 	return 0;
 }
 
+#define LCD_TYPE_A_U3_FINGER	BIT(0)
+#define LCD_TYPE_A_STOP			BIT(2)
+
+static void siw_hal_tc_cmd_set_type_a(struct siw_touch_chip *chip)
+{
+	int *tc_cmd_table = chip->tc_cmd_table;
+	u32 ux_cmd = LCD_TYPE_A_U3_FINGER;
+
+	tc_cmd_table[LCD_MODE_U0] = (LCD_MODE_U0<<8) | ux_cmd;
+	tc_cmd_table[LCD_MODE_U2] = -1;
+	tc_cmd_table[LCD_MODE_U2_UNBLANK] = -1;
+	tc_cmd_table[LCD_MODE_U3] = (LCD_MODE_U3<<8) | ux_cmd;
+	tc_cmd_table[LCD_MODE_U3_PARTIAL] = -1;
+	tc_cmd_table[LCD_MODE_U3_QUICKCOVER] = -1;
+	tc_cmd_table[LCD_MODE_STOP] = LCD_TYPE_A_STOP;
+}
+
 /*
  * still under test...
  * Bit0 Bit1
@@ -9694,6 +9775,9 @@ static void siw_hal_tc_cmd_set(struct siw_touch_chip *chip)
 	int t_tc_cmd = chip->opt.t_tc_cmd;
 
 	switch (t_tc_cmd) {
+	case 0xA:
+		siw_hal_tc_cmd_set_type_a(chip);
+		break;
 	case 1:
 		siw_hal_tc_cmd_set_type_1(chip);
 		break;
@@ -9863,6 +9947,23 @@ static void siw_hal_chipset_option(struct siw_touch_chip *chip)
 		opt->t_swipe = 1;
 		break;
 
+	case CHIP_SW82905:
+		chip->fw.sys_id_addr = 0x8014;
+
+		chip->drv_delay = 30;
+
+	//	opt->f_attn_opt = 1;
+		opt->f_flex_report = is_i2c;
+	//	opt->t_sw_rst = 5;		//TBD
+		opt->t_clock = 4;
+		opt->t_oled = 2;
+		opt->t_tc_cmd = 0xA;
+		opt->t_tc_quirk = 1;
+		opt->t_lpwg = 1;
+		opt->t_knock = 1;
+		opt->t_swipe = 1;
+		break;
+
 	/* Large panel group */
 
 	case CHIP_SW42101:
@@ -9965,6 +10066,10 @@ static void siw_hal_show_chipset_option(struct siw_touch_chip *chip)
 		(chip->mode_allowed_partial) ? "enabled" : "disabled");
 	t_dev_info(dev, " mode_qcover     : %s\n",
 		(chip->mode_allowed_qcover) ? "enabled" : "disabled");
+
+	if (chip->fw.sys_id_addr) {
+		t_dev_info(dev, " fw.sys_id_addr  : 0x%X\n", chip->fw.sys_id_addr);
+	}
 
 	siw_hal_show_tc_cmd_set(chip);
 }
