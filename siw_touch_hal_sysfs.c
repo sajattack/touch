@@ -52,7 +52,10 @@
 		t_dev_err(_dev, "Invalid param\n");
 
 #define _reg_snprintf(_buf, _size, _reg, _element)	\
-		siw_snprintf(_buf, _size, "# 0x%04X [%s]\n", _reg->_element, #_element)
+		siw_snprintf(_buf, _size, "# 0x%04X [reg->%s]\n", _reg->_element, #_element)
+
+#define _reg_snprintf_fw(_buf, _size, _fw, _element)	\
+		siw_snprintf(_buf, _size, "# 0x%04X [fw->%s]\n", _fw->_element, #_element)
 
 static int __show_reg_list(struct device *dev, char *buf, int size)
 {
@@ -187,6 +190,34 @@ static int __show_reg_list(struct device *dev, char *buf, int size)
 	size += _reg_snprintf(buf, size, reg, prd_open3_short_offset);
 	size += _reg_snprintf(buf, size, reg, prd_ic_ait_start_reg);
 	size += _reg_snprintf(buf, size, reg, prd_ic_ait_data_readystatus);
+
+	/* __SIW_FW_TYPE_OLED_BASE */
+	if (chip->opt.t_oled) {
+		struct siw_hal_fw_info *fw = &chip->fw;
+
+		size += siw_snprintf(buf, size, "\n");
+
+		size += _reg_snprintf_fw(buf, size, fw, boot_code_addr);
+		size += _reg_snprintf_fw(buf, size, fw, gdma_saddr);
+		size += _reg_snprintf_fw(buf, size, fw, gdma_ctrl);
+		size += _reg_snprintf_fw(buf, size, fw, gdma_start);
+		size += _reg_snprintf_fw(buf, size, fw, fc_ctrl);
+		size += _reg_snprintf_fw(buf, size, fw, fc_start);
+		size += _reg_snprintf_fw(buf, size, fw, fc_addr);
+		size += _reg_snprintf_fw(buf, size, fw, flash_status);
+		size += _reg_snprintf_fw(buf, size, fw, bdma_saddr);
+		size += _reg_snprintf_fw(buf, size, fw, bdma_daddr);
+		if (fw->bdma_cal_op) {
+			size += _reg_snprintf_fw(buf, size, fw, bdma_cal_op);
+		}
+		size += _reg_snprintf_fw(buf, size, fw, bdma_ctrl);
+		size += _reg_snprintf_fw(buf, size, fw, bdma_start);
+		size += _reg_snprintf_fw(buf, size, fw, bdma_sts);
+		size += _reg_snprintf_fw(buf, size, fw, info_ptr);
+		size += _reg_snprintf_fw(buf, size, fw, gdma_crc_result);
+		size += _reg_snprintf_fw(buf, size, fw, gdma_crc_pass);
+		size += _reg_snprintf_fw(buf, size, fw, conf_idx_addr);
+	}
 
 	return size;
 }
