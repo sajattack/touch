@@ -236,6 +236,101 @@ enum {
 	WAFER_TYPE_MASK = (0x07),
 };
 
+#if defined(__SIW_PANEL_CLASS_MOBILE_OLED)
+#define __SIW_FW_TYPE_OLED_BASE
+#endif
+
+#if defined(__SIW_FW_TYPE_OLED_BASE)
+#define __SIW_FLASH_CRC_PASS
+
+#define OLED_CFG_MAGIC_CODE			(0xCACACACA)
+#define OLED_CFG_C_SIZE				(OLED_NUM_C_CONF<<OLED_POW_C_CONF)
+#define OLED_CFG_S_SIZE				(1<<OLED_POW_S_CONF)
+
+enum {
+	OLED_E_FW_CODE_SIZE_ERR		= 1,
+	OLED_E_FW_CODE_ONLY_VALID,
+	OLED_E_FW_CODE_AND_CFG_VALID,
+	OLED_E_FW_CODE_CFG_ERR,
+};
+
+#define GDMA_CTRL_READONLY		BIT(17)
+#define GDMA_CTRL_EN			BIT(26)
+
+#define __FC_CTRL_PAGE_ERASE	BIT(0)
+#define __FC_CTRL_MASS_ERASE	BIT(1)
+#define __FC_CTRL_WR_EN			BIT(2)
+
+#define FC_CTRL_PAGE_ERASE		(__FC_CTRL_PAGE_ERASE | __FC_CTRL_WR_EN)
+#define FC_CTRL_MASS_ERASE		(__FC_CTRL_MASS_ERASE | __FC_CTRL_WR_EN)
+#define FC_CTRL_WR_EN			(__FC_CTRL_WR_EN)
+
+#define BDMA_CTRL_EN			BIT(16)
+#define BDMA_CTRL_BST			(0x001E0000)
+#define BDMA_STS_TR_BUSY		BIT(6)
+
+#if defined(__SIW_FLASH_CFG)
+#define OLED_POW_C_CONF		10
+#define	OLED_POW_S_CONF		10
+
+#define OLED_NUM_C_CONF		0
+#define OLED_MIN_S_CONF		1
+#define OLED_MAX_S_CONF		10
+
+enum {
+	OLED_MIN_S_CONF_IDX = 1,
+	OLED_MAX_S_CONF_IDX = (OLED_MAX_S_CONF + 1),
+};
+
+union oled_cfg_size {
+	struct {
+		u32 common_size:16;
+		u32 specific_size:16;
+	} b;
+	u32 w;
+};
+
+union oled_s_cfg_info_1 {
+	struct {
+		u32 chip_rev:8;
+		u32 model_id:8;
+		u32 lcm_id:8;
+		u32 fpc_id:8;
+	} b;
+	u32 w;
+};
+
+union oled_s_cfg_info_2 {
+	struct {
+		u32 lot_id:8;
+		u32 rsvd:24;
+	} b;
+	u32 w;
+};
+
+struct oled_s_cfg_head {
+	union oled_s_cfg_info_1	info_1;
+	union oled_s_cfg_info_2	info_2;
+	u32					version;
+	u32					model_name;
+};
+
+struct oled_cfg_head {
+	u32 magic_code;
+	u32 chip_id;
+	u32 s_index;
+	union oled_cfg_size c_size;
+	//
+	struct oled_s_cfg_head s_cfg_head;
+	//
+	u32 rsvd1;
+	u32 rsvd2;
+	u32 rsvd3;
+	u32 rsvd4;
+};
+#endif	/* __SIW_FLASH_CFG */
+#endif	/* __SIW_FW_TYPE_OLED_BASE */
+
 #define FW_DN_LOG_UNIT			(8<<10)
 
 #define MAX_RW_SIZE_POW			(10)
@@ -298,7 +393,26 @@ enum {
 #define	CONF_POST_DELAY			20
 #define CONF_POST_COUNT			200
 
+#if defined(__SIW_FW_TYPE_OLED_BASE)
+#ifdef FW_TYPE_STR
+#undef FW_TYPE_STR
+#define FW_TYPE_STR		"FW_TYPE_OLED"
+#endif
+//
+#ifdef FLASH_CONF_DNCHK_VALUE_TYPE_X
+#undef FLASH_CONF_DNCHK_VALUE_TYPE_X
+#define FLASH_CONF_DNCHK_VALUE_TYPE_X	0
+#endif
+//
+#ifdef FLASH_CONF_SIZE_TYPE_X
+#undef FLASH_CONF_SIZE_TYPE_X
+#define FLASH_CONF_SIZE_TYPE_X			0
+#endif
+//
+#endif	/*__SIW_FW_TYPE_OLED_BASE */
+
 enum {
+	BIN_CFG_OFFSET_POS = 0xE0,
 	BIN_VER_OFFSET_POS = 0xE8,
 	BIN_VER_EXT_OFFSET_POS = 0xDC,
 	BIN_PID_OFFSET_POS = 0xF0,
@@ -354,6 +468,41 @@ struct siw_hal_fw_info {
 	u32 conf_dn_addr;
 	u32 boot_code_addr;
 	int conf_skip;
+	/* __SIW_FW_TYPE_OLED_BASE */
+	int sizeof_flash;
+	int flash_page_offset;
+	int flash_page_size;
+	int flash_max_rw_size;
+	u32 gdma_saddr;
+	u32 gdma_ctrl;
+	u32 gdma_ctrl_en;
+	u32 gdma_ctrl_ro;
+	u32 gdma_start;
+	u32 fc_ctrl;
+	u32 fc_ctrl_page_erase;
+	u32 fc_ctrl_mass_erase;
+	u32 fc_ctrl_wr_en;
+	u32 fc_start;
+	u32 fc_addr;
+	u32 flash_status;
+	u32 fc_erase_wait_cnt;
+	u32 fc_erase_wait_time;
+	u32 bdma_saddr;
+	u32 bdma_daddr;
+	u32 bdma_cal_op;
+	u32 bdma_cal_op_ctrl;
+	u32 bdma_ctrl;
+	u32 bdma_ctrl_en;
+	u32 bdma_ctrl_bst;
+	u32 bdma_start;
+	u32 bdma_sts;
+	u32 bdma_sts_tr_busy;
+	u32 datasram_addr;
+	u32 info_ptr;
+	u32 gdma_crc_result;
+	u32 gdma_crc_pass;
+	u32 crc_fixed_value;
+	u32 cfg_chip_id;
 };
 
 static inline void siw_hal_fw_set_chip_id(struct siw_hal_fw_info *fw, u32 chip_id)

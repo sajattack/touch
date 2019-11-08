@@ -1088,6 +1088,50 @@ static int siw_hal_condition_wait(struct device *dev,
 	return -EPERM;
 }
 
+enum {
+	EQ_COND = 0,
+	NOT_COND,
+};
+
+static int __used siw_hal_condition_wait_cond(struct device *dev,
+					u32 addr, u32 *value, u32 expect,
+				    u32 mask, u32 delay, u32 retry, int not_cond)
+{
+	u32 data = 0;
+	int match = 0;
+	int ret = 0;
+
+	do {
+		touch_msleep(delay);
+
+		ret = siw_hal_read_value(dev, addr, &data);
+		if (ret >= 0) {
+			match = (not_cond == NOT_COND) ?	\
+				!!((data & mask) != expect) : !!((data & mask) == expect);
+
+			if (match) {
+				if (value)
+					*value = data;
+
+				return 0;
+			}
+		}
+	} while (--retry);
+
+	if (value) {
+		*value = data;
+	}
+
+	t_dev_err(dev,
+		"wait fail: addr[%04Xh] data[%08Xh], "
+		"mask[%08Xh], expect[%s%08Xh]\n",
+		addr, data, mask,
+		(not_cond == NOT_COND) ? "not " : "",
+		expect);
+
+	return -EPERM;
+}
+
 static int siw_hal_flash_wp(struct device *dev, int wp)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
@@ -4215,6 +4259,1242 @@ out:
 	return ret;
 }
 
+#if defined(__SIW_FW_TYPE_OLED_BASE)
+#if defined(__SIW_FLASH_CRC_PASS)
+static int siw_hal_oled_fw_read_crc_pass(struct device *dev, u32 *data)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	struct siw_hal_fw_info *fw = &chip->fw;
+	u32 __data = 1;
+	int ret = 0;
+
+	if (touch_flags(ts) & TOUCH_SKIP_RESET_PIN) {
+		goto out;
+	}
+
+	if (chip->ops_quirk.hw_reset != NULL) {
+		goto out;
+	}
+
+	ret = siw_hal_fw_rd_value(dev, fw->gdma_crc_pass, &__data);
+	if (ret < 0) {
+		return ret;
+	}
+
+out:
+	if (data)
+		*data = __data;
+
+	return 0;
+}
+#else	/* __SIW_FLASH_CRC_PASS */
+static int siw_hal_oled_fw_read_crc_pass(struct device *dev, u32 *data)
+{
+	if (data)
+		*data = 1;
+
+	return 0;
+}
+#endif	/* __SIW_FLASH_CRC_PASS */
+
+#define LOG_SZ	64
+
+static int siw_hal_oled_fwup_rst_ctl(struct device *dev, int val, const char *str)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_hal_reg *reg = chip->reg;
+	u32 spr_rst_ctl = reg->spr_rst_ctl;
+	char log[LOG_SZ] = { 0, };
+	char *name = NULL;
+	int ret = 0;
+
+	switch (val) {
+	case 2:
+		name = "system hold";
+		break;
+	case 1:
+		name = "release cm3";
+		break;
+	default:
+		name = "system release";
+		break;
+	}
+
+	if (str == NULL) {
+		snprintf(log, LOG_SZ, "%s", name);
+	} else {
+		snprintf(log, LOG_SZ, "%s for %s", name, str);
+	}
+
+	ret = siw_hal_fw_wr_value(dev, spr_rst_ctl, val);
+	if (ret < 0) {
+		t_dev_err(dev, "FW upgrade: failed - spr_rst_ctl(%d) - %s, %d\n", val, log, ret);
+		goto out;
+	}
+
+	t_dev_dbg_fwup(dev, "FW upgrade: spr_rst_ctl(%d) - %s\n", val, log);
+
+out:
+	return ret;
+}
+
+static int __used siw_hal_oled_fwup_flash_crc(struct device *dev, u32 *crc_val)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_hal_fw_info *fw = &chip->fw;
+	u32 gdma_saddr = fw->gdma_saddr;
+	u32 gdma_ctrl = fw->gdma_ctrl;
+	u32 gmda_start = fw->gdma_start;
+	u32 gdma_crc_result = fw->gdma_crc_result;
+	u32 gdma_crc_pass = fw->gdma_crc_pass;
+	u32 data = 0;
+	u32 ctrl_data = 0;
+	int ret = 0;
+
+	ret = siw_hal_fw_wr_value(dev, gdma_saddr, 0);
+	if (ret < 0) {
+		t_dev_err(dev, "FW upgrade: failed - GDMA_SADDR(%04Xh) set zero, %d\n",
+			gdma_saddr, ret);
+		goto out;
+	}
+
+	ctrl_data = (fw->sizeof_flash>>2) - 1;
+	ctrl_data |= fw->gdma_ctrl_en | fw->gdma_ctrl_ro;
+	ret = siw_hal_fw_wr_value(dev, gdma_ctrl, ctrl_data);
+	if (ret < 0) {
+		t_dev_err(dev, "FW upgrade: failed - GDMA_CTL(%04Xh) write %08Xh, %d\n",
+			gdma_ctrl, ctrl_data, ret);
+		goto out;
+	}
+	touch_msleep(10);
+
+	ret = siw_hal_fw_wr_value(dev, gmda_start, 1);
+	if (ret < 0) {
+		t_dev_err(dev, "FW upgrade: failed - GDMA_START(%04Xh) on, %d\n",
+			gmda_start, ret);
+		goto out;
+	}
+	touch_msleep(100);
+
+	ret = siw_hal_fw_rd_value(dev, gdma_crc_result, &data);
+	if (ret < 0) {
+		t_dev_err(dev, "FW upgrade: failed - GDMA_CRC_RESULT(%04Xh) read, %d\n",
+			gdma_crc_result, ret);
+		goto out;
+	}
+
+	t_dev_info(dev, "FW upgrade: flash crc result(%04Xh) %08Xh\n",
+		gdma_crc_result, data);
+
+	if (crc_val != NULL) {
+		*crc_val = data;
+	}
+
+	ret = siw_hal_oled_fw_read_crc_pass(dev, &data);
+	if (ret < 0) {
+		t_dev_err(dev, "FW upgrade: failed - GDMA_CRC_PASS(%04Xh) read, %d\n",
+			gdma_crc_pass, ret);
+		goto out;
+	}
+
+	t_dev_info(dev, "FW upgrade: flash crc pass(%04Xh) %Xh\n",
+		gdma_crc_pass, data);
+
+out:
+	touch_msleep(100);
+
+	return ret;
+}
+
+static int siw_hal_oled_fwup_flash_mass_erase(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_hal_fw_info *fw = &chip->fw;
+	u32 fc_addr = fw->fc_addr;
+	u32 fc_ctrl = fw->fc_ctrl;
+	u32 fc_start = fw->fc_start;
+	u32 flash_status = fw->flash_status;
+	int fc_err = 0;
+	int busy_time = fw->fc_erase_wait_time;
+	int busy_cnt = (fw->flash_page_size<<1)/busy_time;
+	u32 chk_resp, data;
+	int ret = 0;
+
+	ret = siw_hal_fw_wr_value(dev, fc_addr, 0);
+	if (ret < 0) {
+		fc_err = 1;
+		goto out;
+	}
+
+	ret = siw_hal_fw_wr_value(dev, fc_ctrl, fw->fc_ctrl_mass_erase);
+	if (ret < 0) {
+		fc_err = 2;
+		goto out;
+	}
+
+	ret = siw_hal_fw_wr_value(dev, fc_start, 1);
+	if (ret < 0) {
+		fc_err = 3;
+		goto out;
+	}
+
+	chk_resp = 1;
+	ret = siw_hal_condition_wait_cond(dev, flash_status, &data,
+			chk_resp, ~0, busy_time, busy_cnt, NOT_COND);
+	if (ret < 0) {
+		fc_err = 4;
+		t_dev_err(dev, "FW upgrade: failed - flash erase wait(%Xh), %Xh\n",
+			chk_resp, data);
+		goto out;
+	}
+
+out:
+	touch_msleep(10);
+
+	siw_hal_fw_wr_value(dev, fc_ctrl, 0);
+
+	if (fc_err) {
+		t_dev_err(dev, "FW upgrade: failed - flash mass erase error, %d, %d\n",
+			fc_err, ret);
+	} else {
+		t_dev_info(dev, "FW upgrade: flash mass erase done\n");
+	}
+
+	return ret;
+}
+
+static int siw_hal_oled_fwup_flash_write_en(struct device *dev, int en)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_hal_fw_info *fw = &chip->fw;
+	u32 fc_ctrl = fw->fc_ctrl;
+	u32 fc_ctrl_wr_en = fw->fc_ctrl_wr_en;
+	int ret = 0;
+
+	if (!fc_ctrl)
+		goto out;
+
+	ret = siw_hal_fw_wr_value(dev, fc_ctrl, (en) ? fc_ctrl_wr_en : 0);
+	if (ret < 0) {
+		goto out;
+	}
+
+out:
+	return ret;
+}
+
+static int siw_hal_oled_fwup_write_data(struct device *dev, int addr, u8 *dn_buf, int dn_size)
+{
+	int ret = 0;
+
+	ret = siw_hal_fw_wr_data(dev, addr, dn_buf, dn_size);
+	if (ret < 0) {
+		goto out;
+	}
+
+out:
+	touch_msleep(5);
+
+	return ret;
+}
+
+static int siw_hal_oled_fwup_bdma_saddr(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_hal_fw_info *fw = &chip->fw;
+	u32 bdma_saddr = fw->bdma_saddr;
+	u32 datasram_addr = fw->datasram_addr;
+	int ret = 0;
+
+	if (!bdma_saddr)
+		goto out;
+
+	ret = siw_hal_fw_wr_value(dev, bdma_saddr, datasram_addr);
+	if (ret < 0) {
+		goto out;
+	}
+
+out:
+	return ret;
+}
+
+static int siw_hal_oled_fwup_bdma_daddr(struct device *dev, int dst)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_hal_fw_info *fw = &chip->fw;
+	u32 bdma_daddr = fw->bdma_daddr;
+	int ret = 0;
+
+	if (!bdma_daddr)
+		goto out;
+
+	ret = siw_hal_fw_wr_value(dev, bdma_daddr, dst);
+	if (ret < 0) {
+		goto out;
+	}
+
+out:
+	return ret;
+}
+
+static int siw_hal_oled_fwup_bdma_ctrl(struct device *dev, int size)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_hal_fw_info *fw = &chip->fw;
+	u32 bdma_ctrl = fw->bdma_ctrl;
+	u32 bdma_ctrl_en = fw->bdma_ctrl_en;
+	int ret = 0;
+
+	if (!bdma_ctrl)
+		goto out;
+
+	ret = siw_hal_fw_wr_value(dev, bdma_ctrl, bdma_ctrl_en | (size>>2));
+	if (ret < 0) {
+		goto out;
+	}
+
+out:
+	return ret;
+}
+
+static int siw_hal_oled_fwup_bdma_cal(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_hal_fw_info *fw = &chip->fw;
+	u32 bdma_cal_op = fw->bdma_cal_op;
+	u32 bdma_cal_op_ctrl = fw->bdma_cal_op_ctrl;
+	int ret = 0;
+
+	if (!bdma_cal_op)
+		goto out;
+
+	ret = siw_hal_fw_wr_value(dev, bdma_cal_op, bdma_cal_op_ctrl);
+
+out:
+	return ret;
+}
+
+static int siw_hal_oled_fwup_bdma_start(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_hal_fw_info *fw = &chip->fw;
+	u32 bdma_start = fw->bdma_start;
+	int ret = 0;
+
+	if (!bdma_start)
+		goto out;
+
+	ret = siw_hal_fw_wr_value(dev, bdma_start, 1);
+	if (ret < 0) {
+		goto out;
+	}
+
+out:
+	return ret;
+}
+
+static int siw_hal_oled_fwup_bdma_sts(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_hal_fw_info *fw = &chip->fw;
+	u32 bdma_sts = fw->bdma_sts;
+	u32 bdma_sts_tr_busy = fw->bdma_sts_tr_busy;
+	int ret = 0;
+
+	if (!bdma_sts)
+		goto out;
+
+	ret = siw_hal_condition_wait_cond(dev, bdma_sts, NULL,
+		bdma_sts_tr_busy, bdma_sts_tr_busy, 10, 2000, NOT_COND);
+	if (ret < 0) {
+		goto out;
+	}
+
+out:
+	return ret;
+}
+
+static int siw_hal_oled_fwup_fw_pre(struct device *dev)
+{
+//	struct siw_touch_chip *chip = to_touch_chip(dev);
+//	struct siw_ts *ts = chip->ts;
+//	struct siw_hal_reg *reg = chip->reg;
+	int ret = 0;
+
+	ret = siw_hal_oled_fwup_rst_ctl(dev, 2, NULL);
+	if (ret < 0) {
+		goto out;
+	}
+
+	ret = siw_hal_oled_fwup_flash_mass_erase(dev);
+	if (ret < 0) {
+		goto out;
+	}
+
+	ret = siw_hal_oled_fwup_rst_ctl(dev, 0, NULL);
+	if (ret < 0) {
+		goto out;
+	}
+
+out:
+	return ret;
+}
+
+static int siw_hal_oled_fwup_fw_core(struct device *dev, u8 *dn_buf, int dn_size)
+{
+//	struct siw_touch_chip *chip = to_touch_chip(dev);
+//	struct siw_ts *ts = chip->ts;
+//	struct siw_hal_fw_info *fw = &chip->fw;
+	u8 *fw_data = NULL;
+	int fw_size = 0;
+	int fw_addr = 0;
+	int curr_size = 0;
+	int fw_size_org = dn_size;
+	int fw_dn_size = 0, fw_dn_percent;
+	int buf_size = 0;
+	int ret = 0;
+
+	buf_size = min(FW_DN_LOG_UNIT, (int)siw_hal_fw_act_buf_size(dev));
+
+	ret = siw_hal_oled_fwup_rst_ctl(dev, 2, "flash write");
+	if (ret < 0) {
+		goto out;
+	}
+
+#if 0
+	ret = siw_hal_oled_fwup_flash_write_en(dev, 1);
+	if (ret < 0) {
+		goto out;
+	}
+#endif
+
+	ret = siw_hal_oled_fwup_bdma_sts(dev);
+	if (ret < 0) {
+		goto out;
+	}
+
+	fw_data = dn_buf;
+	fw_size = dn_size;
+	fw_addr = 0;
+
+	while (fw_size) {
+		curr_size = min(fw_size, buf_size);
+
+		t_dev_dbg_fwup(dev, "FW upgrade: flash write %08Xh %04Xh\n", fw_addr, curr_size);
+
+		ret = siw_hal_oled_fwup_write_data(dev, 0, fw_data, curr_size);
+		if (ret < 0) {
+			t_dev_err(dev, "FW upgrade: failed - flash write %08Xh %04Xh, %d\n",
+				fw_addr, curr_size, ret);
+			break;
+		}
+
+		ret = siw_hal_oled_fwup_bdma_saddr(dev);
+		if (ret < 0) {
+			goto out;
+		}
+
+		ret = siw_hal_oled_fwup_bdma_ctrl(dev, curr_size);
+		if (ret < 0) {
+			goto out;
+		}
+
+		ret = siw_hal_oled_fwup_bdma_cal(dev);
+		if (ret < 0) {
+			goto out;
+		}
+
+		ret = siw_hal_oled_fwup_bdma_daddr(dev, fw_addr);
+		if (ret < 0) {
+			goto out;
+		}
+
+		ret = siw_hal_oled_fwup_flash_write_en(dev, 1);
+		if (ret < 0) {
+			goto out;
+		}
+
+		ret = siw_hal_oled_fwup_bdma_start(dev);
+		if (ret < 0) {
+			goto out;
+		}
+
+		ret = siw_hal_oled_fwup_bdma_sts(dev);
+		if (ret < 0) {
+			goto out;
+		}
+
+		fw_addr += curr_size;
+		fw_data += curr_size;
+		fw_size -= curr_size;
+
+		fw_dn_size += curr_size;
+		if (!fw_size || !(fw_dn_size & (FW_DN_LOG_UNIT-1))) {
+			fw_dn_percent = (fw_dn_size * 100);
+			fw_dn_percent /= fw_size_org;
+
+			t_dev_info(dev, "FW upgrade: downloading...(%d%c)\n",
+				fw_dn_percent, '%');
+		}
+	}
+
+out:
+	siw_hal_oled_fwup_flash_write_en(dev, 0);
+
+//	siw_hal_oled_fwup_rst_ctl(dev, 0, NULL);
+
+	return ret;
+}
+
+static int siw_hal_oled_fwup_fw_post(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	u32 boot_code_addr = chip->fw.boot_code_addr;
+	u32 chk_resp, data;
+	int ret = 0;
+
+	if (!boot_code_addr)
+		goto out;
+
+	ret = siw_hal_fw_wr_value(dev, boot_code_addr, FW_BOOT_LOADER_INIT);
+	if (ret < 0) {
+		t_dev_err(dev, "FW upgrade: failed - FW_BOOT_LOADER_INIT, %d\n", ret);
+		goto out;
+	}
+	touch_msleep(100);
+
+	ret = siw_hal_oled_fwup_rst_ctl(dev, 0, NULL);
+	if (ret < 0) {
+		t_dev_err(dev, "FW upgrade: failed - system release, %d\n", ret);
+		goto out;
+	}
+	touch_msleep(200);
+
+	chk_resp = FW_BOOT_LOADER_CODE;
+	ret = siw_hal_condition_wait_cond(dev, boot_code_addr, &data,
+			chk_resp, ~0, 10, 20, EQ_COND);
+	if (ret < 0) {
+		t_dev_err(dev, "FW upgrade: failed - boot check(%Xh), %08Xh\n",
+			chk_resp, data);
+		goto out;
+	}
+
+	t_dev_info(dev, "FW upgrade: boot loader ready\n");
+
+out:
+	return ret;
+}
+
+static int __used siw_hal_oled_fwup_fw(struct device *dev,
+				u8 *fw_buf, int fw_size)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	int fw_size_max = touch_fw_size(ts);
+	int ret = 0;
+
+	ret = siw_hal_oled_fwup_fw_pre(dev);
+	if (ret < 0) {
+		goto out;
+	}
+
+	ret = siw_hal_oled_fwup_fw_core(dev, fw_buf, fw_size_max);
+	if (ret < 0) {
+		goto out;
+	}
+
+	ret = siw_hal_oled_fwup_fw_post(dev);
+	if (ret < 0) {
+		goto out;
+	}
+
+out:
+	return ret;
+}
+
+#if defined(__SIW_FLASH_CFG)
+static int siw_hal_oled_fwup_conf_pre(struct device *dev,
+				u8 *fw_buf, int fw_size)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+//	struct siw_hal_reg *reg = chip->reg;
+	struct siw_hal_fw_info *fw = &chip->fw;
+	u32 conf_idx_addr = fw->conf_idx_addr;
+	int fw_size_max = touch_fw_size(ts);
+	u32 cfg_min_s_conf_idx = OLED_MIN_S_CONF_IDX;
+	u32 cfg_max_s_conf_idx = OLED_MIN_S_CONF_IDX;
+	u32 cfg_c_size = OLED_CFG_C_SIZE;
+	u32 cfg_s_size = OLED_CFG_S_SIZE;
+	u32 index = 0;
+	int required_size = 0;
+	int ret = 0;
+
+	if (!conf_idx_addr || !fw->cfg_chip_id)
+		goto out;
+
+	ret = siw_hal_oled_fwup_rst_ctl(dev, 2, "conf");
+	if (ret < 0) {
+		goto out;
+	}
+
+	ret = siw_hal_fw_rd_value(dev, conf_idx_addr, &index);
+	if (ret < 0) {
+		t_dev_err(dev, "FW upgrade: failed - read conf_idx_addr, %d\n", ret);
+		goto out;
+	}
+
+	if ((index < cfg_min_s_conf_idx) || (index > cfg_max_s_conf_idx)) {
+		t_dev_err(dev, "FW upgrade: failed - wrong cfg index, %d\n", index);
+		return -EFAULT;
+	}
+
+	required_size = fw_size_max + cfg_c_size + (index * cfg_s_size);
+	if (fw_size < required_size) {
+		t_dev_err(dev, "FW upgrade: failed - too big index, %d (%Xh < %Xh)\n",
+			index, fw_size, required_size);
+		return -EFAULT;
+	}
+
+	t_dev_info(dev, "FW upgrade: conf_index %d", index);
+
+	chip->fw.conf_index = index;
+
+out:
+	return ret;
+}
+
+static int siw_hal_oled_fwup_do_conf_core(struct device *dev,
+			int dn_addr, u8 *dn_buf, int dn_size, const char *name)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	struct siw_hal_fw_info *fw = &chip->fw;
+	int buf_size = siw_hal_fw_act_buf_size(dev);
+	int fw_size_max = touch_fw_size(ts);
+	int ret = 0;
+
+	if (!fw->conf_idx_addr || !fw->cfg_chip_id)
+		goto out;
+
+	t_dev_info(dev, "FW upgrade: %s write %Xh %Xh\n", name, dn_addr, dn_size);
+
+	if (dn_size > buf_size) {
+		t_dev_err(dev, "FW upgrade: buffer overflow, dn_size %d > %d\n",
+			dn_size, buf_size);
+		ret = -EOVERFLOW;
+		goto out;
+	}
+
+	ret = siw_hal_oled_fwup_bdma_sts(dev);
+	if (ret < 0) {
+		goto out;
+	}
+
+	ret = siw_hal_oled_fwup_write_data(dev, 0, dn_buf, dn_size);
+	if (ret < 0) {
+		t_dev_err(dev, "FW upgrade: failed - %s write, %d\n", name, ret);
+		goto out;
+	}
+
+	ret = siw_hal_oled_fwup_bdma_saddr(dev);
+	if (ret < 0) {
+		goto out;
+	}
+
+	ret = siw_hal_oled_fwup_bdma_ctrl(dev, dn_size);
+	if (ret < 0) {
+		goto out;
+	}
+
+	ret = siw_hal_oled_fwup_bdma_cal(dev);
+	if (ret < 0) {
+		goto out;
+	}
+
+	ret = siw_hal_oled_fwup_bdma_daddr(dev, fw_size_max);
+	if (ret < 0) {
+		goto out;
+	}
+
+	ret = siw_hal_oled_fwup_flash_write_en(dev, 1);
+	if (ret < 0) {
+		goto out;
+	}
+
+	ret = siw_hal_oled_fwup_bdma_start(dev);
+	if (ret < 0) {
+		goto out;
+	}
+
+	ret = siw_hal_oled_fwup_bdma_sts(dev);
+	if (ret < 0) {
+		goto out;
+	}
+
+out:
+	return ret;
+}
+
+static int siw_hal_oled_fwup_conf_core(struct device *dev, u8 *fw_buf)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	struct siw_hal_fw_info *fw = &chip->fw;
+	int conf_index = fw->conf_index;
+	int fw_size_max = touch_fw_size(ts);
+	u32 cfg_pow_s_conf = OLED_POW_S_CONF;
+	u32 cfg_c_size = OLED_CFG_C_SIZE;
+	u32 cfg_s_size = OLED_CFG_S_SIZE;
+	u8 *fw_data = NULL;
+	int fw_size = 0;
+	int fw_addr = 0;
+	u32 data = 0;
+	int ret = 0;
+
+	if (!fw->conf_idx_addr || !fw->cfg_chip_id)
+		goto out;
+
+	ret = siw_hal_oled_fwup_rst_ctl(dev, 2, "flash write - conf");
+	if (ret < 0) {
+		goto out;
+	}
+
+#if 0
+	ret = siw_hal_oled_fwup_flash_write_en(dev, 1);
+	if (ret < 0) {
+		goto out;
+	}
+#endif
+
+	fw_addr = fw_size_max;
+
+	if (cfg_c_size) {
+		fw_data = &fw_buf[fw_size_max];
+		fw_size = cfg_c_size;
+
+		ret = siw_hal_oled_fwup_do_conf_core(dev, fw_addr, fw_data, fw_size, "ccfg");
+		if (ret < 0) {
+			goto out_conf;
+		}
+	}
+
+	fw_addr += cfg_c_size;
+	data = fw_size_max + cfg_c_size + ((conf_index - 1)<<cfg_pow_s_conf);
+	fw_data = &fw_buf[data];
+	fw_size = cfg_s_size;
+
+	ret = siw_hal_oled_fwup_do_conf_core(dev, fw_addr, fw_data, fw_size, "scfg");
+	if (ret < 0) {
+		goto out_conf;
+	}
+
+out_conf:
+	siw_hal_oled_fwup_flash_write_en(dev, 0);
+
+out:
+	return ret;
+}
+
+static int __used siw_hal_oled_fwup_conf(struct device *dev,
+				u8 *fw_buf, int fw_size)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_hal_fw_info *fw = &chip->fw;
+	int ret = 0;
+
+	if (!fw->conf_idx_addr || !fw->cfg_chip_id)
+		goto out;
+
+	ret = siw_hal_oled_fwup_conf_pre(dev, fw_buf, fw_size);
+	if (ret < 0) {
+		goto out;
+	}
+
+	ret = siw_hal_oled_fwup_conf_core(dev, fw_buf);
+	if (ret < 0) {
+		goto out;
+	}
+
+out:
+	return ret;
+}
+
+static int siw_hal_oled_fwup_verify_cfg(struct device *dev, char *buf)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+//	struct siw_ts *ts = chip->ts;
+	struct oled_cfg_head *head = (struct oled_cfg_head *)buf;
+	u32 cfg_c_size = OLED_CFG_C_SIZE;
+	u32 cfg_s_size = OLED_CFG_S_SIZE;
+
+	if (head->chip_id != chip->fw.cfg_chip_id) {
+		t_dev_warn(dev, "FW chk_img: invalid chip ID, %dh\n", head->chip_id);
+		return -EFAULT;
+	}
+
+	if (cfg_c_size) {
+		if (head->c_size.b.common_size != cfg_c_size) {
+			t_dev_warn(dev, "FW chk_img: invalid c_cfg size, %04Xh\n", head->c_size.b.common_size);
+			return -EFAULT;
+		}
+	}
+
+	if (head->c_size.b.specific_size != cfg_s_size) {
+		t_dev_warn(dev, "FW chk_img: invalid s_cfg size, %04Xh\n", head->c_size.b.specific_size);
+		return -EFAULT;
+	}
+
+	t_dev_dbg_fwup(dev, "FW chk_img: magic_code  : %08Xh\n", head->magic_code);
+	t_dev_dbg_fwup(dev, "FW chk_img: chip ID     : %d\n", head->chip_id);
+	t_dev_dbg_fwup(dev, "FW chk_img: c_cfg size  : %04X\n", head->c_size.b.common_size);
+	t_dev_dbg_fwup(dev, "FW chk_img: s_cfg size  : %04X\n", head->c_size.b.specific_size);
+
+	return 0;
+}
+
+static int siw_hal_oled_fwup_verify_s_cfg(struct device *dev, char *buf, int index)
+{
+	struct oled_cfg_head *head = (struct oled_cfg_head *)buf;
+	struct oled_s_cfg_head *s_head = &head->s_cfg_head;
+	int chip_rev = s_head->info_1.b.chip_rev;
+
+	if (chip_rev > 10) {
+		t_dev_warn(dev, "FW chk_img: invalid s_cfg rev, %d\n", chip_rev);
+		return -EFAULT;
+	}
+
+	t_dev_dbg_fwup(dev, "FW chk_img: s-chip_rev  : %d\n", s_head->info_1.b.chip_rev);
+	t_dev_dbg_fwup(dev, "FW chk_img: s-model_id  : %d\n", s_head->info_1.b.model_id);
+	t_dev_dbg_fwup(dev, "FW chk_img: s-lcm_id    : %d\n", s_head->info_1.b.lcm_id);
+	t_dev_dbg_fwup(dev, "FW chk_img: s-fpc_id    : %d\n", s_head->info_1.b.fpc_id);
+	t_dev_dbg_fwup(dev, "FW chk_img: s-lot_id    : %d\n", s_head->info_2.b.lot_id);
+
+	return 0;
+}
+#else	/* !__SIW_FLASH_CFG */
+static int siw_hal_oled_fwup_conf(struct device *dev,
+				u8 *fw_buf, int fw_size)
+{
+	return 0;
+}
+#endif	/* __SIW_FLASH_CFG */
+
+static int siw_hal_oled_fwup_post(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+//	struct siw_ts *ts = chip->ts;
+//	struct siw_hal_reg *reg = chip->reg;
+	struct siw_hal_fw_info *fw = &chip->fw;
+	u32 crc_fixed_value = fw->crc_fixed_value;
+	u32 crc_val;
+	int ret = 0;
+
+	ret = siw_hal_oled_fwup_rst_ctl(dev, 0, NULL);
+	if (ret < 0) {
+		goto out;
+	}
+	touch_msleep(100);
+
+	ret = siw_hal_oled_fwup_rst_ctl(dev, 2, "crc");
+	if (ret < 0) {
+		goto out;
+	}
+	touch_msleep(100);
+
+	ret = siw_hal_oled_fwup_flash_crc(dev, &crc_val);
+	if (ret < 0) {
+		t_dev_err(dev, "FW upgrade: failed - flash crc, %d\n", ret);
+		goto out;
+	}
+	if (crc_val != crc_fixed_value) {
+		t_dev_err(dev, "FW upgrade: flash crc error %08Xh != %08Xh, %d\n",
+			crc_fixed_value, crc_val, ret);
+		ret = -EFAULT;
+		goto out;
+	}
+	t_dev_info(dev, "FW upgrade: flash crc check done\n");
+
+	ret = siw_hal_oled_fwup_rst_ctl(dev, 1, NULL);
+	if (ret < 0) {
+		goto out;
+	}
+	touch_msleep(100);
+
+	ret = siw_hal_oled_fwup_rst_ctl(dev, 0, NULL);
+	if (ret < 0) {
+		goto out;
+	}
+	touch_msleep(100);
+
+	t_dev_dbg_fwup(dev, "FW upgrade: post done\n");
+
+	return 0;
+
+out:
+	siw_hal_oled_fwup_rst_ctl(dev, 0, NULL);
+
+	touch_msleep(100);
+
+	return ret;
+}
+
+static int siw_hal_oled_fwup_verify(struct device *dev, u8 *fw_buf, int fw_size)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+#if defined(__SIW_FLASH_CFG)
+	struct siw_hal_fw_info *fw = &chip->fw;
+#endif
+	int fw_size_max = touch_fw_size(ts);
+	u32 fw_code_crc = *(u32 *)&fw_buf[fw_size_max - 4];
+	u32 fw_code_size = *(u32 *)&fw_buf[fw_size_max - 8];
+
+	if (fw_size < fw_size_max) {
+		t_dev_err(dev, "FW chk_img: too small img size(%Xh), must be >= fw_size_max(%Xh)\n",
+			fw_size, fw_size_max);
+		return OLED_E_FW_CODE_SIZE_ERR;
+	}
+
+	t_dev_info(dev, "FW chk_img: code size %Xh, code crc %Xh\n",
+		fw_code_size, fw_code_crc);
+
+	if (fw_code_size > fw_size_max) {
+		t_dev_err(dev, "FW chk_img: invalid code_size(%Xh), must be <= fw_size_max(%Xh)\n",
+			fw_code_size, fw_size_max);
+		return OLED_E_FW_CODE_SIZE_ERR;
+	}
+
+	if (fw_size == fw_size_max) {
+		return OLED_E_FW_CODE_ONLY_VALID;
+	}
+
+#if defined(__SIW_FLASH_CFG)
+	if (fw->conf_idx_addr && fw->cfg_chip_id) {
+		struct oled_cfg_head *head = NULL;
+		char *cfg_base = NULL;
+		char *s_cfg_base = NULL;
+		u32 cfg_pow_s_conf = OLED_POW_S_CONF;
+		u32 cfg_magic_code = OLED_CFG_MAGIC_CODE;
+		u32 cfg_offset = 0;
+		u32 cfg_pos = 0;
+		int s_cfg_cnt = 0;
+		int i;
+		int ret = 0;
+
+		cfg_offset = *(u32 *)&fw_buf[BIN_CFG_OFFSET_POS];
+		if (!cfg_offset) {
+			t_dev_info(dev, "FW chk_img: cfg offset zero\n");
+			return OLED_E_FW_CODE_CFG_ERR;
+		}
+
+		cfg_pos = *(u32 *)&fw_buf[cfg_offset];
+
+		t_dev_info(dev, "FW chk_img: cfg pos %Xh (cfg offset %Xh)\n",
+			cfg_pos, cfg_offset);
+
+		if (cfg_pos >= fw_size) {
+			t_dev_err(dev, "FW chk_img: invalid cfg_pos(%Xh), must be < img size(%Xh)\n",
+				cfg_pos, fw_size);
+			return OLED_E_FW_CODE_CFG_ERR;
+		}
+
+		if (cfg_pos >= fw->sizeof_flash) {
+			t_dev_err(dev, "FW chk_img: invalid cfg_pos(%Xh), must be < SIZEOF_FLASH\n",
+				cfg_pos);
+			return OLED_E_FW_CODE_CFG_ERR;
+		}
+
+		cfg_base = (char *)&fw_buf[cfg_pos];
+
+		head = (struct oled_cfg_head *)cfg_base;
+		if (head->magic_code != cfg_magic_code) {
+			t_dev_warn(dev, "FW chk_img: unknown data in cfg\n");
+			return OLED_E_FW_CODE_ONLY_VALID;
+		}
+
+		t_dev_info(dev, "FW chk_img: cfg detected\n");
+		ret = siw_hal_oled_fwup_verify_cfg(dev, (char *)head);
+		if (ret < 0) {
+			t_dev_warn(dev, "FW chk_img: invalid cfg\n");
+			return OLED_E_FW_CODE_ONLY_VALID;
+		}
+
+		s_cfg_base = cfg_base + head->c_size.b.common_size;
+		s_cfg_cnt = ((fw_size - fw_size_max) - head->c_size.b.common_size)>>cfg_pow_s_conf;
+		for (i = 0; i < s_cfg_cnt; i++) {
+			ret = siw_hal_oled_fwup_verify_s_cfg(dev, (char *)s_cfg_base, i);
+			if (ret < 0) {
+				t_dev_err(dev, "FW chk_img: invalid s_cfg\n");
+				return OLED_E_FW_CODE_CFG_ERR;
+			}
+			s_cfg_base += head->c_size.b.specific_size;
+		}
+
+		return OLED_E_FW_CODE_AND_CFG_VALID;
+	}
+#endif	/* __SIW_FLASH_CFG */
+
+	return -EINVAL;
+}
+
+#define t_dev_dbg_fwup_setup(_dev, _format, _fw, _element, args...)	\
+		t_dev_dbg_fwup(_dev, "%-20s = " _format "\n", #_element, _fw->_element, ##args)
+
+static void __used siw_hal_oled_fwup_show_setup(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+//	struct siw_ts *ts = chip->ts;
+	struct siw_hal_fw_info *fw = &chip->fw;
+
+	t_dev_dbg_fwup_setup(dev, "0x%08X", fw, sizeof_flash);
+	t_dev_dbg_fwup_setup(dev, "0x%08X", fw, flash_page_offset);
+	t_dev_dbg_fwup_setup(dev, "0x%08X", fw, flash_page_size);
+	t_dev_dbg_fwup_setup(dev, "0x%08X", fw, flash_max_rw_size);
+	t_dev_dbg_fwup_setup(dev, "0x%04X", fw, boot_code_addr);
+	t_dev_dbg_fwup_setup(dev, "0x%04X", fw, gdma_saddr);
+	t_dev_dbg_fwup_setup(dev, "0x%04X", fw, gdma_ctrl);
+	t_dev_dbg_fwup_setup(dev, "0x%08X", fw, gdma_ctrl_en);
+	t_dev_dbg_fwup_setup(dev, "0x%08X", fw, gdma_ctrl_ro);
+	t_dev_dbg_fwup_setup(dev, "0x%04X", fw, gdma_start);
+	t_dev_dbg_fwup_setup(dev, "0x%04X", fw, fc_ctrl);
+	t_dev_dbg_fwup_setup(dev, "0x%08X", fw, fc_ctrl_page_erase);
+	t_dev_dbg_fwup_setup(dev, "0x%08X", fw, fc_ctrl_mass_erase);
+	t_dev_dbg_fwup_setup(dev, "0x%08X", fw, fc_ctrl_wr_en);
+	t_dev_dbg_fwup_setup(dev, "0x%04X", fw, fc_start);
+	t_dev_dbg_fwup_setup(dev, "0x%04X", fw, fc_addr);
+	t_dev_dbg_fwup_setup(dev, "0x%04X", fw, flash_status);
+	t_dev_dbg_fwup_setup(dev, "%d", fw, fc_erase_wait_cnt);
+	t_dev_dbg_fwup_setup(dev, "%d", fw, fc_erase_wait_time);
+	t_dev_dbg_fwup_setup(dev, "0x%04X", fw, bdma_saddr);
+	t_dev_dbg_fwup_setup(dev, "0x%04X", fw, bdma_daddr);
+	if (fw->bdma_cal_op) {
+		t_dev_dbg_fwup_setup(dev, "0x%04X", fw, bdma_cal_op);
+	}
+	t_dev_dbg_fwup_setup(dev, "0x%04X", fw, bdma_ctrl);
+	t_dev_dbg_fwup_setup(dev, "0x%08X", fw, bdma_ctrl_en);
+	t_dev_dbg_fwup_setup(dev, "0x%08X", fw, bdma_ctrl_bst);
+	t_dev_dbg_fwup_setup(dev, "0x%04X", fw, bdma_start);
+	t_dev_dbg_fwup_setup(dev, "0x%04X", fw, bdma_sts);
+	t_dev_dbg_fwup_setup(dev, "0x%08X", fw, bdma_sts_tr_busy);
+	t_dev_dbg_fwup_setup(dev, "0x%08X", fw, datasram_addr);
+	t_dev_dbg_fwup_setup(dev, "0x%04X", fw, info_ptr);
+	t_dev_dbg_fwup_setup(dev, "0x%04X", fw, gdma_crc_result);
+	t_dev_dbg_fwup_setup(dev, "0x%04X", fw, gdma_crc_pass);
+	t_dev_dbg_fwup_setup(dev, "0x%08X", fw, crc_fixed_value);
+
+	if (fw->conf_idx_addr) {
+		t_dev_dbg_fwup_setup(dev, "0x%04X", fw, conf_idx_addr);
+		t_dev_dbg_fwup_setup(dev, "%d(0x%08X)", fw, cfg_chip_id, fw->cfg_chip_id);
+	}
+}
+
+static void __used siw_hal_oled_fwup_setup(struct device *dev)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	struct siw_hal_fw_info *fw = &chip->fw;
+
+	fw->conf_index = 0;
+	fw->conf_idx_addr = 0;
+	fw->boot_code_addr = 0x01A;
+	fw->sizeof_flash = (128<<10);
+	fw->flash_page_offset = (0x200);
+	fw->flash_page_size = (2<<10);
+	fw->flash_max_rw_size = (1<<10);
+	fw->gdma_saddr = 0x056;
+	fw->gdma_ctrl = 0x058;
+	fw->gdma_ctrl_en = GDMA_CTRL_EN;
+	fw->gdma_ctrl_ro = GDMA_CTRL_READONLY;
+	fw->gdma_start = 0x059;
+	fw->fc_ctrl = 0x06B;
+	fw->fc_ctrl_page_erase = FC_CTRL_PAGE_ERASE;
+	fw->fc_ctrl_mass_erase = FC_CTRL_MASS_ERASE;
+	fw->fc_ctrl_wr_en = FC_CTRL_WR_EN;
+	fw->fc_start = 0x06C;
+	fw->fc_addr = 0x06D;
+	fw->flash_status = 0xFE2;
+	fw->fc_erase_wait_cnt = 200;
+	fw->fc_erase_wait_time = 5;
+	fw->bdma_saddr = 0x072;
+	fw->bdma_daddr = 0x073;
+	fw->bdma_cal_op = 0;
+	fw->bdma_cal_op_ctrl = 0;
+	fw->bdma_ctrl = 0x074;
+	fw->bdma_ctrl_en = BDMA_CTRL_EN;
+	fw->bdma_ctrl_bst = BDMA_CTRL_BST;
+	fw->bdma_start = 0x075;
+	fw->bdma_sts = 0x077;
+	fw->bdma_sts_tr_busy = BDMA_STS_TR_BUSY;
+	fw->datasram_addr = 0x20000000;
+	fw->cfg_chip_id = 0;
+
+	switch (chip->opt.t_oled) {
+	case 2:
+	//	fw->boot_code_addr = 0x1F;
+		fw->boot_code_addr = 0;
+		fw->gdma_saddr = 0x085;
+		fw->gdma_ctrl = 0x087;
+		fw->gdma_start = 0x088;
+		fw->fc_ctrl = 0x09A;
+		fw->fc_start = 0x09B;
+		fw->fc_addr = 0x09C;
+		fw->bdma_saddr = 0x0A1;
+		fw->bdma_daddr = 0x0A3;
+		fw->bdma_cal_op = 0xA5;
+		fw->bdma_cal_op_ctrl = 3 | (1024<<2) | (1024<<13);
+		fw->bdma_ctrl = 0x0A6;
+		fw->bdma_ctrl_en = BDMA_CTRL_EN | (2<<23) | (2<<25) | (2<<27);
+		fw->bdma_ctrl_bst = BIT(17);
+		fw->bdma_start = 0x0A7;
+		fw->bdma_sts = 0x0A9;
+		fw->datasram_addr = 0x20000000;
+		break;
+	}
+
+	switch (touch_chip_type(ts)) {
+	case CHIP_SW42000:
+		fw->conf_idx_addr = 0x646;
+		fw->cfg_chip_id = (42000);
+		break;
+	}
+}
+
+static int __used siw_hal_oled_fwup_upgrade(struct device *dev,
+					u8 *fw_buf, int fw_size, int retry)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_ts *ts = chip->ts;
+	int fw_size_max = touch_fw_size(ts);
+	u32 include_conf = !!(fw_size > fw_size_max);
+	int ret = 0;
+
+	if (!retry) {
+		siw_hal_oled_fwup_setup(dev);
+		siw_hal_oled_fwup_show_setup(dev);
+	}
+
+	chip->fw.conf_index = 0;
+
+	t_dev_info(dev, "FW upgrade:%s include conf data\n",
+			(include_conf) ? "" : " not");
+
+	t_dev_dbg_fwup(dev, "FW upgrade: fw size %08Xh, fw_size_max %08Xh\n",
+			fw_size, fw_size_max);
+
+	ret = siw_hal_oled_fwup_verify(dev, fw_buf, fw_size);
+	switch (ret) {
+	case OLED_E_FW_CODE_ONLY_VALID:
+		include_conf = 0;
+		break;
+	case OLED_E_FW_CODE_AND_CFG_VALID:
+		break;
+	case OLED_E_FW_CODE_SIZE_ERR:
+	case OLED_E_FW_CODE_CFG_ERR:
+	default:
+		ret = -EPERM;
+		goto out;
+	}
+
+	ret = siw_hal_oled_fwup_fw(dev, fw_buf, fw_size);
+	if (ret < 0) {
+		siw_hal_set_fwup_status(chip, FWUP_STATUS_NG_CODE);
+		goto out;
+	}
+
+	if (include_conf) {
+		ret = siw_hal_oled_fwup_conf(dev, fw_buf, fw_size);
+		siw_hal_set_fwup_status(chip, FWUP_STATUS_NG_CFG);
+		if (ret < 0) {
+			goto out;
+		}
+	}
+
+	ret = siw_hal_oled_fwup_post(dev);
+
+out:
+	return ret;
+}
+
+static int __used siw_hal_oled_boot_status(struct device *dev, u32 *boot_st)
+{
+	struct siw_touch_chip *chip = to_touch_chip(dev);
+	struct siw_hal_fw_info *fw = &chip->fw;
+	u32 gdma_crc_result = fw->gdma_crc_result;
+	u32 crc_fixed_value = fw->crc_fixed_value;
+	u32 info_ptr = fw->info_ptr;
+	u32 rdata_crc = 0;
+	u32 rdata_pass = 0;
+	u32 rdata_ptr = 0;
+	int err = 0;
+	int ret = 0;
+
+	/*
+	 * Check CRC
+	 */
+	ret = siw_hal_fw_rd_value(dev, gdma_crc_result, &rdata_crc);
+	if (ret < 0) {
+		t_dev_err(dev, "boot status: read %04Xh failed, %d\n",
+			gdma_crc_result, ret);
+		return ret;
+	}
+	err |= (rdata_crc != crc_fixed_value);
+
+	ret = siw_hal_oled_fw_read_crc_pass(dev, &rdata_pass);
+	if (ret < 0) {
+		return ret;
+	}
+	err |= (!rdata_pass)<<1;
+
+	/*
+	 * Check Boot
+	 */
+	ret = siw_hal_fw_rd_value(dev, info_ptr, &rdata_ptr);
+	if (ret < 0) {
+		t_dev_err(dev, "boot status: read %04Xh failed, %d\n",
+			info_ptr, ret);
+		return ret;
+	}
+	err |= (!rdata_ptr)<<2;
+
+	if (boot_st != NULL) {
+		(*boot_st) = (err) ? BIT(BOOT_STS_POS_DUMP_ERR) : BIT(BOOT_STS_POS_DUMP_DONE);
+	}
+
+	if (err) {
+		t_dev_err(dev, "boot status: %Xh(%Xh, %Xh, %Xh)\n",
+			err, rdata_crc, rdata_pass, rdata_ptr);
+	}
+
+	return 0;
+}
+#else	/* !__SIW_FW_TYPE_OLED_BASE */
+static void siw_hal_oled_fwup_setup(struct device *dev)
+{
+
+}
+
+static int siw_hal_oled_fwup_upgrade(struct device *dev,
+					u8 *fw_buf, int fw_size, int retry)
+{
+	t_dev_info(dev, "FW upgrade: noop\n");
+
+	return 0;
+}
+
+static int siw_hal_oled_boot_status(struct device *dev, u32 *boot_st)
+{
+	t_dev_info(dev, "OLED boot status: noop\n");
+
+	if (boot_st != NULL) {
+		(*boot_st) = BIT(BOOT_STS_POS_DUMP_DONE);
+	}
+
+	return 0;
+}
+#endif 	/* __SIW_FW_TYPE_OLED_BASE */
+
 static int siw_hal_fw_sram_wr_enable(struct device *dev, int onoff)
 {
 	struct siw_touch_chip *chip = to_touch_chip(dev);
@@ -4519,7 +5799,7 @@ static int siw_hal_fw_size_check_post(struct device *dev, int fw_size)
 	index = S_CFG_DBG_IDX;
 	t_dev_warn(dev, "FW upgrade: conf_index fixed for debugging: %d\n", index);
 #else
-	ret = siw_hal_read_value(dev, conf_idx_addr, &index);
+	ret = siw_hal_fw_rd_value(dev, conf_idx_addr, &index);
 #endif
 	if (ret < 0) {
 		t_dev_err(dev, "FW upgrade: failed - conf_index(%04Xh) read, %d\n",
@@ -4929,8 +6209,8 @@ static int siw_hal_fw_upgrade_conf_pre(struct device *dev, u32 *value)
 	struct siw_touch_chip *chip = to_touch_chip(dev);
 //	struct siw_ts *ts = chip->ts;
 	struct siw_hal_reg *reg = chip->reg;
-	int data = 0;
-	int ret;
+	u32 data = 0;
+	int ret = 0;
 
 	ret = siw_hal_fw_rd_value(dev, reg->tc_confdn_base_addr, &data);
 	if (ret < 0) {
@@ -8707,9 +9987,46 @@ static void siw_hal_chipset_quirk_reset(struct siw_touch_chip *chip)
 	chip->ops_quirk.hw_reset = siw_hal_hw_reset_quirk;
 }
 
+static void siw_hal_chipset_quirk_fw(struct siw_touch_chip *chip)
+{
+//	struct siw_ts *ts = chip->ts;
+	struct siw_hal_fw_info *fw = &chip->fw;
+	struct device *dev = chip->dev;
+
+	if (chip->opt.t_oled) {
+		/* __SIW_FW_TYPE_OLED_BASE */
+		t_dev_info(dev, "fw quirk activated\n");
+
+		siw_hal_oled_fwup_setup(dev);
+
+		fw->info_ptr = 0x01B;
+		fw->gdma_crc_result = 0x05D;
+		fw->gdma_crc_pass = 0x05E;
+		fw->crc_fixed_value = 0x800D800D;
+
+		switch (chip->opt.t_oled) {
+		case 2:
+			fw->info_ptr = 0x020;
+			fw->gdma_crc_result = 0x08C;
+			fw->gdma_crc_pass = 0x08D;
+			break;
+		}
+
+		t_dev_dbg_fwup(dev, "info_ptr            = 0x%04X\n", fw->info_ptr);
+		t_dev_dbg_fwup(dev, "gdma_crc_result     = 0x%04X\n", fw->gdma_crc_result);
+		t_dev_dbg_fwup(dev, "gdma_crc_pass       = 0x%04X\n", fw->gdma_crc_pass);
+		t_dev_dbg_fwup(dev, "crc_fixed_value     = 0x%08X\n", fw->crc_fixed_value);
+
+		chip->ops_quirk.fwup_upgrade = siw_hal_oled_fwup_upgrade;
+		chip->ops_quirk.boot_status = siw_hal_oled_boot_status;
+	}
+}
+
 static void siw_hal_chipset_quirks(struct siw_touch_chip *chip)
 {
 	siw_hal_chipset_quirk_reset(chip);
+
+	siw_hal_chipset_quirk_fw(chip);
 }
 
 static void __siw_hal_do_remove(struct device *dev)
@@ -8750,9 +10067,9 @@ static int siw_hal_probe(struct device *dev)
 
 	touch_set_dev_data(ts, chip);
 
-	siw_hal_chipset_quirks(chip);
-
 	siw_hal_chipset_option(chip);
+
+	siw_hal_chipset_quirks(chip);
 
 	siw_hal_init_locks(chip);
 	siw_hal_init_works(chip);
