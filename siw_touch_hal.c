@@ -5933,6 +5933,10 @@ static int siw_hal_tc_driving_quirk(struct device *dev, int mode)
 
 	switch (chip->opt.t_tc_quirk) {
 	case 1:
+		if (chip->driving_mode == LCD_MODE_STOP) {
+			break;
+		}
+
 		if (mode == LCD_MODE_STOP) {
 			break;
 		}
