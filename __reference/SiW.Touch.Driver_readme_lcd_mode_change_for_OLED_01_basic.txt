@@ -1,0 +1,217 @@
+[Last updated : 2019.01.10]
+
+###################################################################################################
+# Definitions                                                                                     #
+###################################################################################################
+
+enum {
+	LCD_MODE_U0 = 0,
+	LCD_MODE_U2_UNBLANK,     //Not used
+	LCD_MODE_U2,             //Not used (same as U0)
+	LCD_MODE_U3,
+	LCD_MODE_U3_PARTIAL,     //Not used
+	LCD_MODE_U3_QUICKCOVER,  //(TBD)
+	LCD_MODE_STOP,
+	LCD_MODE_MAX,
+};
+
+###################################################################################################
+# Base                                                                                            #
+###################################################################################################
+* default sysfs path
+  general : /sys/devices/virtual/input/siw_touch_input/
+
+* To use notifier call chain of touch driver in LCD driver,
+  (1) Copy the siw_touch_notify.h([SiW driver source]/include/linux/input/siw_touch_notify.h)
+      to [Kernel Top]/include/linux/input/ folder
+  (2) Use this include in your LCD driver
+      #include <linux/input/siw_touch_notify.h>
+
+###################################################################################################
+# Procedure - Default                                                                             #
+###################################################################################################
+[Initial default : U3 mode]
+* In system booting, display probe shall precede touch probe
+
+Step-1. Initialize display mode (U3)
+
+Step-2. Initialize touch mode (U3)
+
+        <Log example>
+        ...
+        [...] siw_touch spi1.0: current driving mode is U3
+        [...] siw_touch spi1.0: TC Driving[0C03h] wr 0x00000301
+        [...] siw_touch spi1.0: command done: mode 3, running_sts 04h
+        [...] siw_touch spi1.0: lpwg resume(1, 0): lcd_mode 3, driving_mode 3
+        ...
+
+###################################################################################################
+# Procedure - U3 <-> U0 (w/h CONFIG_FB)                                                           #
+###################################################################################################
+[Change mode : U3 -> U0]
+
+Step-1. Set display mode to U0 in LCD driver and
+        touch suspend is called via fb callback
+
+        <Log example>
+        ...
+        [...] siw_touch spi1.0: fb_blank
+        [...] siw_touch spi1.0: touch core pm suspend start
+        [...] siw_touch spi1.0: lcd_mode: 0 (prev: 3)
+        [...] siw_touch spi1.0: lpwg suspend: mode 1, screen 0
+        [...] siw_touch spi1.0: lpwg suspend: default(3 -> 0)
+        [...] siw_touch spi1.0: driving quirk - stop(0x0C03, 0x00000002) before new command(U0)
+        [...] siw_touch spi1.0: current driving mode is U0
+        [...] siw_touch spi1.0: DDI Display Mode[FFFFh] = 0x00000003
+        [...] siw_touch spi1.0: TC Driving[0C03h] wr 0x00000001
+        [...] siw_touch spi1.0: command done: mode 0, running_sts 03h
+        [...] siw_touch spi1.0: lpwg suspend(1, 0): lcd_mode 0, driving_mode 0
+        [...] siw_touch spi1.0: touch core pm suspend end(0)
+        ...
+
+---------------------------------------------------------------------------------------------------
+[Change mode : U0 -> U3]
+
+Step-1. Set display mode to U3 in LCD driver and
+        touch resume is called via fb callback
+
+        <Log example>
+        ...
+        [...] siw_touch spi1.0: fb_unblank
+        [...] siw_touch spi1.0: touch core pm resume start
+        [...] siw_touch spi1.0: irq(512) wake disabled
+        [...] siw_touch spi1.0: irq(512) disabled
+        [...] siw_touch spi1.0: lcd_mode: 3 (prev: 0)
+        [...] siw_touch spi1.0: touch core pm resume end(0)
+        [...] siw_touch spi1.0: SW42000A init work start(v2.21b)
+        [...] siw_touch spi1.0: [T] chip id 7600, version v2.02 (0x040A0202, 0x01)
+        [...] siw_touch spi1.0: [T] product id L0W56F2, flash boot idle(done), crc ok (0x00000004)
+        [...] siw_touch spi1.0: [SW42000A] IC info is good: 10, 4
+        [...] siw_touch spi1.0: lpwg resume: mode 0, screen 1
+        [...] siw_touch spi1.0: lpwg resume: screen(0 -> 3)
+        [...] siw_touch spi1.0: driving quirk - stop(0x0C03, 0x00000002) before new command(U3)
+        [...] siw_touch spi1.0: current driving mode is U3
+        [...] siw_touch spi1.0: DDI Display Mode[FFFFh] = 0x00000003
+        [...] siw_touch spi1.0: TC Driving[0C03h] wr 0x00000301
+        [...] siw_touch spi1.0: command done: mode 3, running_sts 04h
+        [...] siw_touch spi1.0: lpwg resume(1, 0): lcd_mode 3, driving_mode 3
+        [...] siw_touch spi1.0: SW42000A init done
+        [...] siw_touch spi1.0: clr IRQS_PENDING(512)
+        [...] siw_touch spi1.0: irq(512) enabled
+        [...] siw_touch spi1.0: irq(512) wake enabled
+        ...
+		
+###################################################################################################
+# Procedure - U3 <-> U0 (w/o CONFIG_FB)                                                           #
+###################################################################################################
+[Change mode : U3 -> U0]
+
+Step-1. In android framework, set lpwg mode via lpwg_notify sysfs attr
+        : echo 9 1 0 1 0 > /sys/devices/virtual/input/siw_touch_input/lpwg_notify
+               | | | | qcover
+               | | | sensor
+               | | screen
+               | mode : 1 = (LPWG_DOUBLE_TAP)
+               code : 9 = LPWG_UPDATE_ALL
+
+        <Log example>
+        ...
+        [...] siw_touch spi1.0: LPWG_UPDATE_ALL: mode[1], screen[OFF], sensor[FAR], qcover[OPEN]
+        [...] siw_touch spi1.0: lpwg resume: mode 1, screen 0
+        [...] siw_touch spi1.0: lpwg resume: default(3)
+        [...] siw_touch spi1.0: lpwg_control mode = 1
+        [...] siw_touch spi1.0: current driving mode is U3
+        [...] siw_touch spi1.0: TC Driving[0C03h] wr 0x00000301
+        ...
+
+Step-2. Set display mode to U0 in LCD driver
+
+Step-3. Change lcd_mode
+        [via notifier]
+        In LCD driver, Send U0 mode event to touch driver via notifier function
+        : int panel_mode = LCD_EVENT_LCD_MODE_U0;
+          siw_touch_notifier_call_chain(LCD_EVENT_LCD_MODE, (void *)&panel_mode) --> siw_hal_notify
+        [via sysfs]
+        In android framework,
+        : echo 0 > /sys/devices/virtual/input/siw_touch_input/lcd_mode
+
+        <Log example>
+        ...
+        [...] siw_touch spi1.0: notify: lcd_event: lcd mode
+        [...] siw_touch spi1.0: lcd_mode: 0 (prev: 3)
+        [...] siw_touch spi1.0: U0 mode change
+        [...] siw_touch spi1.0: notify: event FB(Eh), value 1h
+        [...] siw_touch spi1.0: touch core pm suspend start
+        [...] siw_touch spi1.0: lpwg suspend: mode 1, screen 0
+        [...] siw_touch spi1.0: lpwg suspend: default(3 -> 0)
+        [...] siw_touch spi1.0: lpwg_control mode = 1
+        [...] siw_touch spi1.0: driving quirk - stop(0x0C03, 0x00000002) before new command(U0)
+        [...] siw_touch spi1.0: current driving mode is U0
+        [...] siw_touch spi1.0: DDI Display Mode[FFFFh] = 0x00000003
+        [...] siw_touch spi1.0: TC Driving[0C03h] wr 0x00000001
+        [...] siw_touch spi1.0: command done: mode 0, running_sts 04h
+        [...] siw_touch spi1.0: lpwg suspend(1, 0): lcd_mode 0, driving_mode 0
+        [...] siw_touch spi1.0: touch core pm suspend end(0)
+        ...
+
+---------------------------------------------------------------------------------------------------
+[Change mode : U0 -> U3]
+
+Step-1. In android framework, set lpwg mode via lpwg_notify sysfs attr
+        : echo 9 0 1 1 0 > /sys/devices/virtual/input/siw_touch_input/lpwg_notify
+
+        <Log example>
+        ...
+        [...] siw_touch spi1.0: LPWG_UPDATE_ALL: mode[0], screen[ON], sensor[FAR], qcover[OPEN]
+        [...] siw_touch spi1.0: lpwg suspend: mode 0, screen 1
+        [...] siw_touch spi1.0: lpwg suspend: mode(0)
+        [...] siw_touch spi1.0: lpwg suspend(1, 0): lcd_mode 0, driving_mode 0
+        ...
+
+Step-2. Set display mode to U3 in LCD driver
+
+Step-3. Change lcd_mode
+        [via notifier]
+        In LCD driver, send U3 mode event to touch driver via notifier function
+        : int panel_mode = LCD_EVENT_LCD_MODE_U3;
+          siw_touch_notifier_call_chain(LCD_EVENT_LCD_MODE, (void *)&panel_mode) --> siw_hal_notify
+        [via sysfs]
+        In android framework,
+        : echo 3 > /sys/devices/virtual/input/siw_touch_input/lcd_mode
+
+        <Log example>
+        ...
+        [...] siw_touch spi1.0: notify: lcd_event: lcd mode
+        [...] siw_touch spi1.0: lcd_mode: 3 (prev: 0)
+        [...] siw_touch spi1.0: notify: event FB(Eh), value 0h
+        [...] siw_touch spi1.0: touch core pm resume start
+        [...] siw_touch spi1.0: irq(512) wake disabled
+        [...] siw_touch spi1.0: irq(512) disabled
+        [...] siw_touch spi1.0: trigger gpio reset
+        [...] siw_touch spi1.0: touch core pm resume end(0)
+        [...] siw_touch spi1.0: SW42000A init work start(v2.21b)
+        [...] siw_touch spi1.0: [T] chip id 7600, version v0.10 (0x040A000A, 0x01)
+        [...] siw_touch spi1.0: [T] product id L1L57P1, flash boot idle(done), crc ok (0x00000004)
+        [...] siw_touch spi1.0: [SW42000A] IC info is good: 10, 4
+        [...] siw_touch spi1.0: lpwg resume: mode 0, screen 1
+        [...] siw_touch spi1.0: lpwg resume: screen(0 -> 3)
+        [...] siw_touch spi1.0: lpwg_control mode = 0
+        [...] siw_touch spi1.0: driving quirk - stop(0x0C03, 0x00000002) before new command(U3)
+        [...] siw_touch spi1.0: current driving mode is U3
+        [...] siw_touch spi1.0: DDI Display Mode[FFFFh] = 0x00000003
+        [...] siw_touch spi1.0: TC Driving[0C03h] wr 0x00000301
+        [...] siw_touch spi1.0: command done: mode 3, running_sts 04h
+        [...] siw_touch spi1.0: lpwg resume(1, 0): lcd_mode 3, driving_mode 3
+        [...] siw_touch spi1.0: SW42000A init done
+        [...] siw_touch spi1.0: clr IRQS_PENDING(512)
+        [...] siw_touch spi1.0: irq(512) enabled
+        [...] siw_touch spi1.0: irq(512) wake enabled
+
+---------------------------------------------------------------------------------------------------
+
+---------------------------------------------------------------------------------------------------
+
+---------------------------------------------------------------------------------------------------
+
+
+

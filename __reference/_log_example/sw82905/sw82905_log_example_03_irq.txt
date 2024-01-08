@@ -1,0 +1,75 @@
+
+[Caution]
+* Too many log output in IRQ handler can cause the IRQ timing distortion due to print delay
+
+---------------------------------------------------------------------------------------------------
+* Default log
+
+<Press>
+[ 9102.232572] [c3] siw_touch spi1.0: (D) input19: <0> 1 finger press <0> ( 850,  648,   97)
+
+<Release>
+[ 9103.258569] [c3] siw_touch spi1.0: (D) input19: <118> finger release <0> ( 850,  554,   97)
+
+---------------------------------------------------------------------------------------------------
+* Simple IRQ log : status
+
+$ echo 0 0x2 > /sys/devices/virtual/input/siw_touch_input/dbg_mask    //0x02 : DBG_TRACE
+[  896.863720] [c2] siw_touch spi1.0: t_dev_dbg_mask changed : 00000010h -> 00000002h
+
+//When touch detected - siw_hal_do_check_status
+[  914.657353] [c1] siw_touch spi1.0: (D) [1] h/w:C6h, f/w:65580E7h(6050087h)  <-- status log in irq handler(1 log for 1 touch event)
+[  914.657353] [c1] siw_touch spi1.0: (D) [1] h/w:C6h, f/w:65580E7h(6050087h)
+
+--------------------
+
+$ echo 0 0x12 > /sys/devices/virtual/input/siw_touch_input/dbg_mask    //0x12 : DBG_TRACE | DBG_BUTTON(default)
+[  964.233679] [c2] siw_touch spi1.0: t_dev_dbg_mask changed : 00000002h -> 00000012h
+
+//When touch detected
+[  978.180060] [c1] siw_touch spi1.0: (D) [1] h/w:C6h, f/w:65580E7h(6050087h)
+[  978.185807] [c1] siw_touch spi1.0: (D) <211> input5: 1 finger press <0> ( 340, 1036,   45)
+[  978.197381] [c1] siw_touch spi1.0: (D) [1] h/w:C6h, f/w:65580E7h(6050087h)
+[  978.214616] [c1] siw_touch spi1.0: (D) [1] h/w:C6h, f/w:65580E7h(6050087h)
+...
+[ 1025.801950] [c1] siw_touch spi1.0: (D) [1] h/w:C6h, f/w:65580E7h(6050087h)
+[ 1025.813605] [c1] siw_touch spi1.0: (D) [1] h/w:C6h, f/w:65580E7h(6050087h)
+[ 1025.830580] [c1] siw_touch spi1.0: (D) [1] h/w:C6h, f/w:65580E7h(6050087h)
+[ 1025.847976] [c1] siw_touch spi1.0: (D) input5: finger release <0> ( 321, 1154,   42)
+
+--------------------
+
+$ echo 0 0x10 > /sys/devices/virtual/input/siw_touch_input/dbg_mask    //0x10 : DBG_BUTTON(default)
+
+---------------------------------------------------------------------------------------------------
+* Touch event log
+
+# echo 0 0x8 > /sys/devices/virtual/input/siw_touch_input/dbg_mask    //0x8 : DBG_ABS
+[ 1068.033739] [c3] siw_touch spi1.0: t_dev_dbg_mask changed : 00000012h -> 00000008h
+
+//When touch detected - siw_touch_report_event
+[ 1082.433013] [c3] siw_touch spi1.0: (D) touch data [id 0, t 0, e 1, x 1111, y 421, z 9 - 12, 13, 0]
+[ 1082.440568] [c3] siw_touch spi1.0: (D) input5: <33> mask [new: 0001, old: 0000]
+[ 1082.447813] [c3] siw_touch spi1.0: (D) input5: <33> mask [change: 0001, press: 0001, release: 0000]
+[ 1082.458033] [c3] siw_touch spi1.0: (D) touch data [id 0, t 0, e 2, x 1111, y 421, z 11 - 16, 13, 0]
+[ 1082.465882] [c3] siw_touch spi1.0: (D) input5: <34> mask [new: 0001, old: 0001]
+[ 1082.473147] [c3] siw_touch spi1.0: (D) input5: <34> mask [change: 0000, press: 0000, release: 0000]
+[ 1082.483510] [c3] siw_touch spi1.0: (D) touch data [id 0, t 0, e 2, x 1130, y 407, z 13 - 16, 12, 0]
+[ 1082.491251] [c3] siw_touch spi1.0: (D) input5: <35> mask [new: 0001, old: 0001]
+[ 1082.498542] [c3] siw_touch spi1.0: (D) input5: <35> mask [change: 0000, press: 0000, release: 0000]
+[ 1082.508775] [c3] siw_touch spi1.0: (D) touch data [id 0, t 0, e 2, x 1151, y 390, z 11 - 13, 13, 1]
+[ 1082.516552] [c3] siw_touch spi1.0: (D) input5: <36> mask [new: 0001, old: 0001]
+[ 1082.523859] [c3] siw_touch spi1.0: (D) input5: <36> mask [change: 0000, press: 0000, release: 0000]
+[ 1082.534092] [c3] siw_touch spi1.0: (D) touch data [id 0, t 0, e 2, x 1158, y 383, z 12 - 16, 13, 0]
+[ 1082.541935] [c3] siw_touch spi1.0: (D) input5: <37> mask [new: 0001, old: 0001]
+[ 1082.549201] [c3] siw_touch spi1.0: (D) input5: <37> mask [change: 0000, press: 0000, release: 0000]
+[ 1082.559453] [c3] siw_touch spi1.0: (D) input5: <38> mask [new: 0000, old: 0001]
+[ 1082.565491] [c3] siw_touch spi1.0: (D) input5: <38> mask [change: 0001, press: 0000, release: 0001]		//Release
+
+---------------------------------------------------------------------------------------------------
+
+
+---------------------------------------------------------------------------------------------------
+
+---------------------------------------------------------------------------------------------------
+

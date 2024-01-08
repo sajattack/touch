@@ -1,0 +1,78 @@
+
+[Caution]
+* Too many log output in IRQ handler can cause the IRQ timing distortion due to print delay
+
+---------------------------------------------------------------------------------------------------
+* Default log
+
+<Press>
+[  711.053229] [c1] siw_touch spi1.0: (D) input5: 1 finger press <0> ( 560,  710,   45)
+
+<Release>
+[  711.210660] [c1] siw_touch spi1.0: (D) input5: finger release <0> ( 585, 1014,   45)
+
+---------------------------------------------------------------------------------------------------
+* Simple IRQ log : status
+
+$ echo 0 0x2 > /sys/devices/virtual/input/siw_touch_input/dbg_mask    //0x02 : DBG_TRACE
+[  738.342122] [c1] siw_touch spi1.0: t_dev_dbg_mask changed : 00000010h -> 00000002h
+
+//When touch detected - siw_hal_do_check_status
+[  750.188877] [c1] siw_touch spi1.0: (D) [1] h/w:C6h, f/w:65580E7h(6050087h)  <-- status log in irq handler(1 log for 1 touch event)
+[  750.197684] [c1] siw_touch spi1.0: (D) [1] h/w:C6h, f/w:65580E7h(6050087h)
+
+--------------------
+
+$ echo 0 0x12 > /sys/devices/virtual/input/siw_touch_input/dbg_mask    //0x12 : DBG_TRACE | DBG_BUTTON(default)
+[  825.592122] [c2] siw_touch spi1.0: t_dev_dbg_mask changed : 00000002h -> 00000012h
+
+//When touch detected
+[  833.629177] [c1] siw_touch spi1.0: (D) [1] h/w:C6h, f/w:65580E7h(6050087h)
+[  833.634645] [c1] siw_touch spi1.0: (D) input5: 1 finger press <0> ( 340, 1036,   45)
+[  833.642920] [c1] siw_touch spi1.0: (D) [1] h/w:C6h, f/w:65580E7h(6050087h)
+[  833.650656] [c1] siw_touch spi1.0: (D) [1] h/w:C6h, f/w:65580E7h(6050087h)
+...
+[  833.707848] [c1] siw_touch spi1.0: (D) [1] h/w:C6h, f/w:65580E7h(6050087h)
+[  833.716678] [c1] siw_touch spi1.0: (D) [1] h/w:C6h, f/w:65580E7h(6050087h)
+[  833.725241] [c1] siw_touch spi1.0: (D) [1] h/w:C6h, f/w:65580E7h(6050087h)
+[  833.730754] [c1] siw_touch spi1.0: (D) input5: finger release <0> ( 321, 1154,   42)
+
+--------------------
+
+$ echo 0 0x10 > /sys/devices/virtual/input/siw_touch_input/dbg_mask    //0x10 : DBG_BUTTON(default)
+
+---------------------------------------------------------------------------------------------------
+* Touch event log
+
+# echo 0 0x8 > /sys/devices/virtual/input/siw_touch_input/dbg_mask    //0x8 : DBG_ABS
+[  921.112114] [c3] siw_touch spi1.0: t_dev_dbg_mask changed : 00000012h -> 00000008h
+
+//When touch detected - siw_touch_report_event
+[  922.789908] [c1] siw_touch spi1.0: (D) touch data [id 0, t 0, e 1, x 504, y 360, z 45 - 37, 37, 1]
+[  922.797455] [c1] input input5: (D) mask [new: 0001, old: 0000]
+[  922.803232] [c1] input input5: (D) mask [change: 0001, press: 0001, release: 0000]    //Press
+[  922.812283] [c1] siw_touch spi1.0: (D) touch data [id 0, t 0, e 2, x 504, y 360, z 45 - 48, 47, 1]
+[  922.819816] [c1] input input5: (D) mask [new: 0001, old: 0001]
+[  922.825610] [c1] input input5: (D) mask [change: 0000, press: 0000, release: 0000]
+[  922.833911] [c1] siw_touch spi1.0: (D) touch data [id 0, t 0, e 2, x 504, y 360, z 46 - 81, 59, 8]
+[  922.842118] [c1] input input5: (D) mask [new: 0001, old: 0001]
+[  922.847942] [c1] input input5: (D) mask [change: 0000, press: 0000, release: 0000]
+[  922.856944] [c1] siw_touch spi1.0: (D) touch data [id 0, t 0, e 2, x 504, y 360, z 48 - 122, 68, 26]
+[  922.864695] [c1] input input5: (D) mask [new: 0001, old: 0001]
+[  922.870450] [c1] input input5: (D) mask [change: 0000, press: 0000, release: 0000]
+[  922.878857] [c1] siw_touch spi1.0: (D) touch data [id 0, t 0, e 2, x 501, y 385, z 54 - 133, 91, 29]
+[  922.887120] [c1] input input5: (D) mask [new: 0001, old: 0001]
+[  922.892913] [c1] input input5: (D) mask [change: 0000, press: 0000, release: 0000]
+[  922.901267] [c1] siw_touch spi1.0: (D) touch data [id 0, t 0, e 2, x 498, y 417, z 48 - 93, 78, 43]
+[  922.909503] [c1] input input5: (D) mask [new: 0001, old: 0001]
+[  922.915334] [c1] input input5: (D) mask [change: 0000, press: 0000, release: 0000]
+[  922.923570] [c1] input input5: (D) mask [new: 0000, old: 0001]
+[  922.928677] [c1] input input5: (D) mask [change: 0001, press: 0000, release: 0001]    //Release
+
+---------------------------------------------------------------------------------------------------
+
+
+---------------------------------------------------------------------------------------------------
+
+---------------------------------------------------------------------------------------------------
+

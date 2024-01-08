@@ -1,0 +1,33 @@
+U3_M2_Lower = {
+	2770,
+}
+
+U3_M2_Upper = {
+	5330,
+}
+
+U3_M1_Lower = {
+	500,
+}
+
+U3_M1_Upper = {
+	1500,
+}
+
+U3_Jitter_Lower = {
+	0,
+}
+
+U3_Jitter_Upper = {
+	75,
+}
+
+U3_M1_Jitter_Lower = {
+	0,
+}
+
+U3_M1_Jitter_Upper = {
+	60,
+}
+
+

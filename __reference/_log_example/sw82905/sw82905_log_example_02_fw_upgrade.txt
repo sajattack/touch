@@ -1,0 +1,63 @@
+
+---------------------------------------------------------------------------------------------------
+
+[ 5342.956029] [c0] siw_touch spi1.0: FW upgrade work func
+[ 5342.961236] [c0] siw_touch spi1.0: irq(530) disabled
+[ 5342.966174] [c0] siw_touch spi1.0: FW upgrade: status 1(BUSY)
+[ 5342.971844] [c0] siw_touch spi1.0: fw type: FW_TYPE_OLED
+[ 5342.978357] [c0] siw_touch spi1.0: getting fw from file
+[ 5342.983595] [c0] siw_touch spi1.0: target fw: /sdcard/B2W80OPP_9_03.img (abs)
+[ 5342.993302] [c0] siw_touch spi1.0: fw size: 131072
+[ 5342.997942] [c0] siw_touch spi1.0: FW compare: bin-ver: 9.03 (B2W80OPP)(0)
+[ 5343.004753] [c0] siw_touch spi1.0: FW compare: dev-ver: 7.03 (B2W80OPP)
+[ 5343.011356] [c0] siw_touch spi1.0: FW compare: up 01, fup 08
+[ 5343.025118] [c4] siw_touch spi1.0: FW upgrade: TC stop(0C03h, 0x00000004)
+[ 5343.167195] [c4] siw_touch spi1.0: ===== FW upgrade: start (0) =====
+[ 5343.172073] [c4] siw_touch spi1.0: FW upgrade: not include conf data
+[ 5343.178432] [c4] siw_touch spi1.0: FW chk_img: code size 20000h, code crc 179F31Ch
+[ 5343.333092] [c0] siw_touch spi1.0: FW upgrade: flash mass erase done
+[ 5343.752179] [c0] siw_touch spi1.0: FW upgrade: downloading...(6%)
+[ 5344.159988] [c0] siw_touch spi1.0: FW upgrade: downloading...(12%)
+[ 5344.567821] [c0] siw_touch spi1.0: FW upgrade: downloading...(18%)
+[ 5344.975825] [c0] siw_touch spi1.0: FW upgrade: downloading...(25%)
+[ 5345.383815] [c0] siw_touch spi1.0: FW upgrade: downloading...(31%)
+[ 5345.791827] [c0] siw_touch spi1.0: FW upgrade: downloading...(37%)
+[ 5346.199824] [c0] siw_touch spi1.0: FW upgrade: downloading...(43%)
+[ 5346.607844] [c0] siw_touch spi1.0: FW upgrade: downloading...(50%)
+[ 5347.015927] [c0] siw_touch spi1.0: FW upgrade: downloading...(56%)
+[ 5347.423918] [c0] siw_touch spi1.0: FW upgrade: downloading...(62%)
+[ 5347.832005] [c0] siw_touch spi1.0: FW upgrade: downloading...(68%)
+[ 5348.240182] [c0] siw_touch spi1.0: FW upgrade: downloading...(75%)
+[ 5348.648205] [c0] siw_touch spi1.0: FW upgrade: downloading...(81%)
+[ 5349.056225] [c0] siw_touch spi1.0: FW upgrade: downloading...(87%)
+[ 5349.464329] [c0] siw_touch spi1.0: FW upgrade: downloading...(93%)
+[ 5349.872429] [c0] siw_touch spi1.0: FW upgrade: downloading...(100%)
+[ 5350.202534] [c0] siw_touch spi1.0: FW upgrade: flash crc result(008Ch) 800D800Dh
+[ 5350.208848] [c0] siw_touch spi1.0: FW upgrade: flash crc pass(008Dh) 1h
+[ 5350.317143] [c0] siw_touch spi1.0: FW upgrade: flash crc check done
+[ 5350.532153] [c0] siw_touch spi1.0: ===== FW upgrade: done (0) =====
+[ 5350.536956] [c0] siw_touch spi1.0: FW upgrade: status 0(OK)
+
+//Auto-reset after FW upgrade
+[ 5350.542566] [c0] siw_touch spi1.0: SW82905 reset control(0x1)
+[ 5350.548274] [c0] siw_touch spi1.0: HW Reset(Async)
+[ 5350.553017] [c0] siw_touch spi1.0: (W) (warn) already irq disabled
+[ 5350.767145] [c0] siw_touch spi1.0: SW82905 init work start(v2.22b)
+[ 5350.781550] [c0] siw_touch spi1.0: [T] chip id 7601, version v9.03 (0x040A0903, 0x00)
+[ 5350.787930] [c0] siw_touch spi1.0: [T] product id B2W80OPP, flash boot idle(done), crc ok (0x00000004)
+[ 5350.798691] [c0] siw_touch spi1.0: [SW82905] IC info is good: 10, 4
+[ 5350.804200] [c0] siw_touch spi1.0: lpwg resume: mode 0, screen 1
+[ 5350.809498] [c0] siw_touch spi1.0: lpwg resume: screen(3)
+[ 5350.815030] [c0] siw_touch spi1.0: current driving mode is U3
+[ 5350.821860] [c0] siw_touch spi1.0: DDI Display Mode[FFFFh] = 0x00000003
+[ 5350.827609] [c0] siw_touch spi1.0: TC Driving[0C03h] wr 0x00000301
+[ 5350.868236] [c0] siw_touch spi1.0: command done: mode 3, running_sts 02h
+[ 5350.908083] [c0] siw_touch spi1.0: lpwg resume(1, 0): lcd_mode 3, driving_mode 3
+[ 5350.914415] [c0] siw_touch spi1.0: SW82905 init done
+
+---------------------------------------------------------------------------------------------------
+
+---------------------------------------------------------------------------------------------------
+
+---------------------------------------------------------------------------------------------------
+

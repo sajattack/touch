@@ -1,0 +1,180 @@
+
+---------------------------------------------------------------------------------------------------
+
+//insmod ssw42000a.ko
+
+[  461.622346] [c2] siw_touch: SW42000A driver init - v2.21b
+[  461.646249] [c6] siw_touch spi1.0: dev bus probe : 12d30000.spi/spi1/spi1.0
+[  461.653034] [c6] siw_touch spi1.0: cfg status : __SIW_PANEL_CLASS_MOBILE
+[  461.659699] [c6] siw_touch spi1.0: cfg status : __SIW_PANEL_CLASS_MOBILE_OLED
+[  461.666830] [c6] siw_touch spi1.0: cfg status : __SIW_CONFIG_FB
+[  461.672700] [c6] siw_touch spi1.0: max finger : 10
+[  461.677472] [c6] siw_touch spi1.0: chip type  : 0x0201
+[  461.682591] [c6] siw_touch spi1.0: mode bit   : 0x0000004D
+[  461.688056] [c6] siw_touch spi1.0: chip id    : 7600
+[  461.693002] [c6] siw_touch spi1.0: chip name  : SW42000A
+[  461.698295] [c6] siw_touch spi1.0: drv name   : siw_touch
+[  461.703674] [c6] siw_touch spi1.0: idrv name  : siw_touch_input
+[  461.709575] [c6] siw_touch spi1.0: SiW Touch Probe
+[  461.714346] [c6] siw_touch spi1.0: SW42000A quirks = 0x10050000
+[  461.720248] [c6] siw_touch spi1.0: (W) SW42000A ops is NULL : default ops selected
+[  461.727801] [c6] siw_touch spi1.0: SW42000A reg quirks: [0] 0041h -> 001Fh
+[  461.734651] [c6] siw_touch spi1.0: SW42000A reg quirks: [1] 0006h -> 0004h
+[  461.741506] [c6] siw_touch spi1.0: SW42000A reg quirks: [2] 0021h -> FFFFh
+[  461.748361] [c6] siw_touch spi1.0: SW42000A reg quirks: [3] 0078h -> 0036h
+[  461.755214] [c6] siw_touch spi1.0: SW42000A reg quirks: [4] 0242h -> 0642h
+[  461.762069] [c6] siw_touch spi1.0: SW42000A reg quirks: [5] 0244h -> 0644h
+[  461.768925] [c6] siw_touch spi1.0: SW42000A reg quirks: [6] 027Ch -> 0001h
+[  461.775776] [c6] siw_touch spi1.0: SW42000A reg quirks: [7] 0200h -> 0600h
+[  461.782633] [c6] siw_touch spi1.0: SW42000A reg quirks: [8] 0201h -> 0601h
+[  461.789488] [c6] siw_touch spi1.0: SW42000A reg quirks: [9] 0300h -> 0FD8h
+[  461.796341] [c6] siw_touch spi1.0: SW42000A reg quirks: [10] 0301h -> 0FD1h
+[  461.803287] [c6] siw_touch spi1.0: SW42000A reg quirks: [11] 007Bh -> 003Ch
+[  461.810223] [c6] siw_touch spi1.0: SW42000A reg quirks: ...
+[  461.815781] [c6] siw_touch spi1.0: SW42000A reg quirks: t 48, m 0
+[  461.821851] [c6] siw_touch spi1.0: start dts parsing
+[  461.826800] [c6] siw_touch spi1.0: flags(of) = 0x10000000 (0x10000000, 0x00000000)
+[  461.834354] [c6] siw_touch spi1.0: of gpio  : reset-gpio(0x1), 23
+[  461.840420] [c6] siw_touch spi1.0: of gpio  : irq-gpio, 22
+[  461.845888] [c6] siw_touch spi1.0: irqflags(of) = 0x00002002 (0x00002002, 0x00002002)
+[  461.853712] [c6] siw_touch spi1.0: of string[1/1] : {root}/sdcard/firmware/siw/sw42000a/sw42000a_0_01.img
+[  461.863240] [c6] siw_touch spi1.0: (W) of_string : panel_spec not found
+[  461.869835] [c6] siw_touch spi1.0: (W) of_string : panel_spec_mfts not found
+[  461.876863] [c6] siw_touch spi1.0: of_string : prd_in_file, /sdcard/siw/sw42000a_test_spec_V0.1.txt
+[  461.885885] [c6] siw_touch spi1.0: prd file setup: /sdcard/siw/prd_in.txt -> /sdcard/siw/sw42000a_test_spec_V0.1.txt
+[  461.896385] [c6] siw_touch spi1.0: of_string : prd_in_file_m, /sdcard/siw/sw42000a_test_spec_mfts_V0.1.txt
+[  461.906017] [c6] siw_touch spi1.0: prd file setup: /sdcard/siw/prd_in_mfts.txt -> /sdcard/siw/sw42000a_test_spec_mfts_V0.1.txt
+[  461.917385] [c6] siw_touch spi1.0: of_string : prd_out_file, /sdcard/siw/touch_self_test.txt
+[  461.925798] [c6] siw_touch spi1.0: prd file setup: /sdcard/siw/prd_out.txt -> /sdcard/siw/touch_self_test.txt
+[  461.935689] [c6] siw_touch spi1.0: (W) of_string : prd_out_file_mo_aat not found
+[  461.943085] [c6] siw_touch spi1.0: (W) of_string : prd_out_file_mo_mfo not found
+[  461.950443] [c6] siw_touch spi1.0: (W) of_string : prd_out_file_mo_mfl not found
+[  461.957819] [c6] siw_touch spi1.0: (W) of_string : prd_out_file_mo_mcv not found
+[  461.965189] [c6] siw_touch spi1.0: [caps summary]
+[  461.969873] [c6] siw_touch spi1.0:  max_x           = 1080
+[  461.975342] [c6] siw_touch spi1.0:  max_y           = 2280
+[  461.980807] [c6] siw_touch spi1.0:  max_pressure    = 255
+[  461.986186] [c6] siw_touch spi1.0:  max_width       = 15
+[  461.991480] [c6] siw_touch spi1.0:  max_orientation = 1
+[  461.996686] [c6] siw_touch spi1.0:  max_id          = 10
+[  462.001982] [c6] siw_touch spi1.0:  mt_tool_max     = 0x0
+[  462.007360] [c6] siw_touch spi1.0:  mt_slots_flags  = 0x0
+[  462.012741] [c6] siw_touch spi1.0:  hw_reset_delay  = 210 ms
+[  462.018378] [c6] siw_touch spi1.0:  sw_reset_delay  = 90 ms
+[  462.023929] [c6] siw_touch spi1.0: [role summary]
+[  462.028616] [c6] siw_touch spi1.0:  use_lpwg        = 1
+[  462.033826] [c6] siw_touch spi1.0:  use_lpwg_test   = 1
+[  462.039032] [c6] siw_touch spi1.0:  use_firmware    = 1
+[  462.044237] [c6] siw_touch spi1.0:  use_fw_upgrade  = 0
+[  462.049480] [c6] siw_touch spi1.0: setup mode 0, 8 bits/w, 15000000 Hz max --> 0
+[  462.056825] [c6] siw_touch spi1.0: spi init: 15.0 Mhz, mode 0, bpw 8, cs 0 (spi1)
+[  462.064518] [c6] siw_touch spi1.0: input cfg status : __SIW_CONFIG_INPUT_ANDROID
+[  462.102938] [c6] siw_touch spi1.0: input device[input5, spi1/spi1.0 - siw_touch_input] registered
+[  462.128506] [c6] siw_touch spi1.0: input caps : 1080, 2280, 255, 15, 15, 1, 10, 0, 0x0
+[  462.343045] [c1] siw_touch spi1.0: trigger gpio reset
+[  462.560123] [c1] siw_touch spi1.0: [opt summary]
+[  462.563312] [c1] siw_touch spi1.0:  f_info_more     : 0
+[  462.568498] [c1] siw_touch spi1.0:  f_ver_ext       : 0
+[  462.573700] [c1] siw_touch spi1.0:  f_attn_opt      : 1
+[  462.578938] [c1] siw_touch spi1.0:  f_glove_en      : 0
+[  462.584112] [c1] siw_touch spi1.0:  f_grab_en       : 0
+[  462.589318] [c1] siw_touch spi1.0:  f_dbg_report    : 0
+[  462.594523] [c1] siw_touch spi1.0:  f_u2_blank_chg  : 0
+[  462.599757] [c1] siw_touch spi1.0:  f_flex_report   : 0
+[  462.604930] [c1] siw_touch spi1.0:  t_boot_mode     : 0
+[  462.610137] [c1] siw_touch spi1.0:  t_sts_mask      : 0
+[  462.615341] [c1] siw_touch spi1.0:  t_chk_mode      : 0
+[  462.620546] [c1] siw_touch spi1.0:  t_sw_rst        : 5
+[  462.625769] [c1] siw_touch spi1.0:  t_clock         : 4
+[  462.631079] [c5] siw_touch spi1.0:  t_chk_mipi      : 0
+[  462.636199] [c5] siw_touch spi1.0:  t_chk_frame     : 0
+[  462.641386] [c5] siw_touch spi1.0:  t_chk_tci_debug : 0
+[  462.646581] [c5] siw_touch spi1.0:  t_chk_sys_error : 0
+[  462.651810] [c5] siw_touch spi1.0:  t_chk_sys_fault : 0
+[  462.656999] [c5] siw_touch spi1.0:  t_chk_fault     : 0
+[  462.662199] [c5] siw_touch spi1.0:  t_oled          : 1
+[  462.667405] [c5] siw_touch spi1.0:  t_tc_cmd        : 1
+[  462.672611] [c5] siw_touch spi1.0:  t_tc_quirk      : 1
+[  462.677814] [c5] siw_touch spi1.0:  t_lpwg          : 1
+[  462.683023] [c5] siw_touch spi1.0:  t_knock         : 1
+[  462.688229] [c5] siw_touch spi1.0:  t_swipe         : 1
+[  462.693434] [c5] siw_touch spi1.0:  t_bus_opt       : 0
+[  462.698639] [c5] siw_touch spi1.0:  t_rw_opt        : 0
+[  462.703847] [c5] siw_touch spi1.0:  t_i2c_opt       : 0
+[  462.709053] [c5] siw_touch spi1.0:  t_spi_opt       : 0
+[  462.714258] [c5] siw_touch spi1.0:  drv_reset_low   : 1 ms
+[  462.719724] [c5] siw_touch spi1.0:  drv_delay       : 30 ms
+[  462.725275] [c5] siw_touch spi1.0:  drv_opt_delay   : 0 ms
+[  462.730745] [c5] siw_touch spi1.0:  mode_partial    : disabled
+[  462.736555] [c5] siw_touch spi1.0:  mode_qcover     : disabled
+[  462.742373] [c5] siw_touch spi1.0: [tc cmd set] (mode bit 004Dh)
+[  462.748360] [c5] siw_touch spi1.0:  0001h [U0           ]
+[  462.753824] [c5] siw_touch spi1.0:  0201h [U2_UNBLANK   ] (not allowed)
+[  462.760420] [c5] siw_touch spi1.0:  0201h [U2           ]
+[  462.765883] [c5] siw_touch spi1.0:  0301h [U3           ]
+[  462.771350] [c5] siw_touch spi1.0:  0385h [U3_PARTIAL   ] (not allowed)
+[  462.777947] [c5] siw_touch spi1.0:  0785h [U3_QUICKCOVER] (not allowed)
+[  462.784542] [c5] siw_touch spi1.0:  0002h [STOP         ]
+[  462.790012] [c5] siw_touch spi1.0: tci active_area tci active area     0    0 1080 2280
+[  462.798155] [c5] siw_touch spi1.0: (W) ABT disabled
+[  462.802862] [c5] siw_touch spi1.0: prd: sd_test_flag 0h, lpwg_sd_test_flag 0h
+[  462.809964] [c5] siw_touch spi1.0: prd: buf_swap_flag 1Fh
+[  462.815342] [c5] siw_touch spi1.0: prd: test: file_wr_off, file_rd_off
+[  462.821854] [c5] siw_touch spi1.0: prd: param: row 32, col 15
+[  462.827578] [c5] siw_touch spi1.0: prd: debug offset: 1B0Bh(1)
+[  462.833390] [c5] siw_touch spi1.0: prd: debug offset: 1C9Bh(2)
+[  462.839203] [c5] siw_touch spi1.0: prd: debug offset: 1E2Bh(4)
+[  462.845014] [c5] siw_touch spi1.0: prd: debug offset: 1FF9h(5)
+[  462.850830] [c5] siw_touch spi1.0: prd: debug offset: 197Bh(7)
+[  462.856641] [c5] siw_touch spi1.0: prd: debug offset: 18D3h(8)
+[  462.862457] [c5] siw_touch spi1.0: prd: debug offset: 18F1h(9)
+[  462.868271] [c5] siw_touch spi1.0: prd: debug offset: 190Fh(10)
+[  462.874169] [c5] siw_touch spi1.0: prd: debug offset: 192Fh(11)
+[  462.880070] [c5] siw_touch spi1.0: prd: debug offset: 18B5h(12)
+[  462.885969] [c5] siw_touch spi1.0: prd: cmd type: PRD_CMD_TYPE_1
+[  462.891973] [c5] siw_touch spi1.0: prd: cmd_open_node  : 1
+[  462.897423] [c5] siw_touch spi1.0: prd: cmd_short_node : 2
+[  462.902888] [c5] siw_touch spi1.0: prd: cmd_m2_rawdata : 5
+[  462.908357] [c5] siw_touch spi1.0: prd: cmd_m1_rawdata : 3
+[  462.913822] [c5] siw_touch spi1.0: prd: cmd_jitter     : 13
+[  462.919375] [c5] siw_touch spi1.0: prd: cmd_m1_jitter  : 4
+[  462.924840] [c5] siw_touch spi1.0: prd: sysfs flag: 1FEEEh (111h)
+[  462.930929] [c5] siw_touch spi1.0: prd: buffer allocted: da018000(21278)
+[  462.937599] [c5] siw_touch spi1.0: prd: buffer align tuned(2nd): da01ad60
+[  462.944422] [c5] siw_touch spi1.0: init sysfs_cmd
+[  462.965255] [c5] siw_touch spi1.0: threaded irq request done(512, siw_touch, 0x2002)
+[  462.972689] [c5] siw_touch spi1.0: irq(512) disabled
+[  462.977609] [c5] siw_touch spi1.0: probe(normal) done
+[  462.977671] [c2] siw_touch spi1.0: SW42000A init work start(v2.21b)
+[  462.978727] [c2] siw_touch spi1.0: report type  : 2
+[  462.978739] [c2] siw_touch spi1.0: status type  : 2
+[  462.978748] [c2] siw_touch spi1.0: status mask  : 0050A660h
+[  462.978756] [c2] siw_touch spi1.0:  normal      : 00508060h
+[  462.978763] [c2] siw_touch spi1.0:  logging     : 0050A000h
+[  462.978771] [c2] siw_touch spi1.0:  reset       : 00000660h
+[  462.978779] [c2] siw_touch spi1.0:  ic abnormal : 00000001h
+[  462.978786] [c2] siw_touch spi1.0:  ic error    : 00000028h
+[  462.978793] [c2] siw_touch spi1.0:  ic valid    : 000000FFh
+[  462.978801] [c2] siw_touch spi1.0:  ic disp err : 00000000h
+[  462.978809] [c2] siw_touch spi1.0:  ic debug    : 00000000h
+[  462.978820] [c2] siw_touch spi1.0: [T] chip id 7600, version v0.10 (0x040A000A, 0x01)
+[  462.978832] [c2] siw_touch spi1.0: [T] product id L1W57F2, flash boot idle(done), crc ok (0x00000004)
+[  462.979322] [c2] siw_touch spi1.0: [SW42000A] IC info is good: 10, 4
+[  462.979872] [c2] siw_touch spi1.0: lpwg resume: mode 0, screen 1
+[  462.979883] [c2] siw_touch spi1.0: lpwg resume: screen(3)
+[  462.979896] [c2] siw_touch spi1.0: current driving mode is U3
+[  462.979906] [c2] siw_touch spi1.0: DDI Display Mode[FFFFh] = 0x00000003
+[  462.980039] [c2] siw_touch spi1.0: TC Driving[0C03h] wr 0x00000301
+[  463.012046] [c2] siw_touch spi1.0: command done: mode 3, running_sts 04h
+[  463.012058] [c2] siw_touch spi1.0: lpwg resume(1, 0): lcd_mode 3, driving_mode 3
+[  463.012068] [c2] siw_touch spi1.0: SW42000A init done
+[  463.012090] [c2] siw_touch spi1.0: irq(512) enabled
+[  463.012100] [c2] wake enabled for irq 512
+[  463.012109] [c2] siw_touch spi1.0: irq(512) wake enabled
+
+---------------------------------------------------------------------------------------------------
+
+---------------------------------------------------------------------------------------------------
+
+---------------------------------------------------------------------------------------------------
+

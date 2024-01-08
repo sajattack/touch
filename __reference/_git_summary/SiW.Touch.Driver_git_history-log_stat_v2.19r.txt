@@ -1,0 +1,1285 @@
+[Git history : 2017.10.16 AM 07:00]
+
+---------------------------------------------------------------------------------------------------
+
+commit 179f578c3ecd319bc1de795a054b261718c76bd9
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Mon Oct 16 07:17:40 2017 +0900
+
+    input: touchscreen: siw: version fix - 2.19r
+    
+    Version 2.19r fixed
+
+ siw_touch.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+commit bcf223c7985858dd6d4f4ae2c519ae196c3a7ed4
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Fri Oct 13 07:34:27 2017 +0900
+
+    input: touchscreen: siw: core - adjust input event control
+    
+    Optimize parameter handling
+
+ siw_touch_event.c | 94 ++++++++++++++++++++++++++++++++++++++++++++++++++++------------------------------------------
+ 1 file changed, 52 insertions(+), 42 deletions(-)
+
+commit d6ec7bd34ba5113afdca6ae9b2f715e111d8d280
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Thu Oct 12 10:35:04 2017 +0900
+
+    input: touchscreen: siw: SW49501 entry - remove pragma message
+    
+    Remove error pragma
+
+ touch_sw49501.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+commit d54d9c2c5cc27607884a0b5d3736312e73353a46
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Thu Oct 12 10:33:54 2017 +0900
+
+    input: touchscreen: siw: SW49408 entry - remove pragma message
+    
+    Remove error pragma
+
+ touch_sw49408.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+commit e40d7c98ab57a5b18e679571b3f993e3734988cb
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Thu Oct 12 10:32:38 2017 +0900
+
+    input: touchscreen: siw: SW49407 entry - remove pragma message
+    
+    Remove error pragma
+
+ touch_sw49407.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+commit 3750c3126033f03f949445269ceb34e1bd4d4027
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Thu Oct 12 10:31:29 2017 +0900
+
+    input: touchscreen: siw: SW49106 entry - remove pragma message
+    
+    Remove error pragma
+
+ touch_sw49106.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+commit 4c697cfe5b1ec5526f511d0362d08e38a157e754
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Thu Oct 12 10:28:58 2017 +0900
+
+    input: touchscreen: siw: SW42101 entry - remove pragma message
+    
+    Remove error pragma
+
+ touch_sw42101.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+commit 4e55959884685bfa06ec38dee3a50843df98617d
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Thu Oct 12 10:27:47 2017 +0900
+
+    input: touchscreen: siw: SW1828 entry - remove pragma message
+    
+    Remove error pragma
+
+ touch_sw1828.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+commit e1c27b8bfb33dddf81e9c755a720cce404162171
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Thu Oct 12 10:26:45 2017 +0900
+
+    input: touchscreen: siw: LG4951 entry - remove pragma message
+    
+    Remove error pragma
+
+ touch_lg4951.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+commit 788c4261c171b50075c69589a90e28f2c5ea6326
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Thu Oct 12 10:25:49 2017 +0900
+
+    input: touchscreen: siw: LG4946 entry - remove pragma message
+    
+    Remove error pragma
+
+ touch_lg4946.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+commit bf7d1fe8f6d52665c98588ac289da02958068584
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Thu Oct 12 10:24:36 2017 +0900
+
+    input: touchscreen: siw: LG4895 entry - remove pragma message
+    
+    Remove error pragma
+
+ touch_lg4895.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+commit 0cc975eb034d83594986fdaa775c2739cb0382e0
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Thu Oct 12 10:23:22 2017 +0900
+
+    input: touchscreen: siw: LG4894 entry - remove pragma message
+    
+    Remove error pragma
+
+ touch_lg4894.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+commit e1c11f3471bb16f1ab50c7ce8f1efc0945da7e28
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Thu Oct 12 10:19:59 2017 +0900
+
+    input: touchscreen: siw: core - add debugging log for dts parsing
+    
+    Add some logs to show gpio assignment status
+
+ siw_touch_of.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+commit 5f9e0133952e57e9d005348ba3e36d82380f8b9c
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Thu Oct 12 15:49:42 2017 +0900
+
+    input: touchscreen: siw: hal - adjust build option for swipe control
+    
+    Supplement for initial swipe setup
+    : __SIW_CONFIG_SWIPE
+
+ siw_touch_hal.c | 11 +++++++++++
+ 1 file changed, 11 insertions(+)
+
+commit 7cf886aa66bfbb85c502e9d40c625c904ec55f15
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Thu Oct 12 10:17:08 2017 +0900
+
+    input: touchscreen: siw: hal - adjust delay control for tc driving
+    
+    Add dynamic delay control for chipset variation
+    : chip->drv_delay & chip->drv_opt_delay
+
+ siw_touch_hal.c | 24 ++++++++++++------------
+ siw_touch_hal.h |  2 ++
+ 2 files changed, 14 insertions(+), 12 deletions(-)
+
+commit d4b22786b080cab5a26f27d928f2549c9394e001
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Wed Oct 11 10:43:45 2017 +0900
+
+    input: touchscreen: siw: prd - remove duplicated process
+    
+    Reset process includes tc driving setup
+
+ siw_touch_hal_prd.c | 3 ---
+ 1 file changed, 3 deletions(-)
+
+commit a41d10c49e38614a9badc32ece9c3451e0c56d56
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Wed Oct 11 18:46:09 2017 +0900
+
+    input: touchscreen: siw: hal - adjust log control
+    
+    Update siw_chk_sts_snprintf
+
+ siw_touch_hal.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+commit 9d29731456e1b1796ea76ffbb65f613d015e8ed6
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Tue Oct 10 09:47:05 2017 +0900
+
+    input: touchscreen: siw: __reference: prd_spec: SW49407 updated
+    
+    To synchronize with new features of U3_M1_RAWDATA_TEST & U3_M1_JITTER_TEST
+
+ __reference/prd_spec_files/{sw49407_test_spec_V0.1.txt => sw49407_test_spec_V0.2.txt} | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+commit 4b9023f290bdc380e37a41a89a0e7a07645400cb
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Tue Oct 10 09:41:55 2017 +0900
+
+    input: touchscreen: siw: __reference: prd_spec: SW49501 updated
+    
+    To synchronize with new features of U3_M1_RAWDATA_TEST & U3_M1_JITTER_TEST
+
+ __reference/prd_spec_files/sw49501_test_spec_V0.1.txt | 16 ----------------
+ __reference/prd_spec_files/sw49501_test_spec_V0.2.txt | 33 +++++++++++++++++++++++++++++++++
+ 2 files changed, 33 insertions(+), 16 deletions(-)
+
+commit ba2959d242aa588776724f5e07ac000f4ebb63ce
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Tue Oct 10 11:55:30 2017 +0900
+
+    input: touchscreen: siw: prd - Refactoring for new test features
+    
+    Add U3_M1_RAWDATA_TEST and U3_M1_JITTER_TEST
+
+ siw_touch_hal_prd.c | 340 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------------------------------
+ 1 file changed, 251 insertions(+), 89 deletions(-)
+
+commit e6d0e93f598676ef964769853758320d34029d27
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Fri Sep 29 18:16:50 2017 +0900
+
+    input: touchscreen: siw: prd - add new configurations for LG4894
+
+ siw_touch_hal_prd.c | 42 ++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 42 insertions(+)
+
+commit 3d1b76e9e1d606c74e7620cf04e2c8f70cd42cc9
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Fri Sep 29 13:05:29 2017 +0900
+
+    input: touchscreen: siw: prd - update sd & lpwg_sd control
+    
+    Remove duplicated process
+    : Reset process includes tc driving setup
+
+ siw_touch_hal_prd.c | 7 ++-----
+ 1 file changed, 2 insertions(+), 5 deletions(-)
+
+commit d46509b312e9be6e137aaaf99b76a135120af662
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Fri Sep 29 12:59:55 2017 +0900
+
+    input: touchscreen: siw: hal - update tc driving setup
+    
+    Keep the last mode value for retry case
+
+ siw_touch_hal.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+commit a2e048ebe06b6c84ae2a233deeca7a22c3b28276
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Fri Sep 29 08:18:50 2017 +0900
+
+    input: touchscreen: siw: hal - update fw_upgrade control
+    
+    Update progress log about FW data downloading status
+    to make sure that it shows the final '100%' log.
+
+ siw_touch_hal.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+commit 15c41d9f684e11d1610387f9832675f46597076f
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Tue Sep 26 14:41:54 2017 +0900
+
+    input: touchscreen: siw: __reference: dts: update example file for LG4951
+    
+    Disable lpwg setup : not supported
+
+ __reference/device_tree/odroid-xu4/siw_test_case/exynos5422-odroidxu3_siw_touch_lg4951.dtsi     | 4 ++--
+ __reference/device_tree/odroid-xu4/siw_test_case/exynos5422-odroidxu3_siw_touch_lg4951_i2c.dtsi | 4 ++--
+ 2 files changed, 4 insertions(+), 4 deletions(-)
+
+commit 3b4c673f1c02a4c06950b3d20eadaaaa8c120fc1
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Tue Sep 26 14:33:34 2017 +0900
+
+    input: touchscreen: siw: LG4951 entry - adjust mode configuration
+    
+    Disable LCD_MODE_BIT_U3_PARTIAL bit
+    Disable LCD_MODE_BIT_U0 bit
+
+ touch_lg4951.c | 2 --
+ 1 file changed, 2 deletions(-)
+
+commit 618bbdb2856a241fc5e3249653a33b83dac8b9b9
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Tue Sep 26 14:41:11 2017 +0900
+
+    input: touchscreen: siw: __reference: dts: update example file for SW49501
+    
+    Disable lpwg setup : not supported
+
+ __reference/device_tree/odroid-xu4/siw_test_case/exynos5422-odroidxu3_siw_touch_sw49501.dtsi | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+commit b97b577e74f935c5de174ed167324853fa7d4fd2
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Mon Jul 10 13:57:13 2017 +0900
+
+    input: touchscreen: siw: SW49501 entry - adjust mode configuration
+    
+    Enable LCD_MODE_BIT_U3_QUICKCOVER bit
+    Disable LCD_MODE_BIT_U3_PARTIAL bit
+    Disable LCD_MODE_BIT_U0 bit
+
+ touch_sw49501.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+
+commit 59ec03247a8a05f15377956f72589a7c4a06811d
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Fri Sep 22 17:34:01 2017 +0900
+
+    input: touchscreen: siw: core sysfs - bug-fix for log control
+    
+    Fix the wrong condition to show ON/OFF string.
+
+ siw_touch_sysfs.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+commit 8eaa82325f5f3e8a04c7cca2f3b90a512d706cbe
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Wed Sep 20 12:58:27 2017 +0900
+
+    input: touchscreen: siw: bus - update for SPI frequency control
+    
+    Add some inline functions for SPI frequency control
+
+ siw_touch_bus.h     | 27 +++++++++++++++++++++++++++
+ siw_touch_bus_spi.c | 13 ++++++++-----
+ 2 files changed, 35 insertions(+), 5 deletions(-)
+
+commit 1a9deaff062656e80f0c869e721cf1116d62f4db
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Wed Sep 20 13:47:03 2017 +0900
+
+    input: touchscreen: siw: core - update touch event control
+    
+    Adjust input control in order to meet standard guideline.
+
+ siw_touch_event.c | 40 +++++++++++++++++++++++++++++++++++++---
+ 1 file changed, 37 insertions(+), 3 deletions(-)
+
+commit 9fc1959dbe8f2e270d6f2eb645328d1d43b37367
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Wed Sep 20 13:44:09 2017 +0900
+
+    input: touchscreen: siw: core - adjust touch event log
+    
+    Change log type of finger press and release for more effective debugging.
+    : Enabling t_dev_dbg_abs is very useful for touch event debugging,
+      but on the other hand it needs special care in usage
+      because too many logs may cause negative effect on the IRQ handler operation timing.
+
+ siw_touch_event.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+commit 8f9d2ddc49dbef268cc44aa99e26070ab5eef081
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Thu Aug 17 14:35:51 2017 +0900
+
+    input: touchscreen: siw: prd - update prd_dbg_mask control
+    
+    Fix wrong log print
+
+ siw_touch_hal_prd.c | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
+
+commit 69bd553898f05e43599457cac4ca89ed2c67fea5
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Wed Sep 20 13:39:39 2017 +0900
+
+    input: touchscreen: siw: hal - update notify control
+    
+    Adjust state controls for reset-related cases
+
+ siw_touch_hal.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+commit 68dcaef9d8b4954707b2605d720fb7fd3934f2f1
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Wed Sep 20 13:37:32 2017 +0900
+
+    input: touchscreen: siw: hal - adjust chip->init condition log
+    
+    Update log string in order to show more specific message.
+
+ siw_touch_hal.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+commit 4819a2f1b01f574ad08cbabb8a1de8aece3bf14b
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Wed Sep 20 13:34:57 2017 +0900
+
+    input: touchscreen: siw: hal - improve fw_upgrade check condition
+    
+    Add new siw_hal_upgrade_not_allowed for better flexibility.
+
+ siw_touch_hal.c | 21 +++++++++++++++++++--
+ 1 file changed, 19 insertions(+), 2 deletions(-)
+
+commit 22b781f5eda3c4030761027a74ef195d8c723dc4
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Wed Sep 20 13:18:56 2017 +0900
+
+    input: touchscreen: siw: hal - update fw_upgrade control
+    
+    Add progress log to show FW data downloaing status for slow I2C case
+
+ siw_touch_hal.c | 23 ++++++++++++++++++++++-
+ 1 file changed, 22 insertions(+), 1 deletion(-)
+
+commit e7dd33c45202db860115a935546cf31573b5e9aa
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Mon Jul 17 15:55:01 2017 +0900
+
+    input: touchscreen: siw: hal - dynamic clock control for chipset variation
+    
+    Add dynamic control for variable setup value combination
+
+ siw_touch_hal.c | 115 ++++++++++++++++++++++++++++++++++++++++++++++++++++----
+ 1 file changed, 107 insertions(+), 8 deletions(-)
+
+commit 5e2efbf99aa45bdb64db3e1474bea9d3172c1503
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Thu Aug 17 10:26:57 2017 +0900
+
+    input: touchscreen: siw: hal - update mon handler
+    
+    Reinforce skip condition control : siw_hal_mon_handler_skip
+
+ siw_touch_hal.c | 46 +++++++++++++++++++++++++++++++++++-----------
+ 1 file changed, 35 insertions(+), 11 deletions(-)
+
+commit 9cfcf3496f8574935140776ddf5abf883aa9f659
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Thu Aug 17 10:26:05 2017 +0900
+
+    input: touchscreen: siw: hal - adjust flag setup position
+    
+    Do 'chip->init' setup before the actual control begins
+
+ siw_touch_hal.c | 7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
+
+commit d5fd9df14633d01d12dd0a71e796a4b7dbae2bd1
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Thu Aug 17 15:06:57 2017 +0900
+
+    input: touchscreen: siw: __reference: driver guide (pdf)
+    
+    SiW.Touch.Driver_v2.13.pdf
+
+ __reference/SiW.Touch.Driver_v2.12.pdf | Bin 634286 -> 0 bytes
+ __reference/SiW.Touch.Driver_v2.13.pdf | Bin 0 -> 789676 bytes
+ 2 files changed, 0 insertions(+), 0 deletions(-)
+
+commit 6c5ddc9789b8df88fc4645a8e06ce201630a1b2e
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Wed Aug 16 11:18:58 2017 +0900
+
+    input: touchscreen: siw: core - Probe Refactoring
+    
+    Reorganize probe sequence aggregating HW access controls into one group in order to support
+    a delayed post processing scheme for the case that the display side takes longer probe time
+    which leads to late power-on procedure of the whole panel.
+    
+    All the actual HW access for touch device can be postponed by TOUCH_USE_PROBE_INIT_LATE option
+    and the post processing(ts->init_late) can be triggered by either of the following.
+    : via notifier - int value = 0x1234;    //any value for identification except the below values
+                                            //0x0000 : not permitted
+                                            //0x55AA : for sysfs
+                                            //0xAA55 : feedback indicating init_late done
+                     siw_touch_atomic_notifier_call(LCD_EVENT_TOUCH_INIT_LATE, (void *)&value);
+    : via sysfs    - echo 0x55AA > /sys/devices/virtual/input/siw_touch_input/init_late
+    
+    * See '1.2 Initialization Flow' in 'SiW.Touch.Driver_v2.13.pdf' for more details.
+
+ siw_touch.c        | 457 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------------------------------------------------------------------------------------
+ siw_touch.h        |   7 ++-
+ siw_touch_dbg.h    |   3 +
+ siw_touch_notify.c |  64 +++++++++++-----------
+ siw_touch_sysfs.c  | 195 +++++++++++++++++++++++++++++++++++++++++++++++++++++------------
+ 5 files changed, 408 insertions(+), 318 deletions(-)
+
+commit b28d4150b710ebf4ee5d6382dcc3d8f9e412ca07
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Wed Aug 16 09:40:18 2017 +0900
+
+    input: touchscreen: siw: hal - update tc driving control
+    
+    Move setup position for 'chip->driving_mode'
+    in order to avoid value change when it's not allowed.
+
+ siw_touch_hal.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+commit 4ed2a133cba6ce70f6462457d0bc336aa13483b4
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Wed Aug 16 11:44:44 2017 +0900
+
+    input: touchscreen: siw: core - add build option for dts parsing
+
+ siw_touch_of.c | 17 +++++++++++++++++
+ 1 file changed, 17 insertions(+)
+
+commit 0d3bffa491268b9fb6a208a1d1c31330e566eb58
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Wed Aug 16 11:09:32 2017 +0900
+
+    input: touchscreen: siw: core sysfs - update glove/grab control
+    
+    Bug-fix for return value control
+
+ siw_touch_sysfs.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+commit 051196d023c0ddfead2c640510eaba3978240e99
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Mon Aug 14 09:55:46 2017 +0900
+
+    input: touchscreen: siw: core - update mon thread
+    
+    Improve mutex(ts_thread->lock) control
+    Add debugging sysfs : dbg_mon
+    Add debugging flag for test
+
+ siw_touch.c       | 95 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++---------------------------
+ siw_touch_dbg.h   |  3 +++
+ siw_touch_sysfs.c | 59 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+commit 316321dd2ea9c5546de29c5cf3927056f70dd5fe
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Wed Jul 12 09:22:08 2017 +0900
+
+    input: touchscreen: siw: hal - update clock control
+    
+    Add check condtion to prevent redundant execution
+
+ siw_touch_hal.c | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
+
+commit f8c62f19caebef918bffafc403318cbbcfa659b0
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Thu Jul 6 15:03:48 2017 +0900
+
+    input: touchscreen: siw: hal - bug-fix for missing return value
+    
+    Add ommitted return value control
+
+ siw_touch_hal.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+commit 8c0effc7e7ec3fc0953a5a465faa732446121414
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Mon Aug 7 18:29:16 2017 +0900
+
+    input: touchscreen: siw: __reference: dts: SW4106 bring-up (example)
+
+ .../exynos5422-odroidxu3_siw_touch.dtsi            |  4 +-
+ .../exynos5422-odroidxu3_siw_touch_sw49106.dtsi    | 58 ++++++++++++++++++++++
+ 2 files changed, 60 insertions(+), 2 deletions(-)
+
+commit 99517792633466ac96c67fb15cb41020c021db43
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Mon Aug 7 18:11:48 2017 +0900
+
+    input: touchscreen: siw: prd - SW49106 bring-up
+
+ siw_touch_hal_prd.c | 50 ++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 50 insertions(+)
+
+commit ff8fa8e1e90353b6922e59e2a1e000cb0740668c
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Tue Aug 8 11:09:38 2017 +0900
+
+    input: touchscreen: siw: hal - SW49106 bring-up
+
+ siw_touch_hal.c | 9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+commit 96470d5f2c2de13e92f9328e057aa5fdd57c1441
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Tue Aug 8 13:22:46 2017 +0900
+
+    input: touchscreen: siw: config - SW49106 bring-up
+
+ Kconfig_builtin  |   7 ++
+ Makefile_builtin |   1 +
+ Makefile_module  |  10 +++
+ README.md        |   4 +-
+ siw_touch_cfg.h  |   2 +
+ touch_sw49106.c  | 251 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 6 files changed, 274 insertions(+), 1 deletion(-)
+
+commit 7d6e89c78ce78912c33562654000d93936004810
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Tue Aug 8 09:11:55 2017 +0900
+
+    input: touchscreen: siw: hal - update fw_upgrade control
+    
+    Add new 'chip->fw_abs_path' instead of using 'fw->priv' for kernel compatibility
+
+ siw_touch_hal.c | 13 ++++++++-----
+ siw_touch_hal.h |  1 +
+ 2 files changed, 9 insertions(+), 5 deletions(-)
+
+commit 5b6b3274a793b7577a56601d9dfd13630469aa44
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Tue Aug 8 10:45:51 2017 +0900
+
+    input: touchscreen: siw: bus - remove unused variable
+
+ siw_touch_bus_i2c.c | 4 ++--
+ siw_touch_bus_spi.c | 4 ++--
+ 2 files changed, 4 insertions(+), 4 deletions(-)
+
+commit 0b2df4fadcd65bd925156cabf062d2298a1ea800
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Tue Aug 8 13:20:31 2017 +0900
+
+    input: touchscreen: siw: config - adjust build option for SW42101
+    
+    Disable PRD layer (not supported)
+
+ siw_touch_cfg.h | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+commit 57361dfd11dd693a15315620f59620afe28cf585
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Tue Aug 8 08:54:45 2017 +0900
+
+    input: touchscreen: siw: config - adjust Kconfig
+    
+    With 'and' condition,
+    the whole driver in menunconfig can be disabled unexpectedly
+    when the system supports only one bus type.
+
+ Kconfig_builtin | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+commit bcdb955f348cb0bb7ce45169bd2152e024418acf
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Mon Aug 7 16:01:50 2017 +0900
+
+    input: touchscreen: siw: prd - add exception control
+    
+    Add exception control to disable prd for a specific type
+
+ siw_touch_hal_prd.c | 9 ++++++++-
+ 1 file changed, 8 insertions(+), 1 deletion(-)
+ 
+commit 65e002c43c7b10e4210643e1b02f821fdb043d06
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Sat Jul 29 11:10:00 2017 +0900
+
+    input: touchscreen: siw: core - bug-fix for atomic notifier control
+    
+    Add NULL checking to avoid kernel panic
+
+ siw_touch_notify.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+commit a9e1c3ca700630c653937d5a8531f23bb2355e5a
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Wed Jul 19 12:34:45 2017 +0900
+
+    input: touchscreen: siw: config - adjust build option
+    
+    Fix build option for system dependency
+
+ siw_touch_cfg.h | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+commit 22dfca6b74454034b3ab34c1d3c0cb3986589e80
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Sun Jun 25 08:27:12 2017 +0900
+
+    input: touchscreen: siw: __reference: prd_spec: SW49501 bring-up
+
+ __reference/prd_spec_files/sw49501_test_spec_V0.1.txt | 16 ++++++++++++++++
+ 1 file changed, 16 insertions(+)
+
+commit bfe5f2b0f9798b9fa5c466ea600aa4c025f435d7
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Fri Jul 21 11:00:17 2017 +0900
+
+    input: touchscreen: siw: prd - update parameter table for SW49501
+    
+    Add new variation table for a SW49501 product
+
+ siw_touch_hal_prd.c | 24 ++++++++++++++++++++++++
+ 1 file changed, 24 insertions(+)
+
+commit 473075f5a7c45d5969b2cf662336e9ce249bb408
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Fri Jul 21 10:57:03 2017 +0900
+
+    input: touchscreen: siw: prd - add new flag for short full test
+    
+    Update open/short control to add SHORT_FULL_TEST_FLAG option
+    in order to support full node short test
+
+ siw_touch_hal_prd.c | 296 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------------------------------------------------------
+ 1 file changed, 178 insertions(+), 118 deletions(-)
+
+commit 038c765589043ee92b31f8672d2e5b4173816be7
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Wed Jul 12 09:54:43 2017 +0900
+
+    input: touchscreen: siw: prd - add new flag for open/short test
+    
+    Add new OPEN_SHORT_RESULT_ALWAYS_FLAG option
+    : Always show open/short test data regardless of its result
+
+ siw_touch_hal_prd.c | 9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+commit 71a591863c444f54fb289287ea2a2a9d25769da9
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Wed Jul 12 09:38:19 2017 +0900
+
+    input: touchscreen: siw: prd - adjust buffer size
+    
+    Allocate maximum size to open/short buffer for better flexibility
+
+ siw_touch_hal_prd.c | 14 ++++----------
+ 1 file changed, 4 insertions(+), 10 deletions(-)
+
+commit 9fac758048553fbe562638e3aaef1085b60b40bc
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Fri Jun 23 10:54:17 2017 +0900
+
+    input: touchscreen: siw: __reference: dts: SW49501 bring-up (example)
+
+ __reference/device_tree/odroid-xu4/siw_test_case/exynos5422-odroidxu3_siw_touch.dtsi         |  3 ++-
+ __reference/device_tree/odroid-xu4/siw_test_case/exynos5422-odroidxu3_siw_touch_sw49501.dtsi | 55 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 57 insertions(+), 1 deletion(-)
+
+commit fe942d3d449ca289ec989d56cd4d6983199b0f7a
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Sun Jun 25 21:42:29 2017 +0900
+
+    input: touchscreen: siw: prd - SW49501 bring-up
+
+ siw_touch_hal_prd.c | 30 ++++++++++++++++++++++++++++++
+ 1 file changed, 30 insertions(+)
+
+commit 12777a314ba9f39fc93fc8e02fc53df2f666025e
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Fri Jun 23 10:44:24 2017 +0900
+
+    input: touchscreen: siw: hal - SW49501 bring-up
+    
+    Update boot status check option
+    : Update siw_hal_chk_boot_mode adding new t_boot_mode case
+    
+    Update ic_status check option(t_sts_mask)
+    : Add new flags - chip->status_mask_ic_disp_err
+      Update siw_hal_chk_status_type, siw_hal_check_status_type_x
+    
+    Update fw_upgrade for __SIW_FW_TYPE_1 case
+    : Add adress variables for scalability
+      conf_idx_addr, conf_dn_addr, boot_code_addr
+
+ siw_touch_hal.c | 135 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------------------------------
+ siw_touch_hal.h |   5 +++++
+ 2 files changed, 110 insertions(+), 30 deletions(-)
+
+commit 6cdbf3fabbb8f297b4a2dd434eaee6ba89b50798
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Fri Jun 23 10:37:32 2017 +0900
+
+    input: touchscreen: siw: config - SW49501 bring-up
+
+ Kconfig_builtin  |   7 ++++
+ Makefile_builtin |   1 +
+ Makefile_module  |  10 ++++++
+ README.md        |   3 +-
+ siw_touch_cfg.h  |   8 +++--
+ touch_sw49501.c  | 306 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 6 files changed, 332 insertions(+), 3 deletions(-)
+
+commit f692978b01edd78ac53f32e98210ff07c59f06a0
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Sun Jun 25 21:28:42 2017 +0900
+
+    input: touchscreen: siw: prd - update for chipset variation
+    
+    Add 'prd->open_result_type' for open test result view
+    : type 0 - each bit in a buffer shows its own node result
+      type 1 - data format is same as normal rawdata case
+    
+    Update set_sd control functions for flag variation
+
+ siw_touch_hal_prd.c | 96 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------
+ 1 file changed, 89 insertions(+), 7 deletions(-)
+
+commit b86442fb0db6187a2522b1de7adb23b72882265e
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Thu Jun 22 09:53:04 2017 +0900
+
+    input: touchscreen: siw: config - adjust build option for ABT
+    
+    Add exception case for SW1828 to disable __SIW_SUPPORT_ABT
+
+ siw_touch_cfg.h | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+commit 4714b4464635ce1bf26868328eeb9666106a2f16
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Fri Jun 9 13:07:39 2017 +0900
+
+    input: touchscreen: siw: config - update for pm management
+    
+    Rearrangement for new build option : __SIW_CONFIG_SYSTEM_PM
+
+ siw_touch_cfg.h | 12 +++++++++++-
+ 1 file changed, 11 insertions(+), 1 deletion(-)
+
+commit dbd05d7df3266ea146ee3cc7dbc69781d88f5c47
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Fri Jun 9 12:59:01 2017 +0900
+
+    input: touchscreen: siw: bus - update for pm management
+    
+    Block notify sending to remove control duplication (__SIW_CONFIG_SYSTEM_PM)
+
+ siw_touch_bus.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+commit 9c1ed713ec86b11329cb54ed6981cdc6dbfa28e8
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Fri Jun 9 12:53:13 2017 +0900
+
+    input: touchscreen: siw: core & hal - update for pm management
+    
+    Add __SIW_CONFIG_SYSTEM_PM flag for using system pm
+    : Touch suspend  -> Panel power off
+      Panel power on -> Touch resume
+      (1) The non-mobile chipset doesn't support Ux mode change and
+          need to support the system pm control flow.
+      (2) In mobile chipset, it's selectable for a system which doens't use Ux mode change.
+      With __SIW_CONFIG_FB, the FB notifier will control suspend & resume.
+      Otherwise, the bus PM will do them.
+
+ siw_touch.c     | 36 ++++++++++++++++++++++++++++++++----
+ siw_touch_hal.c | 97 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----------
+ 2 files changed, 118 insertions(+), 15 deletions(-)
+
+commit a7cc59f8fdbd72120c0cd464185561c627b63715
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Wed Jun 7 11:54:21 2017 +0900
+
+    input: touchscreen: siw: hal - update mon handler for pm state
+    
+    Add check condition to skip suspend state
+
+ siw_touch_hal.c | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+commit d86069a2536de1ea6fead775b0cf4f7583700a3d
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Wed Jun 7 11:43:59 2017 +0900
+
+    input: touchscreen: siw: core - adjust pm state management
+    
+    Remove DEV_PM_AWAKE, which is no matter without it.
+
+ siw_touch.c | 1 -
+ siw_touch.h | 3 +--
+ 2 files changed, 1 insertion(+), 3 deletions(-)
+
+commit 11b69531734e26fef805d6704d00aa1f626e0bb5
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Mon Jun 5 12:24:39 2017 +0900
+
+    input: touchscreen: siw: siwmon - adjust Kconfig & Makefile
+    
+    Update for tristate option to support moudle build
+
+ mon/Kconfig_builtin | 2 +-
+ mon/Makefile_module | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+commit a14fbe349b845cde93984d1d53c4334f18e88c70
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Mon Jun 5 12:22:09 2017 +0900
+
+    input: touchscreen: siw: config - adjust Kconfig & Makefile
+    
+    Update for tristate option to support moudle build
+
+ Kconfig_builtin  |  2 +-
+ Makefile_builtin | 42 ++++++++++++++++++++++--------------------
+ 2 files changed, 23 insertions(+), 21 deletions(-)
+
+commit 1ddaf9e94254611d5429544d41b70a6d0ccd4406
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Mon Jun 5 12:55:22 2017 +0900
+
+    input: touchscreen: siw: bus - fix build option for module
+    
+    Add option for module build
+    : CONFIG_TOUCHSCREEN_SIWMON_MODULE
+
+ siw_touch_bus_spi.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+commit af22d9c7fd4f25329a287f20c9e4883866203d84
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Mon Jun 5 12:53:29 2017 +0900
+
+    input: touchscreen: siw: core - fix build option for module
+    
+    Add option for module build
+    : CONFIG_TOUCHSCREEN_SIWMON_MODULE
+
+ siw_touch.c | 2 +-
+ siw_touch.h | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+commit 9de795c32fc619d4e46756ec077965595c070f24
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Fri Jun 2 11:45:07 2017 +0900
+
+    input: touchscreen: siw: config - adjust build options
+    
+    Deactivate __SIW_CONFIG_EARLYSUSPEND
+    
+    Rearrangement for readability
+    : Adjust options for SW1828, SW42101
+    
+    Remove unused options
+    : __SIW_CONFIG_SHOW_TCI_INIT_VAL
+      __SIW_CONFIG_SHOW_SWIPE_INIT_VAL
+
+ siw_touch_cfg.h | 33 ++++++++++-----------------------
+ 1 file changed, 10 insertions(+), 23 deletions(-)
+
+commit 31615ac9e89dd3f1812d884f3c2ea6537c38ad3d
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Wed May 31 19:34:32 2017 +0900
+
+    input: touchscreen: siw: __reference: dts: add new example file for LG4951(I2C)
+
+ __reference/device_tree/odroid-xu4/siw_test_case/exynos5422-odroidxu3_siw_touch.dtsi            |  1 +
+ __reference/device_tree/odroid-xu4/siw_test_case/exynos5422-odroidxu3_siw_touch_lg4951_i2c.dtsi | 55 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 56 insertions(+)
+
+commit 02220a8c737b5487964212f406ef7a40cb6420a7
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Fri May 19 10:01:59 2017 +0900
+
+    input: touchscreen: siw: __reference: dts: update example file for LG4951
+    
+    Chip flag - TOUCH_USE_VBLANK
+
+ __reference/device_tree/odroid-xu4/siw_test_case/exynos5422-odroidxu3_siw_touch_lg4951.dtsi | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+commit d0ad1cf9ba211361f9cd4cce0156a66c99f7561d
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Wed May 31 19:27:18 2017 +0900
+
+    input: touchscreen: siw: LG4951 entry - update configuration
+    
+    Change bus interface to I2C
+    Add CHIP_QUIRK_NOT_SUPPORT_WATCH
+    Set TOUCH_SKIP_ESD_EVENT as default
+
+ touch_lg4951.c | 22 ++++++++++++++--------
+ 1 file changed, 14 insertions(+), 8 deletions(-)
+
+commit 1ebf2ba1281bc29cadb2a1dfccca31cf27d72f93
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Thu Jun 1 09:03:44 2017 +0900
+
+    input: touchscreen: siw: SW49408 entry - adjust chip flag
+
+    
+    Set TOUCH_SKIP_ESD_EVENT as default
+    : When ESD or boot error detected, it triggers touch reset only.
+    : (Selection is valid only for mobile chipset)
+      Without this flag, it triggers ESD notifier event for display driver to perform global reset.
+      So, display side should have a suitable notifier callback to complete this function
+      because the touch driver has no authority for global reset control.
+    
+    * Ref. documents
+      __reference/SiW.Touch.Driver_ESD&Boot.Fail.Recovery_v1.0.pdf
+      __reference/SiW.Touch.Driver_readme_ESD_notifier_control.txt
+
+ touch_sw49408.c | 8 +-------
+ 1 file changed, 1 insertion(+), 7 deletions(-)
+
+commit d469f2cfd4d5d0349272fdab99b23d31f4d153f5
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Thu Jun 1 09:02:40 2017 +0900
+
+    input: touchscreen: siw: SW49407 entry - adjust chip flag
+    
+    Set TOUCH_SKIP_ESD_EVENT as default
+    : When ESD or boot error detected, it triggers touch reset only.
+    : (Selection is valid only for mobile chipset)
+      Without this flag, it triggers ESD notifier event for display driver to perform global reset.
+      So, display side should have a suitable notifier callback to complete this function
+      because the touch driver has no authority for global reset control.
+    
+    * Ref. documents
+      __reference/SiW.Touch.Driver_ESD&Boot.Fail.Recovery_v1.0.pdf
+      __reference/SiW.Touch.Driver_readme_ESD_notifier_control.txt
+
+ touch_sw49407.c | 8 +-------
+ 1 file changed, 1 insertion(+), 7 deletions(-)
+
+commit 9dea511ce0b5ce487a2f2946c5449177960c9ffd
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Thu Jun 1 09:00:51 2017 +0900
+
+    input: touchscreen: siw: LG4946 entry - adjust chip flag
+    
+    Set TOUCH_SKIP_ESD_EVENT as default
+    : When ESD or boot error detected, it triggers touch reset only.
+    : (Selection is valid only for mobile chipset)
+      Without this flag, it triggers ESD notifier event for display driver to perform global reset.
+      So, display side should have a suitable notifier callback to complete this function
+      because the touch driver has no authority for global reset control.
+    
+    * Ref. documents
+      __reference/SiW.Touch.Driver_ESD&Boot.Fail.Recovery_v1.0.pdf
+      __reference/SiW.Touch.Driver_readme_ESD_notifier_control.txt
+
+ touch_lg4946.c | 8 +-------
+ 1 file changed, 1 insertion(+), 7 deletions(-)
+
+commit 38f2a5ef5ec0397175ba23c2cf1656f566152191
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Thu Jun 1 08:59:39 2017 +0900
+
+    input: touchscreen: siw: LG4895 entry - adjust chip flag
+    
+    Set TOUCH_SKIP_ESD_EVENT as default
+    : When ESD or boot error detected, it triggers touch reset only.
+    : (Selection is valid only for mobile chipset)
+      Without this flag, it triggers ESD notifier event for display driver to perform global reset.
+      So, display side should have a suitable notifier callback to complete this function
+      because the touch driver has no authority for global reset control.
+    
+    * Ref. documents
+      __reference/SiW.Touch.Driver_ESD&Boot.Fail.Recovery_v1.0.pdf
+      __reference/SiW.Touch.Driver_readme_ESD_notifier_control.txt
+
+ touch_lg4895.c | 8 +-------
+ 1 file changed, 1 insertion(+), 7 deletions(-)
+
+commit 0a0c6e4e4916d88466681ae199e1297164fce7d7
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Thu Jun 1 08:52:00 2017 +0900
+
+    input: touchscreen: siw: LG4894 entry - adjust chip flag
+    
+    Set TOUCH_SKIP_ESD_EVENT as default
+    : When ESD or boot error detected, it triggers touch reset only.
+    : (Selection is valid only for mobile chipset)
+      Without this flag, it triggers ESD notifier event for display driver to perform global reset.
+      So, display side should have a suitable notifier callback to complete this function
+      because the touch driver has no authority for global reset control.
+    
+    * Ref. documents
+      __reference/SiW.Touch.Driver_ESD&Boot.Fail.Recovery_v1.0.pdf
+      __reference/SiW.Touch.Driver_readme_ESD_notifier_control.txt
+
+ touch_lg4894.c | 8 +-------
+ 1 file changed, 1 insertion(+), 7 deletions(-)
+
+commit 34453c21ec524b4d2a116778911fb617219db2b3
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Tue May 30 14:52:16 2017 +0900
+
+    input: touchscreen: siw: SW49408 entry - add quirk flag
+    
+    Add CHIP_QUIRK_NOT_SUPPORT_WATCH
+
+ touch_sw49408.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+commit cf10ecb423c210081294a7450bd075cb54912a24
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Wed May 24 10:00:30 2017 +0900
+
+    input: touchscreen: siw: SW1828 entry - adjust configuration for mode control
+    
+    Remove unsupported bit flags : LCD_MODE_BIT_U0, LCD_MODE_BIT_STOP
+
+ touch_sw1828.c | 2 --
+ 1 file changed, 2 deletions(-)
+
+commit f492e5c6f61459199afcd4d1813797faa3612f37
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Wed May 31 18:47:29 2017 +0900
+
+    input: touchscreen: siw: core - remove pragma message
+    
+    Remove warning pragama
+    : #pragma message("[SiW - Warning] No COFIG_OF")
+      #pragma message("[SiW - Warning] No core pm operation")
+
+ siw_touch.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+commit ccc33a42e0374934ceff58464987b13362f268f2
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Wed May 31 18:46:48 2017 +0900
+
+    input: touchscreen: siw: core - add log for non-dts case
+    
+    Add simple log to indicate non-dts operation
+
+ siw_touch_of.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+commit ba92b81b7e34ad3ff5ca194e349691047b388ebd
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Wed May 31 08:46:20 2017 +0900
+
+    input: touchscreen: siw: hal - update reset-gpio control
+    
+    Update siw_hal_trigger_gpio_reset
+    : Remove skip condition because it's checked in subfunction(siw_hal_set_gpio_reset)
+
+ siw_touch_hal.c | 6 +-----
+ 1 file changed, 1 insertion(+), 5 deletions(-)
+
+commit 10f8400545c580e7339dc3e44434908611284772
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Wed May 17 12:24:09 2017 +0900
+
+    input: touchscreen: siw: watch - adjust workquene delay for font download
+    
+    Add 20 msec delay to start workqueue
+    : ext_watch_chk_font_status is called during init process(siw_hal_init)
+      and the workquene begins after this init done by 'ts->lock' mutex.
+      But, this mutex is also used in irq thread
+      and the irq for 'tc driving completion' can be postponed unexpectedly.
+      This flow(init -> font download -> irq) can result in the warning log of 'irq pin invalid'
+      (But, it's not a critical bug because it shows this log only and there is no more operation)
+
+ siw_touch_hal_watch.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+commit a41292375ce42faf36dceedb949d479d05ab949d
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Tue May 16 08:57:11 2017 +0900
+
+    input: touchscreen: siw: core - add exception condition for notify control
+    
+    Skip operation when the chip data(ts->dev_data) is null
+
+ siw_touch_notify.c | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+commit db72f10206fe412086660d2c8d3a4b6cf86803f0
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Mon May 15 21:11:27 2017 +0900
+
+    input: touchscreen: siw: hal - update check status for ESD log
+    
+    Adjust log control in order to show ESD log more precisely
+
+ siw_touch_hal.c | 17 ++++++++++++++++-
+ 1 file changed, 16 insertions(+), 1 deletion(-)
+
+commit bae27c5480a3d6f3437e749c77428aa10f19eda9
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Mon May 15 15:47:19 2017 +0900
+
+    input: touchscreen: siw: hal - update re-init control for tc driving error
+    
+    Improve the return control of siw_hal_reinit
+    to enhance the result transfer
+
+ siw_touch_hal.c | 13 +++++++++----
+ 1 file changed, 9 insertions(+), 4 deletions(-)
+
+commit 9f62952a5163e57bda515a7405e6e9ea0671dc0e
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Thu May 11 08:35:36 2017 +0900
+
+    input: touchscreen: siw: core - fix device tree parsing for irq flag
+    
+    The bit range of 'ts->irqflags' is bigger than 16-bit
+    and can't be limited to a certain extent.
+
+ siw_touch_of.c | 5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)
+
+commit 4e27cb441884d66636ffee1cc030ff55154ae363
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Fri Apr 28 08:47:38 2017 +0900
+
+    input: touchscreen: siw: core & hal - add TCI debugging interface
+    
+    Add run-time debugging interface for TCI control
+
+ siw_touch.h       |  11 +++++++
+ siw_touch_hal.c   | 254 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ siw_touch_sysfs.c |  10 +++++++
+ 3 files changed, 275 insertions(+)
+
+commit 3c9196891209f3ec5eeb973527d30eedfc7dc272
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Fri Apr 28 08:30:03 2017 +0900
+
+    input: touchscreen: siw: hal - adjust qcover control
+    
+    Change deactivation value to 0, more simple than '~0'
+    Remove build options
+    : __SIW_CONFIG_SHOW_TCI_INIT_VAL
+      __SIW_CONFIG_SHOW_SWIPE_INIT_VAL
+
+ siw_touch_hal.c | 68 +++++++++++++++++++++++++++++---------------------------------------
+ 1 file changed, 29 insertions(+), 39 deletions(-)
+
+commit 30898bfe6d1520144c5d8a2b7b01202411e9f34a
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Wed Apr 19 18:03:42 2017 +0900
+
+    input: touchscreen: siw: hal - add new scheme for report type scalability
+    
+    Add scalable report type control for future extension
+    : 'struct siw_hal_touch_data_type_1', 'chip->report_type
+      siw_hal_chk_report_type
+      siw_hal_irq_abs_data_type_1, siw_hal_irq_abs_data_type_0
+
+ siw_touch_hal.c | 132 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-----
+ siw_touch_hal.h |  24 ++++++++++++++++++++++++
+ 2 files changed, 151 insertions(+), 5 deletions(-)
+
+commit bb4e0f4da9a80a119adc5d2c01487449c6923226
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Wed Apr 19 16:26:16 2017 +0900
+
+    input: touchscreen: siw: hal - bug-fix for status type check of LG4894
+    
+    Add omitted 'break' syntax for case termination
+
+ siw_touch_hal.c | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+commit ac52b7699ff429fe9a70302a2eceac90cf9ac59d
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Wed Apr 19 13:42:55 2017 +0900
+
+    input: touchscreen: siw: abt - update for socket control
+    
+    Bug-fix for socket re-connection after disconnection
+    Add some flag setup for better accuracy
+
+ siw_touch_hal_abt.c | 60 +++++++++++++++++++++++++++++++++++++++++-------------------
+ 1 file changed, 41 insertions(+), 19 deletions(-)
+
+commit 94dda1c186643c723be8bc460a4fd824b9ad2837
+Author: Harrison Kim <kimhh@siliconworks.co.kr>
+Date:   Wed Apr 19 10:23:11 2017 +0900
+
+    input: touchscreen: siw: version 2.19b begins
+
+ siw_touch.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+---------------------------------------------------------------------------------------------------
+
+---------------------------------------------------------------------------------------------------
+
