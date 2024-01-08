@@ -31,6 +31,7 @@
 #include <linux/of_gpio.h>
 #include <linux/of_device.h>
 #include <linux/of_platform.h>
+#include <linux/maple_tree.h>
 #include <asm/page.h>
 #include <asm/uaccess.h>
 #include <asm/irq.h>
@@ -43,6 +44,17 @@
 #if defined(__SIW_PANEL_CLASS_MOBILE)
 #define __SIW_SUPPORT_IRQ_RESUME
 #endif
+
+static struct maple_tree sparse_irqs = MTREE_INIT_EXT(sparse_irqs,
+					MT_FLAGS_ALLOC_RANGE |
+					MT_FLAGS_LOCK_EXTERN |
+					MT_FLAGS_USE_RCU,
+					sparse_irq_lock);
+
+struct irq_desc *irq_to_desc(unsigned int irq)
+{
+	return mtree_load(&sparse_irqs, irq);
+}
 
 #if defined(__SIW_SUPPORT_IRQ_RESUME)
 static void siw_touch_irq_pending_onoff(struct device *dev,

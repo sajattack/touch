@@ -1500,14 +1500,14 @@ static ssize_t prd_kernel_write(struct file *file,
 				const char *buf, size_t count,
 			    loff_t *pos)
 {
-	mm_segment_t old_fs;
+	/*mm_segment_t old_fs;*/
 	ssize_t res;
 
-	old_fs = get_fs();
-	set_fs(get_ds());
+	/*old_fs = get_fs();*/
+	/*set_fs(get_ds());*/
 	/* The cast to a user pointer is valid due to the set_fs() */
-	res = vfs_write(file, (__force const char __user *)buf, count, pos);
-	set_fs(old_fs);
+	res = kernel_write(file, (__force const char __user *)buf, count, pos);
+	//set_fs(old_fs);
 
 	return res;
 }
@@ -2116,30 +2116,6 @@ static int prd_do_write_file(struct siw_hal_prd_data *prd,
 		goto out_close;
 	}
 
-	if (write_time == TIME_INFO_WRITE) {
-		struct timespec my_time;
-		struct tm my_date;
-
-		my_time = current_kernel_time();
-		time_to_tm(my_time.tv_sec,
-				sys_tz.tz_minuteswest * 60 * (-1),
-				&my_date);
-		snprintf(time_string, 64,
-			"\n[%02d-%02d %02d:%02d:%02d.%03lu]\n",
-			my_date.tm_mon + 1,
-			my_date.tm_mday, my_date.tm_hour,
-			my_date.tm_min, my_date.tm_sec,
-			(unsigned long) my_time.tv_nsec / 1000000);
-		ret = prd_kernel_write(filp, (const char *)time_string,
-					strlen(time_string), &offset);
-		if (ret < 0) {
-			t_prd_err(prd, "failed to write file : %s(%d), %d \n",
-					fname, (int)offset, ret);
-			goto out_close;
-		}
-		twlen += strlen(time_string);
-		nwlen += ret;
-	}
 	ret = prd_kernel_write(filp, (const char *)data,
 				strlen(data), &offset);
 	if (ret < 0) {

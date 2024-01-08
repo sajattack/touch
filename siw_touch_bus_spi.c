@@ -169,7 +169,6 @@ static int siw_touch_spi_do_read(struct spi_device *spi,
 	struct spi_transfer x = {
 		.cs_change = 0,
 		.bits_per_word = spi->bits_per_word,
-		.delay_usecs = 0,
 		.speed_hz = spi->max_speed_hz,
 	};
 	struct spi_message m;
@@ -214,7 +213,6 @@ int siw_touch_spi_do_write(struct spi_device *spi,
 	struct spi_transfer x = {
 		.cs_change = 0,
 		.bits_per_word = spi->bits_per_word,
-		.delay_usecs = 0,
 		.speed_hz = spi->max_speed_hz,
 	};
 	struct spi_message m;
@@ -389,7 +387,7 @@ static const struct dev_pm_ops siw_touch_spi_pm_ops = {
 static struct spi_device_id siw_touch_spi_id[] = {
 	{ "siw,reserved", 0 },
 	{ SIW_TOUCH_NAME, 0 },
-	{ }
+	NULL,
 };
 MODULE_DEVICE_TABLE(spi, siw_touch_spi_id);
 
@@ -438,7 +436,7 @@ int siw_touch_spi_add_driver(void *data)
 	spi_drv->driver.pm = DEV_PM_OPS;
 
 	spi_drv->probe = siw_touch_spi_probe;
-	spi_drv->remove = siw_touch_spi_remove;
+	spi_drv->remove = (void*)siw_touch_spi_remove;
 	spi_drv->shutdown = siw_touch_spi_shutdown;
 	spi_drv->id_table = siw_touch_spi_id;
 

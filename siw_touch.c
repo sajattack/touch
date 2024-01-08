@@ -752,21 +752,21 @@ static int siw_touch_fb_notifier_work(
 	 * See fb_blank (fbmem.c)
 	 * revert effects of the ealry blank effect
 	 */
-	if (event == FB_R_EARLY_EVENT_BLANK) {
-		switch (blank) {
-		case FB_BLANK_UNBLANK:
-			t_dev_info(dev, "%s(r_early)\n", fb_msg_unblank);
-			ret = ts->fb_ret_revert_suspend;
-			break;
-		case FB_BLANK_POWERDOWN:
-			t_dev_info(dev, "%s(r_early)\n", fb_msg_blank);
-			ret = ts->fb_ret_revert_resume;
-			break;
-		}
-		goto out;
-	}
+	/*if (event == FB_R_EARLY_EVENT_BLANK) {*/
+		/*switch (blank) {*/
+		/*case FB_BLANK_UNBLANK:*/
+			/*t_dev_info(dev, "%s(r_early)\n", fb_msg_unblank);*/
+			/*ret = ts->fb_ret_revert_suspend;*/
+			/*break;*/
+		/*case FB_BLANK_POWERDOWN:*/
+			/*t_dev_info(dev, "%s(r_early)\n", fb_msg_blank);*/
+			/*ret = ts->fb_ret_revert_resume;*/
+			/*break;*/
+		/*}*/
+		/*goto out;*/
+	/*}*/
 
-	if (event == FB_EARLY_EVENT_BLANK) {
+	if (event == FB_EVENT_BLANK) {
 		switch (blank) {
 		case FB_BLANK_UNBLANK:
 			t_dev_info(dev, "%s(early)\n", fb_msg_unblank);

@@ -39,11 +39,11 @@
 
 #if defined(__SIW_CONFIG_OF)	//See siw_touch_cfg.h
 static int siw_touch_of_gpio(struct device *dev, void *np,
-					void *string, enum of_gpio_flags *flags)
+					void *string, int *flags)
 {
 	int gpio = 0;
 
-	gpio = of_get_named_gpio_flags(np, string, 0, flags);
+	gpio = of_get_named_gpio(np, string, 0);
 	if (gpio_is_valid(gpio)) {
 		if (flags)
 			t_dev_info(dev, "of gpio  : %s(0x%X), %d\n",
@@ -225,7 +225,7 @@ static int siw_touch_do_parse_dts(struct siw_ts *ts)
 	u32 p_flags = 0;
 	int chip_flags = 0;
 	int irq_flags = 0;
-	enum of_gpio_flags pin_flags = 0;
+	int pin_flags = 0;
 	int pin_val = -1;
 
 	if (!ts->dev->of_node) {
@@ -266,7 +266,7 @@ static int siw_touch_do_parse_dts(struct siw_ts *ts)
 			return -EINVAL;
 		}
 		pins->reset_pin = pin_val;
-		pins->reset_pin_pol = !!(pin_flags & OF_GPIO_ACTIVE_LOW);
+		pins->reset_pin_pol = !!(pin_flags & GPIOF_ACTIVE_LOW);
 	}
 
 	pin_val = siw_touch_of_gpio(dev, np, "irq-gpio", NULL);

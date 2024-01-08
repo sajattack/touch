@@ -1376,7 +1376,6 @@ static const struct sysfs_ops siw_touch_sysfs_ops = {
 
 static struct kobj_type siw_touch_kobj_type = {
 	.sysfs_ops		= &siw_touch_sysfs_ops,
-	.default_attrs	= siw_touch_attr_default,
 };
 
 

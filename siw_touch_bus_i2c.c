@@ -323,8 +323,8 @@ int siw_touch_i2c_add_driver(void *data)
 #endif
 	i2c_drv->driver.pm = DEV_PM_OPS;
 
-	i2c_drv->probe = siw_touch_i2c_probe;
-	i2c_drv->remove = siw_touch_i2c_remove;
+	i2c_drv->probe = (void*)siw_touch_i2c_probe;
+	i2c_drv->remove = (void*)siw_touch_i2c_remove;
 	i2c_drv->shutdown = siw_touch_i2c_shutdown;
 	i2c_drv->id_table = siw_touch_i2c_id;
 
