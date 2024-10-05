@@ -137,7 +137,7 @@ static int siw_touch_spi_init(struct device *dev)
 			spi->mode,
 			spi->bits_per_word,
 			spi->chip_select,
-			dev_name(&spi->master->dev));
+			dev_name(&spi->dev));
 
 	return 0;
 }
@@ -387,7 +387,7 @@ static const struct dev_pm_ops siw_touch_spi_pm_ops = {
 static struct spi_device_id siw_touch_spi_id[] = {
 	{ "siw,reserved", 0 },
 	{ SIW_TOUCH_NAME, 0 },
-	NULL,
+	0,
 };
 MODULE_DEVICE_TABLE(spi, siw_touch_spi_id);
 

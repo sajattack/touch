@@ -31,3 +31,10 @@ proguard/
 # Android Studio captures folder
 captures/
 *.mod
+
+*.mod.c
+*.o
+*.ko
+*.cmd
+modules.order
+Module.symvers

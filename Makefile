@@ -7,7 +7,7 @@ BASE_DIR = $(shell pwd)
 
 INSTALL_DIR = ./mod
 
-CC=aarch64-linux-musl-gcc
+CC=aarch64-linux-gnu-gcc
 #CC=arm-linux-gnueabihf-gcc
 
 ccflags-y += -D__KERNEL__ -DLINUX
@@ -21,7 +21,8 @@ ccflags-y += -D__KERNEL__ -DLINUX
 #ENTRY_NAME = sw49106
 #ENTRY_NAME = sw49107
 #ENTRY_NAME = sw49407
-ENTRY_NAME = sw49408
+#ENTRY_NAME = sw49408
+ENTRY_NAME = sw49410
 #ENTRY_NAME = sw49501
 #ENTRY_NAME = sw42000a
 #ENTRY_NAME = sw82905
@@ -61,7 +62,7 @@ $(MODULE_NAME)-objs += siw_touch_misc.o
 $(MODULE_NAME)-objs += touch_$(ENTRY_NAME).o
 
 module:
-	$(MAKE) -C $(KERNEL_DIR) M=$(BASE_DIR) modules ARCH=arm64 CROSS_COMPILE=aarch64-linux-musl-
+	$(MAKE) -C $(KERNEL_DIR) M=$(BASE_DIR) modules ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu-
 
 clean:
 	rm -rf .tmp_versions

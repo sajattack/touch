@@ -701,6 +701,11 @@ enum {
 	SD_FLAG_SW49408			= __SD_FLAG_SW49XXX,
 	LPWG_SD_FLAG_SW49408	= __LPWG_SD_FLAG_SW49XXX | U0_JITTER_TEST_FLAG,
 
+    SD_FLAG_SW49410			= __SD_FLAG_SW49XXX,
+	LPWG_SD_FLAG_SW49410	= __LPWG_SD_FLAG_SW49XXX | U0_JITTER_TEST_FLAG,
+
+
+
 	SD_FLAG_SW49501			= __SD_FLAG_SW49XXX,
 };
 
@@ -1081,6 +1086,29 @@ static const struct siw_hal_prd_param prd_params[] = {
 		.sd_test_flag = SD_FLAG_SW49408,
 		.lpwg_sd_test_flag = LPWG_SD_FLAG_SW49408,
 	},
+
+    /*
+    * SW49410 group (Not fixed)
+	 */
+	{	.chip_type = CHIP_SW49410,
+		.name = NULL,	//NULL meas 'Last & Default'
+		.cmd_type = PRD_CMD_TYPE_1,
+		.addr = {
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_RAW, 0xB85),
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_BASELINE_EVEN, 0xCA5),
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_DELTA, 0xDC5),
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_LABEL, 0xF19),
+			PRD_OFFSET_QUIRK_SET(IMG_OFFSET_IDX_DEBUG, 0xB0F),
+			0,
+		},
+		__PRD_PARAM_DIMENSION(30, 18, 0, 32, PRD_M1_COL_SIZE, 1, 1),
+		__PRD_2ND_SCR(0, 0),
+		.sysfs_off_flag = 0,
+		.sd_test_flag = SD_FLAG_SW49410,
+		.lpwg_sd_test_flag = LPWG_SD_FLAG_SW49410,
+	},
+
+
 	/*
 	 * SW49501 group
 	 */
@@ -2343,7 +2371,9 @@ static int prd_spec_file_read_ext(struct siw_hal_prd_data *prd)
 		goto out;
 	}
 
-	kernel_read(filp, offset, (char *)prd->line, sizeof(prd->line));
+	loff_t linesize = sizeof(prd->line);
+
+	kernel_read(filp, &offset, *prd->line, &linesize);
 
 	prd_vfs_file_close(filp, NULL);
 
@@ -2394,7 +2424,7 @@ static int prd_spec_file_read(struct siw_hal_prd_data *prd)
 		goto out;
 	}
 
-	strlcpy(prd->line, fwlimit->data, sizeof(prd->line));
+	strncpy(prd->line, fwlimit->data, sizeof(prd->line));
 
 out:
 	if (fwlimit)

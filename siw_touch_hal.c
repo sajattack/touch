@@ -2528,6 +2528,7 @@ static int siw_hal_chk_boot(struct device *dev)
 #if defined(CONFIG_TOUCHSCREEN_SIW_SW49106) ||	\
 	defined(CONFIG_TOUCHSCREEN_SIW_SW49408) ||	\
 	defined(CONFIG_TOUCHSCREEN_SIW_SW49409) ||	\
+	defined(CONFIG_TOUCHSCREEN_SIW_SW49410) ||	\
 	defined(CONFIG_TOUCHSCREEN_SIW_SW49501)
 #define __SIW_SUPPORT_STATUS_ERROR_DISP
 #endif
@@ -2873,6 +2874,7 @@ static const struct siw_ic_info_chip_proto siw_ic_info_chip_protos[] = {
 	{ CHIP_SW49406, 7, 4 },
 	{ CHIP_SW49407, 9, 4 },
 	{ CHIP_SW49408, 9, 4 },
+	{ CHIP_SW49410, 16, 4 },
 	{ CHIP_SW49501, 14, 4 },
 	{ CHIP_SW42000, 10, 4 },
 	{ CHIP_SW42000A, 10, 4 },
@@ -6498,8 +6500,8 @@ static int siw_hal_fw_do_get_fw_abs(const struct firmware **fw_p,
 	}
 
 	rd_size = kernel_read(filp, 0,
-				(char *)buf,
-				(unsigned long)size);
+				*buf,
+				&size);
 	if (rd_size != (int)size) {
 		t_dev_err(dev, "can't read[%d], %d\n",
 			(int)size, (int)rd_size);
@@ -9916,6 +9918,17 @@ static void siw_hal_chipset_option(struct siw_touch_chip *chip)
 		opt->t_sw_rst = 2;
 		opt->t_clock = 2;
 		opt->t_chk_sys_error = 3;
+		opt->t_chk_sys_fault = 1;
+		opt->t_i2c_opt = 1;
+		opt->t_spi_opt = 1;
+		break;
+
+	case CHIP_SW49410:
+		opt->f_attn_opt = 1;
+		opt->t_chk_mode = 1;
+		opt->t_sw_rst = 2;
+		opt->t_clock = 2;
+		opt->t_chk_sys_error = 2;
 		opt->t_chk_sys_fault = 1;
 		opt->t_i2c_opt = 1;
 		opt->t_spi_opt = 1;
