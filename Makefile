@@ -2,13 +2,15 @@
 # Makefile for SiW touch test driver
 #
 
-KERNEL_DIR = /tmp/linux-sdm845-build
+KERNEL_DIR = /mnt/linux
 BASE_DIR = $(shell pwd)
 
-INSTALL_DIR = ./mod
 
-CC=aarch64-linux-gnu-gcc
-#CC=arm-linux-gnueabihf-gcc
+INSTALL_DIR = ./mod
+ARCH=arm64
+
+CC=aarch64-alpine-linux-musl-gcc
+LD=aarch64-alpine-linux-musl-ld
 
 ccflags-y += -D__KERNEL__ -DLINUX
 
@@ -62,7 +64,7 @@ $(MODULE_NAME)-objs += siw_touch_misc.o
 $(MODULE_NAME)-objs += touch_$(ENTRY_NAME).o
 
 module:
-	$(MAKE) -C $(KERNEL_DIR) M=$(BASE_DIR) modules ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu-
+	$(MAKE) -C $(KERNEL_DIR) CC=$(CC) LD=$(LD) M=$(BASE_DIR) O=$(KERNEL_DIR)/.output ARCH=arm64 modules 
 
 clean:
 	rm -rf .tmp_versions

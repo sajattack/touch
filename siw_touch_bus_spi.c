@@ -385,7 +385,7 @@ static const struct dev_pm_ops siw_touch_spi_pm_ops = {
 #endif	/* CONFIG_PM_SLEEP */
 
 static struct spi_device_id siw_touch_spi_id[] = {
-	{ "siw,reserved", 0 },
+	{ "qcom,geni-spi", 0 },
 	{ SIW_TOUCH_NAME, 0 },
 	0,
 };
