@@ -184,7 +184,7 @@ static int siw_touch_spi_do_read(struct spi_device *spi,
 
 	siw_touch_spi_message_init(spi, &m);
 
-	m.is_dma_mapped = __is_dma_mapped(spi, msg);
+	//m.is_dma_mapped = __is_dma_mapped(spi, msg);
 
 	x.tx_buf = msg->tx_buf;
 	x.rx_buf = msg->rx_buf;
@@ -227,7 +227,7 @@ int siw_touch_spi_do_write(struct spi_device *spi,
 
 	siw_touch_spi_message_init(spi, &m);
 
-	m.is_dma_mapped = __is_dma_mapped(spi, msg);
+	//m.is_dma_mapped = __is_dma_mapped(spi, msg);
 
 	x.tx_buf = msg->tx_buf;
 	x.rx_buf = msg->rx_buf;
@@ -385,9 +385,9 @@ static const struct dev_pm_ops siw_touch_spi_pm_ops = {
 #endif	/* CONFIG_PM_SLEEP */
 
 static struct spi_device_id siw_touch_spi_id[] = {
-	{ "qcom,geni-spi", 0 },
-	{ SIW_TOUCH_NAME, 0 },
-	0,
+	{ "siw", 0 },
+	{ "sw49410", 0 },
+    {},
 };
 MODULE_DEVICE_TABLE(spi, siw_touch_spi_id);
 

@@ -10066,7 +10066,7 @@ static void siw_hal_show_chipset_option(struct siw_touch_chip *chip)
 	t_dev_info(dev, "[opt summary]\n");
 	while (options->fmt != NULL) {
 		if (options->value != options->chk)
-			t_dev_info(dev, options->fmt, options->value);
+			//t_dev_info(dev, options->fmt, options->value);
 
 		options++;
 	}
