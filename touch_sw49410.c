@@ -41,6 +41,8 @@
 #include "siw_touch_hal.h"
 #include "siw_touch_bus.h"
 
+#define DEBUG
+
 #define CHIP_ID						"49410"
 #define CHIP_DEVICE_NAME			"SW49410"
 #define CHIP_COMPATIBLE_NAME		"siw,sw49410"
@@ -236,7 +238,7 @@ enum CHIP_CAPABILITY {
 	CHIP_MAX_X			= 1440,	
 	CHIP_MAX_Y			= 3120,
 	CHIP_MAX_PRESSURE	= 255,
-	CHIP_MAX_WIDTH		= 15,
+	CHIP_MAX_WIDTH		= 1440,
 	CHIP_MAX_ORI		= 90,
 	CHIP_MAX_ID			= 10,
 	/* */
@@ -244,14 +246,14 @@ enum CHIP_CAPABILITY {
 	CHIP_SW_RST_DELAY	= 10,
 };
 
-#define CHIP_PIN_RESET			0
-#define CHIP_PIN_IRQ			0
+#define CHIP_PIN_RESET			32
+#define CHIP_PIN_IRQ			31
 #define CHIP_PIN_MAKER			-1
 #define CHIP_PIN_VDD			-1
 #define CHIP_PIN_VIO			-1
 
 #if (CHIP_PIN_RESET == 0) || (CHIP_PIN_IRQ == 0)
-//	#error Assign external pin & flag first!!!
+	#error Assign external pin & flag first!!!
 #endif
 #endif	/* __SIW_CONFIG_OF */
 
@@ -328,7 +330,7 @@ static const struct siw_touch_pdata chip_pdata = {
 	},
 	/* */
 	//See 'siw_hal_get_default_ops' [siw_touch_hal.c]
-	.ops				= NULL,
+	.ops				= (void*)siw_hal_get_default_ops,
 	/* */
 	//See 'siw_hal_get_tci_info' [siw_touch_hal.c]
 	.tci_info			= (void *)chip_tci_info,

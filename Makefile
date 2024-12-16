@@ -64,7 +64,7 @@ $(MODULE_NAME)-objs += siw_touch_misc.o
 $(MODULE_NAME)-objs += touch_$(ENTRY_NAME).o
 
 module:
-	$(MAKE) -C $(KERNEL_DIR) CC=$(CC) LD=$(LD) M=$(BASE_DIR) O=$(KERNEL_DIR)/.output ARCH=arm64 modules 
+	$(MAKE) -C $(KERNEL_DIR) CC=$(CC) LD=$(LD) M=$(BASE_DIR) ARCH=arm64 modules 
 
 clean:
 	rm -rf .tmp_versions
